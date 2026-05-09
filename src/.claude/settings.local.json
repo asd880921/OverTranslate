@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Read(//c/Users/asd88/.nuget/packages/tesseract/5.2.0/**)",
+      "Bash(ls lib/net8.0/)",
+      "Bash(ls lib/)",
+      "Bash(powershell -Command '[System.Reflection.Assembly]::LoadFile\\(\\(Resolve-Path '\\\\''Tesseract.dll'\\\\''\\).Path\\).GetType\\('\\\\''Tesseract.ResultIterator'\\\\''\\).GetMethods\\(\\) | Select-Object Name | Where-Object { $_.Name -match '\\\\''Confidence|Mean'\\\\'' } | Sort-Object Name -Unique')"
+    ]
+  }
+}
