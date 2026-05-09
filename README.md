@@ -94,4 +94,5 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 
 ## 授權
 
-MIT License — 自由使用、修改與散佈。
+本專案採用 [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html) 授權。  
+允許個人與公司內部自由使用及修改，修改後的版本須以相同授權開源。
