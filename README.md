@@ -4,9 +4,9 @@
   <p>一款適合你的 Windows 螢幕翻譯工具</p>
 </div>
 
-  ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows)
-  ![Framework](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet)
-  ![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)
+  ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows)  
+  ![Framework](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet)  
+  ![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)  
 
 ---
 
