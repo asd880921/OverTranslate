@@ -41,20 +41,30 @@ public partial class ToastWindow : Window
         {
             var sel = _selPhysRect.Value;
 
+            // Find the screen that contains the selection centre (physical pixels).
+            // SystemParameters.WorkArea only covers the primary screen, so we must
+            // resolve the correct screen explicitly for multi-monitor support.
+            int centrePhysX = (int)(sel.Left + sel.Width  / 2);
+            int centrePhysY = (int)(sel.Top  + sel.Height / 2);
+            var screen = System.Windows.Forms.Screen.FromPoint(
+                new System.Drawing.Point(centrePhysX, centrePhysY));
+            var wa = screen.WorkingArea; // physical pixels of the target screen
+
             // Convert physical px → WPF DIP
-            double selLeft = sel.Left   / dpiX;
-            double selTop  = sel.Top    / dpiY;
-            double selW    = sel.Width  / dpiX;
+            double selLeft = sel.Left    / dpiX;
+            double selTop  = sel.Top     / dpiY;
+            double selW    = sel.Width   / dpiX;
+            double waLeft  = wa.Left     / dpiX;
+            double waRight = wa.Right    / dpiX;
+            double waTop   = wa.Top      / dpiY;
 
-            var wa = SystemParameters.WorkArea;
-
-            // Horizontally centered over selection, clamped to work area
+            // Horizontally centered over selection, clamped to this screen's work area
             double cx   = selLeft + selW / 2;
-            double posX = Math.Clamp(cx - ActualWidth / 2, wa.Left + 4, wa.Right - ActualWidth - 4);
+            double posX = Math.Clamp(cx - ActualWidth / 2, waLeft + 4, waRight - ActualWidth - 4);
 
             // Preferred: just above the selection
             double aboveY = selTop - ActualHeight - Gap;
-            if (aboveY >= wa.Top)
+            if (aboveY >= waTop)
             {
                 Left = posX;
                 Top  = aboveY;
@@ -68,7 +78,7 @@ public partial class ToastWindow : Window
         }
         else
         {
-            // Fallback: bottom-right corner
+            // Fallback: bottom-right corner of primary screen
             var wa = SystemParameters.WorkArea;
             Left = wa.Right  - ActualWidth  - 16;
             Top  = wa.Bottom - ActualHeight - 16;
