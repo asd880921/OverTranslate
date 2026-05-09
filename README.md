@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="src/OverTranslate/icons/icon.svg" width="200" alt="OverTranslate Icon"/>
+  <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
   <h1>OverTranslate</h1>
   <p>一款適合你的 Windows 螢幕翻譯工具</p>
 </div>
@@ -22,8 +22,18 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 
 ## 功能特色
 
-### 截圖 OCR 翻譯疊加
-按下全域快捷鍵後，用滑鼠框選畫面上的任意區域，OverTranslate 會自動辨識文字並將翻譯結果以彩色氣泡疊加在原位，背景顏色會根據截圖內容自動取樣配色。
+### 截圖 OCR 翻譯覆蓋
+按下全域快捷鍵後，用滑鼠框選畫面上的任意區域，OverTranslate 會自動辨識文字並將翻譯結果疊加在原位。
+
+[![jie-tu-fan-yi.png](https://i.postimg.cc/pVwRLRwK/jie-tu-fan-yi.png)](https://postimg.cc/qgx9mVM7)
+
+### 翻譯視窗
+除覆蓋模式外，也提供獨立的翻譯視窗，可自由編輯原文並重新翻譯，支援交換來源與目標語言。
+
+[![fan-yi-shi-chuang-yu-she-ding.png](https://i.postimg.cc/WpBT1TBm/fan-yi-shi-chuang-yu-she-ding.png)](https://postimg.cc/Jt59TV4t)
+
+### 文字轉語音（TTS）
+翻譯視窗中可直接朗讀原文或譯文，同樣支援數個服務自動備援（Google、Microsoft、Bing、Yandex）。
 
 ### 多引擎 OCR 辨識
 | 引擎 | 說明 |
@@ -40,15 +50,6 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 | Yandex 翻譯 | 備援 |
 | DeepL | 高品質翻譯，需 API Key |
 
-### 文字轉語音（TTS）
-翻譯視窗中可直接朗讀原文或譯文，同樣支援數個服務自動備援（Google、Microsoft、Bing、Yandex）。
-
-### 翻譯視窗
-除疊加模式外，也提供獨立的翻譯視窗，可自由編輯原文並重新翻譯，支援交換來源與目標語言。
-
-### 深色 / 淺色主題
-完整支援系統風格，可在設定中手動切換。
-
 ### 其他
 - 可自訂全域快捷鍵
 - 系統匣圖示常駐，快速存取
@@ -59,10 +60,10 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 
 ## 系統需求
 
-- **作業系統**：Windows 10 (1903+) 或 Windows 11
+- **作業系統**：Windows 10 / 11
 - **執行環境**：[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
 - 使用 Windows OCR 時，需在「Windows 語言設定」中安裝對應語言包
-- 使用 DeepL 時，需申請 [DeepL API Key](https://www.deepl.com/pro-api)（提供免費方案）
+- 使用 DeepL 翻譯時，需至官網申請 [DeepL API Key]（官方目前有免費方案）
 
 ---
 
