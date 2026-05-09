@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="OverTranslate/icons/icon.svg" width="96" alt="OverTranslate Icon"/>
+  <img src="src/OverTranslate/icons/icon.svg" width="200" alt="OverTranslate Icon"/>
   <h1>OverTranslate</h1>
-  <p>框選即翻譯 結果直接顯示在畫面上</p>
+  <p>一款適合你的 Windows 螢幕翻譯工具</p>
 </div>
 
   ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows)
