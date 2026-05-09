@@ -1,0 +1,56 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Window / Surface -->
+    <SolidColorBrush x:Key="AppWindowBg"       Color="#F3F3F3"/>
+    <SolidColorBrush x:Key="AppSurfaceBg"      Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="AppHeaderBg"       Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="AppCardBg"         Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="AppBorder"         Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="AppSubtleBorder"   Color="#EBEBEB"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="AppTextPrimary"    Color="#1A1A1A"/>
+    <SolidColorBrush x:Key="AppTextSecondary"  Color="#5A5A5A"/>
+    <SolidColorBrush x:Key="AppTextMuted"      Color="#999999"/>
+
+    <!-- Accent -->
+    <SolidColorBrush x:Key="AppAccent"         Color="#0078D4"/>
+    <SolidColorBrush x:Key="AppAccentHover"    Color="#106EBE"/>
+    <SolidColorBrush x:Key="AppAccentPressed"  Color="#005A9E"/>
+    <SolidColorBrush x:Key="AppAccentFg"       Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="AppAccentSubtle"   Color="#EEF4FF"/>
+
+    <!-- Buttons -->
+    <SolidColorBrush x:Key="AppButtonBg"       Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="AppButtonBorder"   Color="#D1D1D1"/>
+    <SolidColorBrush x:Key="AppButtonHoverBg"  Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="AppButtonPressedBg" Color="#E5E5E5"/>
+
+    <!-- Inputs -->
+    <SolidColorBrush x:Key="AppInputBg"        Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="AppInputBorder"    Color="#C8C8C8"/>
+    <SolidColorBrush x:Key="AppInputFocusBorder" Color="#0078D4"/>
+
+    <!-- Misc -->
+    <SolidColorBrush x:Key="AppSplitter"       Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="AppSuccess"        Color="#0F7B0F"/>
+    <SolidColorBrush x:Key="AppError"          Color="#C42B1C"/>
+    <SolidColorBrush x:Key="AppSectionHeader"  Color="#444444"/>
+
+    <!-- Toolbar specific -->
+    <SolidColorBrush x:Key="ToolbarBg"         Color="#FAFAFA"/>
+    <SolidColorBrush x:Key="ToolbarBorder"     Color="#D0D0D0"/>
+    <Color x:Key="ToolbarShadowColor"          >#000000</Color>
+
+    <!-- Toast — same in both themes (always dark) -->
+    <SolidColorBrush x:Key="ToastBg"           Color="#E8202020"/>
+    <SolidColorBrush x:Key="ToastBorder"       Color="#44FFFFFF"/>
+    <SolidColorBrush x:Key="ToastTitle"        Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ToastMessage"      Color="#CCCCCC"/>
+    <SolidColorBrush x:Key="ToastCopyBtn"      Color="#AAFFFFFF"/>
+
+    <!-- Separator -->
+    <SolidColorBrush x:Key="AppSeparator"      Color="#E0E0E0"/>
+
+</ResourceDictionary>

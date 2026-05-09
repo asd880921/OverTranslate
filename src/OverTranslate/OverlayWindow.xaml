@@ -1,0 +1,22 @@
+<Window x:Class="OverTranslate.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        IsHitTestVisible="False">
+    <Grid>
+        <!-- Translation bubbles -->
+        <Canvas x:Name="OverlayCanvas"/>
+        <!-- Processing indicator — separate layer so it's always above bubbles -->
+        <Canvas x:Name="IndicatorCanvas">
+            <Border x:Name="ProcessingBorder"
+                    Background="#DD000000" CornerRadius="8" Padding="28,14"
+                    Visibility="Collapsed">
+                <TextBlock Foreground="White" FontSize="17" Text="翻譯中..."/>
+            </Border>
+        </Canvas>
+    </Grid>
+</Window>

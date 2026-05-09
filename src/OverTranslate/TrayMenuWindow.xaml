@@ -1,0 +1,107 @@
+<Window x:Class="OverTranslate.TrayMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <Style x:Key="TrayMenuItem" TargetType="Button">
+            <Setter Property="FontFamily"                 Value="{StaticResource AppFont}"/>
+            <Setter Property="FontSize"                   Value="13"/>
+            <Setter Property="Foreground"                 Value="{DynamicResource AppTextPrimary}"/>
+            <Setter Property="Background"                 Value="Transparent"/>
+            <Setter Property="BorderThickness"            Value="0"/>
+            <Setter Property="Height"                     Value="36"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor"                     Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Margin="4,1"
+                                Padding="10,0">
+                            <ContentPresenter VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background"
+                                        Value="{DynamicResource AppButtonHoverBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background"
+                                        Value="{DynamicResource AppButtonPressedBg}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Extra margin gives drop shadow room to render without clipping -->
+    <Grid Margin="10">
+        <Border CornerRadius="8"
+                Background="{DynamicResource AppCardBg}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1"
+                Padding="0,4">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.22" Color="#000000"/>
+            </Border.Effect>
+
+            <StackPanel Width="196">
+
+                <!-- 開啟翻譯視窗 -->
+                <Button x:Name="OpenWindowBtn"
+                        Style="{StaticResource TrayMenuItem}"
+                        Click="OpenWindowBtn_Click">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14" Text="&#xE737;"
+                                   Width="22" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppTextSecondary}"/>
+                        <TextBlock Text="開啟翻譯視窗" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 設定 -->
+                <Button x:Name="SettingsBtn"
+                        Style="{StaticResource TrayMenuItem}"
+                        Click="SettingsBtn_Click">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14" Text="&#xE713;"
+                                   Width="22" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppTextSecondary}"/>
+                        <TextBlock Text="設定" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Separator -->
+                <Rectangle Height="1" Margin="8,3" Fill="{DynamicResource AppSeparator}"/>
+
+                <!-- 結束 -->
+                <Button x:Name="ExitBtn"
+                        Style="{StaticResource TrayMenuItem}"
+                        Click="ExitBtn_Click">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14" Text="&#xE8BB;"
+                                   Width="22" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppTextSecondary}"/>
+                        <TextBlock Text="結束" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

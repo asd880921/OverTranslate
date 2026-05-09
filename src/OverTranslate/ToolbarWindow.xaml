@@ -1,0 +1,92 @@
+<Window x:Class="OverTranslate.ToolbarWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        Topmost="True"
+        ShowInTaskbar="False"
+        AllowsTransparency="True"
+        Background="Transparent"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <!-- Margin gives room for the drop shadow to render outside the visual -->
+    <Border Margin="8,6,8,10">
+        <Border Background="{DynamicResource ToolbarBg}"
+                BorderBrush="{DynamicResource ToolbarBorder}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="8,5">
+            <Border.Effect>
+                <!-- Shadow color is black in both themes; hardcoded avoids Freezable binding edge cases -->
+                <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.18" Color="#000000"/>
+            </Border.Effect>
+
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                <!-- Source language (140px — fits longest entry + arrow) -->
+                <ComboBox x:Name="SrcLangBox"
+                          Style="{StaticResource ToolbarComboBox}"
+                          Width="140"
+                          
+                          SelectedValuePath="Code"
+                          VerticalContentAlignment="Center"/>
+
+                <!-- Swap -->
+                <Button Content="⇄"
+                        Style="{StaticResource ToolbarIconButton}"
+                        Margin="2,0"
+                        Click="SwapBtn_Click"/>
+
+                <!-- Target language -->
+                <ComboBox x:Name="TgtLangBox"
+                          Style="{StaticResource ToolbarComboBox}"
+                          Width="140"
+                          
+                          SelectedValuePath="Code"
+                          VerticalContentAlignment="Center"/>
+
+                <Separator Style="{StaticResource VerticalSeparator}"/>
+
+                <!-- Provider (longest entry is "DeepL 翻譯（需 API Key）" ≈ 145px) -->
+                <ComboBox x:Name="ProviderBox"
+                          Style="{StaticResource ToolbarComboBox}"
+                          Width="150"
+                          
+                          SelectedValuePath="Provider"
+                          VerticalContentAlignment="Center"/>
+
+                <Separator Style="{StaticResource VerticalSeparator}"/>
+
+                <!-- Retranslate -->
+                <Button x:Name="RetranslateBtn"
+                        Content="重新翻譯"
+                        Style="{StaticResource ToolbarAccentButton}"
+                        Margin="0,0,4,0"
+                        Click="RetranslateBtn_Click"/>
+
+                <!-- Open translation window -->
+                <Button Content="翻譯視窗"
+                        Style="{StaticResource ToolbarFlatButton}"
+                        Margin="0,0,4,0"
+                        Click="OpenWindowBtn_Click"/>
+
+                <!-- Toggle original / translated bubbles -->
+                <Button x:Name="ToggleBtn"
+                        Content="顯示原文"
+                        Style="{StaticResource ToolbarFlatButton}"
+                        IsEnabled="False"
+                        Margin="0,0,4,0"
+                        Click="ToggleBtn_Click"/>
+
+                <Separator Style="{StaticResource VerticalSeparator}"/>
+
+                <!-- Close -->
+                <Button Content="✕"
+                        Style="{StaticResource ToolbarIconButton}"
+                        Click="CloseBtn_Click"/>
+
+            </StackPanel>
+        </Border>
+    </Border>
+</Window>

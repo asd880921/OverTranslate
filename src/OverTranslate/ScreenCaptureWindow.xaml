@@ -1,0 +1,42 @@
+<Window x:Class="OverTranslate.ScreenCaptureWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Background="Black"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Cursor="Cross">
+    <Grid>
+        <!-- Frozen screenshot as background -->
+        <Image x:Name="ScreenshotImage" Stretch="Fill"/>
+
+        <!-- Semi-transparent dim layer; in background mode gets a hole cut for the selection -->
+        <Path x:Name="DimPath" Fill="#99000000"/>
+
+        <!-- Absolute-positioned canvas for selection rect and processing indicator -->
+        <Canvas x:Name="OverlayCanvas">
+            <Rectangle x:Name="SelectionRect"
+                       Stroke="#CC1E90D5"
+                       StrokeThickness="2"
+                       Visibility="Collapsed"
+                       Fill="#5599C8F0"/>
+
+            <!-- Processing indicator: positioned at selection center in code-behind -->
+            <Border x:Name="ProcessingBorder"
+                    Background="#DD000000" CornerRadius="8" Padding="28,14"
+                    Visibility="Collapsed">
+                <TextBlock Foreground="White" FontSize="17" Text="翻譯中..."/>
+            </Border>
+        </Canvas>
+
+        <!-- Info label -->
+        <Border x:Name="InfoBorder"
+                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
+                Background="#CC000000" CornerRadius="4" Padding="10,5">
+            <TextBlock Foreground="White" FontSize="13">
+                拖曳選取翻譯區域 — ESC 取消
+            </TextBlock>
+        </Border>
+    </Grid>
+</Window>

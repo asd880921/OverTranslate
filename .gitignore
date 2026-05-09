@@ -1,0 +1,49 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Publish output
+publish/
+PublishProfiles/
+
+# ReSharper
+_ReSharper*/
+*.ReSharper
+*.DotSettings.user
+
+# Rider
+.idea/
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# Logs
+*.log
+logs/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# User-specific settings
+*.rsuser
+launchSettings.json
