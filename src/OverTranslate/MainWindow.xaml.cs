@@ -147,10 +147,9 @@ public partial class MainWindow : Window
 
             // Translate
             List<TranslatedBlock> translated;
-            string detectedLang;
             try
             {
-                (translated, detectedLang) = await _translationService.TranslateAsync(
+                (translated, _) = await _translationService.TranslateAsync(
                     ocrBlocks, settings.SourceLanguage, settings.TargetLanguage, settings.ApiKey);
             }
             catch (Exception ex)
@@ -175,11 +174,7 @@ public partial class MainWindow : Window
             croppedBitmap.Dispose();
             screenshot.Dispose();
 
-            var srcLangForToolbar = settings.SourceLanguage == "auto" && !string.IsNullOrEmpty(detectedLang)
-                ? detectedLang
-                : settings.SourceLanguage;
-
-            EnterOverlayState(captureWindow, selection, coloredTranslated, ocrBlocks, srcLangForToolbar);
+            EnterOverlayState(captureWindow, selection, coloredTranslated, ocrBlocks, settings.SourceLanguage);
         });
     }
 

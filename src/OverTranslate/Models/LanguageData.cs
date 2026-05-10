@@ -8,7 +8,6 @@ public static class LanguageData
 {
     public static readonly List<LangItem> SourceLanguages =
     [
-        new("auto",    "自動偵測"),
         new("ZH-HANT", "Chinese Traditional 繁體中文"),
         new("ZH",      "Chinese Simplified 簡體中文"),
         new("EN",      "English 英語"),

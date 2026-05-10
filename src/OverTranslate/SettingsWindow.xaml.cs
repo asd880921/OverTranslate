@@ -172,9 +172,9 @@ public partial class SettingsWindow : Window
         s.HotkeyModifiers  = _pendingModifiers;
         s.HotkeyVirtualKey = _pendingVKey;
         s.HotkeyDisplay    = HotkeyBox.Text;
-        s.SourceLanguage   = (SourceLangBox.SelectedValue as string) ?? "auto";
-        s.OcrEngine        = OcrEngineBox.SelectedValue is OcrEngineType eng ? eng : OcrEngineType.WindowsOcr;
-        s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Google;
+        s.SourceLanguage   = (SourceLangBox.SelectedValue as string) ?? "EN";
+        s.OcrEngine        = OcrEngineBox.SelectedValue is OcrEngineType eng ? eng : OcrEngineType.Tesseract;
+        s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Google2;
         s.ApiKey           = ApiKeyBox.Text.Trim();
 
         SettingsService.Instance.Save();

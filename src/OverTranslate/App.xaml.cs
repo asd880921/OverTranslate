@@ -89,7 +89,7 @@ public partial class App
             return;
         }
         var settings = SettingsService.Instance.Current;
-        var win = new TranslationWindow("", "", "auto", settings.TargetLanguage);
+        var win = new TranslationWindow("", "", settings.SourceLanguage, settings.TargetLanguage);
         win.Show();
         win.Activate();
     }

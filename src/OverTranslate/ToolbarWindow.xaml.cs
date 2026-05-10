@@ -21,7 +21,7 @@ public partial class ToolbarWindow : Window
     private bool _toggleEnabled = false;
     private bool _bubblesVisible = true;
 
-    public string CurrentSourceLang => SrcLangBox.SelectedValue as string ?? "auto";
+    public string CurrentSourceLang => SrcLangBox.SelectedValue as string ?? "EN";
     public string CurrentTargetLang => TgtLangBox.SelectedValue as string ?? "ZH-HANT";
 
     public ToolbarWindow(
@@ -48,17 +48,9 @@ public partial class ToolbarWindow : Window
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
 
         // Attach after initial values are set so initialization doesn't trigger a save
+        SrcLangBox.SelectionChanged  += SrcLangBox_SelectionChanged;
         TgtLangBox.SelectionChanged  += TgtLangBox_SelectionChanged;
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
-    }
-
-    // Called after translation when source was "auto" — replaces it with the actual detected lang
-    public void SetDetectedSourceLang(string deepLLangCode)
-    {
-        if (string.IsNullOrEmpty(deepLLangCode)) return;
-        var code = deepLLangCode.ToUpperInvariant();
-        SrcLangBox.SelectedValue = code;
-        // If no exact match (shouldn't happen for DeepL codes), keep as-is
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -104,6 +96,15 @@ public partial class ToolbarWindow : Window
         Top  = top;
     }
 
+    private void SrcLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var code = SrcLangBox.SelectedValue as string;
+        if (string.IsNullOrEmpty(code)) return;
+        var s = SettingsService.Instance.Current;
+        s.SourceLanguage = code;
+        SettingsService.Instance.Save();
+    }
+
     private void TgtLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         var code = TgtLangBox.SelectedValue as string;
@@ -135,7 +136,7 @@ public partial class ToolbarWindow : Window
         }
 
         // Source → Target: find exact or first prefix match (EN → EN-US, ZH → ZH-HANS)
-        if (srcVal != null && srcVal != "auto")
+        if (srcVal != null)
         {
             var targetCode = FindTargetCode(srcVal);
             TgtLangBox.SelectedValue = targetCode;

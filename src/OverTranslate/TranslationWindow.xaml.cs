@@ -31,8 +31,18 @@ public partial class TranslationWindow : Window
         TranslatedTextBox.Text = translatedText;
 
         // Attach after initial values are set so initialization doesn't trigger a save
+        SrcLangBox.SelectionChanged  += SrcLangBox_SelectionChanged;
         TgtLangBox.SelectionChanged  += TgtLangBox_SelectionChanged;
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
+    }
+
+    private void SrcLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var code = SrcLangBox.SelectedValue as string;
+        if (string.IsNullOrEmpty(code)) return;
+        var s = SettingsService.Instance.Current;
+        s.SourceLanguage = code;
+        SettingsService.Instance.Save();
     }
 
     private void TgtLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -71,7 +81,7 @@ public partial class TranslationWindow : Window
         }
 
         // Swap source → target (find exact or first prefix match: EN → EN-US, ZH → ZH-HANS)
-        if (srcVal != null && srcVal != "auto")
+        if (srcVal != null)
         {
             var targetCode = LanguageData.TargetLanguages
                 .FirstOrDefault(l => l.Code.Equals(srcVal, StringComparison.OrdinalIgnoreCase))?.Code
@@ -91,7 +101,7 @@ public partial class TranslationWindow : Window
             return;
         }
 
-        var srcLang = SrcLangBox.SelectedValue as string ?? "auto";
+        var srcLang = SrcLangBox.SelectedValue as string ?? "EN";
         var tgtLang = TgtLangBox.SelectedValue as string ?? "ZH-HANT";
         var text    = SourceTextBox.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
@@ -115,7 +125,7 @@ public partial class TranslationWindow : Window
     {
         var text = SourceTextBox.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
-        var lang = SrcLangBox.SelectedValue as string ?? "auto";
+        var lang = SrcLangBox.SelectedValue as string ?? "EN";
         try { await _tts.SpeakAsync(text, lang); }
         catch (Exception ex) { SetStatus($"朗讀失敗：{ex.Message}", isError: true); }
     }

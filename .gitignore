@@ -9,6 +9,9 @@ obj/
 *.userosscache
 *.sln.docstates
 
+# .Net
+.dotnet
+
 # NuGet
 *.nupkg
 *.snupkg
