@@ -129,6 +129,18 @@ public partial class TranslationWindow : Window
         catch (Exception ex) { SetStatus($"朗讀失敗：{ex.Message}", isError: true); }
     }
 
+    public void SetContent(string sourceText, string translatedText, string srcLang, string tgtLang)
+    {
+        SourceTextBox.Text     = sourceText;
+        TranslatedTextBox.Text = translatedText;
+        StatusText.Text        = "";
+
+        SrcLangBox.SelectedValue = srcLang;
+        TgtLangBox.SelectedValue = tgtLang;
+        if (SrcLangBox.SelectedValue == null) SrcLangBox.SelectedIndex = 0;
+        if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = LanguageData.TargetLanguages.Count - 1;
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _tts.Dispose();

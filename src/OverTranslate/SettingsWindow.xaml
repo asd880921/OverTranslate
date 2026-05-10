@@ -26,6 +26,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Text="一般設定" Style="{StaticResource SectionHeader}"/>
@@ -80,6 +81,19 @@
                                SelectionChanged="OcrEngineBox_SelectionChanged"/>
                     <TextBlock Grid.Column="1" Grid.Row="1" x:Name="OcrEngineHint"
                                Style="{StaticResource FieldHint}"/>
+                </Grid>
+
+                <!-- 開機自動啟動 -->
+                <Grid Grid.Row="4" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="開機啟動" Style="{StaticResource FieldLabel}"/>
+                    <CheckBox  Grid.Column="1" x:Name="StartupCheckBox"
+                               Content="隨系統自動啟動"
+                               Style="{StaticResource ModernCheckBox}"
+                               VerticalAlignment="Center"/>
                 </Grid>
             </Grid>
         </Border>

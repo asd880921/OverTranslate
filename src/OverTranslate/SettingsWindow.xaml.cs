@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using OverTranslate.Models;
 using OverTranslate.Services;
+using Microsoft.Win32;
 
 namespace OverTranslate;
 
@@ -63,6 +64,8 @@ public partial class SettingsWindow : Window
         LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
         DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
         _themeRadioInit = false;
+
+        StartupCheckBox.IsChecked = StartupService.IsEnabled;
 
         UpdateApiKeyVisibility();
     }
@@ -175,6 +178,7 @@ public partial class SettingsWindow : Window
         s.ApiKey           = ApiKeyBox.Text.Trim();
 
         SettingsService.Instance.Save();
+        StartupService.Set(StartupCheckBox.IsChecked == true);
 
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();

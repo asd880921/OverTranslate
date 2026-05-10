@@ -298,9 +298,22 @@ public partial class MainWindow : Window
         var srcLang = _toolbarWindow?.CurrentSourceLang ?? SettingsService.Instance.Current.SourceLanguage;
         var tgtLang = _toolbarWindow?.CurrentTargetLang ?? SettingsService.Instance.Current.TargetLanguage;
 
-        var win = new TranslationWindow(srcText, tgtText, srcLang, tgtLang);
-        win.Show();
-        win.Activate();
+        var existing = System.Windows.Application.Current.Windows
+            .OfType<TranslationWindow>().FirstOrDefault();
+
+        if (existing != null)
+        {
+            if (existing.WindowState == WindowState.Minimized)
+                existing.WindowState = WindowState.Normal;
+            existing.SetContent(srcText, tgtText, srcLang, tgtLang);
+            existing.Activate();
+        }
+        else
+        {
+            var win = new TranslationWindow(srcText, tgtText, srcLang, tgtLang);
+            win.Show();
+            win.Activate();
+        }
 
         CloseAll(); // close overlay, dim background, and toolbar
     }
