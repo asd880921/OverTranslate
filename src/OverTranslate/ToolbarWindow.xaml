@@ -65,12 +65,6 @@
                         Margin="0,0,4,0"
                         Click="RetranslateBtn_Click"/>
 
-                <!-- Open translation window -->
-                <Button Content="翻譯視窗"
-                        Style="{StaticResource ToolbarFlatButton}"
-                        Margin="0,0,4,0"
-                        Click="OpenWindowBtn_Click"/>
-
                 <!-- Toggle original / translated bubbles -->
                 <Button x:Name="ToggleBtn"
                         Content="顯示原文"
@@ -78,6 +72,12 @@
                         IsEnabled="False"
                         Margin="0,0,4,0"
                         Click="ToggleBtn_Click"/>
+
+                <!-- Open translation window -->
+                <Button Content="開啟翻譯視窗"
+                        Style="{StaticResource ToolbarFlatButton}"
+                        Margin="0,0,4,0"
+                        Click="OpenWindowBtn_Click"/>
 
                 <Separator Style="{StaticResource VerticalSeparator}"/>
 
