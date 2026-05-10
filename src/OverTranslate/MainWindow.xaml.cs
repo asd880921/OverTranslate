@@ -272,6 +272,7 @@ public partial class MainWindow : Window
         }
         finally
         {
+            _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
             _toolbarWindow?.SetBusy(false);
         }
     }

@@ -99,6 +99,12 @@ public partial class OverlayWindow : Window
         BuildOverlay(blocks, selScreenX, selScreenY);
     }
 
+    public void RestoreIdle(bool hasVisibleBlocks)
+    {
+        ProcessingBorder.Visibility = Visibility.Collapsed;
+        OverlayCanvas.Visibility = hasVisibleBlocks ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     public void SetBubblesVisible(bool visible) =>
         OverlayCanvas.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
