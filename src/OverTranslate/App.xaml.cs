@@ -3,6 +3,7 @@ using System.Windows;
 using NLog;
 using OverTranslate.Services;
 using OverTranslate.Models;
+using System.Threading.Tasks;
 
 namespace OverTranslate;
 
@@ -54,6 +55,14 @@ public partial class App
         mainWindow.InitializeApp();
 
         ShowOrActivateTranslationWindow();
+        _ = CheckForUpdateAsync();
+    }
+
+    private static async Task CheckForUpdateAsync()
+    {
+        var info = await UpdateService.CheckAsync();
+        if (info is null) return;
+        Current.Dispatcher.Invoke(() => new UpdateWindow(info).Show());
     }
 
     private void MonitorActivationRequests()

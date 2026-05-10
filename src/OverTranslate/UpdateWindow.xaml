@@ -1,0 +1,98 @@
+<Window x:Class="OverTranslate.UpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="發現新版本"
+        Width="360"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True"
+        Topmost="True"
+        Background="{DynamicResource AppWindowBg}">
+
+    <Grid Margin="24,20,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 標題區 -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,16">
+            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                       FontSize="36" Text="&#xE895;"
+                       HorizontalAlignment="Center"
+                       Foreground="{DynamicResource AppAccent}"/>
+            <TextBlock Text="發現新版本！"
+                       FontFamily="{StaticResource AppFont}"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppTextPrimary}"
+                       HorizontalAlignment="Center"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <!-- 版本資訊 -->
+        <Border Grid.Row="1" Style="{StaticResource CardBorder}">
+            <StackPanel>
+                <Grid Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="目前版本" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Grid.Column="1" x:Name="CurrentVersionText"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="13"
+                               Foreground="{DynamicResource AppTextSecondary}"
+                               VerticalAlignment="Center"/>
+                </Grid>
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="最新版本" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Grid.Column="1" x:Name="LatestVersionText"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource AppAccent}"
+                               VerticalAlignment="Center"/>
+                </Grid>
+                <TextBlock Text="建議前往 GitHub 下載最新版本，以獲得最新功能與問題修正。"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppTextSecondary}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 按鈕列 -->
+        <Grid Grid.Row="2" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="稍後再說"
+                    Style="{StaticResource FlatButton}"
+                    Height="36"
+                    Click="DismissBtn_Click"/>
+            <Button Grid.Column="2"
+                    Style="{StaticResource AccentButton}"
+                    Height="36"
+                    Click="DownloadBtn_Click">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="13" Text="&#xE896;"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0"/>
+                    <TextBlock Text="前往下載"
+                               FontFamily="{StaticResource AppFont}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+    </Grid>
+</Window>
