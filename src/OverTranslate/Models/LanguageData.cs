@@ -6,6 +6,9 @@ public record OcrEngineItem(OcrEngineType Engine, string Display, string? Hint =
 
 public static class LanguageData
 {
+    public const string DefaultSourceLanguage = "EN";
+    public const string DefaultTargetLanguage = "ZH-HANT";
+
     public static readonly List<LangItem> SourceLanguages =
     [
         new("ZH-HANT", "繁體中文 Traditional Chinese"),
@@ -124,5 +127,25 @@ public static class LanguageData
         var prefix = TargetLanguages.FirstOrDefault(l =>
             l.Code.StartsWith(mapped + "-", StringComparison.OrdinalIgnoreCase));
         return prefix?.Code;
+    }
+
+    public static string GetValidSourceCode(string? sourceCode)
+    {
+        if (string.IsNullOrWhiteSpace(sourceCode))
+            return DefaultSourceLanguage;
+
+        var match = SourceLanguages.FirstOrDefault(l =>
+            l.Code.Equals(sourceCode, StringComparison.OrdinalIgnoreCase));
+        return match?.Code ?? DefaultSourceLanguage;
+    }
+
+    public static string GetValidTargetCode(string? targetCode)
+    {
+        if (string.IsNullOrWhiteSpace(targetCode))
+            return DefaultTargetLanguage;
+
+        var match = TargetLanguages.FirstOrDefault(l =>
+            l.Code.Equals(targetCode, StringComparison.OrdinalIgnoreCase));
+        return match?.Code ?? DefaultTargetLanguage;
     }
 }

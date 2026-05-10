@@ -15,17 +15,7 @@ public partial class TranslationWindow : Window
     {
         InitializeComponent();
         Icon = AppIconService.CreateWindowIcon();
-
-        SrcLangBox.ItemsSource  = LanguageData.SourceLanguages;
-        TgtLangBox.ItemsSource  = LanguageData.TargetLanguages;
-        ProviderBox.ItemsSource = LanguageData.Providers;
-
-        SrcLangBox.SelectedValue  = sourceLang;
-        TgtLangBox.SelectedValue  = targetLang;
-        ProviderBox.SelectedValue = SettingsService.Instance.Current.Provider;
-        if (SrcLangBox.SelectedValue  == null) SrcLangBox.SelectedIndex  = 0;
-        if (TgtLangBox.SelectedValue  == null) TgtLangBox.SelectedIndex  = LanguageData.TargetLanguages.Count - 1;
-        if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+        InitializeSelectors(sourceLang, targetLang);
 
         SourceTextBox.Text     = sourceText;
         TranslatedTextBox.Text = translatedText;
@@ -38,28 +28,18 @@ public partial class TranslationWindow : Window
 
     private void SrcLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        var code = SrcLangBox.SelectedValue as string;
-        if (string.IsNullOrEmpty(code)) return;
-        var s = SettingsService.Instance.Current;
-        s.SourceLanguage = code;
-        SettingsService.Instance.Save();
+        SaveCurrentLanguageSelection();
     }
 
     private void TgtLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        var code = TgtLangBox.SelectedValue as string;
-        if (string.IsNullOrEmpty(code)) return;
-        var s = SettingsService.Instance.Current;
-        s.TargetLanguage = code;
-        SettingsService.Instance.Save();
+        SaveCurrentLanguageSelection();
     }
 
     private void ProviderBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (ProviderBox.SelectedValue is not TranslationProvider provider) return;
-        var s = SettingsService.Instance.Current;
-        s.Provider = provider;
-        SettingsService.Instance.Save();
+        SaveProviderSelection(provider);
     }
 
     private void SettingsBtn_Click(object sender, RoutedEventArgs e) => SettingsWindow.ShowOrActivate();
@@ -98,8 +78,8 @@ public partial class TranslationWindow : Window
             return;
         }
 
-        var srcLang = SrcLangBox.SelectedValue as string ?? "EN";
-        var tgtLang = TgtLangBox.SelectedValue as string ?? "ZH-HANT";
+        var srcLang = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
+        var tgtLang = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
         var text    = SourceTextBox.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
 
@@ -122,7 +102,7 @@ public partial class TranslationWindow : Window
     {
         var text = SourceTextBox.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
-        var lang = SrcLangBox.SelectedValue as string ?? "EN";
+        var lang = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
         try { await _tts.SpeakAsync(text, lang); }
         catch (Exception ex) { SetStatus($"朗讀失敗：{ex.Message}", isError: true); }
     }
@@ -131,7 +111,7 @@ public partial class TranslationWindow : Window
     {
         var text = TranslatedTextBox.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
-        var lang = TgtLangBox.SelectedValue as string ?? "ZH-HANT";
+        var lang = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
         try { await _tts.SpeakAsync(text, lang); }
         catch (Exception ex) { SetStatus($"朗讀失敗：{ex.Message}", isError: true); }
     }
@@ -142,10 +122,8 @@ public partial class TranslationWindow : Window
         TranslatedTextBox.Text = translatedText;
         StatusText.Text        = "";
 
-        SrcLangBox.SelectedValue = srcLang;
-        TgtLangBox.SelectedValue = tgtLang;
-        if (SrcLangBox.SelectedValue == null) SrcLangBox.SelectedIndex = 0;
-        if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = LanguageData.TargetLanguages.Count - 1;
+        SrcLangBox.SelectedValue = LanguageData.GetValidSourceCode(srcLang);
+        TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(tgtLang);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -160,5 +138,32 @@ public partial class TranslationWindow : Window
         StatusText.Foreground = isError
             ? (System.Windows.Media.Brush)FindResource("AppError")
             : (System.Windows.Media.Brush)FindResource("AppTextSecondary");
+    }
+
+    private void InitializeSelectors(string sourceLang, string targetLang)
+    {
+        SrcLangBox.ItemsSource  = LanguageData.SourceLanguages;
+        TgtLangBox.ItemsSource  = LanguageData.TargetLanguages;
+        ProviderBox.ItemsSource = LanguageData.Providers;
+
+        SrcLangBox.SelectedValue  = LanguageData.GetValidSourceCode(sourceLang);
+        TgtLangBox.SelectedValue  = LanguageData.GetValidTargetCode(targetLang);
+        ProviderBox.SelectedValue = SettingsService.Instance.Current.Provider;
+        if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+    }
+
+    private void SaveCurrentLanguageSelection()
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.SourceLanguage = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
+        settings.TargetLanguage = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
+        SettingsService.Instance.Save();
+    }
+
+    private static void SaveProviderSelection(TranslationProvider provider)
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.Provider = provider;
+        SettingsService.Instance.Save();
     }
 }

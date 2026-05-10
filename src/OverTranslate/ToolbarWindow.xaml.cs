@@ -22,8 +22,8 @@ public partial class ToolbarWindow : Window
     private bool _bubblesVisible = true;
     private bool _hasTranslated;
 
-    public string CurrentSourceLang => SrcLangBox.SelectedValue as string ?? "EN";
-    public string CurrentTargetLang => TgtLangBox.SelectedValue as string ?? "ZH-HANT";
+    public string CurrentSourceLang => LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
+    public string CurrentTargetLang => LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
 
     public ToolbarWindow(
         double selPhysLeft, double selPhysTop,
@@ -36,17 +36,7 @@ public partial class ToolbarWindow : Window
         _selPhysHeight = selPhysHeight;
 
         InitializeComponent();
-
-        SrcLangBox.ItemsSource  = LanguageData.SourceLanguages;
-        TgtLangBox.ItemsSource  = LanguageData.TargetLanguages;
-        ProviderBox.ItemsSource = LanguageData.Providers;
-
-        SrcLangBox.SelectedValue  = sourceLang;
-        TgtLangBox.SelectedValue  = targetLang;
-        ProviderBox.SelectedValue = SettingsService.Instance.Current.Provider;
-        if (SrcLangBox.SelectedValue  == null) SrcLangBox.SelectedIndex  = 0;
-        if (TgtLangBox.SelectedValue  == null) TgtLangBox.SelectedIndex  = LanguageData.TargetLanguages.Count - 1;
-        if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+        InitializeSelectors(sourceLang, targetLang);
 
         // Attach after initial values are set so initialization doesn't trigger a save
         SrcLangBox.SelectionChanged  += SrcLangBox_SelectionChanged;
@@ -99,28 +89,18 @@ public partial class ToolbarWindow : Window
 
     private void SrcLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        var code = SrcLangBox.SelectedValue as string;
-        if (string.IsNullOrEmpty(code)) return;
-        var s = SettingsService.Instance.Current;
-        s.SourceLanguage = code;
-        SettingsService.Instance.Save();
+        SaveCurrentLanguageSelection();
     }
 
     private void TgtLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        var code = TgtLangBox.SelectedValue as string;
-        if (string.IsNullOrEmpty(code)) return;
-        var s = SettingsService.Instance.Current;
-        s.TargetLanguage = code;
-        SettingsService.Instance.Save();
+        SaveCurrentLanguageSelection();
     }
 
     private void ProviderBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (ProviderBox.SelectedValue is not TranslationProvider provider) return;
-        var s = SettingsService.Instance.Current;
-        s.Provider = provider;
-        SettingsService.Instance.Save();
+        SaveProviderSelection(provider);
     }
 
     private void SwapBtn_Click(object sender, RoutedEventArgs e)
@@ -189,6 +169,33 @@ public partial class ToolbarWindow : Window
         _bubblesVisible   = !_bubblesVisible;
         ToggleBtn.Content = _bubblesVisible ? "顯示原文" : "顯示譯文";
         BubblesVisibilityChanged?.Invoke(this, _bubblesVisible);
+    }
+
+    private void InitializeSelectors(string sourceLang, string targetLang)
+    {
+        SrcLangBox.ItemsSource  = LanguageData.SourceLanguages;
+        TgtLangBox.ItemsSource  = LanguageData.TargetLanguages;
+        ProviderBox.ItemsSource = LanguageData.Providers;
+
+        SrcLangBox.SelectedValue  = LanguageData.GetValidSourceCode(sourceLang);
+        TgtLangBox.SelectedValue  = LanguageData.GetValidTargetCode(targetLang);
+        ProviderBox.SelectedValue = SettingsService.Instance.Current.Provider;
+        if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+    }
+
+    private void SaveCurrentLanguageSelection()
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.SourceLanguage = CurrentSourceLang;
+        settings.TargetLanguage = CurrentTargetLang;
+        SettingsService.Instance.Save();
+    }
+
+    private static void SaveProviderSelection(TranslationProvider provider)
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.Provider = provider;
+        SettingsService.Instance.Save();
     }
 }
 
