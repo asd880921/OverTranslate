@@ -197,37 +197,28 @@ public partial class MainWindow : Window
 
         try
         {
+            if (requestCaptureWindow?.CroppedBitmap == null)
+            {
+                ShowBalloon("辨識失敗", "找不到框選影像，請重新框選。", selRect);
+                return;
+            }
+
+            var recognizedBlocks = await _ocrService.RecognizeAsync(requestCaptureWindow.CroppedBitmap, req.SourceLang);
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
+
+            _lastOcrBlocks = recognizedBlocks;
             if (_lastOcrBlocks.Count == 0)
             {
-                if (requestCaptureWindow?.CroppedBitmap == null)
-                {
-                    ShowBalloon("辨識失敗", "找不到框選影像，請重新框選。", selRect);
-                    return;
-                }
-
-                var recognizedBlocks = await _ocrService.RecognizeAsync(requestCaptureWindow.CroppedBitmap, req.SourceLang);
-                if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
-                    return;
-
-                _lastOcrBlocks = recognizedBlocks;
-                if (_lastOcrBlocks.Count == 0)
-                {
-                    requestToolbar?.SetTranslationState(false);
-                    ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
-                    return;
-                }
+                requestToolbar?.SetTranslationState(false);
+                ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
+                return;
             }
 
             var (translated, _) = await _translationService.TranslateAsync(
                 _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
-
-            if (requestCaptureWindow?.CroppedBitmap == null)
-            {
-                ShowBalloon("翻譯失敗", "找不到框選影像，請重新框選。", selRect);
-                return;
-            }
 
             var croppedBitmap = requestCaptureWindow.CroppedBitmap;
             var bmpData = croppedBitmap.LockBits(
