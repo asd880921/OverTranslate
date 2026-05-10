@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private double _lastSelPhysTop;
     private double _lastSelPhysWidth;
     private double _lastSelPhysHeight;
+    private int _selectionSessionId;
 
     public MainWindow()
     {
@@ -124,6 +125,7 @@ public partial class MainWindow : Window
         string srcLang,
         bool hasTranslated)
     {
+        _selectionSessionId++;
         _lastOcrBlocks     = ocrBlocks;
         _lastColoredBlocks = blocks;
         _lastSelPhysLeft   = selection.Left;
@@ -164,6 +166,7 @@ public partial class MainWindow : Window
         _overlayWindow = new OverlayWindow(blocks, selPhysLeft, selPhysTop);
         _overlayClosedHandler = (_, _) =>
         {
+            _selectionSessionId++;
             _toolbarWindow?.Close();
             _toolbarWindow = null;
             _captureWindow?.Close();
@@ -176,6 +179,9 @@ public partial class MainWindow : Window
 
     private async void OnRetranslateRequested(object? sender, RetranslateRequest req)
     {
+        var requestToolbar = sender as ToolbarWindow;
+        var requestCaptureWindow = _captureWindow;
+        var requestSessionId = _selectionSessionId;
         var settings = SettingsService.Instance.Current;
         var selRect  = new System.Windows.Rect(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
 
@@ -185,7 +191,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _toolbarWindow?.SetBusy(true);
+        requestToolbar?.SetBusy(true);
         // Show indicator inside OverlayWindow so it's above the translation bubbles
         _overlayWindow?.ShowProcessing(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
 
@@ -193,16 +199,20 @@ public partial class MainWindow : Window
         {
             if (_lastOcrBlocks.Count == 0)
             {
-                if (_captureWindow?.CroppedBitmap == null)
+                if (requestCaptureWindow?.CroppedBitmap == null)
                 {
                     ShowBalloon("辨識失敗", "找不到框選影像，請重新框選。", selRect);
                     return;
                 }
 
-                _lastOcrBlocks = await _ocrService.RecognizeAsync(_captureWindow.CroppedBitmap, req.SourceLang);
+                var recognizedBlocks = await _ocrService.RecognizeAsync(requestCaptureWindow.CroppedBitmap, req.SourceLang);
+                if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                    return;
+
+                _lastOcrBlocks = recognizedBlocks;
                 if (_lastOcrBlocks.Count == 0)
                 {
-                    _toolbarWindow?.SetTranslationState(false);
+                    requestToolbar?.SetTranslationState(false);
                     ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
                     return;
                 }
@@ -210,14 +220,16 @@ public partial class MainWindow : Window
 
             var (translated, _) = await _translationService.TranslateAsync(
                 _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey);
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
 
-            if (_captureWindow?.CroppedBitmap == null)
+            if (requestCaptureWindow?.CroppedBitmap == null)
             {
                 ShowBalloon("翻譯失敗", "找不到框選影像，請重新框選。", selRect);
                 return;
             }
 
-            var croppedBitmap = _captureWindow.CroppedBitmap;
+            var croppedBitmap = requestCaptureWindow.CroppedBitmap;
             var bmpData = croppedBitmap.LockBits(
                 new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height),
                 ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
@@ -254,26 +266,35 @@ public partial class MainWindow : Window
 
             _lastColoredBlocks = coloredTranslated;
             ShowOverlay(coloredTranslated, _lastSelPhysLeft, _lastSelPhysTop);
-            _toolbarWindow?.SetTranslationState(true);
-            _toolbarWindow?.SetToggleEnabled(coloredTranslated.Count > 0);
+            requestToolbar?.SetTranslationState(true);
+            requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("sequence contains no elements", StringComparison.OrdinalIgnoreCase))
         {
-            _toolbarWindow?.SetTranslationState(false);
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
+
+            requestToolbar?.SetTranslationState(false);
             ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
         }
         catch (Exception ex)
         {
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
+
             // On failure, restore old bubbles so the overlay isn't left blank
             _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop);
-            _toolbarWindow?.SetTranslationState(_lastColoredBlocks.Count > 0);
-            _toolbarWindow?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
+            requestToolbar?.SetTranslationState(_lastColoredBlocks.Count > 0);
+            requestToolbar?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
             ShowBalloon("翻譯失敗", ex.Message, selRect);
         }
         finally
         {
-            _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
-            _toolbarWindow?.SetBusy(false);
+            if (IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+            {
+                _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
+                requestToolbar?.SetBusy(false);
+            }
         }
     }
 
@@ -306,6 +327,7 @@ public partial class MainWindow : Window
 
     private void CloseAll()
     {
+        _selectionSessionId++;
         // Detach handler before closing so we drive the teardown order ourselves
         if (_overlayWindow != null && _overlayClosedHandler != null)
             _overlayWindow.Closed -= _overlayClosedHandler;
@@ -318,6 +340,11 @@ public partial class MainWindow : Window
         _captureWindow?.Close();
         _captureWindow = null;
     }
+
+    private bool IsCurrentSelectionSession(int sessionId, ToolbarWindow? toolbar, ScreenCaptureWindow? captureWindow) =>
+        sessionId == _selectionSessionId &&
+        ReferenceEquals(toolbar, _toolbarWindow) &&
+        ReferenceEquals(captureWindow, _captureWindow);
 
     private static void OpenSettings() => SettingsWindow.ShowOrActivate();
 
