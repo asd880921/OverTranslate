@@ -91,7 +91,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="開機啟動" Style="{StaticResource FieldLabel}"/>
                     <CheckBox  Grid.Column="1" x:Name="StartupCheckBox"
-                               Content="隨系統自動啟動"
+                               Content="開機時自動啟動"
                                Style="{StaticResource ModernCheckBox}"
                                VerticalAlignment="Center"/>
                 </Grid>
