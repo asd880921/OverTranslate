@@ -41,23 +41,34 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 
 [![fan-yi-shi-chuang-yu-she-ding.png](https://i.postimg.cc/WpBT1TBm/fan-yi-shi-chuang-yu-she-ding.png)](https://postimg.cc/Jt59TV4t)
 
-### 文字轉語音（TTS）
-翻譯視窗中可直接朗讀原文或譯文，同樣支援數個服務自動備援（Google、Microsoft、Bing、Yandex）。
+## 翻譯 API
+
+本專案採用多來源翻譯架構，透過統一整合層管理不同翻譯服務，並提供自動 fallback 機制以提升穩定性與可用性。
+
+| 服務 | 說明 |
+|------|------|
+| Google 翻譯（新版） | (預設) 首選，穩定性佳 |
+| Google 翻譯（舊版） | 備援 |
+| Bing 翻譯 | 可選 |
+| Yandex 翻譯 | 可選 |
+| DeepL | 高品質翻譯，需 API Key |
+
+---
+
+## 文字轉語音（TTS）
+
+翻譯視窗中提供文字轉語音功能，可朗讀原文或譯文。
+目前 TTS 功能透過多語音來源的整合服務實作，並由統一管理層進行語音來源選擇與自動 fallback，以提升穩定性與可用性。
+
+| 語音來源 | 說明 |
+|----------|------|
+| 線上語音服務 | 提供多語音來源與自動 fallback（依可用性選擇最佳語音） |
 
 ### 多引擎 OCR 辨識
 | 引擎 | 說明 |
 |------|------|
 | **Windows OCR** | 系統內建，支援自動偵測中（簡/繁）、英、日、韓同時辨識 |
 | **Tesseract OCR** | (預設) 離線引擎，內建繁中、簡中、日、韓、英語言模型，無需安裝語言包 |
-
-### 多平台翻譯 API
-| 服務 | 說明 |
-|------|------|
-| Google 翻譯（新版） | (預設) 首選，穩定性佳 |
-| Google 翻譯（舊版） | 備援 |
-| Bing 翻譯 | 備援 |
-| Yandex 翻譯 | 備援 |
-| DeepL | 高品質翻譯，需 API Key |
 
 ### 其他
 - 可自訂全域快捷鍵
