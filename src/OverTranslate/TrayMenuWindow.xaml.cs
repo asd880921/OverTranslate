@@ -7,6 +7,7 @@ public partial class TrayMenuWindow : Window
 {
     public event EventHandler? OpenTranslationRequested;
     public event EventHandler? OpenSettingsRequested;
+    public event EventHandler? OpenAboutRequested;
     public event EventHandler? ExitRequested;
 
     private readonly System.Drawing.Point _cursorPhys;
@@ -66,6 +67,12 @@ public partial class TrayMenuWindow : Window
     private void SettingsBtn_Click(object sender, RoutedEventArgs e)
     {
         OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+        Dismiss();
+    }
+
+    private void AboutBtn_Click(object sender, RoutedEventArgs e)
+    {
+        OpenAboutRequested?.Invoke(this, EventArgs.Empty);
         Dismiss();
     }
 

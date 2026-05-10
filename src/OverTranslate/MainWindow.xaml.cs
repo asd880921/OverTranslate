@@ -328,6 +328,7 @@ public partial class MainWindow : Window
         _trayMenu = new TrayMenuWindow();
         _trayMenu.OpenTranslationRequested += (_, _) => OpenTranslationWindow();
         _trayMenu.OpenSettingsRequested    += (_, _) => OpenSettings();
+        _trayMenu.OpenAboutRequested       += (_, _) => AboutWindow.ShowOrActivate();
         _trayMenu.ExitRequested            += (_, _) => ExitApp();
         _trayMenu.Closed                   += (_, _) => _trayMenu = null;
         _trayMenu.Show();

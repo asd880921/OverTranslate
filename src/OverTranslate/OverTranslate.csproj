@@ -10,6 +10,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationIcon>icons\icon_256.ico</ApplicationIcon>
+    <Version>0.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
