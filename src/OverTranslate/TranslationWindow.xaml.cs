@@ -72,21 +72,18 @@ public partial class TranslationWindow : Window
         // Swap texts
         (SourceTextBox.Text, TranslatedTextBox.Text) = (TranslatedTextBox.Text, SourceTextBox.Text);
 
-        // Swap target → source (strip region variant: EN-GB → EN)
+        // Swap target → source using explicit language mapping
         if (tgtVal != null)
         {
-            var baseCode = tgtVal.Split('-')[0];
-            SrcLangBox.SelectedValue = baseCode;
+            var sourceCode = LanguageData.MapTargetToSourceCode(tgtVal);
+            SrcLangBox.SelectedValue = sourceCode;
             if (SrcLangBox.SelectedValue == null) SrcLangBox.SelectedIndex = 0;
         }
 
-        // Swap source → target (find exact or first prefix match: EN → EN-US, ZH → ZH-HANS)
+        // Swap source → target using explicit language mapping
         if (srcVal != null)
         {
-            var targetCode = LanguageData.TargetLanguages
-                .FirstOrDefault(l => l.Code.Equals(srcVal, StringComparison.OrdinalIgnoreCase))?.Code
-                ?? LanguageData.TargetLanguages
-                    .FirstOrDefault(l => l.Code.StartsWith(srcVal + "-", StringComparison.OrdinalIgnoreCase))?.Code;
+            var targetCode = LanguageData.MapSourceToTargetCode(srcVal);
             TgtLangBox.SelectedValue = targetCode;
         }
         if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = 0;

@@ -128,32 +128,21 @@ public partial class ToolbarWindow : Window
         var srcVal = SrcLangBox.SelectedValue as string;
         var tgtVal = TgtLangBox.SelectedValue as string;
 
-        // Target → Source: strip region variant (ZH-HANT → ZH, EN-GB → EN)
+        // Target → Source: use explicit language mapping (e.g. ZH-HANT stays traditional)
         if (tgtVal != null)
         {
-            var baseCode = tgtVal.Split('-')[0];
-            SrcLangBox.SelectedValue = baseCode;
+            var sourceCode = LanguageData.MapTargetToSourceCode(tgtVal);
+            SrcLangBox.SelectedValue = sourceCode;
             if (SrcLangBox.SelectedValue == null) SrcLangBox.SelectedIndex = 0;
         }
 
-        // Source → Target: find exact or first prefix match (EN → EN-US, ZH → ZH-HANS)
+        // Source → Target: use explicit language mapping
         if (srcVal != null)
         {
-            var targetCode = FindTargetCode(srcVal);
+            var targetCode = LanguageData.MapSourceToTargetCode(srcVal);
             TgtLangBox.SelectedValue = targetCode;
         }
         if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = 0;
-    }
-
-    private static string? FindTargetCode(string srcCode)
-    {
-        var exact = LanguageData.TargetLanguages.FirstOrDefault(l =>
-            l.Code.Equals(srcCode, StringComparison.OrdinalIgnoreCase));
-        if (exact != null) return exact.Code;
-
-        var prefix = LanguageData.TargetLanguages.FirstOrDefault(l =>
-            l.Code.StartsWith(srcCode + "-", StringComparison.OrdinalIgnoreCase));
-        return prefix?.Code;
     }
 
     private void RetranslateBtn_Click(object sender, RoutedEventArgs e)

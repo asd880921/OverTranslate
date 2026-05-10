@@ -88,4 +88,41 @@ public static class LanguageData
         new("TR",      "Turkish 土耳其語"),
         new("UK",      "Ukrainian 烏克蘭語"),
     ];
+
+    public static string? MapTargetToSourceCode(string targetCode)
+    {
+        if (string.IsNullOrWhiteSpace(targetCode)) return null;
+
+        var mapped = targetCode.ToUpperInvariant() switch
+        {
+            "ZH-HANT" => "ZH-HANT",
+            "ZH-HANS" => "ZH",
+            _ => targetCode.Split('-')[0]
+        };
+
+        return SourceLanguages.Any(l => l.Code.Equals(mapped, StringComparison.OrdinalIgnoreCase))
+            ? SourceLanguages.First(l => l.Code.Equals(mapped, StringComparison.OrdinalIgnoreCase)).Code
+            : null;
+    }
+
+    public static string? MapSourceToTargetCode(string sourceCode)
+    {
+        if (string.IsNullOrWhiteSpace(sourceCode)) return null;
+
+        var mapped = sourceCode.ToUpperInvariant() switch
+        {
+            "ZH-HANT" => "ZH-HANT",
+            "ZH" => "ZH-HANS",
+            "EN" => "EN-US",
+            _ => sourceCode
+        };
+
+        var exact = TargetLanguages.FirstOrDefault(l =>
+            l.Code.Equals(mapped, StringComparison.OrdinalIgnoreCase));
+        if (exact != null) return exact.Code;
+
+        var prefix = TargetLanguages.FirstOrDefault(l =>
+            l.Code.StartsWith(mapped + "-", StringComparison.OrdinalIgnoreCase));
+        return prefix?.Code;
+    }
 }
