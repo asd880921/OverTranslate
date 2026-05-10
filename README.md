@@ -5,7 +5,7 @@
 
   <p>
     <a href="https://github.com/asd880921/OverTranslate/releases/latest">
-      <img src="https://img.shields.io/badge/立即下載-Download-blue?style=for-the-badge&logo=github" />
+      <img src="https://img.shields.io/badge/下載應用-Download-blue?style=for-the-badge&logo=github" />
     </a>
   </p>
 </div>
