@@ -181,6 +181,7 @@ public partial class ToolbarWindow : Window
         _bubblesVisible  = true;
         ToggleBtn.Content   = "顯示原文";
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
+        BubblesVisibilityChanged?.Invoke(this, _bubblesVisible);
     }
 
     private void ToggleBtn_Click(object sender, RoutedEventArgs e)

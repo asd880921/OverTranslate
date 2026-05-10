@@ -22,6 +22,66 @@
                        Visibility="Collapsed"
                        Fill="#5599C8F0"/>
 
+            <Thumb x:Name="TopLeftHandle"
+                   Width="14" Height="14"
+                   Visibility="Collapsed"
+                   Cursor="SizeNWSE"
+                   DragDelta="TopLeftHandle_DragDelta">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="White"
+                                BorderBrush="#CC1E90D5"
+                                BorderThickness="2"
+                                CornerRadius="7"/>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+
+            <Thumb x:Name="TopRightHandle"
+                   Width="14" Height="14"
+                   Visibility="Collapsed"
+                   Cursor="SizeNESW"
+                   DragDelta="TopRightHandle_DragDelta">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="White"
+                                BorderBrush="#CC1E90D5"
+                                BorderThickness="2"
+                                CornerRadius="7"/>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+
+            <Thumb x:Name="BottomLeftHandle"
+                   Width="14" Height="14"
+                   Visibility="Collapsed"
+                   Cursor="SizeNESW"
+                   DragDelta="BottomLeftHandle_DragDelta">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="White"
+                                BorderBrush="#CC1E90D5"
+                                BorderThickness="2"
+                                CornerRadius="7"/>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+
+            <Thumb x:Name="BottomRightHandle"
+                   Width="14" Height="14"
+                   Visibility="Collapsed"
+                   Cursor="SizeNWSE"
+                   DragDelta="BottomRightHandle_DragDelta">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="White"
+                                BorderBrush="#CC1E90D5"
+                                BorderThickness="2"
+                                CornerRadius="7"/>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+
             <!-- Processing indicator: positioned at selection center in code-behind -->
             <Border x:Name="ProcessingBorder"
                     Background="#DD000000" CornerRadius="8" Padding="28,14"

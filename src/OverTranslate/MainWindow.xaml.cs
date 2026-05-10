@@ -104,7 +104,7 @@ public partial class MainWindow : Window
             captureWindow.Show();
 
             bool selected = await captureWindow.WaitForSelectionAsync();
-            if (!selected || captureWindow.CroppedBitmap == null)
+            if (!selected || !captureWindow.HasSelection)
             {
                 captureWindow.Close();
                 screenshot.Dispose();
@@ -133,7 +133,6 @@ public partial class MainWindow : Window
         _lastSelPhysWidth  = selection.Width;
         _lastSelPhysHeight = selection.Height;
 
-        captureWindow.SwitchToBackgroundMode();
         _captureWindow = captureWindow;
 
         ShowOverlay(blocks, selection.Left, selection.Top);
@@ -142,6 +141,7 @@ public partial class MainWindow : Window
         var toolbar  = new ToolbarWindow(
             selection.Left, selection.Top, selection.Width, selection.Height,
             srcLang, settings.TargetLanguage);
+        toolbar.Owner = captureWindow;
         toolbar.TranslateRequested      += OnTranslateRequested;
         toolbar.OpenWindowRequested     += OnOpenWindowRequested;
         toolbar.CloseAllRequested       += (_, _) => CloseAll();
@@ -164,6 +164,8 @@ public partial class MainWindow : Window
         }
 
         _overlayWindow = new OverlayWindow(blocks, selPhysLeft, selPhysTop);
+        if (_captureWindow != null)
+            _overlayWindow.Owner = _captureWindow;
         _overlayClosedHandler = (_, _) =>
         {
             _selectionSessionId++;
@@ -183,7 +185,8 @@ public partial class MainWindow : Window
         var requestCaptureWindow = _captureWindow;
         var requestSessionId = _selectionSessionId;
         var settings = SettingsService.Instance.Current;
-        var selRect  = new System.Windows.Rect(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
+        var selRect  = requestCaptureWindow?.Selection
+            ?? new System.Windows.Rect(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
 
         if (_translationService.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
         {
@@ -197,13 +200,19 @@ public partial class MainWindow : Window
 
         try
         {
-            if (requestCaptureWindow?.CroppedBitmap == null)
+            if (requestCaptureWindow == null || !requestCaptureWindow.PrepareForTranslation())
             {
                 ShowBalloon("辨識失敗", "找不到框選影像，請重新框選。", selRect);
                 return;
             }
 
-            var recognizedBlocks = await _ocrService.RecognizeAsync(requestCaptureWindow.CroppedBitmap, req.SourceLang);
+            _lastSelPhysLeft   = requestCaptureWindow.Selection.Left;
+            _lastSelPhysTop    = requestCaptureWindow.Selection.Top;
+            _lastSelPhysWidth  = requestCaptureWindow.Selection.Width;
+            _lastSelPhysHeight = requestCaptureWindow.Selection.Height;
+            selRect = requestCaptureWindow.Selection;
+
+            var recognizedBlocks = await _ocrService.RecognizeAsync(requestCaptureWindow.CroppedBitmap!, req.SourceLang);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 

@@ -42,10 +42,17 @@ public partial class OverlayWindow : Window
 
     private double _dpiX = 1.0;
     private double _dpiY = 1.0;
+    private bool _isLoaded;
+    private List<TranslatedBlock> _currentBlocks;
+    private double _currentSelectionScreenX;
+    private double _currentSelectionScreenY;
 
     public OverlayWindow(List<TranslatedBlock> blocks, double selectionScreenX, double selectionScreenY)
     {
         InitializeComponent();
+        _currentBlocks = blocks;
+        _currentSelectionScreenX = selectionScreenX;
+        _currentSelectionScreenY = selectionScreenY;
 
         // Cover all screens using WPF DIP coordinates (NOT physical pixel Screen.Bounds).
         Left   = SystemParameters.VirtualScreenLeft;
@@ -61,7 +68,8 @@ public partial class OverlayWindow : Window
                 _dpiX = src.CompositionTarget.TransformToDevice.M11;
                 _dpiY = src.CompositionTarget.TransformToDevice.M22;
             }
-            BuildOverlay(blocks, selectionScreenX, selectionScreenY);
+            _isLoaded = true;
+            BuildOverlay(_currentBlocks, _currentSelectionScreenX, _currentSelectionScreenY);
         };
     }
 
@@ -94,14 +102,20 @@ public partial class OverlayWindow : Window
 
     public void UpdateBlocks(List<TranslatedBlock> blocks, double selScreenX, double selScreenY)
     {
+        _currentBlocks = blocks;
+        _currentSelectionScreenX = selScreenX;
+        _currentSelectionScreenY = selScreenY;
         ProcessingBorder.Visibility = Visibility.Collapsed;
         OverlayCanvas.Visibility    = Visibility.Visible;
-        BuildOverlay(blocks, selScreenX, selScreenY);
+        if (_isLoaded)
+            BuildOverlay(_currentBlocks, _currentSelectionScreenX, _currentSelectionScreenY);
     }
 
     public void RestoreIdle(bool hasVisibleBlocks)
     {
         ProcessingBorder.Visibility = Visibility.Collapsed;
+        if (hasVisibleBlocks && _isLoaded && OverlayCanvas.Children.Count == 0 && _currentBlocks.Count > 0)
+            BuildOverlay(_currentBlocks, _currentSelectionScreenX, _currentSelectionScreenY);
         OverlayCanvas.Visibility = hasVisibleBlocks ? Visibility.Visible : Visibility.Collapsed;
     }
 
