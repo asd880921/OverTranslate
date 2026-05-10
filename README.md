@@ -2,16 +2,20 @@
   <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
   <h1>OverTranslate</h1>
   <p>一款適合你的 Windows 螢幕翻譯工具</p>
+
   <p>
     <a href="https://github.com/asd880921/OverTranslate/releases/latest">
-      <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=DOWNLOAD%20LATEST" />
+      <img src="https://img.shields.io/badge/立即下載-Download-blue?style=for-the-badge&logo=github" />
     </a>
   </p>
 </div>
 
-  ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows)  
-  ![Framework](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet)  
-  ![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)  
+<p align="left">
+  <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=flat-square" /><br/>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows" /><br/>
+  <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet" /><br/>
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-22C55E?style=flat-square" />
+</p>
 
 ---
 
