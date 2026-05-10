@@ -7,7 +7,7 @@ namespace OverTranslate;
 
 public partial class ToolbarWindow : Window
 {
-    public event EventHandler<RetranslateRequest>? RetranslateRequested;
+    public event EventHandler<TranslateRequest>? TranslateRequested;
     public event EventHandler? OpenWindowRequested;
     public event EventHandler? CloseAllRequested;
     public event EventHandler<bool>? BubblesVisibilityChanged;
@@ -145,8 +145,8 @@ public partial class ToolbarWindow : Window
         if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = 0;
     }
 
-    private void RetranslateBtn_Click(object sender, RoutedEventArgs e)
-        => RetranslateRequested?.Invoke(this, new RetranslateRequest(CurrentSourceLang, CurrentTargetLang));
+    private void TranslateBtn_Click(object sender, RoutedEventArgs e)
+        => TranslateRequested?.Invoke(this, new TranslateRequest(CurrentSourceLang, CurrentTargetLang));
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
         => OpenWindowRequested?.Invoke(this, EventArgs.Empty);
@@ -163,8 +163,8 @@ public partial class ToolbarWindow : Window
     public void SetBusy(bool busy)
     {
         _isBusy = busy;
-        RetranslateBtn.IsEnabled = !busy;
-        RetranslateBtn.Content   = busy ? "翻譯中..." : (_hasTranslated ? "重新翻譯" : "翻譯");
+        TranslateBtn.IsEnabled = !busy;
+        TranslateBtn.Content   = busy ? "翻譯中..." : (_hasTranslated ? "重新翻譯" : "翻譯");
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
     }
 
@@ -172,7 +172,7 @@ public partial class ToolbarWindow : Window
     {
         _hasTranslated = hasTranslated;
         if (!_isBusy)
-            RetranslateBtn.Content = hasTranslated ? "重新翻譯" : "翻譯";
+            TranslateBtn.Content = hasTranslated ? "重新翻譯" : "翻譯";
     }
 
     public void SetToggleEnabled(bool enabled)
@@ -191,4 +191,4 @@ public partial class ToolbarWindow : Window
     }
 }
 
-public record RetranslateRequest(string SourceLang, string TargetLang);
+public record TranslateRequest(string SourceLang, string TargetLang);

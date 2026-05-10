@@ -20,7 +20,7 @@ public partial class MainWindow : Window
     private readonly OcrService _ocrService = new();
     private readonly TranslationService _translationService = new();
 
-    // Kept alive so 重新翻譯 can re-translate without re-OCR
+    // Kept alive so toolbar translate can re-run OCR/translation on the current selection
     private List<OcrTextBlock> _lastOcrBlocks = [];
     private List<TranslatedBlock> _lastColoredBlocks = [];
     private double _lastSelPhysLeft;
@@ -142,7 +142,7 @@ public partial class MainWindow : Window
         var toolbar  = new ToolbarWindow(
             selection.Left, selection.Top, selection.Width, selection.Height,
             srcLang, settings.TargetLanguage);
-        toolbar.RetranslateRequested    += OnRetranslateRequested;
+        toolbar.TranslateRequested      += OnTranslateRequested;
         toolbar.OpenWindowRequested     += OnOpenWindowRequested;
         toolbar.CloseAllRequested       += (_, _) => CloseAll();
         toolbar.BubblesVisibilityChanged += (_, visible) => _overlayWindow?.SetBubblesVisible(visible);
@@ -177,7 +177,7 @@ public partial class MainWindow : Window
         _overlayWindow.Show();
     }
 
-    private async void OnRetranslateRequested(object? sender, RetranslateRequest req)
+    private async void OnTranslateRequested(object? sender, TranslateRequest req)
     {
         var requestToolbar = sender as ToolbarWindow;
         var requestCaptureWindow = _captureWindow;

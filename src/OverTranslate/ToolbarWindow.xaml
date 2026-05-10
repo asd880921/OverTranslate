@@ -59,11 +59,11 @@
                 <Separator Style="{StaticResource VerticalSeparator}"/>
 
                 <!-- Translate -->
-                <Button x:Name="RetranslateBtn"
+                <Button x:Name="TranslateBtn"
                         Content="翻譯"
                         Style="{StaticResource ToolbarAccentButton}"
                         Margin="0,0,4,0"
-                        Click="RetranslateBtn_Click"/>
+                        Click="TranslateBtn_Click"/>
 
                 <!-- Toggle original / translated bubbles -->
                 <Button x:Name="ToggleBtn"
