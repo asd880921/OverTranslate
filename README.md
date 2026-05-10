@@ -2,6 +2,11 @@
   <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
   <h1>OverTranslate</h1>
   <p>一款適合你的 Windows 螢幕翻譯工具</p>
+  <p>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest">
+      <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=DOWNLOAD%20LATEST" />
+    </a>
+  </p>
 </div>
 
   ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows)  
