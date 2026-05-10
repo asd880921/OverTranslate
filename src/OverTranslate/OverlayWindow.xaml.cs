@@ -144,8 +144,8 @@ public partial class OverlayWindow : Window
                 textBrush = lum > 0.5 ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.White;
             }
 
-            // Start at wpfH, then scale down to fit on one line if translation is wider
-            double fontSize = Math.Max(9, wpfH);
+            const double minFontSize = 11.0;
+            double fontSize = Math.Max(minFontSize, wpfH);
             double innerW = Math.Max(1, borderW - 4);
             var typeface = new Typeface(
                 new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
@@ -156,22 +156,48 @@ public partial class OverlayWindow : Window
                 System.Windows.FlowDirection.LeftToRight,
                 typeface, fontSize,
                 System.Windows.Media.Brushes.Black, _dpiY);
+
+            // 寬度不夠時先嘗試縮小字體；若縮到最小值以下則改用換行
+            bool wrap = false;
             if (measured.Width > innerW)
-                fontSize = Math.Max(9, fontSize * innerW / measured.Width);
+            {
+                double scaledFont = fontSize * innerW / measured.Width;
+                if (scaledFont >= minFontSize)
+                    fontSize = scaledFont;
+                else
+                {
+                    fontSize = minFontSize;
+                    wrap = true;
+                }
+            }
+
+            // 換行時重新量測實際需要的高度，讓區塊往下撐開
+            double actualBorderH = borderH;
+            if (wrap)
+            {
+                var wrapMeasured = new FormattedText(
+                    block.TranslatedText,
+                    CultureInfo.CurrentCulture,
+                    System.Windows.FlowDirection.LeftToRight,
+                    typeface, fontSize,
+                    System.Windows.Media.Brushes.Black, _dpiY);
+                wrapMeasured.MaxTextWidth = innerW;
+                actualBorderH = Math.Max(borderH, wrapMeasured.Height + 4);
+            }
 
             var border = new Border
             {
                 Background = new SolidColorBrush(bg),
                 Padding = new Thickness(2, 1, 2, 1),
                 Width  = borderW,
-                Height = borderH,
+                Height = actualBorderH,
                 ClipToBounds = true,
                 Child = new TextBlock
                 {
                     Text = block.TranslatedText,
                     FontSize = fontSize,
                     Foreground = textBrush,
-                    TextWrapping = TextWrapping.NoWrap,
+                    TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
                     VerticalAlignment = VerticalAlignment.Center,
                     FontFamily = new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 }
