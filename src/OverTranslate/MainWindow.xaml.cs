@@ -112,69 +112,7 @@ public partial class MainWindow : Window
 
             var settings      = SettingsService.Instance.Current;
             var selection     = captureWindow.Selection;
-            var croppedBitmap = captureWindow.CroppedBitmap;
-
-            // OCR
-            List<OcrTextBlock> ocrBlocks;
-            try
-            {
-                ocrBlocks = await _ocrService.RecognizeAsync(croppedBitmap, settings.SourceLanguage);
-            }
-            catch (Exception ex)
-            {
-                croppedBitmap.Dispose(); screenshot.Dispose();
-                EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage);
-                ShowBalloon("辨識失敗", ex.Message, selection);
-                return;
-            }
-
-            if (ocrBlocks.Count == 0)
-            {
-                croppedBitmap.Dispose(); screenshot.Dispose();
-                EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage);
-                ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selection);
-                return;
-            }
-
-            // API key check
-            if (_translationService.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
-            {
-                croppedBitmap.Dispose(); screenshot.Dispose();
-                EnterOverlayState(captureWindow, selection, [], ocrBlocks, settings.SourceLanguage);
-                ShowBalloon("缺少 API Key", "請在設定中輸入 API Key。", selection);
-                return;
-            }
-
-            // Translate
-            List<TranslatedBlock> translated;
-            try
-            {
-                (translated, _) = await _translationService.TranslateAsync(
-                    ocrBlocks, settings.SourceLanguage, settings.TargetLanguage, settings.ApiKey);
-            }
-            catch (Exception ex)
-            {
-                croppedBitmap.Dispose(); screenshot.Dispose();
-                EnterOverlayState(captureWindow, selection, [], ocrBlocks, settings.SourceLanguage);
-                ShowBalloon("翻譯失敗", ex.Message, selection);
-                return;
-            }
-
-            // Sample background and text colors
-            var bmpData = croppedBitmap.LockBits(
-                new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height),
-                ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-            var coloredTranslated = translated.Select(b =>
-            {
-                var bg = SampleAverageColor(bmpData, croppedBitmap.Width, croppedBitmap.Height, b.Bounds);
-                var fg = SampleTextColor(bmpData, croppedBitmap.Width, croppedBitmap.Height, b.Bounds, bg);
-                return b with { BackgroundColor = bg, TextColor = fg };
-            }).ToList();
-            croppedBitmap.UnlockBits(bmpData);
-            croppedBitmap.Dispose();
-            screenshot.Dispose();
-
-            EnterOverlayState(captureWindow, selection, coloredTranslated, ocrBlocks, settings.SourceLanguage);
+            EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage, hasTranslated: false);
         });
     }
 
@@ -183,7 +121,8 @@ public partial class MainWindow : Window
         System.Windows.Rect selection,
         List<TranslatedBlock> blocks,
         List<OcrTextBlock> ocrBlocks,
-        string srcLang)
+        string srcLang,
+        bool hasTranslated)
     {
         _lastOcrBlocks     = ocrBlocks;
         _lastColoredBlocks = blocks;
@@ -206,6 +145,7 @@ public partial class MainWindow : Window
         toolbar.CloseAllRequested       += (_, _) => CloseAll();
         toolbar.BubblesVisibilityChanged += (_, visible) => _overlayWindow?.SetBubblesVisible(visible);
         _toolbarWindow = toolbar;
+        toolbar.SetTranslationState(hasTranslated);
         toolbar.SetToggleEnabled(blocks.Count > 0);
         toolbar.Show();
     }
@@ -236,8 +176,6 @@ public partial class MainWindow : Window
 
     private async void OnRetranslateRequested(object? sender, RetranslateRequest req)
     {
-        if (_lastOcrBlocks.Count == 0) return;
-
         var settings = SettingsService.Instance.Current;
         var selRect  = new System.Windows.Rect(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
 
@@ -253,30 +191,82 @@ public partial class MainWindow : Window
 
         try
         {
+            if (_lastOcrBlocks.Count == 0)
+            {
+                if (_captureWindow?.CroppedBitmap == null)
+                {
+                    ShowBalloon("辨識失敗", "找不到框選影像，請重新框選。", selRect);
+                    return;
+                }
+
+                _lastOcrBlocks = await _ocrService.RecognizeAsync(_captureWindow.CroppedBitmap, req.SourceLang);
+                if (_lastOcrBlocks.Count == 0)
+                {
+                    _toolbarWindow?.SetTranslationState(false);
+                    ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
+                    return;
+                }
+            }
+
             var (translated, _) = await _translationService.TranslateAsync(
                 _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey);
+
+            if (_captureWindow?.CroppedBitmap == null)
+            {
+                ShowBalloon("翻譯失敗", "找不到框選影像，請重新框選。", selRect);
+                return;
+            }
+
+            var croppedBitmap = _captureWindow.CroppedBitmap;
+            var bmpData = croppedBitmap.LockBits(
+                new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height),
+                ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
             // Re-use sampled colors from the previous overlay when available.
             // _lastColoredBlocks may be shorter than translated (e.g. the first
             // translation attempt failed and left _lastColoredBlocks empty), so
             // fall back to defaults rather than throwing IndexOutOfRangeException.
-            var coloredTranslated = translated
-                .Select((b, i) => i < _lastColoredBlocks.Count
-                    ? b with {
-                        BackgroundColor = _lastColoredBlocks[i].BackgroundColor,
-                        TextColor       = _lastColoredBlocks[i].TextColor
-                      }
-                    : b)
-                .ToList();
+            List<TranslatedBlock> coloredTranslated;
+            try
+            {
+                coloredTranslated = translated
+                    .Select((b, i) =>
+                    {
+                        if (i < _lastColoredBlocks.Count)
+                        {
+                            return b with
+                            {
+                                BackgroundColor = _lastColoredBlocks[i].BackgroundColor,
+                                TextColor       = _lastColoredBlocks[i].TextColor
+                            };
+                        }
+
+                        var bg = SampleAverageColor(bmpData, croppedBitmap.Width, croppedBitmap.Height, b.Bounds);
+                        var fg = SampleTextColor(bmpData, croppedBitmap.Width, croppedBitmap.Height, b.Bounds, bg);
+                        return b with { BackgroundColor = bg, TextColor = fg };
+                    })
+                    .ToList();
+            }
+            finally
+            {
+                croppedBitmap.UnlockBits(bmpData);
+            }
 
             _lastColoredBlocks = coloredTranslated;
             ShowOverlay(coloredTranslated, _lastSelPhysLeft, _lastSelPhysTop);
+            _toolbarWindow?.SetTranslationState(true);
             _toolbarWindow?.SetToggleEnabled(coloredTranslated.Count > 0);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("sequence contains no elements", StringComparison.OrdinalIgnoreCase))
+        {
+            _toolbarWindow?.SetTranslationState(false);
+            ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
         }
         catch (Exception ex)
         {
             // On failure, restore old bubbles so the overlay isn't left blank
             _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop);
+            _toolbarWindow?.SetTranslationState(_lastColoredBlocks.Count > 0);
             _toolbarWindow?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
             ShowBalloon("翻譯失敗", ex.Message, selRect);
         }

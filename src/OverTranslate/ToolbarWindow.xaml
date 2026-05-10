@@ -58,9 +58,9 @@
 
                 <Separator Style="{StaticResource VerticalSeparator}"/>
 
-                <!-- Retranslate -->
+                <!-- Translate -->
                 <Button x:Name="RetranslateBtn"
-                        Content="重新翻譯"
+                        Content="翻譯"
                         Style="{StaticResource ToolbarAccentButton}"
                         Margin="0,0,4,0"
                         Click="RetranslateBtn_Click"/>

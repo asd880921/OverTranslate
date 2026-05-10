@@ -49,7 +49,13 @@ public partial class ScreenCaptureWindow : Window
 
         ScreenshotImage.Source = BitmapToDisplaySource(screenshot);
 
-        Closed += (_, _) => _selectionTcs.TrySetResult(false);
+        Closed += (_, _) =>
+        {
+            _selectionTcs.TrySetResult(false);
+            CroppedBitmap?.Dispose();
+            CroppedBitmap = null;
+            _screenshot.Dispose();
+        };
     }
 
     public Task<bool> WaitForSelectionAsync() => _selectionTcs.Task;
@@ -149,18 +155,6 @@ public partial class ScreenCaptureWindow : Window
             new System.Drawing.Rectangle(bmpX, bmpY, bmpW, bmpH),
             _screenshot.PixelFormat);
         Selection = new Rect(absPhysX, absPhysY, bmpW, bmpH);
-
-        _processingStarted = true;
-        // Keep SelectionRect visible during processing; SwitchToBackgroundMode() will hide it
-
-        ProcessingBorder.Visibility = Visibility.Visible;
-        ProcessingBorder.UpdateLayout();
-        double cx = rect.X + rect.Width  / 2 - ProcessingBorder.ActualWidth  / 2;
-        double cy = rect.Y + rect.Height / 2 - ProcessingBorder.ActualHeight / 2;
-        System.Windows.Controls.Canvas.SetLeft(ProcessingBorder, cx);
-        System.Windows.Controls.Canvas.SetTop(ProcessingBorder,  cy);
-
-        Cursor = System.Windows.Input.Cursors.Wait;
 
         _selectionTcs.TrySetResult(true);
     }

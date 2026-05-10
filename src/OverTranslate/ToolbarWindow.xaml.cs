@@ -20,6 +20,7 @@ public partial class ToolbarWindow : Window
     private bool _isBusy        = false;
     private bool _toggleEnabled = false;
     private bool _bubblesVisible = true;
+    private bool _hasTranslated;
 
     public string CurrentSourceLang => SrcLangBox.SelectedValue as string ?? "EN";
     public string CurrentTargetLang => TgtLangBox.SelectedValue as string ?? "ZH-HANT";
@@ -174,8 +175,15 @@ public partial class ToolbarWindow : Window
     {
         _isBusy = busy;
         RetranslateBtn.IsEnabled = !busy;
-        RetranslateBtn.Content   = busy ? "翻譯中..." : "重新翻譯";
+        RetranslateBtn.Content   = busy ? "翻譯中..." : (_hasTranslated ? "重新翻譯" : "翻譯");
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
+    }
+
+    public void SetTranslationState(bool hasTranslated)
+    {
+        _hasTranslated = hasTranslated;
+        if (!_isBusy)
+            RetranslateBtn.Content = hasTranslated ? "重新翻譯" : "翻譯";
     }
 
     public void SetToggleEnabled(bool enabled)
