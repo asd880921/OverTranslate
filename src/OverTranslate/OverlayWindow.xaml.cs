@@ -164,12 +164,15 @@ public partial class OverlayWindow : Window
                 textBrush = lum > 0.5 ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.White;
             }
 
-            const double minFontSize = 11.0;
-            double fontSize = Math.Max(minFontSize, wpfH);
-            double innerW = Math.Max(1, borderW - 4);
+            bool isSmallSourceText = wpfH <= 14;
+            const double defaultMinFontSize = 13.0;
+            const double smallTextMinFontSize = 14.5;
+            double minFontSize = isSmallSourceText ? smallTextMinFontSize : defaultMinFontSize;
+            double fontSize = Math.Max(minFontSize, wpfH * (isSmallSourceText ? 1.18 : 1.06));
+            double innerW = Math.Max(1, borderW - 6);
             var typeface = new Typeface(
                 new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
-                FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+                FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
             var measured = new FormattedText(
                 block.TranslatedText,
                 CultureInfo.CurrentCulture,
@@ -192,7 +195,7 @@ public partial class OverlayWindow : Window
             }
 
             // 換行時重新量測實際需要的高度，讓區塊往下撐開
-            double actualBorderH = borderH;
+            double actualBorderH = Math.Max(borderH, fontSize + 6);
             if (wrap)
             {
                 var wrapMeasured = new FormattedText(
@@ -202,13 +205,13 @@ public partial class OverlayWindow : Window
                     typeface, fontSize,
                     System.Windows.Media.Brushes.Black, _dpiY);
                 wrapMeasured.MaxTextWidth = innerW;
-                actualBorderH = Math.Max(borderH, wrapMeasured.Height + 4);
+                actualBorderH = Math.Max(actualBorderH, wrapMeasured.Height + 6);
             }
 
             var border = new Border
             {
                 Background = new SolidColorBrush(bg),
-                Padding = new Thickness(2, 1, 2, 1),
+                Padding = new Thickness(3, 2, 3, 2),
                 Width  = borderW,
                 Height = actualBorderH,
                 ClipToBounds = true,
@@ -216,6 +219,7 @@ public partial class OverlayWindow : Window
                 {
                     Text = block.TranslatedText,
                     FontSize = fontSize,
+                    FontWeight = FontWeights.SemiBold,
                     Foreground = textBrush,
                     TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
                     VerticalAlignment = VerticalAlignment.Center,
