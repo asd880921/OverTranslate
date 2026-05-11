@@ -4,9 +4,9 @@
   <p>一款適合你的 Windows 螢幕翻譯工具</p>
 
   <p>
-<a href="https://github.com/asd880921/OverTranslate/releases/latest">
-  <img src="https://img.shields.io/badge/點擊下載 Download-Latest%20Release-2ea44f?style=for-the-badge&logo=github" />
-</a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
+      <img src="https://img.shields.io/badge/點擊下載 Download-Latest%20Release-2ea44f?style=for-the-badge&logo=github" />
+    </a>
   </p>
 </div>
 
