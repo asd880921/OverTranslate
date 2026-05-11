@@ -34,12 +34,12 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 ### 截圖 OCR 翻譯覆蓋
 按下全域快捷鍵後，用滑鼠框選畫面上的任意區域，OverTranslate 會自動辨識文字並將翻譯結果疊加在原位。
 
-[![jie-tu-fan-yi.png](https://i.postimg.cc/pVwRLRwK/jie-tu-fan-yi.png)](https://postimg.cc/qgx9mVM7)
+[![overlay.png](https://i.postimg.cc/DyQf5sws/overlay.png)](https://postimg.cc/Yh9wCvgq)
 
 ### 翻譯視窗
 除覆蓋模式外，也提供獨立的翻譯視窗，可自由編輯原文並重新翻譯，支援交換來源與目標語言。
 
-[![fan-yi-shi-chuang-yu-she-ding.png](https://i.postimg.cc/WpBT1TBm/fan-yi-shi-chuang-yu-she-ding.png)](https://postimg.cc/Jt59TV4t)
+[![window.png](https://i.postimg.cc/MK0ZtRpm/window.png)](https://postimg.cc/JGnWzsJs)
 
 ## 翻譯 API
 
@@ -53,8 +53,6 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 | Yandex 翻譯 | 可選 |
 | DeepL | 高品質翻譯，需 API Key |
 
----
-
 ## 文字轉語音（TTS）
 
 翻譯視窗中提供文字轉語音功能，可朗讀原文或譯文。
@@ -64,13 +62,13 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 |----------|------|
 | 線上語音服務 | 提供多語音來源與自動 fallback（依可用性選擇最佳語音） |
 
-### 多引擎 OCR 辨識
+## 多引擎 OCR 辨識
 | 引擎 | 說明 |
 |------|------|
 | **Windows OCR** | 系統內建，支援自動偵測中（簡/繁）、英、日、韓同時辨識 |
 | **Tesseract OCR** | (預設) 離線引擎，內建繁中、簡中、日、韓、英語言模型，無需安裝語言包 |
 
-### 其他
+## 其他
 - 可自訂全域快捷鍵
 - 系統匣圖示常駐，快速存取
 - 支援多螢幕環境
@@ -105,9 +103,10 @@ OverTranslate 是一款 Windows 螢幕翻譯工具。
 | 設定項目 | 說明 |
 |----------|------|
 | 快捷鍵 | 自訂啟動截圖的全域快捷鍵 |
-| 來源語言 | 預設為自動偵測 |
+| 來源語言 | 預設為英文 |
 | OCR 引擎 | Windows OCR 或 Tesseract |
-| 翻譯服務 | 選擇慣用的翻譯服務 |
+| 開機啟動 | 開機時自動啟動 |
+| 翻譯服務 | 翻譯平台 |
 | API Key | DeepL 使用者填入 |
 | 主題 | 淺色 / 深色 |
 
