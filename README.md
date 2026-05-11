@@ -4,16 +4,16 @@
   <p>一款適合你的 Windows 螢幕翻譯工具</p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest">
-      <img src="https://img.shields.io/badge/下載應用-Download-blue?style=for-the-badge&logo=github" />
-    </a>
+<a href="https://github.com/asd880921/OverTranslate/releases/latest">
+  <img src="https://img.shields.io/badge/點擊下載 Download-Latest%20Release-2ea44f?style=for-the-badge&logo=github" />
+</a>
   </p>
 </div>
 
-<p align="left">
-  <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=flat-square" /><br/>
-  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows" /><br/>
-  <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet" /><br/>
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=flat-square" />
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows" />
+  <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet" />
   <img src="https://img.shields.io/badge/license-AGPL--3.0-22C55E?style=flat-square" />
 </p>
 
