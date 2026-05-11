@@ -69,7 +69,7 @@ public partial class TranslationWindow : Window
         if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = 0;
     }
 
-    private async void RetranslateBtn_Click(object sender, RoutedEventArgs e)
+    private async void TranslateBtn_Click(object sender, RoutedEventArgs e)
     {
         var apiKey = SettingsService.Instance.Current.ApiKey;
         if (_translationService.RequiresApiKey && string.IsNullOrWhiteSpace(apiKey))

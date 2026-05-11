@@ -151,11 +151,11 @@
                 BorderThickness="0,1,0,0"
                 Padding="14,8">
             <DockPanel VerticalAlignment="Center">
-                <Button Content="重新翻譯"
+                <Button Content="翻譯"
                         Style="{StaticResource AccentButton}"
                         Height="32" Width="100"
                         DockPanel.Dock="Left"
-                        Click="RetranslateBtn_Click"/>
+                        Click="TranslateBtn_Click"/>
                 <TextBlock x:Name="StatusText"
                            Margin="12,0,0,0"
                            VerticalAlignment="Center"
