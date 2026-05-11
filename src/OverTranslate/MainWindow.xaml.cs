@@ -357,7 +357,10 @@ public partial class MainWindow : Window
         ReferenceEquals(toolbar, _toolbarWindow) &&
         ReferenceEquals(captureWindow, _captureWindow);
 
-    private static void OpenSettings() => SettingsWindow.ShowOrActivate();
+    private static TranslationWindow? GetTranslationWindow() =>
+        System.Windows.Application.Current.Windows.OfType<TranslationWindow>().FirstOrDefault();
+
+    private static void OpenSettings() => SettingsWindow.ShowOrActivate(GetTranslationWindow());
 
     private void ShowTrayMenu()
     {
@@ -365,7 +368,7 @@ public partial class MainWindow : Window
         _trayMenu = new TrayMenuWindow();
         _trayMenu.OpenTranslationRequested += (_, _) => OpenTranslationWindow();
         _trayMenu.OpenSettingsRequested    += (_, _) => OpenSettings();
-        _trayMenu.OpenAboutRequested       += (_, _) => AboutWindow.ShowOrActivate();
+        _trayMenu.OpenAboutRequested       += (_, _) => AboutWindow.ShowOrActivate(GetTranslationWindow());
         _trayMenu.ExitRequested            += (_, _) => ExitApp();
         _trayMenu.Closed                   += (_, _) => _trayMenu = null;
         _trayMenu.Show();

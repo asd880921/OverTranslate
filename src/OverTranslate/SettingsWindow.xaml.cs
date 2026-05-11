@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
 using Microsoft.Win32;
@@ -10,17 +11,22 @@ public partial class SettingsWindow : Window
 {
     private static SettingsWindow? _instance;
 
-    public static void ShowOrActivate()
+    public static void ShowOrActivate(Window? owner = null)
     {
         if (_instance != null)
         {
+            if (owner != null && !ReferenceEquals(_instance.Owner, owner))
+                _instance.Owner = owner;
             if (_instance.WindowState == WindowState.Minimized)
                 _instance.WindowState = WindowState.Normal;
             _instance.Activate();
             return;
         }
         _instance = new SettingsWindow();
+        if (owner != null)
+            _instance.Owner = owner;
         _instance.Show();
+        _instance.Dispatcher.BeginInvoke(() => _instance.Activate(), DispatcherPriority.ApplicationIdle);
     }
 
     private bool _isRecording;

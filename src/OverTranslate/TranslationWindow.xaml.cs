@@ -42,7 +42,7 @@ public partial class TranslationWindow : Window
         SaveProviderSelection(provider);
     }
 
-    private void SettingsBtn_Click(object sender, RoutedEventArgs e) => SettingsWindow.ShowOrActivate();
+    private void SettingsBtn_Click(object sender, RoutedEventArgs e) => SettingsWindow.ShowOrActivate(this);
 
     private void SwapBtn_Click(object sender, RoutedEventArgs e)
     {

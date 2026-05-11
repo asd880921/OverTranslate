@@ -10,6 +10,16 @@ namespace OverTranslate;
 
 public partial class OverlayWindow : Window
 {
+    private const double OverlayPadding = 6;
+    private const double BubbleExpand = 2;
+    private const double BubbleMinWidth = 30;
+    private const double BubbleHorizontalPadding = 6;
+    private const double BubbleVerticalPadding = 6;
+    private const double DefaultMinFontSize = 13.0;
+    private const double SmallTextMinFontSize = 14.5;
+    private const double SingleLineAbsoluteMinFontSize = 9.5;
+    private const double WrappedAbsoluteMinFontSize = 11.0;
+
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hwnd, int index);
 
@@ -132,6 +142,8 @@ public partial class OverlayWindow : Window
         // Window top-left in physical pixels
         double winPhysLeft = Left * _dpiX;
         double winPhysTop = Top * _dpiY;
+        double canvasWidth = OverlayCanvas.ActualWidth > 0 ? OverlayCanvas.ActualWidth : Width;
+        double canvasHeight = OverlayCanvas.ActualHeight > 0 ? OverlayCanvas.ActualHeight : Height;
 
         foreach (var block in blocks)
         {
@@ -150,9 +162,8 @@ public partial class OverlayWindow : Window
             double wpfH = physH / _dpiY;
 
             // Expand coverage 2px beyond OCR bounds on every side to eliminate edge bleed
-            const double expand = 2;
-            double borderW = Math.Max(wpfW + expand * 2, 30);
-            double borderH = wpfH + expand * 2;
+            double borderW = Math.Max(wpfW + BubbleExpand * 2, BubbleMinWidth);
+            double borderH = wpfH + BubbleExpand * 2;
 
             var bg = block.BackgroundColor.A == 0
                 ? Colors.White
@@ -168,54 +179,67 @@ public partial class OverlayWindow : Window
             }
 
             bool isSmallSourceText = wpfH <= 14;
-            const double defaultMinFontSize = 13.0;
-            const double smallTextMinFontSize = 14.5;
-            double minFontSize = isSmallSourceText ? smallTextMinFontSize : defaultMinFontSize;
+            bool isSingleLineSource = IsSingleLineSource(block.OriginalText, wpfH);
+            double minFontSize = isSmallSourceText ? SmallTextMinFontSize : DefaultMinFontSize;
             double fontSize = Math.Max(minFontSize, wpfH * (isSmallSourceText ? 1.18 : 1.06));
-            double innerW = Math.Max(1, borderW - 6);
             var typeface = new Typeface(
                 new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
-            var measured = new FormattedText(
-                block.TranslatedText,
-                CultureInfo.CurrentCulture,
-                System.Windows.FlowDirection.LeftToRight,
-                typeface, fontSize,
-                System.Windows.Media.Brushes.Black, _dpiY);
-
-            // 寬度不夠時先嘗試縮小字體；若縮到最小值以下則改用換行
+            double availableWidth = Math.Max(BubbleMinWidth, canvasWidth - OverlayPadding * 2);
+            double targetBorderW = borderW;
             bool wrap = false;
-            if (measured.Width > innerW)
+
+            var measured = MeasureText(block.TranslatedText, typeface, fontSize);
+            double innerW = Math.Max(1, borderW - BubbleHorizontalPadding);
+            if (isSingleLineSource)
             {
-                double scaledFont = fontSize * innerW / measured.Width;
-                if (scaledFont >= minFontSize)
-                    fontSize = scaledFont;
-                else
+                if (measured.Width > innerW)
                 {
-                    fontSize = minFontSize;
-                    wrap = true;
+                    double scaledFont = fontSize * innerW / measured.Width;
+                    fontSize = Math.Max(SingleLineAbsoluteMinFontSize, scaledFont);
+                    measured = MeasureText(block.TranslatedText, typeface, fontSize);
+                }
+
+                targetBorderW = Math.Max(borderW, measured.Width + BubbleHorizontalPadding);
+                targetBorderW = Math.Min(targetBorderW, availableWidth);
+                innerW = Math.Max(1, targetBorderW - BubbleHorizontalPadding);
+
+                if (measured.Width > innerW)
+                {
+                    double scaledFont = fontSize * innerW / measured.Width;
+                    fontSize = Math.Max(SingleLineAbsoluteMinFontSize, scaledFont);
+                }
+            }
+            else
+            {
+                if (measured.Width > innerW)
+                {
+                    double scaledFont = fontSize * innerW / measured.Width;
+                    if (scaledFont >= minFontSize)
+                    {
+                        fontSize = scaledFont;
+                    }
+                    else
+                    {
+                        fontSize = Math.Max(WrappedAbsoluteMinFontSize, minFontSize);
+                        wrap = true;
+                    }
                 }
             }
 
-            // 換行時重新量測實際需要的高度，讓區塊往下撐開
-            double actualBorderH = Math.Max(borderH, fontSize + 6);
+            double actualBorderH = Math.Max(borderH, fontSize + BubbleVerticalPadding);
             if (wrap)
             {
-                var wrapMeasured = new FormattedText(
-                    block.TranslatedText,
-                    CultureInfo.CurrentCulture,
-                    System.Windows.FlowDirection.LeftToRight,
-                    typeface, fontSize,
-                    System.Windows.Media.Brushes.Black, _dpiY);
-                wrapMeasured.MaxTextWidth = innerW;
-                actualBorderH = Math.Max(actualBorderH, wrapMeasured.Height + 6);
+                innerW = Math.Max(1, targetBorderW - BubbleHorizontalPadding);
+                var wrapMeasured = MeasureText(block.TranslatedText, typeface, fontSize, innerW);
+                actualBorderH = Math.Max(actualBorderH, wrapMeasured.Height + BubbleVerticalPadding);
             }
 
             var border = new Border
             {
                 Background = new SolidColorBrush(bg),
                 Padding = new Thickness(3, 2, 3, 2),
-                Width  = borderW,
+                Width  = targetBorderW,
                 Height = actualBorderH,
                 ClipToBounds = true,
                 Child = new TextBlock
@@ -225,15 +249,41 @@ public partial class OverlayWindow : Window
                     FontWeight = FontWeights.SemiBold,
                     Foreground = textBrush,
                     TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
+                    TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis,
                     VerticalAlignment = VerticalAlignment.Center,
                     FontFamily = new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 }
             };
 
-            Canvas.SetLeft(border, canvasX - expand);
-            Canvas.SetTop(border, canvasY - expand);
+            double expandedOffsetX = (targetBorderW - borderW) / 2;
+            double left = Math.Clamp(canvasX - BubbleExpand - expandedOffsetX, OverlayPadding, Math.Max(OverlayPadding, canvasWidth - targetBorderW - OverlayPadding));
+            double top = Math.Clamp(canvasY - BubbleExpand, OverlayPadding, Math.Max(OverlayPadding, canvasHeight - actualBorderH - OverlayPadding));
+            Canvas.SetLeft(border, left);
+            Canvas.SetTop(border, top);
             OverlayCanvas.Children.Add(border);
         }
+    }
+
+    private static bool IsSingleLineSource(string originalText, double sourceHeight) =>
+        !originalText.Contains('\n') &&
+        !originalText.Contains('\r') &&
+        sourceHeight <= 28;
+
+    private FormattedText MeasureText(string text, Typeface typeface, double fontSize, double? maxTextWidth = null)
+    {
+        var formattedText = new FormattedText(
+            text,
+            CultureInfo.CurrentCulture,
+            System.Windows.FlowDirection.LeftToRight,
+            typeface,
+            fontSize,
+            System.Windows.Media.Brushes.Black,
+            _dpiY);
+
+        if (maxTextWidth.HasValue)
+            formattedText.MaxTextWidth = maxTextWidth.Value;
+
+        return formattedText;
     }
 
     private void InstallKeyboardHook()
