@@ -78,7 +78,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(async () =>
         {
-            if (_overlayWindow != null || _toolbarWindow != null)
+            if (_overlayWindow != null || _toolbarWindow != null || _captureWindow != null)
             {
                 CloseAll();
                 return;
@@ -101,12 +101,14 @@ public partial class MainWindow : Window
             catch { return; }
 
             var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
+            _captureWindow = captureWindow;
             captureWindow.Show();
 
             bool selected = await captureWindow.WaitForSelectionAsync();
             if (!selected || !captureWindow.HasSelection)
             {
                 captureWindow.Close();
+                _captureWindow = null;
                 screenshot.Dispose();
                 return;
             }
@@ -132,8 +134,6 @@ public partial class MainWindow : Window
         _lastSelPhysTop    = selection.Top;
         _lastSelPhysWidth  = selection.Width;
         _lastSelPhysHeight = selection.Height;
-
-        _captureWindow = captureWindow;
 
         ShowOverlay(blocks, selection.Left, selection.Top);
 
@@ -195,8 +195,6 @@ public partial class MainWindow : Window
         }
 
         requestToolbar?.SetBusy(true);
-        // Show indicator inside OverlayWindow so it's above the translation bubbles
-        _overlayWindow?.ShowProcessing(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
 
         try
         {
@@ -211,6 +209,12 @@ public partial class MainWindow : Window
             _lastSelPhysWidth  = requestCaptureWindow.Selection.Width;
             _lastSelPhysHeight = requestCaptureWindow.Selection.Height;
             selRect = requestCaptureWindow.Selection;
+            _overlayWindow?.ShowProcessing(
+                _lastSelPhysLeft,
+                _lastSelPhysTop,
+                _lastSelPhysWidth,
+                _lastSelPhysHeight,
+                "辨識中");
 
             var recognizedBlocks = await _ocrService.RecognizeAsync(requestCaptureWindow.CroppedBitmap!, req.SourceLang);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
@@ -223,6 +227,13 @@ public partial class MainWindow : Window
                 ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
                 return;
             }
+
+            _overlayWindow?.ShowProcessing(
+                _lastSelPhysLeft,
+                _lastSelPhysTop,
+                _lastSelPhysWidth,
+                _lastSelPhysHeight,
+                "翻譯中");
 
             var (translated, _) = await _translationService.TranslateAsync(
                 _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey);

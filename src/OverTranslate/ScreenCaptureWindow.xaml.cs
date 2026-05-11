@@ -152,11 +152,6 @@ public partial class ScreenCaptureWindow : Window
         _selectionTcs.TrySetResult(true);
     }
 
-    public void ShowProcessingIndicator(bool show)
-    {
-        ProcessingBorder.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-    }
-
     public bool PrepareForTranslation()
     {
         if (!_hasSelection) return false;
@@ -176,7 +171,6 @@ public partial class ScreenCaptureWindow : Window
     {
         SelectionRect.Visibility    = Visibility.Collapsed;
         SetHandlesVisibility(false);
-        ProcessingBorder.Visibility = Visibility.Collapsed;
 
         var outer = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
         var inner = new RectangleGeometry(_selectionWpfRect);

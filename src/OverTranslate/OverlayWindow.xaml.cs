@@ -84,20 +84,23 @@ public partial class OverlayWindow : Window
         InstallKeyboardHook();
     }
 
-    // Shows "翻譯中..." centered on the selection; clears old bubbles so indicator is unobstructed
-    public void ShowProcessing(double selPhysX, double selPhysY, double selPhysW, double selPhysH)
+    // Shows a centered status card and clears old bubbles so the indicator is unobstructed.
+    public void ShowProcessing(double selPhysX, double selPhysY, double selPhysW, double selPhysH, string statusText)
     {
         OverlayCanvas.Children.Clear();
 
         double winPhysLeft = Left * _dpiX;
         double winPhysTop  = Top  * _dpiY;
 
-        ProcessingBorder.Visibility = Visibility.Visible;
-        ProcessingBorder.UpdateLayout();
-        double cx = (selPhysX + selPhysW / 2 - winPhysLeft) / _dpiX - ProcessingBorder.ActualWidth  / 2;
-        double cy = (selPhysY + selPhysH / 2 - winPhysTop)  / _dpiY - ProcessingBorder.ActualHeight / 2;
+        ProcessingText.Text = statusText;
+        ProcessingBorder.Visibility = Visibility.Hidden;
+        ProcessingBorder.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        var desired = ProcessingBorder.DesiredSize;
+        double cx = (selPhysX + selPhysW / 2 - winPhysLeft) / _dpiX - desired.Width  / 2;
+        double cy = (selPhysY + selPhysH / 2 - winPhysTop)  / _dpiY - desired.Height / 2;
         Canvas.SetLeft(ProcessingBorder, cx);
         Canvas.SetTop(ProcessingBorder,  cy);
+        ProcessingBorder.Visibility = Visibility.Visible;
     }
 
     public void UpdateBlocks(List<TranslatedBlock> blocks, double selScreenX, double selScreenY)

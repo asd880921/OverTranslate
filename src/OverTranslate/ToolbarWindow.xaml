@@ -74,7 +74,8 @@
                         Click="ToggleBtn_Click"/>
 
                 <!-- Open translation window -->
-                <Button Content="開啟翻譯視窗"
+                <Button x:Name="OpenWindowBtn"
+                        Content="開啟翻譯視窗"
                         Style="{StaticResource ToolbarFlatButton}"
                         Margin="0,0,4,0"
                         Click="OpenWindowBtn_Click"/>

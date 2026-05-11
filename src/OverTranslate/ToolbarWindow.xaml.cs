@@ -146,6 +146,7 @@ public partial class ToolbarWindow : Window
         TranslateBtn.IsEnabled = !busy;
         TranslateBtn.Content   = busy ? "翻譯中..." : (_hasTranslated ? "重新翻譯" : "翻譯");
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
+        OpenWindowBtn.IsEnabled = !_isBusy;
     }
 
     public void SetTranslationState(bool hasTranslated)

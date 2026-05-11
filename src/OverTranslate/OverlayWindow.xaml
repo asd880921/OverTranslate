@@ -13,9 +13,29 @@
         <!-- Processing indicator — separate layer so it's always above bubbles -->
         <Canvas x:Name="IndicatorCanvas">
             <Border x:Name="ProcessingBorder"
-                    Background="#DD000000" CornerRadius="8" Padding="28,14"
+                    Background="{DynamicResource AppCardBg}"
+                    BorderBrush="{DynamicResource AppBorder}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="18,12"
                     Visibility="Collapsed">
-                <TextBlock Foreground="White" FontSize="17" Text="翻譯中..."/>
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="30" ShadowDepth="0" Opacity="0.2" Color="#000000"/>
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="18" Height="18" CornerRadius="9" Background="{DynamicResource AppAccentSubtle}" Margin="0,0,10,0">
+                        <Viewbox Margin="4">
+                            <Path Fill="{DynamicResource AppAccent}" Data="M 8,0 A 8,8 0 1 1 0,8 L 2.2,8 A 5.8,5.8 0 1 0 8,2.2 Z"/>
+                        </Viewbox>
+                    </Border>
+                    <TextBlock Foreground="{DynamicResource AppTextPrimary}"
+                               x:Name="ProcessingText"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Text="辨識中"/>
+                </StackPanel>
             </Border>
         </Canvas>
     </Grid>
