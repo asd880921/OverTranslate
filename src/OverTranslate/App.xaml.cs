@@ -4,6 +4,7 @@ using NLog;
 using OverTranslate.Services;
 using OverTranslate.Models;
 using System.Threading.Tasks;
+using Velopack;
 
 namespace OverTranslate;
 
@@ -14,6 +15,18 @@ public partial class App
     private const string ActivateEventName = "OverTranslate_Activate_9F3C7B2E";
 
     private EventWaitHandle? _activateEvent;
+
+    [STAThread]
+    private static void Main(string[] args)
+    {
+        VelopackApp.Build()
+            .SetAutoApplyOnStartup(false)
+            .Run();
+
+        var app = new App();
+        app.InitializeComponent();
+        app.Run();
+    }
 
     protected override void OnStartup(StartupEventArgs e)
     {

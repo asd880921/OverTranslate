@@ -1,45 +1,35 @@
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Reflection;
-using System.Text.Json.Serialization;
+using Velopack;
+using Velopack.Sources;
+using VelopackUpdateInfo = Velopack.UpdateInfo;
 
 namespace OverTranslate.Services;
 
-public record UpdateInfo(Version LatestVersion, string ReleaseUrl);
+public sealed record UpdateInfo(
+    string LatestVersion,
+    UpdateManager Manager,
+    VelopackUpdateInfo VelopackInfo);
 
 public static class UpdateService
 {
-    private const string ApiUrl = "https://api.github.com/repos/asd880921/OverTranslate/releases/latest";
-    private static readonly HttpClient Http = new();
-
-    static UpdateService()
-    {
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("OverTranslate");
-        Http.Timeout = TimeSpan.FromSeconds(10);
-    }
+    private const string GitHubRepoUrl = "https://github.com/asd880921/OverTranslate";
 
     public static async Task<UpdateInfo?> CheckAsync()
     {
         try
         {
-            var release = await Http.GetFromJsonAsync<GitHubRelease>(ApiUrl);
-            if (release is null || string.IsNullOrWhiteSpace(release.TagName)) return null;
+            var manager = CreateManager();
+            // In-app updates are only available for the installed Velopack build.
+            if (!manager.IsInstalled)
+                return null;
 
-            var tag = release.TagName.TrimStart('v');
-            if (!Version.TryParse(tag, out var latest)) return null;
+            var update = await manager.CheckForUpdatesAsync();
+            if (update is null)
+                return null;
 
-            var current = Assembly.GetExecutingAssembly().GetName().Version;
-            if (current is null) return null;
-
-            // Normalize both to 3 components to avoid -1 Revision mismatch
-            var latest3  = new Version(latest.Major,  latest.Minor,  Math.Max(0, latest.Build));
-            var current3 = new Version(current.Major, current.Minor, Math.Max(0, current.Build));
-            if (latest3 <= current3) return null;
-
-            var url = string.IsNullOrWhiteSpace(release.HtmlUrl)
-                ? "https://github.com/asd880921/OverTranslate/releases/latest"
-                : release.HtmlUrl;
-            return new UpdateInfo(latest3, url);
+            return new UpdateInfo(
+                update.TargetFullRelease.Version.ToString(),
+                manager,
+                update);
         }
         catch
         {
@@ -47,12 +37,12 @@ public static class UpdateService
         }
     }
 
-    private sealed class GitHubRelease
+    public static async Task DownloadAndApplyAsync(UpdateInfo info)
     {
-        [JsonPropertyName("tag_name")]
-        public string? TagName { get; init; }
-
-        [JsonPropertyName("html_url")]
-        public string? HtmlUrl { get; init; }
+        await info.Manager.DownloadUpdatesAsync(info.VelopackInfo);
+        info.Manager.ApplyUpdatesAndRestart(info.VelopackInfo);
     }
+
+    private static UpdateManager CreateManager() =>
+        new(new GithubSource(GitHubRepoUrl, null, false));
 }

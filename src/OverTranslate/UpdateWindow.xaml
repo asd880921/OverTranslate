@@ -60,7 +60,7 @@
                                Foreground="{DynamicResource AppAccent}"
                                VerticalAlignment="Center"/>
                 </Grid>
-                <TextBlock Text="建議前往 GitHub 下載最新版本，以獲得最新功能與問題修正。"
+                <TextBlock Text="建議下載並套用最新版本，以取得最新功能與問題修正。"
                            FontFamily="{StaticResource AppFont}"
                            FontSize="12"
                            Foreground="{DynamicResource AppTextSecondary}"
@@ -75,11 +75,11 @@
                 <ColumnDefinition Width="8"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="稍後再說"
+            <Button x:Name="DismissBtn" Grid.Column="0" Content="稍後再說"
                     Style="{StaticResource FlatButton}"
                     Height="36"
                     Click="DismissBtn_Click"/>
-            <Button Grid.Column="2"
+            <Button x:Name="DownloadBtn" Grid.Column="2"
                     Style="{StaticResource AccentButton}"
                     Height="36"
                     Click="DownloadBtn_Click">
@@ -88,7 +88,7 @@
                                FontSize="13" Text="&#xE896;"
                                VerticalAlignment="Center"
                                Margin="0,0,6,0"/>
-                    <TextBlock Text="前往下載"
+                    <TextBlock x:Name="DownloadBtnText" Text="下載更新"
                                FontFamily="{StaticResource AppFont}"
                                VerticalAlignment="Center"/>
                 </StackPanel>

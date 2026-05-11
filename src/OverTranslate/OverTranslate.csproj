@@ -10,12 +10,16 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationIcon>icons\icon_256.ico</ApplicationIcon>
-    <Version>0.0.1</Version>
+    <StartupObject>OverTranslate.App</StartupObject>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
     <None Update="tessdata\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -31,6 +35,7 @@
     <PackageReference Include="GTranslate" Version="2.3.1" />
     <PackageReference Include="NLog" Version="5.0.4" />
     <PackageReference Include="Tesseract" Version="5.2.0" />
+    <PackageReference Include="Velopack" Version="0.0.1298" />
   </ItemGroup>
 
 </Project>
