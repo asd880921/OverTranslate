@@ -1,7 +1,7 @@
 <div align="center">
   <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
   <h1>OverTranslate</h1>
-  <p>一款適合你的 Windows 螢幕翻譯工具</p>
+  <p>一款適合你的 Windows 螢幕即時翻譯工具</p>
 
   <p>
     <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
@@ -21,11 +21,12 @@
 
 ## 這是什麼？
 
-OverTranslate 是一款 Windows 螢幕翻譯工具。
+OverTranslate 是一款專為 Windows 打造的螢幕即時翻譯工具。
 
-按下快捷鍵、框選任意畫面區域，翻譯結果就會直接浮現在原位——無需切換視窗，無需複製貼上，同時也支援多種翻譯功能，也可作為翻譯軟體使用。
+看到不懂的文字，不需要再切換視窗，只要按下快捷鍵並框選畫面，翻譯結果就會即時顯示在原本的位置上。
+無論是遊戲介面、PDF 文件、影片字幕，甚至是無法選取的畫面文字，都能直接翻譯，讓閱讀不中斷、理解更流暢。
 
-於遊戲介面、PDF 閱讀器、影片字幕、任何無法選取的文字，都能直接翻譯。
+除了截圖翻譯，也支援一般文字翻譯功能，並內建文字轉語音（TTS），可以直接朗讀內容，加快理解速度。
 
 ---
 
