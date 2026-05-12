@@ -41,6 +41,7 @@ public partial class MainWindow : Window
 
         InitNotifyIcon();
         RegisterHotkey();
+        ShowStartupBalloon();
     }
 
     private void InitNotifyIcon()
@@ -66,6 +67,19 @@ public partial class MainWindow : Window
         _hotkey = new GlobalHotkey();
         _hotkey.HotkeyPressed += OnHotkeyPressed;
         _hotkey.Register(hwnd, settings.HotkeyModifiers, settings.HotkeyVirtualKey);
+    }
+
+    private void ShowStartupBalloon()
+    {
+        if (_notifyIcon == null) return;
+
+        var hotkeyDisplay = SettingsService.Instance.Current.HotkeyDisplay;
+        var shortcutText = string.IsNullOrWhiteSpace(hotkeyDisplay) ? "已設定的快捷鍵" : hotkeyDisplay;
+
+        _notifyIcon.BalloonTipTitle = "OverTranslate 已最小化";
+        _notifyIcon.BalloonTipText = $"程式已縮小至系統匣，可使用 {shortcutText} 開始進行截圖翻譯。";
+        _notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
+        _notifyIcon.ShowBalloonTip(3000);
     }
 
     public void ReRegisterHotkey()

@@ -65,9 +65,9 @@ public partial class App
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         var mainWindow = new MainWindow();
+        MainWindow = mainWindow;
         mainWindow.InitializeApp();
 
-        ShowOrActivateTranslationWindow();
         _ = CheckForUpdateAsync();
     }
 
