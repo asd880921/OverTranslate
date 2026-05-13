@@ -29,6 +29,7 @@
     </None>
     <EmbeddedResource Include="icons\icon_32.ico" />
     <EmbeddedResource Include="icons\icon_256.ico" />
+    <Resource Include="icons\capture_crosshair.cur" />
   </ItemGroup>
 
   <ItemGroup>

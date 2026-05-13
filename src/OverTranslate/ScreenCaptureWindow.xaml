@@ -5,8 +5,7 @@
         ResizeMode="NoResize"
         Background="Black"
         Topmost="True"
-        ShowInTaskbar="False"
-        Cursor="Cross">
+        ShowInTaskbar="False">
     <Grid>
         <!-- Frozen screenshot as background -->
         <Image x:Name="ScreenshotImage" Stretch="Fill"/>

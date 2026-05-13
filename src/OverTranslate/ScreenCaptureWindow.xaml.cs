@@ -16,6 +16,7 @@ public partial class ScreenCaptureWindow : Window
 {
     private const int WM_NCHITTEST  = 0x0084;
     private const int HTTRANSPARENT = -1;
+    private static readonly Uri CrosshairCursorUri = new("pack://application:,,,/icons/capture_crosshair.cur", UriKind.Absolute);
 
     private HwndSource? _hwndSource;
     private bool _inBackgroundMode;
@@ -51,6 +52,7 @@ public partial class ScreenCaptureWindow : Window
         Height = SystemParameters.VirtualScreenHeight;
 
         ScreenshotImage.Source = BitmapToDisplaySource(screenshot);
+        Cursor = LoadCrosshairCursor();
 
         Closed += (_, _) =>
         {
@@ -182,6 +184,15 @@ public partial class ScreenCaptureWindow : Window
         Cursor = null;
         _inBackgroundMode = true;
         _hwndSource?.AddHook(WndProc);
+    }
+
+    private static System.Windows.Input.Cursor LoadCrosshairCursor()
+    {
+        var streamInfo = System.Windows.Application.GetResourceStream(CrosshairCursorUri);
+        if (streamInfo?.Stream == null)
+            return System.Windows.Input.Cursors.Cross;
+
+        return new System.Windows.Input.Cursor(streamInfo.Stream);
     }
 
     private void DrawRect(WPoint p1, WPoint p2)
