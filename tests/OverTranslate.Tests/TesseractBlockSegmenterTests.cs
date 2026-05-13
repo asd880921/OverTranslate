@@ -91,4 +91,19 @@ public class TesseractBlockSegmenterTests
         Assert.Single(blocks);
         Assert.Equal("ションてスピンアップ編て」", blocks[0].Text);
     }
+
+    [Fact]
+    public void BuildBlocks_MergesSmallSameRowCjkTailCluster()
+    {
+        var words = new List<OcrWord>
+        {
+            new("パーポジションてスピンアップ編て", new Rect(20, 113, 373, 20)),
+            new("公演", new Rect(434, 113, 62, 20))
+        };
+
+        var blocks = TesseractBlockSegmenter.BuildBlocks(words, 519);
+
+        Assert.Single(blocks);
+        Assert.Equal("パーポジションてスピンアップ編て公演", blocks[0].Text);
+    }
 }

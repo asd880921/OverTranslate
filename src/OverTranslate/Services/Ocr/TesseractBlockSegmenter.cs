@@ -23,6 +23,7 @@ internal static class TesseractBlockSegmenter
 
         var rows = GroupWordsIntoRows(words);
         var clusters = SplitRowsIntoHorizontalClusters(rows, sourceWidth);
+        clusters = MergeAdjacentClustersWithinRows(clusters);
         LogClusters(log, "Tesseract initial clusters", clusters);
 
         var mergedClusters = MergeAdjacentClustersAcrossRows(clusters);
@@ -102,6 +103,34 @@ internal static class TesseractBlockSegmenter
         return clusters;
     }
 
+    internal static List<OcrCluster> MergeAdjacentClustersWithinRows(List<OcrCluster> clusters)
+    {
+        if (clusters.Count <= 1)
+            return clusters;
+
+        var merged = clusters
+            .OrderBy(c => c.RowIndex)
+            .ThenBy(c => c.Left)
+            .ToList();
+
+        for (int i = 1; i < merged.Count; i++)
+        {
+            var previous = merged[i - 1];
+            var current = merged[i];
+            if (current.RowIndex != previous.RowIndex)
+                continue;
+
+            if (!ShouldMergeWithinRow(previous, current))
+                continue;
+
+            merged[i - 1] = Merge(previous, current);
+            merged.RemoveAt(i);
+            i--;
+        }
+
+        return merged;
+    }
+
     internal static List<OcrCluster> MergeAdjacentClustersAcrossRows(List<OcrCluster> clusters)
     {
         if (clusters.Count <= 1)
@@ -172,6 +201,32 @@ internal static class TesseractBlockSegmenter
         return true;
     }
 
+    internal static bool ShouldMergeWithinRow(OcrCluster previous, OcrCluster current)
+    {
+        if (!IsMostlyCjkText(previous.Text + current.Text))
+            return false;
+
+        double avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
+        double gap = current.Left - previous.Right;
+        if (gap < 0 || gap > Math.Max(avgHeight * 3.8, 56))
+            return false;
+
+        double verticalOffset = Math.Abs(previous.Top - current.Top);
+        if (verticalOffset > Math.Max(avgHeight * 0.35, 8))
+            return false;
+
+        bool smallTail =
+            current.WordCount <= 3 ||
+            current.Text.Length <= 6 ||
+            current.Bounds.Width <= previous.Bounds.Width * 0.35;
+
+        bool openerCarry =
+            EndsWithContinuation(previous.Text) ||
+            StartsWithContinuation(current.Text);
+
+        return smallTail || openerCarry;
+    }
+
     private static bool LooksLikeContinuationText(string text)
     {
         var trimmed = text.Trim();
@@ -198,6 +253,16 @@ internal static class TesseractBlockSegmenter
 
         char last = trimmed[^1];
         return last is '「' or '『' or '(' or '（' or '【' or '[' or '・' or 'ー';
+    }
+
+    private static bool StartsWithContinuation(string text)
+    {
+        var trimmed = text.TrimStart();
+        if (trimmed.Length == 0)
+            return false;
+
+        char first = trimmed[0];
+        return first is '」' or '』' or ')' or '）' or '】' or ']' or '、' or '。' or '，' or ',' or '.' or '!' or '?' or 'ー';
     }
 
     private static OcrCluster Merge(OcrCluster previous, OcrCluster current)
