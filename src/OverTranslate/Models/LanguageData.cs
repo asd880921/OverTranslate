@@ -2,7 +2,6 @@ namespace OverTranslate.Models;
 
 public record LangItem(string Code, string Display);
 public record ProviderItem(TranslationProvider Provider, string Display, bool RequiresApiKey, string? Hint = null);
-public record OcrEngineItem(OcrEngineType Engine, string Display, string? Hint = null);
 
 public static class LanguageData
 {
@@ -50,12 +49,6 @@ public static class LanguageData
         new(TranslationProvider.Bing,    "Bing 翻譯", false),
         new(TranslationProvider.Yandex,  "Yandex 翻譯", false, "Yandex 不支持繁體中文翻譯，使用繁體時會自動轉換為簡體中文"),
         new(TranslationProvider.DeepL,   "DeepL 翻譯", true, "需 API Key，可於 DeepL 官方申請（提供免費與付費方案）"),
-    ];
-
-    public static readonly List<OcrEngineItem> OcrEngines =
-    [
-        new(OcrEngineType.WindowsOcr, "Windows OCR",    "需在 Windows 語言設定中安裝對應語言包，未安裝對應語言時可能無法辨識或結果不完整"),
-        new(OcrEngineType.Tesseract,  "Tesseract OCR",  "已內建中簡・中繁・日・韓・英等語言模型"),
     ];
 
     public static readonly List<LangItem> TargetLanguages =

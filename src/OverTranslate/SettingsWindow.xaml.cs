@@ -50,11 +50,6 @@ public partial class SettingsWindow : Window
         SourceLangBox.SelectedValue = s.SourceLanguage;
         if (SourceLangBox.SelectedValue == null) SourceLangBox.SelectedIndex = 0;
 
-        OcrEngineBox.ItemsSource = LanguageData.OcrEngines;
-        OcrEngineBox.SelectedValue = s.OcrEngine;
-        if (OcrEngineBox.SelectedValue == null) OcrEngineBox.SelectedIndex = 0;
-        OcrEngineHint.Text = (OcrEngineBox.SelectedItem as OcrEngineItem)?.Hint ?? "";
-
         ProviderBox.ItemsSource = LanguageData.Providers;
         ProviderBox.SelectedValue = s.Provider;
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
@@ -89,11 +84,6 @@ public partial class SettingsWindow : Window
     {
         UpdateApiKeyVisibility();
         ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
-    }
-
-    private void OcrEngineBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        OcrEngineHint.Text = (OcrEngineBox.SelectedItem as OcrEngineItem)?.Hint ?? "";
     }
 
     private void ThemeRadio_Checked(object sender, RoutedEventArgs e)
@@ -179,7 +169,6 @@ public partial class SettingsWindow : Window
         s.HotkeyVirtualKey = _pendingVKey;
         s.HotkeyDisplay    = HotkeyBox.Text;
         s.SourceLanguage   = (SourceLangBox.SelectedValue as string) ?? "EN";
-        s.OcrEngine        = OcrEngineBox.SelectedValue is OcrEngineType eng ? eng : OcrEngineType.Tesseract;
         s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Google2;
         s.ApiKey           = ApiKeyBox.Text.Trim();
 

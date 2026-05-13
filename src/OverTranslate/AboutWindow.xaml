@@ -48,7 +48,7 @@
                            Foreground="{DynamicResource AppTextPrimary}"
                            TextWrapping="Wrap"
                            Margin="0,0,0,8"/>
-                <TextBlock Text="按下快捷鍵、框選任意畫面區域，翻譯結果直接浮現在原位。支援多種翻譯引擎與 OCR，適用於遊戲介面、PDF、影片字幕等任何無法選取的文字。"
+                <TextBlock Text="按下快捷鍵、框選任意畫面區域，翻譯結果直接浮現在原位。支援多種翻譯引擎與內建 OCR，適用於遊戲介面、PDF、影片字幕等任何無法選取的文字。"
                            FontFamily="{StaticResource AppFont}"
                            FontSize="12"
                            Foreground="{DynamicResource AppTextSecondary}"

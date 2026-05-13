@@ -5,7 +5,7 @@ using Tesseract;
 
 namespace OverTranslate.Services.Ocr;
 
-public class TesseractOcrEngine : IOcrEngine, IDisposable
+public class TesseractOcrEngine : IDisposable
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
