@@ -12,6 +12,7 @@
     <ApplicationIcon>icons\icon_256.ico</ApplicationIcon>
     <StartupObject>OverTranslate.App</StartupObject>
     <Version>1.0.0</Version>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,9 +39,18 @@
   <ItemGroup>
     <PackageReference Include="GTranslate" Version="2.3.1" />
     <PackageReference Include="NLog" Version="5.0.4" />
-    <PackageReference Include="RapidOcrNet" Version="1.0.1" />
-    <PackageReference Include="Tesseract" Version="5.2.0" />
+    <PackageReference Include="RapidOcrNet" Version="1.0.1" ExcludeAssets="build" />
+    <PackageReference Include="Tesseract" Version="5.2.0" ExcludeAssets="build" GeneratePathProperty="true" />
     <PackageReference Include="Velopack" Version="0.0.1298" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(PkgTesseract)\x64\leptonica-1.82.0.dll"
+          Link="x64\leptonica-1.82.0.dll"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(PkgTesseract)\x64\tesseract50.dll"
+          Link="x64\tesseract50.dll"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
