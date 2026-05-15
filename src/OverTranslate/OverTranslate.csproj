@@ -24,6 +24,9 @@
     <None Update="tessdata\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="ocrmodels\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="NLog.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -35,6 +38,7 @@
   <ItemGroup>
     <PackageReference Include="GTranslate" Version="2.3.1" />
     <PackageReference Include="NLog" Version="5.0.4" />
+    <PackageReference Include="RapidOcrNet" Version="1.0.1" />
     <PackageReference Include="Tesseract" Version="5.2.0" />
     <PackageReference Include="Velopack" Version="0.0.1298" />
   </ItemGroup>

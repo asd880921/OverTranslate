@@ -42,6 +42,15 @@ public static class LanguageData
         new("UK",      "烏克蘭語 Ukrainian"),
     ];
 
+    public static readonly List<LangItem> OcrSourceLanguages =
+    [
+        new("ZH-HANT", "繁體中文 Traditional Chinese"),
+        new("ZH",      "簡體中文 Simplified Chinese"),
+        new("EN",      "英語 English"),
+        new("JA",      "日語 Japanese"),
+        new("KO",      "韓語 Korean"),
+    ];
+
     public static readonly List<ProviderItem> Providers =
     [
         new(TranslationProvider.Google,  "Google 翻譯 (舊版)", false, "舊版 API"),
@@ -128,6 +137,16 @@ public static class LanguageData
             return DefaultSourceLanguage;
 
         var match = SourceLanguages.FirstOrDefault(l =>
+            l.Code.Equals(sourceCode, StringComparison.OrdinalIgnoreCase));
+        return match?.Code ?? DefaultSourceLanguage;
+    }
+
+    public static string GetValidOcrSourceCode(string? sourceCode)
+    {
+        if (string.IsNullOrWhiteSpace(sourceCode))
+            return DefaultSourceLanguage;
+
+        var match = OcrSourceLanguages.FirstOrDefault(l =>
             l.Code.Equals(sourceCode, StringComparison.OrdinalIgnoreCase));
         return match?.Code ?? DefaultSourceLanguage;
     }

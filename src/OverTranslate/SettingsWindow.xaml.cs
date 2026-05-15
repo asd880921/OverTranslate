@@ -46,8 +46,8 @@ public partial class SettingsWindow : Window
     {
         var s = SettingsService.Instance.Current;
 
-        SourceLangBox.ItemsSource = LanguageData.SourceLanguages;
-        SourceLangBox.SelectedValue = s.SourceLanguage;
+        SourceLangBox.ItemsSource = LanguageData.OcrSourceLanguages;
+        SourceLangBox.SelectedValue = LanguageData.GetValidOcrSourceCode(s.SourceLanguage);
         if (SourceLangBox.SelectedValue == null) SourceLangBox.SelectedIndex = 0;
 
         ProviderBox.ItemsSource = LanguageData.Providers;
@@ -168,7 +168,7 @@ public partial class SettingsWindow : Window
         s.HotkeyModifiers  = _pendingModifiers;
         s.HotkeyVirtualKey = _pendingVKey;
         s.HotkeyDisplay    = HotkeyBox.Text;
-        s.SourceLanguage   = (SourceLangBox.SelectedValue as string) ?? "EN";
+        s.SourceLanguage   = LanguageData.GetValidOcrSourceCode(SourceLangBox.SelectedValue as string);
         s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Google2;
         s.ApiKey           = ApiKeyBox.Text.Trim();
 

@@ -22,7 +22,7 @@ public partial class ToolbarWindow : Window
     private bool _bubblesVisible = true;
     private bool _hasTranslated;
 
-    public string CurrentSourceLang => LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
+    public string CurrentSourceLang => LanguageData.GetValidOcrSourceCode(SrcLangBox.SelectedValue as string);
     public string CurrentTargetLang => LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
 
     public ToolbarWindow(
@@ -174,11 +174,11 @@ public partial class ToolbarWindow : Window
 
     private void InitializeSelectors(string sourceLang, string targetLang)
     {
-        SrcLangBox.ItemsSource  = LanguageData.SourceLanguages;
+        SrcLangBox.ItemsSource  = LanguageData.OcrSourceLanguages;
         TgtLangBox.ItemsSource  = LanguageData.TargetLanguages;
         ProviderBox.ItemsSource = LanguageData.Providers;
 
-        SrcLangBox.SelectedValue  = LanguageData.GetValidSourceCode(sourceLang);
+        SrcLangBox.SelectedValue  = LanguageData.GetValidOcrSourceCode(sourceLang);
         TgtLangBox.SelectedValue  = LanguageData.GetValidTargetCode(targetLang);
         ProviderBox.SelectedValue = SettingsService.Instance.Current.Provider;
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;

@@ -5,7 +5,7 @@ using Tesseract;
 
 namespace OverTranslate.Services.Ocr;
 
-public class TesseractOcrEngine : IDisposable
+public class TesseractOcrEngine : IOcrEngine
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
@@ -20,6 +20,9 @@ public class TesseractOcrEngine : IDisposable
 
     public Task<List<OcrTextBlock>> RecognizeAsync(Bitmap bitmap, string sourceLanguage)
     {
+        if (!OcrLanguageRouter.UsesEnglishTesseract(sourceLanguage))
+            throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
+
         var lang = MapLanguage(sourceLanguage);
         EnsureEngine(lang);
 
@@ -87,26 +90,7 @@ public class TesseractOcrEngine : IDisposable
         }
     }
 
-    private static string MapLanguage(string code) => code.ToUpperInvariant() switch
-    {
-        "AUTO"                       => "chi_sim+chi_tra+jpn+kor+eng",
-        "ZH" or "ZH-HANS"           => "chi_sim",
-        "ZH-HANT"                    => "chi_tra",
-        "JA"                         => "jpn",
-        "KO"                         => "kor",
-        "DE"                         => "deu",
-        "FR"                         => "fra",
-        "ES"                         => "spa",
-        "IT"                         => "ita",
-        "PT" or "PT-BR"              => "por",
-        "RU"                         => "rus",
-        "UK"                         => "ukr",
-        "PL"                         => "pol",
-        "NL"                         => "nld",
-        "TR"                         => "tur",
-        "AR"                         => "ara",
-        _                            => "eng",
-    };
+    private static string MapLanguage(string code) => "eng";
 
     private static Pix BitmapToPix(Bitmap bitmap)
     {
