@@ -36,7 +36,7 @@ internal sealed class CjkOnnxOcrEngine : IOcrEngine
 
             using var skBitmap = ConvertToSkBitmap(bitmap);
             var result = runtime.Engine.Detect(skBitmap, CreateOptions());
-            var blocks = ConvertBlocks(result.TextBlocks);
+            var blocks = NormalizeBlocks(ConvertBlocks(result.TextBlocks));
 
             Log.Debug(
                 "CJK ONNX OCR baseline lang={Lang} rawBlocks={RawBlocks} blocks={Blocks} strLen={StrLen}",
@@ -108,6 +108,34 @@ internal sealed class CjkOnnxOcrEngine : IOcrEngine
         return blocks
             .OrderBy(b => b.Bounds.Y)
             .ThenBy(b => b.Bounds.X)
+            .ToList();
+    }
+
+    private static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks)
+    {
+        const double verticalScale = 0.82;
+
+        return blocks
+            .Select(block =>
+            {
+                var bounds = block.Bounds;
+                var adjustedHeight = bounds.Height * verticalScale;
+                var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
+
+                // ONNX can return vertically loose boxes on wider captures.
+                // For horizontal CJK/Korean text, average glyph width is a better proxy
+                // for the real line height than an over-tall detection rectangle.
+                if (glyphCount >= 4 && bounds.Width > bounds.Height * 2)
+                {
+                    var estimatedGlyphHeight = bounds.Width / glyphCount;
+                    var maxExpectedHeight = estimatedGlyphHeight * 1.18;
+                    adjustedHeight = Math.Min(adjustedHeight, maxExpectedHeight);
+                }
+
+                adjustedHeight = Math.Max(1, adjustedHeight);
+                var adjustedY = bounds.Y + (bounds.Height - adjustedHeight) / 2.0;
+                return block with { Bounds = new System.Windows.Rect(bounds.X, adjustedY, bounds.Width, adjustedHeight) };
+            })
             .ToList();
     }
 

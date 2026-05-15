@@ -8,6 +8,7 @@ public record TranslatedBlock(
     string OriginalText,
     string TranslatedText,
     System.Windows.Rect Bounds,
+    IReadOnlyList<System.Windows.Rect>? SourceLineBounds = null,
     System.Windows.Media.Color BackgroundColor = default,
     System.Windows.Media.Color TextColor = default);
 

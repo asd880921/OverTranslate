@@ -18,7 +18,10 @@ public partial class OverlayWindow : Window
     private const double DefaultMinFontSize = 13.0;
     private const double SmallTextMinFontSize = 14.5;
     private const double SingleLineAbsoluteMinFontSize = 9.5;
+    private const double SingleLineReadableMinFontSize = 10.0;
+    private const double SingleLineEmergencyMinFontSize = 7.0;
     private const double WrappedAbsoluteMinFontSize = 11.0;
+    private const double GroupedEmergencyMinFontSize = 7.0;
 
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hwnd, int index);
@@ -56,13 +59,28 @@ public partial class OverlayWindow : Window
     private List<TranslatedBlock> _currentBlocks;
     private double _currentSelectionScreenX;
     private double _currentSelectionScreenY;
+    private double _currentSelectionScreenWidth;
+    private double _currentSelectionScreenHeight;
+    private string _currentSourceLanguage;
+    private string _currentTargetLanguage;
 
-    public OverlayWindow(List<TranslatedBlock> blocks, double selectionScreenX, double selectionScreenY)
+    public OverlayWindow(
+        List<TranslatedBlock> blocks,
+        double selectionScreenX,
+        double selectionScreenY,
+        double selectionScreenWidth,
+        double selectionScreenHeight,
+        string sourceLanguage,
+        string targetLanguage)
     {
         InitializeComponent();
         _currentBlocks = blocks;
         _currentSelectionScreenX = selectionScreenX;
         _currentSelectionScreenY = selectionScreenY;
+        _currentSelectionScreenWidth = selectionScreenWidth;
+        _currentSelectionScreenHeight = selectionScreenHeight;
+        _currentSourceLanguage = sourceLanguage;
+        _currentTargetLanguage = targetLanguage;
 
         // Cover all screens using WPF DIP coordinates (NOT physical pixel Screen.Bounds).
         Left   = SystemParameters.VirtualScreenLeft;
@@ -79,7 +97,12 @@ public partial class OverlayWindow : Window
                 _dpiY = src.CompositionTarget.TransformToDevice.M22;
             }
             _isLoaded = true;
-            BuildOverlay(_currentBlocks, _currentSelectionScreenX, _currentSelectionScreenY);
+            BuildOverlay(
+                _currentBlocks,
+                _currentSelectionScreenX,
+                _currentSelectionScreenY,
+                _currentSelectionScreenWidth,
+                _currentSelectionScreenHeight);
         };
     }
 
@@ -114,28 +137,54 @@ public partial class OverlayWindow : Window
         ProcessingBorder.Visibility = Visibility.Visible;
     }
 
-    public void UpdateBlocks(List<TranslatedBlock> blocks, double selScreenX, double selScreenY)
+    public void UpdateBlocks(
+        List<TranslatedBlock> blocks,
+        double selScreenX,
+        double selScreenY,
+        double selScreenWidth,
+        double selScreenHeight,
+        string sourceLanguage,
+        string targetLanguage)
     {
         _currentBlocks = blocks;
         _currentSelectionScreenX = selScreenX;
         _currentSelectionScreenY = selScreenY;
+        _currentSelectionScreenWidth = selScreenWidth;
+        _currentSelectionScreenHeight = selScreenHeight;
+        _currentSourceLanguage = sourceLanguage;
+        _currentTargetLanguage = targetLanguage;
         ProcessingBorder.Visibility = Visibility.Collapsed;
         SetTranslationLayersVisible(true);
         if (_isLoaded)
-            BuildOverlay(_currentBlocks, _currentSelectionScreenX, _currentSelectionScreenY);
+            BuildOverlay(
+                _currentBlocks,
+                _currentSelectionScreenX,
+                _currentSelectionScreenY,
+                _currentSelectionScreenWidth,
+                _currentSelectionScreenHeight);
     }
 
     public void RestoreIdle(bool hasVisibleBlocks)
     {
         ProcessingBorder.Visibility = Visibility.Collapsed;
         if (hasVisibleBlocks && _isLoaded && BubbleBackgroundCanvas.Children.Count == 0 && _currentBlocks.Count > 0)
-            BuildOverlay(_currentBlocks, _currentSelectionScreenX, _currentSelectionScreenY);
+            BuildOverlay(
+                _currentBlocks,
+                _currentSelectionScreenX,
+                _currentSelectionScreenY,
+                _currentSelectionScreenWidth,
+                _currentSelectionScreenHeight);
         SetTranslationLayersVisible(hasVisibleBlocks);
     }
 
     public void SetBubblesVisible(bool visible) => SetTranslationLayersVisible(visible);
 
-    private void BuildOverlay(List<TranslatedBlock> blocks, double selScreenX, double selScreenY)
+    private void BuildOverlay(
+        List<TranslatedBlock> blocks,
+        double selScreenX,
+        double selScreenY,
+        double selScreenWidth,
+        double selScreenHeight)
     {
         BubbleBackgroundCanvas.Children.Clear();
         BubbleTextCanvas.Children.Clear();
@@ -161,6 +210,7 @@ public partial class OverlayWindow : Window
             double canvasY = (physY - winPhysTop) / _dpiY;
             double wpfW = physW / _dpiX;
             double wpfH = physH / _dpiY;
+            double sourceFontReferenceHeight = GetSourceFontReferenceHeight(block, wpfH);
 
             // Expand coverage 2px beyond OCR bounds on every side to eliminate edge bleed
             double borderW = Math.Max(wpfW + BubbleExpand * 2, BubbleMinWidth);
@@ -179,36 +229,136 @@ public partial class OverlayWindow : Window
                 textBrush = lum > 0.5 ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.White;
             }
 
-            bool isSmallSourceText = wpfH <= 14;
+            bool isSmallSourceText = sourceFontReferenceHeight <= 14;
             bool isSingleLineSource = IsSingleLineSource(block.OriginalText, wpfH);
+            bool isGroupedMultiLineSource = block.SourceLineBounds is { Count: > 1 };
             double minFontSize = isSmallSourceText ? SmallTextMinFontSize : DefaultMinFontSize;
-            double fontSize = Math.Max(minFontSize, wpfH * (isSmallSourceText ? 1.18 : 1.06));
+            double fontSize = Math.Max(minFontSize, sourceFontReferenceHeight * (isSmallSourceText ? 1.18 : 1.06));
+            if (ShouldSlightlyBoostTinyEnglishToCjk(sourceFontReferenceHeight))
+                fontSize = Math.Min(fontSize * 1.08, fontSize + 1.25);
             var typeface = new Typeface(
                 new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
             double availableWidth = Math.Max(BubbleMinWidth, canvasWidth - OverlayPadding * 2);
             double targetBorderW = borderW;
+            bool preferRightExpansion = false;
             bool wrap = false;
+            double? maxWrapBorderHeight = null;
 
             var measured = MeasureText(block.TranslatedText, typeface, fontSize);
             double innerW = Math.Max(1, borderW - BubbleHorizontalPadding);
-            if (isSingleLineSource)
+            if (isGroupedMultiLineSource)
             {
-                if (measured.Width > innerW)
+                wrap = true;
+                var sourceLineCount = block.SourceLineBounds!.Count;
+                var hasLowerBlock = HasLowerOverlappingBlock(block, blocks);
+                var maxLineCount = hasLowerBlock ? sourceLineCount : sourceLineCount + 1;
+                var rightAvailableW = GetRightExpansionWidth(
+                    block,
+                    blocks,
+                    canvasX,
+                    canvasY,
+                    wpfH,
+                    selScreenX,
+                    selScreenWidth,
+                    canvasWidth);
+                var preferredGroupedWidth = Math.Min(
+                    availableWidth,
+                    Math.Max(borderW, Math.Min(measured.Width + BubbleHorizontalPadding, rightAvailableW)));
+                targetBorderW = preferredGroupedWidth;
+                preferRightExpansion = targetBorderW > borderW;
+                var maxBorderHeight = GetBottomAvailableHeight(
+                    block,
+                    blocks,
+                    canvasX,
+                    canvasY,
+                    wpfW,
+                    selScreenY,
+                    selScreenHeight,
+                    canvasHeight);
+                maxWrapBorderHeight = maxBorderHeight;
+                fontSize = FindLargestGroupedFontSize(
+                    block.TranslatedText,
+                    typeface,
+                    fontSize,
+                    SingleLineAbsoluteMinFontSize,
+                    Math.Max(1, targetBorderW - BubbleHorizontalPadding),
+                    maxLineCount,
+                    maxBorderHeight);
+            }
+            else if (isSingleLineSource)
+            {
+                double rightAvailableW = GetRightExpansionWidth(
+                    block,
+                    blocks,
+                    canvasX,
+                    canvasY,
+                    wpfH,
+                    selScreenX,
+                    selScreenWidth,
+                    canvasWidth);
+                var layout = SingleLineOverlayLayout.Calculate(new(
+                    fontSize,
+                    borderW,
+                    measured.Width,
+                    BubbleHorizontalPadding,
+                    rightAvailableW,
+                    availableWidth,
+                    SingleLineReadableMinFontSize,
+                    SingleLineAbsoluteMinFontSize));
+
+                fontSize = layout.FontSize;
+                targetBorderW = layout.BorderWidth;
+                preferRightExpansion = layout.PreferRightExpansion;
+
+                var finalSingleLineMeasure = MeasureText(block.TranslatedText, typeface, fontSize);
+                var singleLineInnerWidth = Math.Max(1, targetBorderW - BubbleHorizontalPadding);
+                var stillOverflowsSingleLine = finalSingleLineMeasure.Width > singleLineInnerWidth;
+                if (stillOverflowsSingleLine)
                 {
-                    double scaledFont = fontSize * innerW / measured.Width;
-                    fontSize = Math.Max(SingleLineAbsoluteMinFontSize, scaledFont);
-                    measured = MeasureText(block.TranslatedText, typeface, fontSize);
+                    var fittedFontSize = fontSize * singleLineInnerWidth / finalSingleLineMeasure.Width;
+                    if (fittedFontSize >= SingleLineEmergencyMinFontSize)
+                    {
+                        fontSize = fittedFontSize;
+                        finalSingleLineMeasure = MeasureText(block.TranslatedText, typeface, fontSize);
+                        stillOverflowsSingleLine = finalSingleLineMeasure.Width > singleLineInnerWidth;
+                    }
+                    else if (fontSize > SingleLineEmergencyMinFontSize)
+                    {
+                        fontSize = SingleLineEmergencyMinFontSize;
+                        finalSingleLineMeasure = MeasureText(block.TranslatedText, typeface, fontSize);
+                        stillOverflowsSingleLine = finalSingleLineMeasure.Width > singleLineInnerWidth;
+                    }
                 }
 
-                targetBorderW = Math.Max(borderW, measured.Width + BubbleHorizontalPadding);
-                targetBorderW = Math.Min(targetBorderW, availableWidth);
-                innerW = Math.Max(1, targetBorderW - BubbleHorizontalPadding);
-
-                if (measured.Width > innerW)
+                if (stillOverflowsSingleLine && !HasLowerOverlappingBlock(block, blocks))
                 {
-                    double scaledFont = fontSize * innerW / measured.Width;
-                    fontSize = Math.Max(SingleLineAbsoluteMinFontSize, scaledFont);
+                    var maxBorderHeight = GetBottomAvailableHeight(
+                        block,
+                        blocks,
+                        canvasX,
+                        canvasY,
+                        wpfW,
+                        selScreenY,
+                        selScreenHeight,
+                        canvasHeight);
+                    var wrappedLineCount = EstimateWrappedLineCount(
+                        block.TranslatedText,
+                        typeface,
+                        fontSize,
+                        singleLineInnerWidth);
+                    var wrappedMeasure = MeasureText(
+                        block.TranslatedText,
+                        typeface,
+                        fontSize,
+                        singleLineInnerWidth);
+                    var wrappedBorderHeight = wrappedMeasure.Height + BubbleVerticalPadding;
+
+                    if (wrappedLineCount <= 2 && wrappedBorderHeight <= maxBorderHeight)
+                    {
+                        wrap = true;
+                        maxWrapBorderHeight = maxBorderHeight;
+                    }
                 }
             }
             else
@@ -234,6 +384,8 @@ public partial class OverlayWindow : Window
                 innerW = Math.Max(1, targetBorderW - BubbleHorizontalPadding);
                 var wrapMeasured = MeasureText(block.TranslatedText, typeface, fontSize, innerW);
                 actualBorderH = Math.Max(actualBorderH, wrapMeasured.Height + BubbleVerticalPadding);
+                if (maxWrapBorderHeight.HasValue)
+                    actualBorderH = Math.Min(actualBorderH, maxWrapBorderHeight.Value);
             }
 
             var backgroundBorder = new Border
@@ -266,7 +418,9 @@ public partial class OverlayWindow : Window
             };
 
             double expandedOffsetX = (targetBorderW - borderW) / 2;
-            double left = Math.Clamp(canvasX - BubbleExpand - expandedOffsetX, OverlayPadding, Math.Max(OverlayPadding, canvasWidth - targetBorderW - OverlayPadding));
+            double left = preferRightExpansion
+                ? Math.Clamp(canvasX - BubbleExpand, OverlayPadding, Math.Max(OverlayPadding, canvasWidth - targetBorderW - OverlayPadding))
+                : Math.Clamp(canvasX - BubbleExpand - expandedOffsetX, OverlayPadding, Math.Max(OverlayPadding, canvasWidth - targetBorderW - OverlayPadding));
             double top = Math.Clamp(canvasY - BubbleExpand, OverlayPadding, Math.Max(OverlayPadding, canvasHeight - actualBorderH - OverlayPadding));
             Canvas.SetLeft(backgroundBorder, left);
             Canvas.SetTop(backgroundBorder, top);
@@ -288,6 +442,158 @@ public partial class OverlayWindow : Window
         !originalText.Contains('\n') &&
         !originalText.Contains('\r') &&
         sourceHeight <= 28;
+
+    private double GetSourceFontReferenceHeight(TranslatedBlock block, double fallbackHeight)
+    {
+        if (block.SourceLineBounds is not { Count: > 0 })
+            return fallbackHeight;
+
+        var lineHeights = block.SourceLineBounds
+            .Select(bounds => bounds.Height / _dpiY)
+            .OrderBy(height => height)
+            .ToList();
+        return lineHeights[lineHeights.Count / 2];
+    }
+
+    private bool ShouldSlightlyBoostTinyEnglishToCjk(double sourceFontReferenceHeight) =>
+        sourceFontReferenceHeight <= 14 &&
+        _currentSourceLanguage.Equals("EN", StringComparison.OrdinalIgnoreCase) &&
+        IsCjkLanguage(_currentTargetLanguage);
+
+    private static bool IsCjkLanguage(string language) =>
+        language.Equals("ZH", StringComparison.OrdinalIgnoreCase) ||
+        language.StartsWith("ZH-", StringComparison.OrdinalIgnoreCase) ||
+        language.Equals("JA", StringComparison.OrdinalIgnoreCase) ||
+        language.Equals("KO", StringComparison.OrdinalIgnoreCase);
+
+    private double FindLargestGroupedFontSize(
+        string text,
+        Typeface typeface,
+        double preferredFontSize,
+        double minimumFontSize,
+        double maxTextWidth,
+        int maxLineCount,
+        double maxBorderHeight)
+    {
+        for (double size = preferredFontSize; size >= minimumFontSize; size -= 0.5)
+        {
+            var wrapped = MeasureText(text, typeface, size, maxTextWidth);
+            var borderHeight = wrapped.Height + BubbleVerticalPadding;
+            if (EstimateWrappedLineCount(text, typeface, size, maxTextWidth) <= maxLineCount &&
+                borderHeight <= maxBorderHeight)
+                return size;
+        }
+
+        for (double size = minimumFontSize - 0.5; size >= GroupedEmergencyMinFontSize; size -= 0.5)
+        {
+            var wrapped = MeasureText(text, typeface, size, maxTextWidth);
+            var borderHeight = wrapped.Height + BubbleVerticalPadding;
+            if (EstimateWrappedLineCount(text, typeface, size, maxTextWidth) <= maxLineCount &&
+                borderHeight <= maxBorderHeight)
+                return size;
+        }
+
+        return GroupedEmergencyMinFontSize;
+    }
+
+    private int EstimateWrappedLineCount(string text, Typeface typeface, double fontSize, double maxTextWidth)
+    {
+        var singleLine = MeasureText(text, typeface, fontSize);
+        if (singleLine.Width <= maxTextWidth)
+            return 1;
+
+        var wrapped = MeasureText(text, typeface, fontSize, maxTextWidth);
+        var lineHeight = Math.Max(1, MeasureText("Ag", typeface, fontSize).Height);
+        return Math.Max(1, (int)Math.Ceiling((wrapped.Height - 0.1) / lineHeight));
+    }
+
+    private double GetBottomAvailableHeight(
+        TranslatedBlock current,
+        IReadOnlyList<TranslatedBlock> blocks,
+        double canvasX,
+        double canvasY,
+        double wpfW,
+        double selScreenY,
+        double selScreenHeight,
+        double canvasHeight)
+    {
+        double currentLeft = canvasX - BubbleExpand;
+        double currentRight = currentLeft + wpfW + BubbleExpand * 2;
+        double selectionTop = (selScreenY - Top * _dpiY) / _dpiY;
+        double selectionBottom = selectionTop + selScreenHeight / _dpiY;
+        double bottomLimit = Math.Min(canvasHeight - OverlayPadding, selectionBottom);
+
+        foreach (var other in blocks)
+        {
+            if (ReferenceEquals(current, other) || other.Bounds.Y <= current.Bounds.Y)
+                continue;
+
+            double otherLeft = canvasX + (other.Bounds.X - current.Bounds.X) / _dpiX - BubbleExpand;
+            double otherRight = otherLeft + other.Bounds.Width / _dpiX + BubbleExpand * 2;
+            bool overlapsHorizontally = otherLeft < currentRight && otherRight > currentLeft;
+            if (!overlapsHorizontally)
+                continue;
+
+            double otherTop = canvasY + (other.Bounds.Y - current.Bounds.Y) / _dpiY - OverlayPadding;
+            bottomLimit = Math.Min(bottomLimit, otherTop);
+        }
+
+        return Math.Max(0, bottomLimit - (canvasY - BubbleExpand));
+    }
+
+    private static bool HasLowerOverlappingBlock(
+        TranslatedBlock current,
+        IReadOnlyList<TranslatedBlock> blocks)
+    {
+        foreach (var other in blocks)
+        {
+            if (ReferenceEquals(current, other) || other.Bounds.Y <= current.Bounds.Y)
+                continue;
+
+            var overlapsHorizontally =
+                other.Bounds.Left < current.Bounds.Right &&
+                other.Bounds.Right > current.Bounds.Left;
+            if (overlapsHorizontally)
+                return true;
+        }
+
+        return false;
+    }
+
+    private double GetRightExpansionWidth(
+        TranslatedBlock current,
+        IReadOnlyList<TranslatedBlock> blocks,
+        double canvasX,
+        double canvasY,
+        double wpfH,
+        double selScreenX,
+        double selScreenWidth,
+        double canvasWidth)
+    {
+        double currentLeft = canvasX - BubbleExpand;
+        double currentTop = canvasY - BubbleExpand;
+        double currentBottom = currentTop + wpfH + BubbleExpand * 2;
+        double selectionLeft = (selScreenX - Left * _dpiX) / _dpiX;
+        double selectionRight = selectionLeft + selScreenWidth / _dpiX;
+        double rightLimit = Math.Min(canvasWidth - OverlayPadding, selectionRight);
+
+        foreach (var other in blocks)
+        {
+            if (ReferenceEquals(current, other) || other.Bounds.X <= current.Bounds.X)
+                continue;
+
+            double otherTop = canvasY + (other.Bounds.Y - current.Bounds.Y) / _dpiY - BubbleExpand;
+            double otherBottom = otherTop + other.Bounds.Height / _dpiY + BubbleExpand * 2;
+            bool overlapsVertically = otherTop < currentBottom && otherBottom > currentTop;
+            if (!overlapsVertically)
+                continue;
+
+            double otherLeft = canvasX + (other.Bounds.X - current.Bounds.X) / _dpiX - BubbleExpand;
+            rightLimit = Math.Min(rightLimit, otherLeft - OverlayPadding);
+        }
+
+        return Math.Max(0, rightLimit - currentLeft);
+    }
 
     private FormattedText MeasureText(string text, Typeface typeface, double fontSize, double? maxTextWidth = null)
     {

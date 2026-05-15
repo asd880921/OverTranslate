@@ -48,7 +48,7 @@ public class DeepLProvider : ITranslationProvider
             // (can happen when inputs are empty/whitespace-only or filtered server-side).
             if (i >= arrayLen)
             {
-                results.Add(new TranslatedBlock(blocks[i].Text, "", blocks[i].Bounds));
+                results.Add(new TranslatedBlock(blocks[i].Text, "", blocks[i].Bounds, blocks[i].Lines));
                 continue;
             }
             var t = translations[i];
@@ -59,7 +59,7 @@ public class DeepLProvider : ITranslationProvider
                     langVotes[lang] = langVotes.GetValueOrDefault(lang) + 1;
             }
             var translated = t.GetProperty("text").GetString() ?? "";
-            results.Add(new TranslatedBlock(blocks[i].Text, translated, blocks[i].Bounds));
+            results.Add(new TranslatedBlock(blocks[i].Text, translated, blocks[i].Bounds, blocks[i].Lines));
         }
 
         string detectedLang = langVotes.Count > 0

@@ -149,9 +149,9 @@ public partial class MainWindow : Window
         _lastSelPhysWidth  = selection.Width;
         _lastSelPhysHeight = selection.Height;
 
-        ShowOverlay(blocks, selection.Left, selection.Top);
-
         var settings = SettingsService.Instance.Current;
+        ShowOverlay(blocks, selection.Left, selection.Top, selection.Width, selection.Height, srcLang, settings.TargetLanguage);
+
         var toolbar  = new ToolbarWindow(
             selection.Left, selection.Top, selection.Width, selection.Height,
             srcLang, settings.TargetLanguage);
@@ -169,15 +169,22 @@ public partial class MainWindow : Window
     // On re-translate: update the existing overlay in-place to avoid z-order fights with
     // ScreenCaptureWindow (both Topmost — close+reopen loses the z-position race).
     // On first call: create a new overlay and wire its Closed handler.
-    private void ShowOverlay(List<TranslatedBlock> blocks, double selPhysLeft, double selPhysTop)
+    private void ShowOverlay(
+        List<TranslatedBlock> blocks,
+        double selPhysLeft,
+        double selPhysTop,
+        double selPhysWidth,
+        double selPhysHeight,
+        string sourceLang,
+        string targetLang)
     {
         if (_overlayWindow != null)
         {
-            _overlayWindow.UpdateBlocks(blocks, selPhysLeft, selPhysTop);
+            _overlayWindow.UpdateBlocks(blocks, selPhysLeft, selPhysTop, selPhysWidth, selPhysHeight, sourceLang, targetLang);
             return;
         }
 
-        _overlayWindow = new OverlayWindow(blocks, selPhysLeft, selPhysTop);
+        _overlayWindow = new OverlayWindow(blocks, selPhysLeft, selPhysTop, selPhysWidth, selPhysHeight, sourceLang, targetLang);
         if (_captureWindow != null)
             _overlayWindow.Owner = _captureWindow;
         _overlayClosedHandler = (_, _) =>
@@ -278,7 +285,12 @@ public partial class MainWindow : Window
                             };
                         }
 
-                        var bg = SampleAverageColor(bmpData, croppedBitmap.Width, croppedBitmap.Height, b.Bounds);
+                        var bg = SampleAverageColor(
+                            bmpData,
+                            croppedBitmap.Width,
+                            croppedBitmap.Height,
+                            b.Bounds,
+                            req.SourceLang);
                         var fg = SampleTextColor(bmpData, croppedBitmap.Width, croppedBitmap.Height, b.Bounds, bg);
                         return b with { BackgroundColor = bg, TextColor = fg };
                     })
@@ -290,7 +302,7 @@ public partial class MainWindow : Window
             }
 
             _lastColoredBlocks = coloredTranslated;
-            ShowOverlay(coloredTranslated, _lastSelPhysLeft, _lastSelPhysTop);
+            ShowOverlay(coloredTranslated, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(true);
             requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
         }
@@ -308,7 +320,7 @@ public partial class MainWindow : Window
                 return;
 
             // On failure, restore old bubbles so the overlay isn't left blank
-            _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop);
+            _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(_lastColoredBlocks.Count > 0);
             requestToolbar?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
             ShowBalloon("翻譯失敗", ex.Message, selRect);
@@ -408,8 +420,11 @@ public partial class MainWindow : Window
     }
 
     private static System.Windows.Media.Color SampleAverageColor(
-        BitmapData data, int bmpW, int bmpH, System.Windows.Rect bounds)
+        BitmapData data, int bmpW, int bmpH, System.Windows.Rect bounds, string sourceLanguage)
     {
+        if (IsCjkOnnxLanguage(sourceLanguage))
+            return SampleOuterDominantBackgroundColor(data, bmpW, bmpH, bounds);
+
         int x1 = Math.Clamp((int)bounds.X, 0, bmpW);
         int y1 = Math.Clamp((int)bounds.Y, 0, bmpH);
         int x2 = Math.Clamp((int)(bounds.X + bounds.Width),  0, bmpW);
@@ -443,6 +458,62 @@ public partial class MainWindow : Window
         return n == 0
             ? System.Windows.Media.Colors.White
             : System.Windows.Media.Color.FromRgb((byte)(r / n), (byte)(g / n), (byte)(b / n));
+    }
+
+    private static bool IsCjkOnnxLanguage(string sourceLanguage) =>
+        sourceLanguage.Equals("ZH", StringComparison.OrdinalIgnoreCase) ||
+        sourceLanguage.Equals("ZH-HANT", StringComparison.OrdinalIgnoreCase) ||
+        sourceLanguage.Equals("JA", StringComparison.OrdinalIgnoreCase) ||
+        sourceLanguage.Equals("KO", StringComparison.OrdinalIgnoreCase);
+
+    private static System.Windows.Media.Color SampleOuterDominantBackgroundColor(
+        BitmapData data, int bmpW, int bmpH, System.Windows.Rect bounds)
+    {
+        int padX = Math.Max(4, (int)Math.Round(bounds.Height * 0.35));
+        int padY = Math.Max(3, (int)Math.Round(bounds.Height * 0.28));
+        int x1 = Math.Clamp((int)bounds.X - padX, 0, bmpW);
+        int y1 = Math.Clamp((int)bounds.Y - padY, 0, bmpH);
+        int x2 = Math.Clamp((int)(bounds.X + bounds.Width) + padX, 0, bmpW);
+        int y2 = Math.Clamp((int)(bounds.Y + bounds.Height) + padY, 0, bmpH);
+        int innerX1 = Math.Clamp((int)bounds.X, 0, bmpW);
+        int innerY1 = Math.Clamp((int)bounds.Y, 0, bmpH);
+        int innerX2 = Math.Clamp((int)(bounds.X + bounds.Width), 0, bmpW);
+        int innerY2 = Math.Clamp((int)(bounds.Y + bounds.Height), 0, bmpH);
+
+        var buckets = new Dictionary<int, (long R, long G, long B, int Count)>();
+
+        void AddPixel(int px, int py)
+        {
+            int v = Marshal.ReadInt32(data.Scan0, py * data.Stride + px * 4);
+            byte b = (byte)(v & 0xFF);
+            byte g = (byte)((v >> 8) & 0xFF);
+            byte r = (byte)((v >> 16) & 0xFF);
+            int key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+            var bucket = buckets.GetValueOrDefault(key);
+            buckets[key] = (bucket.R + r, bucket.G + g, bucket.B + b, bucket.Count + 1);
+        }
+
+        for (int py = y1; py < y2; py++)
+        {
+            for (int px = x1; px < x2; px += 2)
+            {
+                bool insideTextRect = px >= innerX1 && px < innerX2 && py >= innerY1 && py < innerY2;
+                if (!insideTextRect)
+                    AddPixel(px, py);
+            }
+        }
+
+        if (buckets.Count == 0)
+            return System.Windows.Media.Colors.White;
+
+        var dominant = buckets.Values
+            .OrderByDescending(bucket => bucket.Count)
+            .First();
+
+        return System.Windows.Media.Color.FromRgb(
+            (byte)(dominant.R / dominant.Count),
+            (byte)(dominant.G / dominant.Count),
+            (byte)(dominant.B / dominant.Count));
     }
 
     private static System.Windows.Media.Color SampleTextColor(
