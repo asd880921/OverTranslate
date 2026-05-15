@@ -8,8 +8,9 @@
         ShowInTaskbar="False"
         IsHitTestVisible="False">
     <Grid>
-        <!-- Translation bubbles -->
-        <Canvas x:Name="OverlayCanvas"/>
+        <!-- Translation backgrounds and text are separated so no later bubble background can cover prior text. -->
+        <Canvas x:Name="BubbleBackgroundCanvas"/>
+        <Canvas x:Name="BubbleTextCanvas"/>
         <!-- Processing indicator — separate layer so it's always above bubbles -->
         <Canvas x:Name="IndicatorCanvas">
             <Border x:Name="ProcessingBorder"

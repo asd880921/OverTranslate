@@ -97,7 +97,8 @@ public partial class OverlayWindow : Window
     // Shows a centered status card and clears old bubbles so the indicator is unobstructed.
     public void ShowProcessing(double selPhysX, double selPhysY, double selPhysW, double selPhysH, string statusText)
     {
-        OverlayCanvas.Children.Clear();
+        BubbleBackgroundCanvas.Children.Clear();
+        BubbleTextCanvas.Children.Clear();
 
         double winPhysLeft = Left * _dpiX;
         double winPhysTop  = Top  * _dpiY;
@@ -119,7 +120,7 @@ public partial class OverlayWindow : Window
         _currentSelectionScreenX = selScreenX;
         _currentSelectionScreenY = selScreenY;
         ProcessingBorder.Visibility = Visibility.Collapsed;
-        OverlayCanvas.Visibility    = Visibility.Visible;
+        SetTranslationLayersVisible(true);
         if (_isLoaded)
             BuildOverlay(_currentBlocks, _currentSelectionScreenX, _currentSelectionScreenY);
     }
@@ -127,23 +128,23 @@ public partial class OverlayWindow : Window
     public void RestoreIdle(bool hasVisibleBlocks)
     {
         ProcessingBorder.Visibility = Visibility.Collapsed;
-        if (hasVisibleBlocks && _isLoaded && OverlayCanvas.Children.Count == 0 && _currentBlocks.Count > 0)
+        if (hasVisibleBlocks && _isLoaded && BubbleBackgroundCanvas.Children.Count == 0 && _currentBlocks.Count > 0)
             BuildOverlay(_currentBlocks, _currentSelectionScreenX, _currentSelectionScreenY);
-        OverlayCanvas.Visibility = hasVisibleBlocks ? Visibility.Visible : Visibility.Collapsed;
+        SetTranslationLayersVisible(hasVisibleBlocks);
     }
 
-    public void SetBubblesVisible(bool visible) =>
-        OverlayCanvas.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    public void SetBubblesVisible(bool visible) => SetTranslationLayersVisible(visible);
 
     private void BuildOverlay(List<TranslatedBlock> blocks, double selScreenX, double selScreenY)
     {
-        OverlayCanvas.Children.Clear();
+        BubbleBackgroundCanvas.Children.Clear();
+        BubbleTextCanvas.Children.Clear();
 
         // Window top-left in physical pixels
         double winPhysLeft = Left * _dpiX;
         double winPhysTop = Top * _dpiY;
-        double canvasWidth = OverlayCanvas.ActualWidth > 0 ? OverlayCanvas.ActualWidth : Width;
-        double canvasHeight = OverlayCanvas.ActualHeight > 0 ? OverlayCanvas.ActualHeight : Height;
+        double canvasWidth = BubbleBackgroundCanvas.ActualWidth > 0 ? BubbleBackgroundCanvas.ActualWidth : Width;
+        double canvasHeight = BubbleBackgroundCanvas.ActualHeight > 0 ? BubbleBackgroundCanvas.ActualHeight : Height;
 
         foreach (var block in blocks)
         {
@@ -235,13 +236,22 @@ public partial class OverlayWindow : Window
                 actualBorderH = Math.Max(actualBorderH, wrapMeasured.Height + BubbleVerticalPadding);
             }
 
-            var border = new Border
+            var backgroundBorder = new Border
             {
                 Background = new SolidColorBrush(bg),
                 Padding = new Thickness(3, 2, 3, 2),
                 Width  = targetBorderW,
                 Height = actualBorderH,
                 ClipToBounds = true,
+            };
+
+            var textContainer = new Border
+            {
+                Padding = new Thickness(3, 2, 3, 2),
+                Width = targetBorderW,
+                Height = actualBorderH,
+                ClipToBounds = true,
+                Background = System.Windows.Media.Brushes.Transparent,
                 Child = new TextBlock
                 {
                     Text = block.TranslatedText,
@@ -258,10 +268,20 @@ public partial class OverlayWindow : Window
             double expandedOffsetX = (targetBorderW - borderW) / 2;
             double left = Math.Clamp(canvasX - BubbleExpand - expandedOffsetX, OverlayPadding, Math.Max(OverlayPadding, canvasWidth - targetBorderW - OverlayPadding));
             double top = Math.Clamp(canvasY - BubbleExpand, OverlayPadding, Math.Max(OverlayPadding, canvasHeight - actualBorderH - OverlayPadding));
-            Canvas.SetLeft(border, left);
-            Canvas.SetTop(border, top);
-            OverlayCanvas.Children.Add(border);
+            Canvas.SetLeft(backgroundBorder, left);
+            Canvas.SetTop(backgroundBorder, top);
+            Canvas.SetLeft(textContainer, left);
+            Canvas.SetTop(textContainer, top);
+            BubbleBackgroundCanvas.Children.Add(backgroundBorder);
+            BubbleTextCanvas.Children.Add(textContainer);
         }
+    }
+
+    private void SetTranslationLayersVisible(bool visible)
+    {
+        var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        BubbleBackgroundCanvas.Visibility = visibility;
+        BubbleTextCanvas.Visibility = visibility;
     }
 
     private static bool IsSingleLineSource(string originalText, double sourceHeight) =>
