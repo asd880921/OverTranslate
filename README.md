@@ -48,12 +48,12 @@ OverTranslate 是一款專為 Windows 打造的螢幕即時翻譯工具。
 
 | 服務 | 說明 |
 |------|------|
-| Google 翻譯（新版） | (預設) 首選，穩定性佳 |
-| Google 翻譯（舊版） | 備援 |
+| Google 翻譯（RPC） | (預設) 首選，穩定性佳 |
+| Google 翻譯（Web） | 備援 |
 | Bing 翻譯 | 可選 |
 | Microsoft 翻譯 | 可選 |
 | Yandex 翻譯 | 可選 |
-| DeepL | 高品質翻譯，需 API Key |
+| DeepL | 外接翻譯平台 DeepL，需 API Key |
 
 ## 文字轉語音（TTS）
 
