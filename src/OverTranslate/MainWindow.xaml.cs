@@ -323,7 +323,7 @@ public partial class MainWindow : Window
             _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(_lastColoredBlocks.Count > 0);
             requestToolbar?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
-            ShowBalloon("翻譯失敗", ex.Message, selRect);
+            ShowBalloon("翻譯失敗", $"目前使用的翻譯來源可能暫時無法使用。\n請切換其他翻譯來源後再試一次。\n\n詳細資訊：{ex.Message}", selRect);
         }
         finally
         {
