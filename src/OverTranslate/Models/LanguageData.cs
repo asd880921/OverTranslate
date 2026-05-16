@@ -56,6 +56,7 @@ public static class LanguageData
         new(TranslationProvider.Google,  "Google 翻譯 (Web)", false, "傳統 API，整體響應速度較快，但較容易出現請求失敗或限制"),
         new(TranslationProvider.Google2, "Google 翻譯 (RPC)", false, "新版 RPC API，請求成功率較佳"),
         new(TranslationProvider.Bing,    "Bing 翻譯", false),
+        new(TranslationProvider.Microsoft, "Microsoft 翻譯", false),
         new(TranslationProvider.Yandex,  "Yandex 翻譯", false, "Yandex 不支持繁體中文翻譯，使用繁體時會自動轉換為簡體中文"),
         new(TranslationProvider.DeepL,   "DeepL 翻譯", true, "需 API Key，可於 DeepL 官方申請（目前有提供免費方案，請至官網申請）"),
     ];

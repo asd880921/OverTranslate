@@ -17,6 +17,7 @@ public class TranslationService
     private readonly GTranslateProvider _google  = new(new GoogleTranslator());
     private readonly GTranslateProvider _google2 = new(new GoogleTranslator2());
     private readonly GTranslateProvider _bing    = new(new BingTranslator());
+    private readonly GTranslateProvider _microsoft = new(new MicrosoftTranslator());
     private readonly GTranslateProvider _yandex  = new(new YandexTranslator(), new() { { "ZH-HANT", "ZH-HANS" } });
     private readonly DeepLProvider      _deepL   = new();
 
@@ -24,6 +25,7 @@ public class TranslationService
     {
         TranslationProvider.Google => _google,
         TranslationProvider.Bing    => _bing,
+        TranslationProvider.Microsoft => _microsoft,
         TranslationProvider.Yandex  => _yandex,
         TranslationProvider.DeepL   => _deepL,
         _                           => _google2,
