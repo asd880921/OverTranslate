@@ -323,7 +323,7 @@ public partial class MainWindow : Window
             _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(_lastColoredBlocks.Count > 0);
             requestToolbar?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
-            ShowBalloon("翻譯失敗", $"目前使用的翻譯來源可能暫時無法使用。\n請切換其他翻譯來源後再試一次。\n\n詳細資訊：{ex.Message}", selRect);
+            ShowBalloon("翻譯失敗", $"目前使用的翻譯來源可能暫時無法使用。\n請切換其他翻譯來源後再試一次。\n詳細資訊：{ex.Message}", selRect);
         }
         finally
         {
@@ -337,8 +337,8 @@ public partial class MainWindow : Window
 
     private void OnOpenWindowRequested(object? sender, EventArgs e)
     {
-        var srcText = string.Join("\n", _lastOcrBlocks.Select(b => b.Text));
-        var tgtText = string.Join("\n", _lastColoredBlocks.Select(b => b.TranslatedText));
+        var srcText = JoinWithoutLineBreaks(_lastOcrBlocks.Select(b => b.Text));
+        var tgtText = JoinWithoutLineBreaks(_lastColoredBlocks.Select(b => b.TranslatedText));
         var srcLang = _toolbarWindow?.CurrentSourceLang ?? SettingsService.Instance.Current.SourceLanguage;
         var tgtLang = _toolbarWindow?.CurrentTargetLang ?? SettingsService.Instance.Current.TargetLanguage;
 
@@ -361,6 +361,9 @@ public partial class MainWindow : Window
 
         CloseAll(); // close overlay, dim background, and toolbar
     }
+
+    private static string JoinWithoutLineBreaks(IEnumerable<string> parts) =>
+        string.Join(" ", parts.Select(text => text.Replace('\r', ' ').Replace('\n', ' ')));
 
     private void CloseAll()
     {
