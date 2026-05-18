@@ -70,7 +70,7 @@ OverTranslate 是一款專為 Windows 打造的螢幕即時翻譯工具。
 | 辨識語言 | 使用方式 |
 |----------|----------|
 | **英文** | 使用 Tesseract OCR 進行辨識 |
-| **中文 / 日文 / 韓文** | 依辨識情境自動搭配 RapidOcrNet 或 ONNX 模型處理 |
+| **中文 / 日文 / 韓文** | 使用 RapidOcrNet 與 ONNX OCR 模型處理 |
 
 透過不同 OCR 引擎的特性互補，提升中、日、韓、英等多語系文字的辨識效果與穩定性。
 
@@ -87,7 +87,6 @@ OverTranslate 是一款專為 Windows 打造的螢幕即時翻譯工具。
 
 - **作業系統**：Windows 10 / 11
 - **執行環境**：[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
-- 使用 Windows OCR 時，需在「Windows 語言設定」中安裝對應語言包
 - 使用 DeepL 翻譯時，需至官網申請 [DeepL API Key]（官方目前有免費方案）
 
 ---
