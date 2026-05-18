@@ -11,10 +11,9 @@
 </div>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=flat-square" />
-  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows" />
-  <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet" />
   <img src="https://img.shields.io/badge/license-AGPL--3.0-22C55E?style=flat-square" />
+  <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=flat-square" />
+  <img src="https://img.shields.io/github/downloads/asd880921/OverTranslate/total?style=flat-square&logo=github&label=installs" />
 </p>
 
 ---
