@@ -5,7 +5,7 @@
 
   <p>
     <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
-      <img src="https://img.shields.io/badge/點擊下載 Download-Latest%20Release-2ea44f?style=for-the-badge&logo=github" />
+      <img src="https://img.shields.io/badge/點擊下載應用 Download-Latest%20Release-2ea44f?style=for-the-badge" />
     </a>
   </p>
 </div>
@@ -13,7 +13,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-AGPL--3.0-22C55E?style=flat-square" />
   <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=flat-square" />
-  <img src="https://img.shields.io/github/downloads/asd880921/OverTranslate/total?style=flat-square&logo=github&label=installs" />
+  <img src="https://img.shields.io/github/downloads/asd880921/OverTranslate/total?style=flat-square&label=downloads" />
 </p>
 
 ---
