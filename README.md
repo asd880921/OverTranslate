@@ -1,20 +1,27 @@
 <div align="center">
   <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
+
   <h1>OverTranslate</h1>
+
   <p>一款適合你的 Windows 螢幕即時翻譯工具</p>
 
   <p>
     <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
-      <img src="https://img.shields.io/badge/點擊下載應用 Download-Latest%20Release-2ea44f?style=for-the-badge" />
+      <strong>📥 點擊下載最新版 Windows 安裝檔</strong>
     </a>
   </p>
-</div>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/license-AGPL--3.0-22C55E?style=flat-square" />
-  <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=flat-square" />
-  <img src="https://img.shields.io/github/downloads/asd880921/OverTranslate/total?style=flat-square&label=downloads" />
-</p>
+  <p>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
+      <img src="https://shieldcn.dev/github/downloads-asset/asd880921/OverTranslate/OverTranslate-win-Setup.exe.svg?style=for-the-badge&label=installer%20downloads&labelColor=24292f&color=2ea44f" alt="Installer downloads" />
+    </a>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
+    <img src="https://img.shields.io/badge/license-AGPL--3.0-22C55E?style=for-the-badge" alt="License AGPL-3.0" />
+  </p>
+</div>
 
 ---
 
