@@ -36,23 +36,37 @@ public class OcrServiceTests
     }
 
     [Fact]
-    public void CjkEngine_UsesLanguageSpecificModels()
+    public void OnnxEngine_UsesLanguageSpecificModels()
     {
-        Assert.Equal("korean", CjkOnnxOcrEngine.GetModelKeyForLanguage("KO"));
-        Assert.Equal("cjk", CjkOnnxOcrEngine.GetModelKeyForLanguage("JA"));
-        Assert.Equal("cjk", CjkOnnxOcrEngine.GetModelKeyForLanguage("ZH-HANT"));
+        Assert.Equal("en", OnnxOcrEngine.GetModelKeyForLanguage("EN"));
+        Assert.Equal("korean", OnnxOcrEngine.GetModelKeyForLanguage("KO"));
+        Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("JA"));
+        Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("ZH-HANT"));
     }
 
     [Theory]
+    [InlineData("EN")]
     [InlineData("ZH-HANT")]
     [InlineData("KO")]
-    public async Task CjkEngine_OfficialModelBundles_RunInference(string language)
+    public async Task OnnxEngine_OfficialModelBundles_RunInference(string language)
     {
-        using var engine = new CjkOnnxOcrEngine();
+        using var engine = new OnnxOcrEngine();
         using var bitmap = new Bitmap(160, 60);
 
         var blocks = await engine.RecognizeAsync(bitmap, language);
 
         Assert.NotNull(blocks);
+    }
+
+    [Fact]
+    public async Task OnnxEngine_SwitchingLanguages_ReloadsActiveModel()
+    {
+        // Switching model keys disposes the previous runtime and loads the next one, so the
+        // same engine instance must keep working across repeated language switches.
+        using var engine = new OnnxOcrEngine();
+        using var bitmap = new Bitmap(160, 60);
+
+        foreach (var language in new[] { "EN", "KO", "EN", "ZH-HANT", "EN" })
+            Assert.NotNull(await engine.RecognizeAsync(bitmap, language));
     }
 }

@@ -13,24 +13,19 @@ public record OcrTextBlock(
 
 public class OcrService : IDisposable
 {
-    private readonly TesseractOcrEngine _englishEngine = new();
-    private readonly CjkOnnxOcrEngine _cjkEngine = new();
+    private readonly OnnxOcrEngine _engine = new();
 
     public Task<List<OcrTextBlock>> RecognizeAsync(Bitmap bitmap, string sourceLanguage)
     {
-        if (OcrLanguageRouter.UsesEnglishTesseract(sourceLanguage))
-            return RecognizeAndGroupAsync(_englishEngine, bitmap, "EN");
-
-        if (OcrLanguageRouter.UsesCjkOnnx(sourceLanguage))
-            return RecognizeAndGroupAsync(_cjkEngine, bitmap, sourceLanguage);
+        if (OcrLanguageRouter.IsSupported(sourceLanguage))
+            return RecognizeAndGroupAsync(_engine, bitmap, OcrLanguageRouter.Normalize(sourceLanguage));
 
         throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
     }
 
     public void Dispose()
     {
-        _englishEngine.Dispose();
-        _cjkEngine.Dispose();
+        _engine.Dispose();
     }
 
     private static async Task<List<OcrTextBlock>> RecognizeAndGroupAsync(
