@@ -24,7 +24,13 @@ internal static class SingleLineOverlayLayout
             return new(input.OriginalFontSize, idealBorderWidth, true);
 
         var originalInnerWidth = Math.Max(1, input.OriginalBorderWidth - input.HorizontalPadding);
-        var scaledToOriginalWidth = ScaleFont(input.OriginalFontSize, originalInnerWidth, input.TextWidth);
+        // Only ever shrink to fit the original width — never grow. When the translation is much
+        // narrower than a wide source line (e.g. a 5-character CJK rendering of a long English
+        // title), scaling it up to fill the box would balloon the font far past the source text
+        // size. Cap at OriginalFontSize so the overlay mirrors the original size at most.
+        var scaledToOriginalWidth = Math.Min(
+            input.OriginalFontSize,
+            ScaleFont(input.OriginalFontSize, originalInnerWidth, input.TextWidth));
         if (scaledToOriginalWidth >= input.ReadableMinFontSize)
             return new(scaledToOriginalWidth, input.OriginalBorderWidth, false);
 

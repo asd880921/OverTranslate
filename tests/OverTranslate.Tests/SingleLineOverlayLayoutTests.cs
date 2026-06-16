@@ -16,6 +16,17 @@ public class SingleLineOverlayLayoutTests
     }
 
     [Fact]
+    public void DoesNotGrowFontAboveOriginal_WhenTranslationIsMuchShorter()
+    {
+        // A short translation of a wide source line must not be scaled up to fill the box.
+        var result = Calculate(textWidth: 40, rightExpansionWidth: 80);
+
+        Assert.Equal(16, result.FontSize, 3);
+        Assert.Equal(106, result.BorderWidth, 3);
+        Assert.False(result.PreferRightExpansion);
+    }
+
+    [Fact]
     public void ShrinksInsideOriginalWidth_BeforeExpandingBothSides()
     {
         var result = Calculate(textWidth: 160, rightExpansionWidth: 80);
