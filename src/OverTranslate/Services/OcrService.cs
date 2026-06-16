@@ -6,7 +6,12 @@ namespace OverTranslate.Services;
 public record OcrTextBlock(
     string Text,
     System.Windows.Rect Bounds,
-    IReadOnlyList<System.Windows.Rect>? SourceLineBounds = null)
+    IReadOnlyList<System.Windows.Rect>? SourceLineBounds = null,
+    // Visual glyph height (physical px) used to size the overlay font, kept separate from
+    // Bounds. For Latin source the detection box is much taller than the rendered CJK font,
+    // so Bounds stays full (for background coverage) while this drives only the font size.
+    // Null for CJK, where Bounds already matches the glyph height.
+    double? SourceGlyphHeight = null)
 {
     public IReadOnlyList<System.Windows.Rect> Lines => SourceLineBounds ?? [Bounds];
 }

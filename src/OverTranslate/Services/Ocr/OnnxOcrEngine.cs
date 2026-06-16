@@ -227,18 +227,20 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     {
         const double verticalScale = 0.82;
 
-        // Average glyph advance relative to line height differs by script: CJK glyphs are
-        // ~square (advance ≈ height) while Latin glyphs are ~half-width. Converting the
-        // average glyph pitch (width / glyphCount) back to a line height therefore needs a
-        // larger multiplier for Latin text. Without this, the unclipped (loose) detection
-        // box height would drive the overlay font size and render text far too large.
-        var glyphHeightFromPitch = isCjk ? 1.18 : 2.0;
+        // Convert the average source-glyph pitch (width / glyphCount) into the line height that
+        // drives the overlay font size, clamping the unclipped (loose) detection box so text is
+        // not rendered far too large. The multiplier is keyed on the *rendered* script, which is
+        // always the translated CJK text — so a Latin source page must use ~the CJK ratio too,
+        // not a Latin one. Measured EN-vs-KO box heights on the same screenshot showed the old
+        // Latin value (2.0) rendered English ~1.7x larger than the Korean (CJK) path; 1.3 brings
+        // it in line, leaving English just slightly larger than CJK.
+        var glyphHeightFromPitch = isCjk ? 1.18 : 1.3;
 
         return blocks
             .Select(block =>
             {
                 var bounds = block.Bounds;
-                var adjustedHeight = bounds.Height * verticalScale;
+                var glyphHeight = bounds.Height * verticalScale;
                 var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
 
                 // ONNX/unclip can return vertically loose boxes on wide single lines.
@@ -248,12 +250,23 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 {
                     var estimatedGlyphPitch = bounds.Width / glyphCount;
                     var maxExpectedHeight = estimatedGlyphPitch * glyphHeightFromPitch;
-                    adjustedHeight = Math.Min(adjustedHeight, maxExpectedHeight);
+                    glyphHeight = Math.Min(glyphHeight, maxExpectedHeight);
                 }
 
-                adjustedHeight = Math.Max(1, adjustedHeight);
-                var adjustedY = bounds.Y + (bounds.Height - adjustedHeight) / 2.0;
-                return block with { Bounds = new System.Windows.Rect(bounds.X, adjustedY, bounds.Width, adjustedHeight) };
+                glyphHeight = Math.Max(1, glyphHeight);
+
+                if (isCjk)
+                {
+                    // CJK glyphs ≈ the detection box height, so shrinking + recentering the box
+                    // drives both the overlay font and its background coverage correctly.
+                    var adjustedY = bounds.Y + (bounds.Height - glyphHeight) / 2.0;
+                    return block with { Bounds = new System.Windows.Rect(bounds.X, adjustedY, bounds.Width, glyphHeight) };
+                }
+
+                // Latin: the detection box is much taller than the rendered CJK font. Keep the
+                // full box as the bubble's coverage area (so it still hides the taller original
+                // Latin glyphs) and carry the reduced glyph height separately for font sizing.
+                return block with { SourceGlyphHeight = glyphHeight };
             })
             .ToList();
     }
