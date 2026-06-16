@@ -77,7 +77,10 @@ internal static class OcrTextBlockGrouper
         var bottom = Math.Max(previous.Bounds.Bottom, current.Bounds.Bottom);
         var text = JoinInlineText(previous.Text, current.Text);
 
-        return new OcrTextBlock(text, new Rect(left, top, right - left, bottom - top));
+        return new OcrTextBlock(
+            text,
+            new Rect(left, top, right - left, bottom - top),
+            SourceGlyphHeight: CombineGlyphHeight(previous.SourceGlyphHeight, current.SourceGlyphHeight));
     }
 
     private static string JoinInlineText(string left, string right)
@@ -172,9 +175,28 @@ internal static class OcrTextBlockGrouper
         var bottom = blocks.Max(block => block.Bounds.Bottom);
         var text = string.Join(" ", blocks.Select(block => block.Text.Trim()).Where(text => text.Length > 0));
 
+        // Aggregate the per-line glyph heights (Latin only; null for CJK) so the group's overlay
+        // font is sized from the real glyph height, while Bounds remains the full coverage area.
+        var glyphHeights = blocks
+            .Where(block => block.SourceGlyphHeight.HasValue)
+            .Select(block => block.SourceGlyphHeight!.Value)
+            .OrderBy(height => height)
+            .ToList();
+        double? groupGlyphHeight = glyphHeights.Count > 0 ? glyphHeights[glyphHeights.Count / 2] : null;
+
         return new OcrTextBlock(
             text,
             new Rect(x, y, right - x, bottom - y),
-            blocks.Select(block => block.Bounds).ToList());
+            blocks.Select(block => block.Bounds).ToList(),
+            groupGlyphHeight);
     }
+
+    private static double? CombineGlyphHeight(double? a, double? b) =>
+        (a, b) switch
+        {
+            (double ha, double hb) => (ha + hb) / 2.0,
+            (double ha, null) => ha,
+            (null, double hb) => hb,
+            _ => null,
+        };
 }

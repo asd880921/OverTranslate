@@ -69,7 +69,7 @@ public class GTranslateProvider : ITranslationProvider
                 var mapped = MapDetectedToDeepL(detLang);
                 langVotes[mapped] = langVotes.GetValueOrDefault(mapped) + 1;
             }
-            translated.Add(new TranslatedBlock(blocks[i].Text, r.Translation, blocks[i].Bounds, blocks[i].Lines));
+            translated.Add(new TranslatedBlock(blocks[i].Text, r.Translation, blocks[i].Bounds, blocks[i].Lines, blocks[i].SourceGlyphHeight));
         }
 
         string detectedLang = langVotes.Count > 0 ? langVotes.MaxBy(kv => kv.Value).Key : "";

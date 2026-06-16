@@ -425,49 +425,15 @@ public partial class MainWindow : Window
     private static System.Windows.Media.Color SampleAverageColor(
         BitmapData data, int bmpW, int bmpH, System.Windows.Rect bounds, string sourceLanguage)
     {
-        if (IsCjkOnnxLanguage(sourceLanguage))
-            return SampleOuterDominantBackgroundColor(data, bmpW, bmpH, bounds);
-
-        int x1 = Math.Clamp((int)bounds.X, 0, bmpW);
-        int y1 = Math.Clamp((int)bounds.Y, 0, bmpH);
-        int x2 = Math.Clamp((int)(bounds.X + bounds.Width),  0, bmpW);
-        int y2 = Math.Clamp((int)(bounds.Y + bounds.Height), 0, bmpH);
-
-        int stripH = Math.Max(3, (y2 - y1) / 3);
-        int abY1 = Math.Max(0,   y1 - stripH);
-        int abY2 = y1;
-        int blY1 = y2;
-        int blY2 = Math.Min(bmpH, y2 + stripH);
-
-        long r = 0, g = 0, b = 0, n = 0;
-
-        void Scan(int sy1, int sy2)
-        {
-            for (int py = sy1; py < sy2; py++)
-                for (int px = x1; px < x2; px += 2)
-                {
-                    int v = Marshal.ReadInt32(data.Scan0, py * data.Stride + px * 4);
-                    b += v & 0xFF;
-                    g += (v >> 8)  & 0xFF;
-                    r += (v >> 16) & 0xFF;
-                    n++;
-                }
-        }
-
-        if (abY2 > abY1) Scan(abY1, abY2);
-        if (blY2 > blY1) Scan(blY1, blY2);
-        if (n == 0) Scan(y1, y2);
-
-        return n == 0
-            ? System.Windows.Media.Colors.White
-            : System.Windows.Media.Color.FromRgb((byte)(r / n), (byte)(g / n), (byte)(b / n));
+        // All scripts use the outer dominant-color sampler. It pads outward from the text box
+        // and picks the most common surrounding color, so it stays correct even when the
+        // (tightened) box no longer fully encloses the glyphs. The earlier English-only
+        // strip-average sampled thin bands directly above/below the box; once the box height
+        // was reduced those bands grazed the light glyphs and produced a washed-out grey that
+        // no longer blended with the dark page background.
+        _ = sourceLanguage;
+        return SampleOuterDominantBackgroundColor(data, bmpW, bmpH, bounds);
     }
-
-    private static bool IsCjkOnnxLanguage(string sourceLanguage) =>
-        sourceLanguage.Equals("ZH", StringComparison.OrdinalIgnoreCase) ||
-        sourceLanguage.Equals("ZH-HANT", StringComparison.OrdinalIgnoreCase) ||
-        sourceLanguage.Equals("JA", StringComparison.OrdinalIgnoreCase) ||
-        sourceLanguage.Equals("KO", StringComparison.OrdinalIgnoreCase);
 
     private static System.Windows.Media.Color SampleOuterDominantBackgroundColor(
         BitmapData data, int bmpW, int bmpH, System.Windows.Rect bounds)

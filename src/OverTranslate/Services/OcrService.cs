@@ -6,31 +6,31 @@ namespace OverTranslate.Services;
 public record OcrTextBlock(
     string Text,
     System.Windows.Rect Bounds,
-    IReadOnlyList<System.Windows.Rect>? SourceLineBounds = null)
+    IReadOnlyList<System.Windows.Rect>? SourceLineBounds = null,
+    // Visual glyph height (physical px) used to size the overlay font, kept separate from
+    // Bounds. For Latin source the detection box is much taller than the rendered CJK font,
+    // so Bounds stays full (for background coverage) while this drives only the font size.
+    // Null for CJK, where Bounds already matches the glyph height.
+    double? SourceGlyphHeight = null)
 {
     public IReadOnlyList<System.Windows.Rect> Lines => SourceLineBounds ?? [Bounds];
 }
 
 public class OcrService : IDisposable
 {
-    private readonly TesseractOcrEngine _englishEngine = new();
-    private readonly CjkOnnxOcrEngine _cjkEngine = new();
+    private readonly OnnxOcrEngine _engine = new();
 
     public Task<List<OcrTextBlock>> RecognizeAsync(Bitmap bitmap, string sourceLanguage)
     {
-        if (OcrLanguageRouter.UsesEnglishTesseract(sourceLanguage))
-            return RecognizeAndGroupAsync(_englishEngine, bitmap, "EN");
-
-        if (OcrLanguageRouter.UsesCjkOnnx(sourceLanguage))
-            return RecognizeAndGroupAsync(_cjkEngine, bitmap, sourceLanguage);
+        if (OcrLanguageRouter.IsSupported(sourceLanguage))
+            return RecognizeAndGroupAsync(_engine, bitmap, OcrLanguageRouter.Normalize(sourceLanguage));
 
         throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
     }
 
     public void Dispose()
     {
-        _englishEngine.Dispose();
-        _cjkEngine.Dispose();
+        _engine.Dispose();
     }
 
     private static async Task<List<OcrTextBlock>> RecognizeAndGroupAsync(

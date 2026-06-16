@@ -230,7 +230,7 @@ public partial class OverlayWindow : Window
             }
 
             bool isSmallSourceText = sourceFontReferenceHeight <= 14;
-            bool isSingleLineSource = IsSingleLineSource(block.OriginalText, wpfH);
+            bool isSingleLineSource = IsSingleLineSource(block.OriginalText, sourceFontReferenceHeight);
             bool isGroupedMultiLineSource = block.SourceLineBounds is { Count: > 1 };
             double minFontSize = isSmallSourceText ? SmallTextMinFontSize : DefaultMinFontSize;
             double fontSize = Math.Max(minFontSize, sourceFontReferenceHeight * (isSmallSourceText ? 1.18 : 1.06));
@@ -445,6 +445,11 @@ public partial class OverlayWindow : Window
 
     private double GetSourceFontReferenceHeight(TranslatedBlock block, double fallbackHeight)
     {
+        // Latin blocks carry the reduced glyph height separately so the font is not sized from
+        // the (much taller) full coverage box. This takes priority over the line-bounds median.
+        if (block.SourceGlyphHeight is { } glyphHeight && glyphHeight > 0)
+            return glyphHeight / _dpiY;
+
         if (block.SourceLineBounds is not { Count: > 0 })
             return fallbackHeight;
 
