@@ -22,7 +22,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // MB with the larger ImgResize). This is a tray-resident, occasional-use tool, so we keep
     // only the active model loaded AND release it after a period of inactivity, returning that
     // memory to baseline while idle. The next capture transparently reloads the needed model.
-    private static readonly TimeSpan IdleReleaseDelay = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan IdleReleaseDelay = TimeSpan.FromMinutes(1);
 
     private readonly object _sync = new();
     private readonly System.Threading.Timer _idleReleaseTimer;
