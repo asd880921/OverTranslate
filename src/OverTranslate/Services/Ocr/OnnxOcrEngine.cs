@@ -66,7 +66,14 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
                 using var skBitmap = ConvertToSkBitmap(bitmap);
                 var result = runtime.Engine.Detect(skBitmap, CreateOptions());
-                var blocks = NormalizeBlocks(ConvertBlocks(result.TextBlocks), isCjk);
+                var converted = ConvertBlocks(result.TextBlocks);
+
+                // On a non-CJK (Latin) page the shared general model occasionally misreads icons
+                // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
+                if (!isCjk)
+                    converted = RemoveIconIdeographNoise(converted);
+
+                var blocks = NormalizeBlocks(converted, isCjk);
 
                 Log.Debug(
                     "ONNX OCR lang={Lang} rawBlocks={RawBlocks} blocks={Blocks} strLen={StrLen}",
@@ -88,8 +95,14 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     internal static string GetModelKeyForLanguage(string language) =>
         OcrLanguageRouter.Normalize(language) switch
         {
-            "EN" => "en",
             "KO" => "korean",
+            // EN uses the PP-OCRv5 general ("cjk") model rather than a dedicated Latin model.
+            // English UI captures very often contain embedded Chinese (chrome, labels, ratings),
+            // which a Latin-only model dropped or garbled; the general model reads Latin AND those
+            // CJK glyphs in one pass, and on real captures injected fewer stray foreign-Latin
+            // glyphs (e.g. ¡) than the Latin model. The text is still Latin, so source-language
+            // routing (UsesCjkOnnx) keeps EN on the Latin layout path. Lone-ideograph icon misreads
+            // from this broader model are stripped by RemoveIconIdeographNoise.
             _ => "cjk",
         };
 
@@ -222,6 +235,50 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             .ThenBy(b => b.Bounds.X)
             .ToList();
     }
+
+    // Removes lone-Han-ideograph icon misreads from a Latin page's blocks. English never contains
+    // a Han ideograph and real embedded Chinese labels are runs of >= 2 ideographs, so this leaves
+    // genuine text untouched while dropping graphic/icon noise the general model reads as e.g. 白.
+    private static List<OcrTextBlock> RemoveIconIdeographNoise(List<OcrTextBlock> blocks)
+    {
+        var cleaned = new List<OcrTextBlock>(blocks.Count);
+        foreach (var block in blocks)
+        {
+            var text = StripLoneIdeographs(block.Text);
+            if (text.Length == 0)
+                continue; // the whole block was a single ideograph (an icon) -> drop it
+            cleaned.Add(text == block.Text ? block : block with { Text = text });
+        }
+
+        return cleaned;
+    }
+
+    // Strips a single isolated Han ideograph when it is clearly icon noise: either the block is
+    // exactly one ideograph, or one is glued to the start/end of a Latin word. The letter-adjacency
+    // guard preserves date glyphs like the 年/月/日 in "2026年5月8日" (those sit next to digits), and
+    // multi-ideograph runs (真實中文 such as 翻譯這個網頁 / 免費) are never single, so are kept.
+    internal static string StripLoneIdeographs(string text)
+    {
+        text = text.Trim();
+        if (text.Length == 0)
+            return text;
+
+        if (text.Length == 1 && IsHanIdeograph(text[0]))
+            return string.Empty;
+
+        if (text.Length >= 2 && IsHanIdeograph(text[0]) && !IsHanIdeograph(text[1]) && char.IsAsciiLetter(text[1]))
+            text = text[1..].TrimStart();
+
+        if (text.Length >= 2 && IsHanIdeograph(text[^1]) && !IsHanIdeograph(text[^2]) && char.IsAsciiLetter(text[^2]))
+            text = text[..^1].TrimEnd();
+
+        return text;
+    }
+
+    private static bool IsHanIdeograph(char c) =>
+        c is >= '一' and <= '鿿' || // CJK Unified Ideographs
+        c is >= '㐀' and <= '䶿' || // Extension A
+        c is >= '豈' and <= '﫿';   // Compatibility Ideographs
 
     private static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool isCjk)
     {

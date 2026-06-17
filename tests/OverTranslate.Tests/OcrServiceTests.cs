@@ -38,10 +38,30 @@ public class OcrServiceTests
     [Fact]
     public void OnnxEngine_UsesLanguageSpecificModels()
     {
-        Assert.Equal("en", OnnxOcrEngine.GetModelKeyForLanguage("EN"));
+        // EN routes to the PP-OCRv5 general ("cjk") model (handles embedded Chinese in English UI);
+        // the dedicated Latin model was removed.
+        Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("EN"));
         Assert.Equal("korean", OnnxOcrEngine.GetModelKeyForLanguage("KO"));
         Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("JA"));
         Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("ZH-HANT"));
+    }
+
+    [Theory]
+    // Whole-block lone ideographs are icon misreads on a Latin page -> dropped (empty).
+    [InlineData("白", "")]
+    [InlineData("品", "")]
+    // A lone ideograph glued to the start/end of a Latin word is icon noise -> stripped.
+    [InlineData("甲Glossaries", "Glossaries")]
+    [InlineData("业spoken terms", "spoken terms")]
+    // Real text must be preserved untouched:
+    [InlineData("2026年5月8日", "2026年5月8日")]   // date glyphs sit next to digits, not letters
+    [InlineData("翻譯這個網頁", "翻譯這個網頁")]     // multi-ideograph run = real Chinese
+    [InlineData("免費", "免費")]
+    [InlineData("Google Translate", "Google Translate")]
+    [InlineData("4.3 (82,985)·免費·參考資源", "4.3 (82,985)·免費·參考資源")]
+    public void StripLoneIdeographs_RemovesIconNoiseButKeepsRealText(string input, string expected)
+    {
+        Assert.Equal(expected, OnnxOcrEngine.StripLoneIdeographs(input));
     }
 
     [Theory]
