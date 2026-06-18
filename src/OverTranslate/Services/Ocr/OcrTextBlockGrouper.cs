@@ -30,17 +30,24 @@ internal static class OcrTextBlockGrouper
 
     private static List<OcrTextBlock> MergeSameLineFragments(IReadOnlyList<OcrTextBlock> blocks)
     {
-        var sorted = blocks
-            .OrderBy(block => block.Bounds.Y)
-            .ThenBy(block => block.Bounds.X)
+        // Process left-to-right and append each fragment to whichever open row it continues, rather
+        // than a global Y-then-X sort + "compare only with the previous" merge. Latin word boxes on
+        // one line have tops that vary with ascenders/descenders (e.g. "Send" y=32 vs "to" y=37), so
+        // a Y-primary sort interleaves words from across the line and the sequential merge then
+        // leaves a single line scattered into separately translated words. Sorting by X keeps a
+        // line's fragments in reading order; the vertical-overlap test in CanJoinSameLine routes
+        // each fragment to the correct row when several lines are present.
+        var ordered = blocks
+            .OrderBy(block => block.Bounds.X)
+            .ThenBy(block => block.Bounds.Y)
             .ToList();
         var merged = new List<OcrTextBlock>();
 
-        foreach (var block in sorted)
+        foreach (var block in ordered)
         {
-            var previous = merged.LastOrDefault();
-            if (previous is not null && CanJoinSameLine(previous, block))
-                merged[^1] = MergeSameLine(previous, block);
+            var targetIndex = FindSameLineTarget(merged, block);
+            if (targetIndex >= 0)
+                merged[targetIndex] = MergeSameLine(merged[targetIndex], block);
             else
                 merged.Add(block);
         }
@@ -48,19 +55,42 @@ internal static class OcrTextBlockGrouper
         return merged;
     }
 
+    // Among the open row-blocks, returns the one this fragment continues — the candidate to its left
+    // with the most vertical overlap (best row match), or -1 when none qualifies.
+    private static int FindSameLineTarget(List<OcrTextBlock> merged, OcrTextBlock block)
+    {
+        var bestIndex = -1;
+        var bestOverlap = double.NegativeInfinity;
+
+        for (var i = 0; i < merged.Count; i++)
+        {
+            var candidate = merged[i];
+            if (!CanJoinSameLine(candidate, block))
+                continue;
+
+            var overlap = Math.Min(candidate.Bounds.Bottom, block.Bounds.Bottom) -
+                          Math.Max(candidate.Bounds.Top, block.Bounds.Top);
+            if (overlap > bestOverlap)
+            {
+                bestOverlap = overlap;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
+    }
+
     private static bool CanJoinSameLine(OcrTextBlock previous, OcrTextBlock current)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
 
-        // The detector splits a spaced/large Latin line (e.g. a heading) into per-word boxes that
-        // must be re-merged here. Latin word boxes wrap the ink tightly, so their height AND
-        // vertical position swing with ascenders/descenders: a no-descender word ("Take",
-        // "Translate") yields a shorter box sitting cap→baseline, while a descender word ("your",
-        // "learning") yields a taller box sitting x-height→descender. The old 0.88 height ratio and
-        // 0.72 overlap thresholds rejected exactly these pairs, scattering one phrase into
-        // separately translated words. CJK is unaffected (uniform full-height glyph boxes), so the
-        // loosened bounds stay well clear of real CJK same-line cases. The horizontal-gap guard
-        // below remains the primary defence against merging unrelated neighbours.
+        // Vertical overlap — NOT height ratio — is what tells an in-line word from a distinct
+        // neighbour. A short mid-line word ("to" h=25 on a h=31 line → heightRatio 0.81) sits on the
+        // same baseline, so its box is fully nested in the line (overlap ≈ 1.0). Two stacked buttons
+        // ("Download…report" h=32 next to a vertically offset "Create key" h=38 → heightRatio 0.84)
+        // overlap only ≈ 0.47. Their height ratios are inverted (0.81 < 0.84), so any single height
+        // threshold either drops "to" or merges the buttons. Keep height tolerant and let the strict
+        // overlap test below do the discriminating.
         var heightRatio = Math.Min(previous.Bounds.Height, current.Bounds.Height) /
                           Math.Max(previous.Bounds.Height, current.Bounds.Height);
         if (heightRatio < 0.6)
@@ -72,7 +102,7 @@ internal static class OcrTextBlockGrouper
             Math.Max(previous.Bounds.Top, current.Bounds.Top));
         var verticalOverlapRate = verticalOverlap /
                                   Math.Max(1, Math.Min(previous.Bounds.Height, current.Bounds.Height));
-        if (verticalOverlapRate < 0.4)
+        if (verticalOverlapRate < 0.72)
             return false;
 
         // The gap can be negative: on large captures the detector's unclip expansion enlarges big

@@ -82,6 +82,32 @@ public class OcrTextBlockGrouperTests
     }
 
     [Fact]
+    public void MergesPerWordBoxesOnOneLineWhenBoxTopsVaryFromAscendersAndDescenders()
+    {
+        // Real geometry: a single line the detector split into per-word boxes whose tops vary
+        // (32..37) with ascenders/descenders. A Y-primary sort interleaves them, so the words must
+        // be re-merged by reading order into one line instead of separate translations.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Send", new Rect(0, 32, 132, 59)),
+            new("and", new Rect(1082, 34, 100, 59)),
+            new("terminal", new Rect(1475, 34, 246, 57)),
+            new("this", new Rect(150, 35, 134, 57)),
+            new("the", new Rect(632, 35, 101, 56)),
+            new("background", new Rect(753, 35, 309, 58)),
+            new("free", new Rect(1203, 35, 130, 58)),
+            new("the", new Rect(1353, 35, 101, 56)),
+            new("session", new Rect(302, 36, 221, 54)),
+            new("to", new Rect(539, 37, 72, 54)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Single(grouped);
+        Assert.Equal("Send this session to the background and free the terminal", grouped[0].Text);
+    }
+
+    [Fact]
     public void MergesHeadingWordBoxesThatOverlapHorizontallyFromUnclipExpansion()
     {
         // Real geometry from a large EN capture: the detector's unclip expansion enlarges the big
@@ -101,23 +127,39 @@ public class OcrTextBlockGrouperTests
     }
 
     [Fact]
-    public void MergesLatinWordBoxesWhenHeightsDifferFromAscendersAndDescenders()
+    public void MergesShortMidLineWordThatIsFullyNestedInTheLine()
     {
-        // The detector splits a spaced/large Latin line into per-word boxes whose heights and
-        // vertical positions swing with ascenders/descenders: "Take" (cap→baseline, shorter box)
-        // vs "learning" (ascender→descender, taller box) vs "with" (cap→baseline). These must
-        // still merge into one line instead of being translated word by word.
+        // Real geometry from a captured line: the short word "to" (h=25) is shorter than its
+        // neighbours (h=31) so heightRatio is only ~0.81, but it sits on the same baseline (fully
+        // nested, vertical overlap ~1.0) and must not be dropped out of the middle of the line.
         var blocks = new List<OcrTextBlock>
         {
-            new("Take", new Rect(10, 10, 70, 22)),
-            new("learning", new Rect(90, 10, 130, 30)),
-            new("with", new Rect(230, 10, 60, 22)),
+            new("session", new Rect(120, 8, 95, 31)),
+            new("to", new Rect(215, 11, 30, 25)),
+            new("the", new Rect(250, 8, 46, 31)),
         };
 
         var grouped = OcrTextBlockGrouper.Group(blocks);
 
         Assert.Single(grouped);
-        Assert.Equal("Take learning with", grouped[0].Text);
+        Assert.Equal("session to the", grouped[0].Text);
+    }
+
+    [Fact]
+    public void KeepsTwoDistinctSameRowButtonsSeparate()
+    {
+        // Real geometry: two distinct buttons on the same row — "Download key-level usage report"
+        // (h=32) and a shorter/taller, vertically offset "Create key" (h=38). heightRatio 0.84 and
+        // vertical overlap 0.47 must keep them apart; over-merging them was a regression.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Download key-level usage report", new Rect(1293, 321, 305, 32)),
+            new("Create key", new Rect(1632, 298, 112, 38)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
     }
 
     [Fact]
