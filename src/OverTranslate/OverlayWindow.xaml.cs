@@ -385,7 +385,13 @@ public partial class OverlayWindow : Window
                 var wrapMeasured = MeasureText(block.TranslatedText, typeface, fontSize, innerW);
                 actualBorderH = Math.Max(actualBorderH, wrapMeasured.Height + BubbleVerticalPadding);
                 if (maxWrapBorderHeight.HasValue)
-                    actualBorderH = Math.Min(actualBorderH, maxWrapBorderHeight.Value);
+                    // Cap growth so a longer translation does not spill over the block below — but
+                    // never below borderH (the source's own height). When the next block sits right
+                    // under a multi-line source, maxWrapBorderHeight is slightly shorter than the
+                    // source, and clamping to it left the last source line uncovered (original text
+                    // bleeding through). Covering one's own source wins over not touching a neighbour;
+                    // that neighbour's own opaque bubble covers it.
+                    actualBorderH = Math.Min(actualBorderH, Math.Max(maxWrapBorderHeight.Value, borderH));
             }
 
             var backgroundBorder = new Border
