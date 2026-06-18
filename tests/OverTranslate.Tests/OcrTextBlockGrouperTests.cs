@@ -82,6 +82,45 @@ public class OcrTextBlockGrouperTests
     }
 
     [Fact]
+    public void MergesHeadingWordBoxesThatOverlapHorizontallyFromUnclipExpansion()
+    {
+        // Real geometry from a large EN capture: the detector's unclip expansion enlarges the big
+        // heading word-boxes until they overlap horizontally ("Translate" right edge 533 vs
+        // "your website" left edge 515 → gap -18). They must still merge into one line instead of
+        // being translated separately as "翻譯" + "你的 網站".
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Translate", new Rect(136, 68, 397, 99)),
+            new("your website", new Rect(515, 71, 565, 102)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Single(grouped);
+        Assert.Equal("Translate your website", grouped[0].Text);
+    }
+
+    [Fact]
+    public void MergesLatinWordBoxesWhenHeightsDifferFromAscendersAndDescenders()
+    {
+        // The detector splits a spaced/large Latin line into per-word boxes whose heights and
+        // vertical positions swing with ascenders/descenders: "Take" (cap→baseline, shorter box)
+        // vs "learning" (ascender→descender, taller box) vs "with" (cap→baseline). These must
+        // still merge into one line instead of being translated word by word.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Take", new Rect(10, 10, 70, 22)),
+            new("learning", new Rect(90, 10, 130, 30)),
+            new("with", new Rect(230, 10, 60, 22)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Single(grouped);
+        Assert.Equal("Take learning with", grouped[0].Text);
+    }
+
+    [Fact]
     public void KeepsSeparatePhrasesOnTheSameLineWhenGapIsLarge()
     {
         var blocks = new List<OcrTextBlock>

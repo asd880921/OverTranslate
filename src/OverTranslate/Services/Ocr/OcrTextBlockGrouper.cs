@@ -51,9 +51,19 @@ internal static class OcrTextBlockGrouper
     private static bool CanJoinSameLine(OcrTextBlock previous, OcrTextBlock current)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
+
+        // The detector splits a spaced/large Latin line (e.g. a heading) into per-word boxes that
+        // must be re-merged here. Latin word boxes wrap the ink tightly, so their height AND
+        // vertical position swing with ascenders/descenders: a no-descender word ("Take",
+        // "Translate") yields a shorter box sitting cap→baseline, while a descender word ("your",
+        // "learning") yields a taller box sitting x-height→descender. The old 0.88 height ratio and
+        // 0.72 overlap thresholds rejected exactly these pairs, scattering one phrase into
+        // separately translated words. CJK is unaffected (uniform full-height glyph boxes), so the
+        // loosened bounds stay well clear of real CJK same-line cases. The horizontal-gap guard
+        // below remains the primary defence against merging unrelated neighbours.
         var heightRatio = Math.Min(previous.Bounds.Height, current.Bounds.Height) /
                           Math.Max(previous.Bounds.Height, current.Bounds.Height);
-        if (heightRatio < 0.88)
+        if (heightRatio < 0.6)
             return false;
 
         var verticalOverlap = Math.Max(
@@ -62,11 +72,16 @@ internal static class OcrTextBlockGrouper
             Math.Max(previous.Bounds.Top, current.Bounds.Top));
         var verticalOverlapRate = verticalOverlap /
                                   Math.Max(1, Math.Min(previous.Bounds.Height, current.Bounds.Height));
-        if (verticalOverlapRate < 0.72)
+        if (verticalOverlapRate < 0.4)
             return false;
 
+        // The gap can be negative: on large captures the detector's unclip expansion enlarges big
+        // heading word-boxes until adjacent ones overlap horizontally (e.g. "Translate" right=533
+        // vs "your website" left=515 → gap -18), which the old `>= 0` guard rejected, scattering
+        // one heading into word-by-word translations. Allow up to a line-height of overlap; the
+        // vertical-overlap and height-ratio checks above already keep stacked/unrelated lines out.
         var horizontalGap = current.Bounds.X - previous.Bounds.Right;
-        return horizontalGap >= 0 && horizontalGap <= Math.Max(avgHeight * 1.35, 18);
+        return horizontalGap >= -avgHeight && horizontalGap <= Math.Max(avgHeight * 1.35, 18);
     }
 
     private static OcrTextBlock MergeSameLine(OcrTextBlock previous, OcrTextBlock current)
