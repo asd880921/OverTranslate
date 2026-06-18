@@ -37,7 +37,7 @@
     <PackageReference Include="GTranslate" Version="2.3.1" />
     <PackageReference Include="NLog" Version="5.0.4" />
     <PackageReference Include="RapidOcrNet" Version="1.0.1" ExcludeAssets="build" />
-    <PackageReference Include="Velopack" Version="0.0.1298" />
+    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
 </Project>
