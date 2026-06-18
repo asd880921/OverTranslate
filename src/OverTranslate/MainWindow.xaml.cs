@@ -262,6 +262,9 @@ public partial class MainWindow : Window
                 return;
 
             var croppedBitmap = requestCaptureWindow.CroppedBitmap;
+            if (croppedBitmap is null)
+                return;
+
             var bmpData = croppedBitmap.LockBits(
                 new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height),
                 ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);

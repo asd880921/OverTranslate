@@ -7,8 +7,6 @@ public class GTranslateProvider : ITranslationProvider
 {
     private readonly ITranslator _translator;
     private readonly Dictionary<string, string> _targetOverrides;
-    private readonly GoogleTranslator _googleTranslator;
-    private readonly GoogleTranslator2 _googleTranslator2;
 
     public GTranslateProvider(ITranslator translator, Dictionary<string, string>? targetOverrides = null)
     {
