@@ -47,12 +47,12 @@
 
 | 服務 | 說明 |
 |------|------|
-| Google 翻譯（RPC） | (預設) 首選，穩定性佳 |
+| Google 翻譯（RPC） | (預設) 首選，速度與翻譯品質兼顧 |
 | Google 翻譯（Web） | 備援 |
-| Bing 翻譯 | 可選 |
-| Microsoft 翻譯 | 可選 |
+| Bing 翻譯 | 可選，翻譯品質最佳 |
+| Microsoft 翻譯 | 可選，回應速度較快 |
 | Yandex 翻譯 | 可選 |
-| DeepL | 外接翻譯平台 DeepL，需 API Key |
+| DeepL | 串接外部翻譯平台 DeepL，需提供 API Key |
 
 ## 文字轉語音（TTS）
 
