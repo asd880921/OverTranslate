@@ -60,11 +60,22 @@
                                Foreground="{DynamicResource AppAccent}"
                                VerticalAlignment="Center"/>
                 </Grid>
-                <TextBlock Text="建議下載並套用最新版本，以取得最新功能與問題修正。"
+                <TextBlock Text="點擊「立即更新」後將自動下載並套用，完成後自動重新啟動。"
                            FontFamily="{StaticResource AppFont}"
                            FontSize="12"
                            Foreground="{DynamicResource AppTextSecondary}"
                            TextWrapping="Wrap"/>
+                <TextBlock FontFamily="{StaticResource AppFont}"
+                           FontSize="12"
+                           Margin="0,8,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppTextSecondary}">
+                    想了解這次更新了什麼？<Hyperlink x:Name="ReleaseNotesLink"
+                              Foreground="{DynamicResource AppAccent}"
+                              TextDecorations="None"
+                              RequestNavigate="ReleaseNotesLink_RequestNavigate"
+                              NavigateUri="https://github.com/asd880921/OverTranslate/releases/latest">查看更新內容</Hyperlink>
+                </TextBlock>
             </StackPanel>
         </Border>
 
@@ -88,7 +99,7 @@
                                FontSize="13" Text="&#xE896;"
                                VerticalAlignment="Center"
                                Margin="0,0,6,0"/>
-                    <TextBlock x:Name="DownloadBtnText" Text="下載更新"
+                    <TextBlock x:Name="DownloadBtnText" Text="立即更新"
                                FontFamily="{StaticResource AppFont}"
                                VerticalAlignment="Center"/>
                 </StackPanel>

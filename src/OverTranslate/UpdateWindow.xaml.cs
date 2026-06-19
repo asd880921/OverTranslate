@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Navigation;
 using OverTranslate.Services;
 
 namespace OverTranslate;
@@ -24,14 +26,14 @@ public partial class UpdateWindow : Window
         {
             DismissBtn.IsEnabled = false;
             DownloadBtn.IsEnabled = false;
-            DownloadBtnText.Text = "下載中...";
+            DownloadBtnText.Text = "更新中...";
             await UpdateService.DownloadAndApplyAsync(_updateInfo);
         }
         catch (Exception ex)
         {
             DismissBtn.IsEnabled = true;
             DownloadBtn.IsEnabled = true;
-            DownloadBtnText.Text = "下載更新";
+            DownloadBtnText.Text = "立即更新";
             System.Windows.MessageBox.Show(
                 this,
                 $"下載更新失敗：{ex.Message}",
@@ -42,4 +44,10 @@ public partial class UpdateWindow : Window
     }
 
     private void DismissBtn_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void ReleaseNotesLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
+    }
 }
