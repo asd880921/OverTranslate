@@ -52,9 +52,25 @@
                 <ComboBox x:Name="ProviderBox"
                           Style="{StaticResource ToolbarComboBox}"
                           Width="150"
-                          
+
                           SelectedValuePath="Provider"
                           VerticalContentAlignment="Center"/>
+
+                <!-- Fallback badge: shown only when a backup engine actually served the batch -->
+                <Border x:Name="EngineBadge"
+                        Visibility="Collapsed"
+                        Background="#33F59E0B"
+                        BorderBrush="#F59E0B"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="6,1"
+                        Margin="6,0,0,0"
+                        VerticalAlignment="Center">
+                    <TextBlock x:Name="EngineBadgeText"
+                               Foreground="#F59E0B"
+                               FontSize="12"
+                               VerticalAlignment="Center"/>
+                </Border>
 
                 <Separator Style="{StaticResource VerticalSeparator}"/>
 

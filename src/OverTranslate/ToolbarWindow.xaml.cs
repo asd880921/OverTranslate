@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Interop;
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Services.Providers;
 
 namespace OverTranslate;
 
@@ -143,6 +144,7 @@ public partial class ToolbarWindow : Window
     public void SetBusy(bool busy)
     {
         _isBusy = busy;
+        if (busy) HideEngineBadge(); // stale badge shouldn't linger while the next batch runs
         TranslateBtn.IsEnabled = !busy;
         TranslateBtn.Content   = busy ? "翻譯中..." : (_hasTranslated ? "重新翻譯" : "翻譯");
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
@@ -154,6 +156,30 @@ public partial class ToolbarWindow : Window
         _hasTranslated = hasTranslated;
         if (!_isBusy)
             TranslateBtn.Content = hasTranslated ? "重新翻譯" : "翻譯";
+    }
+
+    /// <summary>
+    /// Shows a subtle amber badge naming the engine that actually served the batch — but only when a
+    /// backup engine was used (the user's chosen primary couldn't serve everything). Stays hidden on
+    /// normal runs and for providers without fallback (e.g. DeepL), so it never nags during use.
+    /// </summary>
+    public void SetEngineBadge(EngineUsage? usage)
+    {
+        if (usage is null || !usage.FallbackUsed)
+        {
+            HideEngineBadge();
+            return;
+        }
+
+        EngineBadgeText.Text  = $"⚡備援 {usage.BackupEngine}";
+        EngineBadge.ToolTip = $"「{usage.Primary}」未能完整翻譯，已由備援「{usage.BackupEngine}」進行部分翻譯。\n本次實際翻譯：{ usage.Summary}";
+        EngineBadge.Visibility = Visibility.Visible;
+    }
+
+    private void HideEngineBadge()
+    {
+        EngineBadge.Visibility = Visibility.Collapsed;
+        EngineBadge.ToolTip    = null;
     }
 
     public void SetToggleEnabled(bool enabled)
