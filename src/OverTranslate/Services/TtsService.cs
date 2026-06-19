@@ -16,9 +16,38 @@ public class TtsService : IDisposable
     private readonly YandexTranslator     _yandex    = new();
     private readonly MediaPlayer _player = new();
     private CancellationTokenSource? _cts;
+    private bool _active;
+
+    /// <summary>True while fetching audio or playing. Lets the UI toggle a play/stop button.</summary>
+    public bool IsActive => _active;
+
+    /// <summary>Raised (on the UI thread) whenever playback starts, ends, fails, or is stopped.</summary>
+    public event EventHandler? StateChanged;
+
+    public TtsService()
+    {
+        // Natural end / playback error must flip the button back to "play".
+        _player.MediaEnded  += (_, _) => SetActive(false);
+        _player.MediaFailed += (_, _) => SetActive(false);
+    }
+
+    private void SetActive(bool value)
+    {
+        if (_active == value) return;
+        _active = value;
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     private static readonly string TempFile =
         Path.Combine(Path.GetTempPath(), "overtranslate_tts.mp3");
+
+    /// <summary>Stops any in-flight fetch and playback.</summary>
+    public void Stop()
+    {
+        _cts?.Cancel();
+        System.Windows.Application.Current.Dispatcher.Invoke(() => { _player.Stop(); _player.Close(); });
+        SetActive(false);
+    }
 
     public async Task SpeakAsync(string text, string langCode)
     {
@@ -30,6 +59,7 @@ public class TtsService : IDisposable
         var token = _cts.Token;
 
         System.Windows.Application.Current.Dispatcher.Invoke(() => { _player.Stop(); _player.Close(); });
+        SetActive(true);
 
         var providers = BuildProviders(text, langCode);
         Exception? lastEx = null;
@@ -64,6 +94,8 @@ public class TtsService : IDisposable
             }
         }
 
+        // Every provider failed (and we weren't cancelled) — clear state so the button resets.
+        if (!token.IsCancellationRequested) SetActive(false);
         if (lastEx != null) throw lastEx;
     }
 
