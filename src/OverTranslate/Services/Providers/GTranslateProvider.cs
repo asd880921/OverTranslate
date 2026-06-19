@@ -16,6 +16,9 @@ public class GTranslateProvider : ITranslationProvider
 
     public bool RequiresApiKey => false;
 
+    // Friendly engine name (e.g. "GoogleTranslator2", "BingTranslator") for diagnostics/logging.
+    public string Name => _translator.Name;
+
     // Maps DeepL-style codes to BCP-47 codes used by GTranslate
     private static readonly Dictionary<string, string> ToGTranslate = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -47,30 +50,37 @@ public class GTranslateProvider : ITranslationProvider
     {
         if (blocks.Count == 0) return ([], "");
 
-        if (_targetOverrides.TryGetValue(targetLang, out var overrideLang))
-            targetLang = overrideLang;
-
-        var toCode   = MapToGTranslate(targetLang);
-        var fromCode = sourceLang == "auto" ? null : MapToGTranslate(sourceLang);
-
-        var tasks   = blocks.Select(b => _translator.TranslateAsync(b.Text, toCode, fromCode));
+        var tasks   = blocks.Select(b => TranslateOneAsync(b.Text, sourceLang, targetLang));
         var results = await Task.WhenAll(tasks);
 
         var langVotes  = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var translated = new List<TranslatedBlock>();
         for (int i = 0; i < blocks.Count; i++)
         {
-            var r       = results[i];
-            var detLang = r.SourceLanguage?.ISO6391 ?? "";
+            var (translation, detLang) = results[i];
             if (!string.IsNullOrEmpty(detLang))
-            {
-                var mapped = MapDetectedToDeepL(detLang);
-                langVotes[mapped] = langVotes.GetValueOrDefault(mapped) + 1;
-            }
-            translated.Add(new TranslatedBlock(blocks[i].Text, r.Translation, blocks[i].Bounds, blocks[i].Lines, blocks[i].SourceGlyphHeight));
+                langVotes[detLang] = langVotes.GetValueOrDefault(detLang) + 1;
+            translated.Add(new TranslatedBlock(blocks[i].Text, translation, blocks[i].Bounds, blocks[i].Lines, blocks[i].SourceGlyphHeight));
         }
 
         string detectedLang = langVotes.Count > 0 ? langVotes.MaxBy(kv => kv.Value).Key : "";
         return (translated, detectedLang);
+    }
+
+    // Translates a single text fragment. Detected language is returned as a DeepL-style code.
+    // Throws if the underlying free endpoint fails — the caller (ResilientProvider) decides on fallback.
+    public async Task<(string Translation, string DetectedLang)> TranslateOneAsync(
+        string text, string sourceLang, string targetLang)
+    {
+        if (_targetOverrides.TryGetValue(targetLang, out var overrideLang))
+            targetLang = overrideLang;
+
+        var toCode   = MapToGTranslate(targetLang);
+        var fromCode = sourceLang == "auto" ? null : MapToGTranslate(sourceLang);
+
+        var r       = await _translator.TranslateAsync(text, toCode, fromCode);
+        var detLang = r.SourceLanguage?.ISO6391 ?? "";
+        var mapped  = string.IsNullOrEmpty(detLang) ? "" : MapDetectedToDeepL(detLang);
+        return (r.Translation, mapped);
     }
 }
