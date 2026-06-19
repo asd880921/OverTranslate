@@ -83,8 +83,8 @@
                         <Button DockPanel.Dock="Right"
                                 x:Name="SrcTtsBtn"
                                 Content="🔊"
-                                FontSize="14"
-                                Style="{StaticResource ToolbarIconButton}"
+                                Width="34" Height="28" Padding="0"
+                                Style="{StaticResource FlatButton}"
                                 ToolTip="朗讀原文"
                                 Click="SrcTtsBtn_Click"/>
                         <TextBlock Text="原文"
@@ -113,6 +113,7 @@
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Border Grid.Row="0"
@@ -124,8 +125,8 @@
                         <Button DockPanel.Dock="Right"
                                 x:Name="TgtTtsBtn"
                                 Content="🔊"
-                                FontSize="14"
-                                Style="{StaticResource ToolbarIconButton}"
+                                Width="34" Height="28" Padding="0"
+                                Style="{StaticResource FlatButton}"
                                 ToolTip="朗讀譯文"
                                 Click="TgtTtsBtn_Click"/>
                         <TextBlock Text="譯文"
@@ -136,7 +137,18 @@
                                    VerticalAlignment="Center"/>
                     </DockPanel>
                 </Border>
-                <TextBox Grid.Row="1"
+
+                <!-- Indeterminate bar: visible only while an auto-translation is in flight -->
+                <ProgressBar Grid.Row="1"
+                             x:Name="TranslatingBar"
+                             Height="3"
+                             IsIndeterminate="True"
+                             Visibility="Collapsed"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             Foreground="{DynamicResource AppAccent}"/>
+
+                <TextBox Grid.Row="2"
                          x:Name="TranslatedTextBox"
                          Style="{StaticResource MultilineTextBox}"
                          IsReadOnly="True"
@@ -151,13 +163,16 @@
                 BorderThickness="0,1,0,0"
                 Padding="14,8">
             <DockPanel VerticalAlignment="Center">
-                <Button Content="翻譯"
-                        Style="{StaticResource AccentButton}"
-                        Height="32" Width="100"
+                <!-- Retry surfaces only when an auto-translate fails (no permanent translate button) -->
+                <Button x:Name="RetryBtn"
+                        Content="↻ 重試"
+                        Style="{StaticResource FlatButton}"
+                        Height="30" Padding="14,0"
                         DockPanel.Dock="Left"
-                        Click="TranslateBtn_Click"/>
+                        Visibility="Collapsed"
+                        Margin="0,0,12,0"
+                        Click="RetryBtn_Click"/>
                 <TextBlock x:Name="StatusText"
-                           Margin="12,0,0,0"
                            VerticalAlignment="Center"
                            FontFamily="Segoe UI Variable Text, Segoe UI, Sans-Serif"
                            FontSize="12"

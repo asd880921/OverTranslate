@@ -308,6 +308,7 @@ public partial class MainWindow : Window
             ShowOverlay(coloredTranslated, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(true);
             requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
+            requestToolbar?.SetEngineBadge(_translationService.LastEngineUsage);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("sequence contains no elements", StringComparison.OrdinalIgnoreCase))
         {
