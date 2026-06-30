@@ -12,6 +12,8 @@ public sealed record UpdateInfo(
 public static class UpdateService
 {
     private const string GitHubRepoUrl = "https://github.com/asd880921/OverTranslate";
+    private const string StableChannel = "win";
+    private const string BetaChannel = "beta";
 
     public static async Task<UpdateInfo?> CheckAsync()
     {
@@ -43,6 +45,15 @@ public static class UpdateService
         info.Manager.ApplyUpdatesAndRestart(info.VelopackInfo);
     }
 
-    private static UpdateManager CreateManager() =>
-        new(new GithubSource(GitHubRepoUrl, null, false));
+    private static UpdateManager CreateManager()
+    {
+        // 設 OVERTRANSLATE_CHANNEL=beta → 訂閱 beta 先行版管線；未設 → 穩定版 (win)。
+        var envChannel = Environment.GetEnvironmentVariable("OVERTRANSLATE_CHANNEL");
+        var isBeta = string.Equals(envChannel, BetaChannel, StringComparison.OrdinalIgnoreCase);
+        var channel = isBeta ? BetaChannel : StableChannel;
+
+        // beta 的 GitHub Release 會標記為 pre-release，需 prerelease:true 才找得到。
+        var source = new GithubSource(GitHubRepoUrl, null, prerelease: isBeta);
+        return new UpdateManager(source, new UpdateOptions { ExplicitChannel = channel });
+    }
 }

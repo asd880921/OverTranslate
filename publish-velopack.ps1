@@ -57,6 +57,15 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = Get-VersionFromCsproj -CsprojPath $ProjectPath
 }
 
+# Channel 與版號後綴防呆：beta 應帶預發行後綴（如 -beta.1），stable 不應帶。
+$isPrerelease = $Version -match '-'
+if ($Channel -ne 'win' -and -not $isPrerelease) {
+    Write-Warning "Channel='$Channel' 但版本 '$Version' 不含預發行後綴（如 1.6.1-beta.1）。確認這是你要的。"
+}
+if ($Channel -eq 'win' -and $isPrerelease) {
+    Write-Warning "穩定 channel 'win' 但版本 '$Version' 含預發行後綴。穩定版通常不應帶 -beta 後綴。"
+}
+
 $projectFullPath = Resolve-FullPath $ProjectPath
 $publishFullPath = Resolve-FullPath $PublishDir
 $outputFullPath = Resolve-FullPath $OutputDir
