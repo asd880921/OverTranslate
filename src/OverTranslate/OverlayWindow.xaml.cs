@@ -179,6 +179,41 @@ public partial class OverlayWindow : Window
 
     public void SetBubblesVisible(bool visible) => SetTranslationLayersVisible(visible);
 
+    // Renders the translation bubble layers cropped to the given selection region (physical pixels)
+    // as a transparent overlay image, for the "copy screenshot" feature. The loading indicator is
+    // never included: while processing the bubble canvases are cleared, so the guard below returns
+    // null and only the clean original is copied. Returns null when nothing is currently shown
+    // (pre-translation, processing, or toggled to original).
+    public System.Windows.Media.Imaging.BitmapSource? RenderBubblesForSelection(
+        double selPhysLeft, double selPhysTop, int selPhysWidth, int selPhysHeight)
+    {
+        if (!_isLoaded) return null;
+        if (BubbleBackgroundCanvas.Visibility != Visibility.Visible) return null;
+        if (BubbleBackgroundCanvas.Children.Count == 0 && BubbleTextCanvas.Children.Count == 0)
+            return null;
+
+        int fullW = Math.Max(1, (int)Math.Round(Width  * _dpiX));
+        int fullH = Math.Max(1, (int)Math.Round(Height * _dpiY));
+
+        // Render the whole overlay content (both bubble layers) at physical resolution. The
+        // processing indicator is Collapsed whenever bubbles exist, so it does not appear.
+        var full = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            fullW, fullH, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
+        full.Render((Visual)Content);
+
+        // The overlay window spans the whole virtual screen; the selection sits at this physical
+        // offset within it.
+        int cropX = Math.Clamp((int)Math.Round(selPhysLeft - Left * _dpiX), 0, fullW - 1);
+        int cropY = Math.Clamp((int)Math.Round(selPhysTop  - Top  * _dpiY), 0, fullH - 1);
+        int cropW = Math.Clamp(selPhysWidth,  1, fullW - cropX);
+        int cropH = Math.Clamp(selPhysHeight, 1, fullH - cropY);
+
+        var cropped = new System.Windows.Media.Imaging.CroppedBitmap(
+            full, new Int32Rect(cropX, cropY, cropW, cropH));
+        cropped.Freeze();
+        return cropped;
+    }
+
     private void BuildOverlay(
         List<TranslatedBlock> blocks,
         double selScreenX,

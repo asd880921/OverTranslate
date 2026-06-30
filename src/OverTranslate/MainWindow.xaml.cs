@@ -340,51 +340,53 @@ public partial class MainWindow : Window
         }
     }
 
+    // Builds the "copy screenshot" image by compositing what the user actually sees in the
+    // selection — WITHOUT OverTranslate's own editing chrome. The background is the clean original
+    // capture (so the selection border/handles are never included), and the translation bubbles
+    // (when present) are rendered on top. The loading indicator is excluded because the bubble
+    // layers are empty while processing, so RenderBubblesForSelection returns null then.
     private void OnCopyScreenshotRequested(object? sender, EventArgs e)
     {
         var selRect = new System.Windows.Rect(
             _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
         try
         {
-            int x = (int)Math.Round(_lastSelPhysLeft);
-            int y = (int)Math.Round(_lastSelPhysTop);
-            int w = Math.Max(1, (int)Math.Round(_lastSelPhysWidth));
-            int h = Math.Max(1, (int)Math.Round(_lastSelPhysHeight));
+            var background = _captureWindow?.CreateSelectionImage();
+            if (background is null)
+            {
+                ShowBalloon("複製失敗", "找不到框選影像，請重新框選。", selRect);
+                return;
+            }
 
-            using var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(bmp))
-                g.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(w, h), CopyPixelOperation.SourceCopy);
+            int w = background.PixelWidth;
+            int h = background.PixelHeight;
 
-            System.Windows.Clipboard.SetImage(BitmapToBitmapSource(bmp));
+            var bubbles = _overlayWindow?.RenderBubblesForSelection(
+                _lastSelPhysLeft, _lastSelPhysTop, w, h);
+
+            System.Windows.Media.Imaging.BitmapSource result = background;
+            if (bubbles is not null)
+            {
+                var dv = new System.Windows.Media.DrawingVisual();
+                using (var dc = dv.RenderOpen())
+                {
+                    var bounds = new System.Windows.Rect(0, 0, w, h);
+                    dc.DrawImage(background, bounds);
+                    dc.DrawImage(bubbles, bounds);
+                }
+                var composed = new System.Windows.Media.Imaging.RenderTargetBitmap(
+                    w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                composed.Render(dv);
+                composed.Freeze();
+                result = composed;
+            }
+
+            System.Windows.Clipboard.SetImage(result);
             ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect);
         }
         catch (Exception ex)
         {
             ShowBalloon("複製失敗", $"無法複製截圖：{ex.Message}", selRect);
-        }
-    }
-
-    private static System.Windows.Media.Imaging.BitmapSource BitmapToBitmapSource(Bitmap bmp)
-    {
-        var locked = bmp.LockBits(
-            new Rectangle(0, 0, bmp.Width, bmp.Height),
-            ImageLockMode.ReadOnly,
-            PixelFormat.Format32bppArgb);
-        try
-        {
-            var src = System.Windows.Media.Imaging.BitmapSource.Create(
-                bmp.Width, bmp.Height, 96, 96,
-                System.Windows.Media.PixelFormats.Bgra32,
-                null,
-                locked.Scan0,
-                Math.Abs(locked.Stride) * bmp.Height,
-                locked.Stride);
-            src.Freeze();
-            return src;
-        }
-        finally
-        {
-            bmp.UnlockBits(locked);
         }
     }
 

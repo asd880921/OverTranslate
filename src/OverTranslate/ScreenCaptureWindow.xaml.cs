@@ -169,6 +169,26 @@ public partial class ScreenCaptureWindow : Window
         return true;
     }
 
+    // Returns a clean crop of the ORIGINAL capture for the current selection, as a frozen
+    // BitmapSource. Unlike a live screen grab, this never contains the selection rectangle or
+    // resize handles (those are this window's chrome, not part of _screenshot). Returns null when
+    // there is no usable selection.
+    public BitmapSource? CreateSelectionImage()
+    {
+        if (!_hasSelection) return null;
+
+        int bmpX = Math.Clamp((int)(Selection.X - _physBounds.Left), 0, _screenshot.Width - 1);
+        int bmpY = Math.Clamp((int)(Selection.Y - _physBounds.Top),  0, _screenshot.Height - 1);
+        int bmpW = Math.Min(Math.Max(1, (int)Selection.Width),  _screenshot.Width  - bmpX);
+        int bmpH = Math.Min(Math.Max(1, (int)Selection.Height), _screenshot.Height - bmpY);
+        if (bmpW <= 0 || bmpH <= 0) return null;
+
+        using var crop = _screenshot.Clone(
+            new System.Drawing.Rectangle(bmpX, bmpY, bmpW, bmpH),
+            _screenshot.PixelFormat);
+        return BitmapToDisplaySource(crop);
+    }
+
     public void SwitchToBackgroundMode()
     {
         SelectionRect.Visibility    = Visibility.Collapsed;
