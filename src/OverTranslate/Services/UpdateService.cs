@@ -37,9 +37,9 @@ public static class UpdateService
         }
     }
 
-    public static async Task DownloadAndApplyAsync(UpdateInfo info)
+    public static async Task DownloadAndApplyAsync(UpdateInfo info, Action<int>? onProgress = null)
     {
-        await info.Manager.DownloadUpdatesAsync(info.VelopackInfo);
+        await info.Manager.DownloadUpdatesAsync(info.VelopackInfo, onProgress);
         info.Manager.ApplyUpdatesAndRestart(info.VelopackInfo);
     }
 
