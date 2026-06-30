@@ -10,6 +10,7 @@ public partial class ToolbarWindow : Window
 {
     public event EventHandler<TranslateRequest>? TranslateRequested;
     public event EventHandler? OpenWindowRequested;
+    public event EventHandler? CopyScreenshotRequested;
     public event EventHandler? CloseAllRequested;
     public event EventHandler<bool>? BubblesVisibilityChanged;
 
@@ -131,6 +132,9 @@ public partial class ToolbarWindow : Window
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
         => OpenWindowRequested?.Invoke(this, EventArgs.Empty);
+
+    private void CopyShotBtn_Click(object sender, RoutedEventArgs e)
+        => CopyScreenshotRequested?.Invoke(this, EventArgs.Empty);
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e)
         => CloseAllRequested?.Invoke(this, EventArgs.Empty);

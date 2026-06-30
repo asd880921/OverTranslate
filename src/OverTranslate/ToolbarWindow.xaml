@@ -89,6 +89,13 @@
                         Margin="0,0,4,0"
                         Click="ToggleBtn_Click"/>
 
+                <!-- Copy current selection screenshot to clipboard -->
+                <Button x:Name="CopyShotBtn"
+                        Content="截圖"
+                        Style="{StaticResource ToolbarFlatButton}"
+                        Margin="0,0,4,0"
+                        Click="CopyShotBtn_Click"/>
+
                 <!-- Open translation window -->
                 <Button x:Name="OpenWindowBtn"
                         Content="開啟翻譯視窗"

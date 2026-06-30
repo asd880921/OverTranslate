@@ -158,6 +158,7 @@ public partial class MainWindow : Window
         toolbar.Owner = captureWindow;
         toolbar.TranslateRequested      += OnTranslateRequested;
         toolbar.OpenWindowRequested     += OnOpenWindowRequested;
+        toolbar.CopyScreenshotRequested += OnCopyScreenshotRequested;
         toolbar.CloseAllRequested       += (_, _) => CloseAll();
         toolbar.BubblesVisibilityChanged += (_, visible) => _overlayWindow?.SetBubblesVisible(visible);
         _toolbarWindow = toolbar;
@@ -336,6 +337,54 @@ public partial class MainWindow : Window
                 _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
                 requestToolbar?.SetBusy(false);
             }
+        }
+    }
+
+    private void OnCopyScreenshotRequested(object? sender, EventArgs e)
+    {
+        var selRect = new System.Windows.Rect(
+            _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
+        try
+        {
+            int x = (int)Math.Round(_lastSelPhysLeft);
+            int y = (int)Math.Round(_lastSelPhysTop);
+            int w = Math.Max(1, (int)Math.Round(_lastSelPhysWidth));
+            int h = Math.Max(1, (int)Math.Round(_lastSelPhysHeight));
+
+            using var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bmp))
+                g.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(w, h), CopyPixelOperation.SourceCopy);
+
+            System.Windows.Clipboard.SetImage(BitmapToBitmapSource(bmp));
+            ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect);
+        }
+        catch (Exception ex)
+        {
+            ShowBalloon("複製失敗", $"無法複製截圖：{ex.Message}", selRect);
+        }
+    }
+
+    private static System.Windows.Media.Imaging.BitmapSource BitmapToBitmapSource(Bitmap bmp)
+    {
+        var locked = bmp.LockBits(
+            new Rectangle(0, 0, bmp.Width, bmp.Height),
+            ImageLockMode.ReadOnly,
+            PixelFormat.Format32bppArgb);
+        try
+        {
+            var src = System.Windows.Media.Imaging.BitmapSource.Create(
+                bmp.Width, bmp.Height, 96, 96,
+                System.Windows.Media.PixelFormats.Bgra32,
+                null,
+                locked.Scan0,
+                Math.Abs(locked.Stride) * bmp.Height,
+                locked.Stride);
+            src.Freeze();
+            return src;
+        }
+        finally
+        {
+            bmp.UnlockBits(locked);
         }
     }
 
