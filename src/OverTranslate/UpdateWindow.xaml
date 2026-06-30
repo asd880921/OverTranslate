@@ -67,13 +67,12 @@
                            Foreground="{DynamicResource AppTextSecondary}"
                            TextWrapping="Wrap"/>
                 <ProgressBar x:Name="DownloadProgress"
-                             Height="6"
+                             Style="{StaticResource SlimProgressBar}"
                              Minimum="0"
                              Maximum="100"
                              Value="0"
-                             Margin="0,12,0,0"
-                             Visibility="Collapsed"
-                             Foreground="{DynamicResource AppAccent}"/>
+                             Margin="0,14,0,0"
+                             Visibility="Collapsed"/>
                 <TextBlock FontFamily="{StaticResource AppFont}"
                            FontSize="12"
                            Margin="0,8,0,0"
