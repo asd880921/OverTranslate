@@ -4,7 +4,7 @@
         Title="發現新版本"
         Width="360"
         SizeToContent="Height"
-        ResizeMode="NoResize"
+        ResizeMode="CanMinimize"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         Topmost="True"
