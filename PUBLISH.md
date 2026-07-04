@@ -10,6 +10,13 @@
 
 兩條線的更新 feed 與 delta 鏈各自獨立，互不干擾。
 
+> (設置 / 移除) 環境變數指令 (Powershell)：  
+> ```powershell
+> [Environment]::SetEnvironmentVariable("OVERTRANSLATE_CHANNEL", "beta", "User")
+> ```
+> ```powershell
+> [Environment]::SetEnvironmentVariable("OVERTRANSLATE_CHANNEL", $null, "User")
+> ```
 ---
 
 ## 共通事項
