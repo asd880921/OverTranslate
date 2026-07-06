@@ -124,5 +124,5 @@
 ---
 
 ## 授權
-本專案採用 [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html) 授權，
+本專案採用 [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html) 授權，  
 允許個人與公司內部自由使用軟體，其餘詳細條款請參閱 LICENSE。
