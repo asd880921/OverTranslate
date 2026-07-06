@@ -50,3 +50,7 @@ Desktop.ini
 # User-specific settings
 *.rsuser
 launchSettings.json
+
+# publish
+PUBLISH.md
+publish-velopack.ps1
