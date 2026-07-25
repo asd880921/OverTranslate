@@ -23,8 +23,6 @@
   </p>
 </div>
 
----
-
 ## 這是什麼？
 
 **OverTranslate** 是一款專為 Windows 打造的即時螢幕翻譯工具。
