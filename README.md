@@ -1,15 +1,7 @@
 <div align="center">
   <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
-
   <h1>OverTranslate</h1>
-
   <p>框選畫面、OCR 辨識、譯文原位覆蓋的 Windows 螢幕即時翻譯工具</p>
-
-  <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
-      <strong>📥 點擊下載最新版 Windows 安裝檔</strong>
-    </a>
-  </p>
 
   <p>
     <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
