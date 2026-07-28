@@ -114,5 +114,7 @@
 ---
 
 ## 授權
-本專案採用 [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html) 授權，  
-允許個人與公司內部自由使用軟體，其餘詳細條款請參閱 LICENSE。
+
+本專案採用 [GNU General Public License v3.0 (GPL-3.0)](https://www.gnu.org/licenses/gpl-3.0.html) 授權。
+你可以自由使用、修改與散布本軟體，但若散布修改後的版本，必須依照 GPL-3.0 授權條款公開相應原始碼。
+詳細條款請參閱 LICENSE。
