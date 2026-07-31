@@ -13,6 +13,13 @@
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
     <img src="https://img.shields.io/badge/license-AGPL--3.0-22C55E?style=for-the-badge" alt="License AGPL-3.0" />
   </p>
+
+  <p>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
+      <strong>📥 點擊下載最新版 Windows 安裝檔</strong>
+    </a>
+  </p>
+
 </div>
 
 ## 這是什麼？
