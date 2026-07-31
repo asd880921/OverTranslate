@@ -51,7 +51,7 @@
 | 服務 | 說明 |
 |------|------|
 | Google 翻譯（RPC） | 預設，速度與翻譯品質兼顧 |
-| Google 翻譯（Web） | 傳統 API，回應快 |
+| Google 翻譯（Web） | 傳統 API，回應快 (相對較不穩定) |
 | Bing 翻譯 | 翻譯品質最佳 |
 | Microsoft 翻譯 | 回應速度較快 |
 | Yandex 翻譯 | 選用 |
