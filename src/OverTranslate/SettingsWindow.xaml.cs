@@ -68,6 +68,8 @@ public partial class SettingsWindow : Window
 
         StartupCheckBox.IsChecked = StartupService.IsEnabled;
 
+        AutoTranslateCheckBox.IsChecked = s.AutoTranslateAfterSelection;
+
         SaveScreenshotCheckBox.IsChecked = s.SaveScreenshotToDisk;
         ScreenshotPathBox.Text = ScreenshotSaveService.ResolveDirectory(s.ScreenshotSavePath);
 
@@ -212,6 +214,7 @@ public partial class SettingsWindow : Window
         s.SourceLanguage   = LanguageData.GetValidOcrSourceCode(SourceLangBox.SelectedValue as string);
         s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Google2;
         s.ApiKey           = ApiKeyBox.Text.Trim();
+        s.AutoTranslateAfterSelection = AutoTranslateCheckBox.IsChecked == true;
         s.SaveScreenshotToDisk = SaveScreenshotCheckBox.IsChecked == true;
         // Store "" when the folder matches the default, so the setting follows the system
         // Pictures folder instead of freezing today's expanded path.
