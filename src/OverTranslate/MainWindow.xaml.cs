@@ -382,7 +382,24 @@ public partial class MainWindow : Window
             }
 
             System.Windows.Clipboard.SetImage(result);
-            ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect);
+
+            var settings = SettingsService.Instance.Current;
+            if (!settings.SaveScreenshotToDisk)
+            {
+                ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect);
+                return;
+            }
+
+            // Saving is a bonus on top of the copy — a failed write must not read as a failed copy.
+            try
+            {
+                var savedPath = ScreenshotSaveService.Save(result, settings.ScreenshotSavePath);
+                ShowBalloon("已複製", $"已複製到剪貼簿，並儲存至：\n{savedPath}", selRect);
+            }
+            catch (Exception ex)
+            {
+                ShowBalloon("已複製（儲存失敗）", $"已複製到剪貼簿，但無法儲存到本機：{ex.Message}", selRect);
+            }
         }
         catch (Exception ex)
         {
