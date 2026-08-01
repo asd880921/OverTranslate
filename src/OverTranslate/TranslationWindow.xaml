@@ -172,8 +172,11 @@
                         Visibility="Collapsed"
                         Margin="0,0,12,0"
                         Click="RetryBtn_Click"/>
+                <!-- Wraps so a long engine error keeps its second line inside the window
+                     instead of being clipped at the right edge. -->
                 <TextBlock x:Name="StatusText"
                            VerticalAlignment="Center"
+                           TextWrapping="Wrap"
                            FontFamily="Segoe UI Variable Text, Segoe UI, Sans-Serif"
                            FontSize="12"
                            Foreground="{DynamicResource AppTextSecondary}"/>

@@ -61,6 +61,13 @@ public static class LanguageData
         new(TranslationProvider.DeepL,   "DeepL 翻譯", true, "需 API Key，可於 DeepL 官方申請（目前有提供免費方案，請至官網申請）"),
     ];
 
+    /// <summary>
+    /// Display name of a provider as shown in the selectors, for use in user-facing messages.
+    /// Falls back to the enum name so a newly added provider never shows an empty label.
+    /// </summary>
+    public static string GetProviderDisplay(TranslationProvider provider) =>
+        Providers.FirstOrDefault(p => p.Provider == provider)?.Display ?? provider.ToString();
+
     public static readonly List<LangItem> TargetLanguages =
     [
         new("ZH-HANT", "繁體中文 Traditional Chinese"),
