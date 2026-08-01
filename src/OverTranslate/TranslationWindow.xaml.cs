@@ -175,7 +175,16 @@ public partial class TranslationWindow : Window
         {
             if (seq != _seq) return;
             SetTranslating(false);
-            SetStatus($"翻譯失敗：{ex.Message}", isError: true);
+
+            // This window sends to the chosen engine only (resilient: false), so any failure lands
+            // here verbatim — and the free endpoints throw whatever their internals produce (e.g.
+            // GTranslate surfacing a raw System.Text.Json parse error when Google's undocumented
+            // RPC endpoint answers with something that isn't JSON). Catch everything and lead with
+            // a line that says what the user can actually do; keep the original text underneath
+            // so the cause is still reportable.
+            SetStatus(
+                $"{LanguageData.GetProviderDisplay(provider)} 目前無法使用，請改用其他翻譯來源。\n翻譯失敗：{ex.Message}",
+                isError: true);
             ShowRetry(true);
         }
     }

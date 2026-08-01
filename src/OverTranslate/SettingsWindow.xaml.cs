@@ -212,7 +212,7 @@ public partial class SettingsWindow : Window
         s.HotkeyVirtualKey = _pendingVKey;
         s.HotkeyDisplay    = HotkeyBox.Text;
         s.SourceLanguage   = LanguageData.GetValidOcrSourceCode(SourceLangBox.SelectedValue as string);
-        s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Google2;
+        s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Microsoft;
         s.ApiKey           = ApiKeyBox.Text.Trim();
         s.AutoTranslateAfterSelection = AutoTranslateCheckBox.IsChecked == true;
         s.SaveScreenshotToDisk = SaveScreenshotCheckBox.IsChecked == true;
