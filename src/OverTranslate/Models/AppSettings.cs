@@ -15,6 +15,7 @@ public class AppSettings
     public TranslationProvider Provider { get; set; } = TranslationProvider.Google2;
     public string ApiKey { get; set; } = "";
     public string Theme { get; set; } = "Dark";
+    public bool AutoTranslateAfterSelection { get; set; } = false;
     public bool SaveScreenshotToDisk { get; set; } = false;
     /// <summary>Empty means "use ScreenshotSaveService.DefaultDirectory" (圖片\OverTranslate).</summary>
     public string ScreenshotSavePath { get; set; } = "";

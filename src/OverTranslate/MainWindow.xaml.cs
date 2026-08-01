@@ -130,6 +130,13 @@ public partial class MainWindow : Window
             var settings      = SettingsService.Instance.Current;
             var selection     = captureWindow.Selection;
             EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage, hasTranslated: false);
+
+            // Fire in the same pass that built the overlay, before it paints: the toolbar's first
+            // frame already reads "翻譯中..." and the overlay's first frame already shows "辨識中".
+            // Deferring this to a later dispatcher pass only adds a visible gap where the toolbar
+            // sits idle after the selection is done.
+            if (settings.AutoTranslateAfterSelection)
+                _toolbarWindow?.RequestTranslate();
         });
     }
 
