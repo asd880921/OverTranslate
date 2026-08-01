@@ -128,7 +128,18 @@ public partial class ToolbarWindow : Window
     }
 
     private void TranslateBtn_Click(object sender, RoutedEventArgs e)
-        => TranslateRequested?.Invoke(this, new TranslateRequest(CurrentSourceLang, CurrentTargetLang));
+        => RequestTranslate();
+
+    /// <summary>
+    /// Fires the same request the 翻譯 button does, so auto-translate goes through the identical
+    /// path (current selector values, busy state, re-translate labelling). Ignored while a batch
+    /// is already running.
+    /// </summary>
+    public void RequestTranslate()
+    {
+        if (_isBusy) return;
+        TranslateRequested?.Invoke(this, new TranslateRequest(CurrentSourceLang, CurrentTargetLang));
+    }
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
         => OpenWindowRequested?.Invoke(this, EventArgs.Empty);

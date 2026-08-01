@@ -68,7 +68,50 @@ public partial class SettingsWindow : Window
 
         StartupCheckBox.IsChecked = StartupService.IsEnabled;
 
+        AutoTranslateCheckBox.IsChecked = s.AutoTranslateAfterSelection;
+
+        SaveScreenshotCheckBox.IsChecked = s.SaveScreenshotToDisk;
+        ScreenshotPathBox.Text = ScreenshotSaveService.ResolveDirectory(s.ScreenshotSavePath);
+
         UpdateApiKeyVisibility();
+        UpdateScreenshotPathVisibility();
+    }
+
+    private void UpdateScreenshotPathVisibility()
+    {
+        ScreenshotPathRow.Visibility = SaveScreenshotCheckBox.IsChecked == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void SaveScreenshotCheckBox_Toggled(object sender, RoutedEventArgs e)
+        => UpdateScreenshotPathVisibility();
+
+    private void ScreenshotPathBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // The box is read-only and acts as a button: clicking anywhere in it opens the folder picker.
+        e.Handled = true;
+
+        var dialog = new OpenFolderDialog
+        {
+            Title = "選擇截圖儲存資料夾",
+            InitialDirectory = ScreenshotPathBox.Text
+        };
+        if (dialog.ShowDialog(this) == true)
+            ScreenshotPathBox.Text = dialog.FolderName;
+    }
+
+    private void OpenScreenshotFolderBtn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            ScreenshotSaveService.OpenFolder(ScreenshotPathBox.Text);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text       = $"✗ 無法開啟資料夾：{ex.Message}";
+            StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AppError");
+        }
     }
 
     private void UpdateApiKeyVisibility()
@@ -171,6 +214,15 @@ public partial class SettingsWindow : Window
         s.SourceLanguage   = LanguageData.GetValidOcrSourceCode(SourceLangBox.SelectedValue as string);
         s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Google2;
         s.ApiKey           = ApiKeyBox.Text.Trim();
+        s.AutoTranslateAfterSelection = AutoTranslateCheckBox.IsChecked == true;
+        s.SaveScreenshotToDisk = SaveScreenshotCheckBox.IsChecked == true;
+        // Store "" when the folder matches the default, so the setting follows the system
+        // Pictures folder instead of freezing today's expanded path.
+        var chosenPath = ScreenshotPathBox.Text.Trim();
+        s.ScreenshotSavePath = string.Equals(
+            chosenPath, ScreenshotSaveService.DefaultDirectory, StringComparison.OrdinalIgnoreCase)
+            ? ""
+            : chosenPath;
 
         SettingsService.Instance.Save();
         StartupService.Set(StartupCheckBox.IsChecked == true);
