@@ -141,6 +141,9 @@ public partial class MainWindow : Window
                 _escapeHook = GlobalEscapeHook.Install(CloseAll);
 
                 captureWindow.Show();
+                // Belt-and-braces: the hook above already makes Esc work without focus, but the
+                // capture window should still be the one receiving keys and clicks.
+                captureWindow.Activate();
 
                 bool selected = await captureWindow.WaitForSelectionAsync();
                 if (!selected || !captureWindow.HasSelection)

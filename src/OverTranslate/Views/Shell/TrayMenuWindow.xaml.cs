@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using OverTranslate.Services;
 
 namespace OverTranslate.Views.Shell;
@@ -65,8 +66,15 @@ public partial class TrayMenuWindow : Window
 
     private void CaptureBtn_Click(object sender, RoutedEventArgs e)
     {
-        CaptureRequested?.Invoke(this, EventArgs.Empty);
+        // Close this menu first, then let it actually leave the screen before the capture runs.
+        // CaptureRequested grabs the screen synchronously, so firing it inline would freeze this
+        // menu into the screenshot and make the brand-new capture window fight this window's
+        // teardown for the foreground — a fight it loses, which used to leave Esc dead until a
+        // selection had been drawn.
         Dismiss();
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            () => CaptureRequested?.Invoke(this, EventArgs.Empty));
     }
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
