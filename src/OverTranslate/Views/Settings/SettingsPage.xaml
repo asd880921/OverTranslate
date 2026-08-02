@@ -12,7 +12,7 @@
         <!-- ── Page header ── -->
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <TextBlock Text="設定" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="快捷鍵、翻譯服務、截圖與外觀"
+            <TextBlock Text="管理快捷鍵、翻譯服務、截圖與外觀"
                        Style="{StaticResource PageSubtitle}"/>
         </StackPanel>
 

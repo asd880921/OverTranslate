@@ -13,7 +13,7 @@
         <!-- ── Page header ── -->
         <StackPanel Grid.Row="0">
             <TextBlock Text="文字翻譯" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="貼上或輸入文字即時翻譯，截圖翻譯的結果也會送到這裡"
+            <TextBlock Text="輸入或貼上文字即可翻譯，截圖結果也會送到這裡"
                        Style="{StaticResource PageSubtitle}"/>
         </StackPanel>
 
