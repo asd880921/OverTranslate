@@ -30,29 +30,9 @@ public partial class OverlayWindow : Window
     [DllImport("user32.dll")]
     private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
-
-    [DllImport("user32.dll")]
-    private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GetModuleHandle(string? lpModuleName);
-
-    private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
-
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TRANSPARENT = 0x20;
     private const int WS_EX_LAYERED = 0x80000;
-    private const int WH_KEYBOARD_LL = 13;
-    private const int WM_KEYDOWN = 0x0100;
-    private const int VK_ESCAPE = 0x1B;
-
-    private LowLevelKeyboardProc? _keyboardProc;
-    private IntPtr _hookId = IntPtr.Zero;
 
     private double _dpiX = 1.0;
     private double _dpiY = 1.0;
@@ -114,8 +94,6 @@ public partial class OverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         int style = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_LAYERED);
-
-        InstallKeyboardHook();
     }
 
     // Shows a centered status card and clears old bubbles so the indicator is unobstructed.
@@ -659,51 +637,7 @@ public partial class OverlayWindow : Window
         return formattedText;
     }
 
-    private void InstallKeyboardHook()
-    {
-        _keyboardProc = HookCallback;
-        using var process = System.Diagnostics.Process.GetCurrentProcess();
-        using var module = process.MainModule!;
-        _hookId = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, GetModuleHandle(module.ModuleName), 0);
-    }
-
-    private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
-    {
-        if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
-        {
-            int vkCode = Marshal.ReadInt32(lParam);
-            if (vkCode == VK_ESCAPE)
-            {
-                // Post instead of Invoke: a low-level hook callback that blocks longer than
-                // LowLevelHooksTimeout (5s by default) gets silently removed from the hook chain by
-                // Windows, after which Esc stops working entirely and the overlay can no longer be
-                // dismissed. Dispatcher.Invoke would block here whenever the UI thread is busy
-                // (OCR, translation, a modal error), so never wait on it from inside the hook.
-                Dispatcher.BeginInvoke(CloseOverlay);
-                return (IntPtr)1;
-            }
-        }
-        return CallNextHookEx(_hookId, nCode, wParam, lParam);
-    }
-
-    public void CloseOverlay()
-    {
-        UninstallKeyboardHook();
-        Close();
-    }
-
-    private void UninstallKeyboardHook()
-    {
-        if (_hookId != IntPtr.Zero)
-        {
-            UnhookWindowsHookEx(_hookId);
-            _hookId = IntPtr.Zero;
-        }
-    }
-
-    protected override void OnClosed(EventArgs e)
-    {
-        UninstallKeyboardHook();
-        base.OnClosed(e);
-    }
+    // Esc is handled by the session-wide GlobalEscapeHook, not here — the overlay only exists
+    // once a selection has been drawn, so hosting the hook would leave Esc dead until then.
+    public void CloseOverlay() => Close();
 }

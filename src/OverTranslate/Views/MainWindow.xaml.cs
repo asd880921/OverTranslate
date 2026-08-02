@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
+    private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
     private readonly OcrService _ocrService = new();
     private readonly TranslationService _translationService = new();
@@ -133,11 +134,20 @@ public partial class MainWindow : Window
                 Log.Debug("Capture session starting, bounds={Bounds}", screenBounds);
                 var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
                 _captureWindow = captureWindow;
+
+                // Installed for the whole session, before anything is shown, so Esc cancels
+                // identically before and after a selection is drawn and regardless of who owns the
+                // keyboard focus.
+                _escapeHook = GlobalEscapeHook.Install(CloseAll);
+
                 captureWindow.Show();
 
                 bool selected = await captureWindow.WaitForSelectionAsync();
                 if (!selected || !captureWindow.HasSelection)
                 {
+                    // Also reached when the capture window cancelled itself (its own Esc fallback),
+                    // which never goes through CloseAll — so the hook is released here too.
+                    DisposeEscapeHook();
                     captureWindow.Close();
                     _captureWindow = null;
                     screenshot.Dispose();
@@ -225,6 +235,7 @@ public partial class MainWindow : Window
         _overlayClosedHandler = (_, _) =>
         {
             _selectionSessionId++;
+            DisposeEscapeHook();
             CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
             _toolbarWindow = null;
             CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
@@ -478,6 +489,8 @@ public partial class MainWindow : Window
         Log.Debug("Tearing down capture session (overlay={Overlay}, toolbar={Toolbar}, capture={Capture})",
             _overlayWindow != null, _toolbarWindow != null, _captureWindow != null);
         _selectionSessionId++;
+        DisposeEscapeHook();
+
         // Detach handler before closing so we drive the teardown order ourselves
         if (_overlayWindow != null && _overlayClosedHandler != null)
             _overlayWindow.Closed -= _overlayClosedHandler;
@@ -494,6 +507,13 @@ public partial class MainWindow : Window
 
         CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
         _captureWindow = null;
+    }
+
+    // The hook is process-wide and swallows Esc, so it must never outlive the session that owns it.
+    private void DisposeEscapeHook()
+    {
+        _escapeHook?.Dispose();
+        _escapeHook = null;
     }
 
     private static void CloseWindow<T>(T? window, Action<T> close, string name) where T : Window
