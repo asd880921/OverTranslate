@@ -25,6 +25,8 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     private static readonly TimeSpan IdleReleaseDelay = TimeSpan.FromMinutes(1);
 
     private readonly object _sync = new();
+    // Admits one inference at a time; see RecognizeAsync for why.
+    private readonly SemaphoreSlim _inferenceGate = new(1, 1);
     private readonly System.Threading.Timer _idleReleaseTimer;
     private RapidOcrRuntime? _current;
     private string? _currentModelKey;
@@ -40,56 +42,82 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     public OnnxOcrEngine() =>
         _idleReleaseTimer = new System.Threading.Timer(_ => ReleaseIdleRuntime());
 
-    public Task<List<OcrTextBlock>> RecognizeAsync(Bitmap bitmap, string sourceLanguage)
+    public Task<List<OcrTextBlock>> RecognizeAsync(
+        Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
     {
         if (!OcrLanguageRouter.IsSupported(sourceLanguage))
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
 
-        return Task.Run(() =>
+        return Task.Run(async () =>
         {
-            var normalizedLanguage = OcrLanguageRouter.Normalize(sourceLanguage);
-            var isCjk = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
-
-            // Select the runtime and register an in-use reference atomically under _sync, so the
-            // idle timer cannot dispose it between selection and Detect. The matching release
-            // (which also re-arms the idle countdown) runs in the finally, under _sync.
-            var runtime = AcquireRuntime(normalizedLanguage);
+            // One inference at a time. Overlapping captures (frame it wrong, Esc, frame again) used
+            // to run concurrently, and since each inference already uses ThreadCount threads they
+            // split the CPU between themselves: measured on real usage, four concurrent recognitions
+            // stretched a ~2s job to ~6s — and every one of those results was discarded anyway.
+            // Serialising keeps a single capture exactly as fast as it was while stopping abandoned
+            // work from starving the one the user is actually waiting for.
+            await _inferenceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                Log.Debug(
-                    "Running ONNX OCR on {W}x{H} bitmap, lang={Lang}, model={Model}, threads={Threads}",
-                    bitmap.Width,
-                    bitmap.Height,
-                    normalizedLanguage,
-                    runtime.ModelName,
-                    ThreadCount);
+                // Checked after the gate, not before: by the time an abandoned request reaches the
+                // front of the queue its session is usually long gone, and bailing out here costs
+                // nothing at all. Inference itself cannot be interrupted, so this is the last point
+                // where giving up is still free.
+                cancellationToken.ThrowIfCancellationRequested();
 
-                using var skBitmap = ConvertToSkBitmap(bitmap);
-                var result = runtime.Engine.Detect(skBitmap, CreateOptions());
-                var converted = ConvertBlocks(result.TextBlocks);
-
-                // On a non-CJK (Latin) page the shared general model occasionally misreads icons
-                // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
-                if (!isCjk)
-                    converted = RemoveIconIdeographNoise(converted);
-
-                var blocks = NormalizeBlocks(converted, isCjk);
-
-                Log.Debug(
-                    "ONNX OCR lang={Lang} rawBlocks={RawBlocks} blocks={Blocks} strLen={StrLen}",
-                    normalizedLanguage,
-                    result.TextBlocks.Length,
-                    blocks.Count,
-                    result.StrRes?.Length ?? 0);
-
-                LogBlocks(normalizedLanguage, blocks);
-                return blocks;
+                return RecognizeCore(bitmap, sourceLanguage);
             }
             finally
             {
-                ReleaseRuntime();
+                _inferenceGate.Release();
             }
-        });
+        }, cancellationToken);
+    }
+
+    private List<OcrTextBlock> RecognizeCore(Bitmap bitmap, string sourceLanguage)
+    {
+        var normalizedLanguage = OcrLanguageRouter.Normalize(sourceLanguage);
+        var isCjk = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
+
+        // Select the runtime and register an in-use reference atomically under _sync, so the
+        // idle timer cannot dispose it between selection and Detect. The matching release
+        // (which also re-arms the idle countdown) runs in the finally, under _sync.
+        var runtime = AcquireRuntime(normalizedLanguage);
+        try
+        {
+            Log.Debug(
+                "Running ONNX OCR on {W}x{H} bitmap, lang={Lang}, model={Model}, threads={Threads}",
+                bitmap.Width,
+                bitmap.Height,
+                normalizedLanguage,
+                runtime.ModelName,
+                ThreadCount);
+
+            using var skBitmap = ConvertToSkBitmap(bitmap);
+            var result = runtime.Engine.Detect(skBitmap, CreateOptions());
+            var converted = ConvertBlocks(result.TextBlocks);
+
+            // On a non-CJK (Latin) page the shared general model occasionally misreads icons
+            // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
+            if (!isCjk)
+                converted = RemoveIconIdeographNoise(converted);
+
+            var blocks = NormalizeBlocks(converted, isCjk);
+
+            Log.Debug(
+                "ONNX OCR lang={Lang} rawBlocks={RawBlocks} blocks={Blocks} strLen={StrLen}",
+                normalizedLanguage,
+                result.TextBlocks.Length,
+                blocks.Count,
+                result.StrRes?.Length ?? 0);
+
+            LogBlocks(normalizedLanguage, blocks);
+            return blocks;
+        }
+        finally
+        {
+            ReleaseRuntime();
+        }
     }
 
     internal static string GetModelKeyForLanguage(string language) =>
@@ -374,6 +402,9 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             _current = null;
             _currentModelKey = null;
         }
+
+        // Outside _sync: a waiter released by disposal must not need the lock we are holding.
+        _inferenceGate.Dispose();
     }
 
     private sealed record RapidOcrRuntime(string ModelName, RapidOcr Engine) : IDisposable

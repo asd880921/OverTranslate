@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
     private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
+    private CancellationTokenSource? _sessionCts; // cancelled on teardown so abandoned work stops
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
     private readonly OcrService _ocrService = new();
     private readonly TranslationService _translationService = new();
@@ -146,12 +147,16 @@ public partial class MainWindow : Window
                 DisposeEscapeHook();
                 _escapeHook = GlobalEscapeHook.Install(CloseAll);
 
+                CancelSession();
+                _sessionCts = new CancellationTokenSource();
+
                 bool selected = await captureWindow.WaitForSelectionAsync();
                 if (!selected || !captureWindow.HasSelection)
                 {
                     // Also reached when the capture window cancelled itself (its own Esc fallback),
-                    // which never goes through CloseAll — so the hook is released here too.
+                    // which never goes through CloseAll — so the session is torn down here too.
                     DisposeEscapeHook();
+                    CancelSession();
                     captureWindow.Close();
                     _captureWindow = null;
                     screenshot.Dispose();
@@ -240,6 +245,7 @@ public partial class MainWindow : Window
         {
             _selectionSessionId++;
             DisposeEscapeHook();
+            CancelSession();
             CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
             _toolbarWindow = null;
             CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
@@ -255,6 +261,9 @@ public partial class MainWindow : Window
         var requestToolbar = sender as ToolbarWindow;
         var requestCaptureWindow = _captureWindow;
         var requestSessionId = _selectionSessionId;
+        // Captured now: _sessionCts is replaced by the next capture, and this request must keep
+        // observing the token belonging to the session it was started for.
+        var cancellationToken = _sessionCts?.Token ?? CancellationToken.None;
         var settings = SettingsService.Instance.Current;
         var selRect  = requestCaptureWindow?.Selection
             ?? new System.Windows.Rect(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
@@ -296,7 +305,7 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 "辨識中");
 
-            var recognizedBlocks = await _ocrService.RecognizeAsync(workBitmap, req.SourceLang);
+            var recognizedBlocks = await _ocrService.RecognizeAsync(workBitmap, req.SourceLang, cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -365,6 +374,12 @@ public partial class MainWindow : Window
             requestToolbar?.SetTranslationState(true);
             requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
             requestToolbar?.SetEngineBadge(_translationService.LastEngineUsage);
+        }
+        // The session was torn down (Esc, re-capture, toolbar close) while this was in flight.
+        // Expected and user-initiated — it must stay completely silent, with no error toast.
+        catch (OperationCanceledException)
+        {
+            Log.Debug("Translate request abandoned — capture session ended");
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("sequence contains no elements", StringComparison.OrdinalIgnoreCase))
         {
@@ -494,6 +509,7 @@ public partial class MainWindow : Window
             _overlayWindow != null, _toolbarWindow != null, _captureWindow != null);
         _selectionSessionId++;
         DisposeEscapeHook();
+        CancelSession();
 
         // Detach handler before closing so we drive the teardown order ourselves
         if (_overlayWindow != null && _overlayClosedHandler != null)
@@ -518,6 +534,15 @@ public partial class MainWindow : Window
     {
         _escapeHook?.Dispose();
         _escapeHook = null;
+    }
+
+    // Signals recognition/translation started by this session to stop. The source is not disposed
+    // here: work already in flight still holds the token, and disposing it underneath them would
+    // throw. Letting it be collected is the safe trade for an object this small.
+    private void CancelSession()
+    {
+        _sessionCts?.Cancel();
+        _sessionCts = null;
     }
 
     private static void CloseWindow<T>(T? window, Action<T> close, string name) where T : Window

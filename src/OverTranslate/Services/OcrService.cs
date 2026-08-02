@@ -20,10 +20,12 @@ public class OcrService : IDisposable
 {
     private readonly OnnxOcrEngine _engine = new();
 
-    public Task<List<OcrTextBlock>> RecognizeAsync(Bitmap bitmap, string sourceLanguage)
+    public Task<List<OcrTextBlock>> RecognizeAsync(
+        Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
     {
         if (OcrLanguageRouter.IsSupported(sourceLanguage))
-            return RecognizeAndGroupAsync(_engine, bitmap, OcrLanguageRouter.Normalize(sourceLanguage));
+            return RecognizeAndGroupAsync(
+                _engine, bitmap, OcrLanguageRouter.Normalize(sourceLanguage), cancellationToken);
 
         throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
     }
@@ -36,9 +38,10 @@ public class OcrService : IDisposable
     private static async Task<List<OcrTextBlock>> RecognizeAndGroupAsync(
         IOcrEngine engine,
         Bitmap bitmap,
-        string sourceLanguage)
+        string sourceLanguage,
+        CancellationToken cancellationToken)
     {
-        var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage);
+        var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage, cancellationToken);
         return OcrTextBlockGrouper.Group(blocks);
     }
 }
