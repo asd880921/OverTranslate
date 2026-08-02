@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
+using NLog;
 using OverTranslate.Services;
 using OverTranslate.Views.Capture;
 using OverTranslate.Views.Overlay;
@@ -15,6 +16,8 @@ namespace OverTranslate.Views;
 
 public partial class MainWindow : Window
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
     private NotifyIcon? _notifyIcon;
     private TrayMenuWindow? _trayMenu;
     private GlobalHotkey? _hotkey;
@@ -117,8 +120,13 @@ public partial class MainWindow : Window
                 using var g = Graphics.FromImage(screenshot);
                 g.CopyFromScreen(left, top, 0, 0, screenBounds.Size, CopyPixelOperation.SourceCopy);
             }
-            catch { return; }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Screen capture failed — aborting selection");
+                return;
+            }
 
+            Log.Debug("Capture session starting, bounds={Bounds}", screenBounds);
             var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
             _captureWindow = captureWindow;
             captureWindow.Show();
@@ -331,6 +339,7 @@ public partial class MainWindow : Window
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("sequence contains no elements", StringComparison.OrdinalIgnoreCase))
         {
+            Log.Debug(ex, "OCR produced no text blocks");
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -339,6 +348,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Translate request failed (src={Src}, tgt={Tgt}, selection={Sel})",
+                req.SourceLang, req.TargetLang, selRect);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -421,11 +432,13 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
+                Log.Warn(ex, "Screenshot copied to clipboard but saving to disk failed");
                 ShowBalloon("已複製（儲存失敗）", $"已複製到剪貼簿，但無法儲存到本機：{ex.Message}", selRect);
             }
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Copy screenshot failed");
             ShowBalloon("複製失敗", $"無法複製截圖：{ex.Message}", selRect);
         }
     }
@@ -448,6 +461,8 @@ public partial class MainWindow : Window
 
     private void CloseAll()
     {
+        Log.Debug("Tearing down capture session (overlay={Overlay}, toolbar={Toolbar}, capture={Capture})",
+            _overlayWindow != null, _toolbarWindow != null, _captureWindow != null);
         _selectionSessionId++;
         // Detach handler before closing so we drive the teardown order ourselves
         if (_overlayWindow != null && _overlayClosedHandler != null)
