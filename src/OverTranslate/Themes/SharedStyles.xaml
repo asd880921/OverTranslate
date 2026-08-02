@@ -618,4 +618,193 @@
         </Setter>
     </Style>
 
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  SCROLLBAR (Win11-style auto-expand)        -->
+    <!--  Implicit style: applies to every scrolling -->
+    <!--  surface (translation panes, combo popups). -->
+    <!--  Outer width stays 12 in both states so the -->
+    <!--  expansion never reflows the text beside it -->
+    <!-- ═══════════════════════════════════════════ -->
+
+    <!-- Click-on-track paging areas; invisible but hit-testable -->
+    <Style x:Key="ScrollBarPageButton" TargetType="RepeatButton">
+        <Setter Property="Focusable"  Value="False"/>
+        <Setter Property="IsTabStop"  Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ScrollBarThumb" TargetType="Thumb">
+        <Setter Property="Focusable"  Value="False"/>
+        <Setter Property="IsTabStop"  Value="False"/>
+        <Setter Property="Background" Value="{DynamicResource AppScrollThumb}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <!-- CornerRadius 4 pills the thumb at both 3px and 8px widths -->
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="4"
+                            SnapsToDevicePixels="True"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppScrollThumbHover}"/>
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppScrollThumbPressed}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <ControlTemplate x:Key="VerticalScrollBarTemplate" TargetType="ScrollBar">
+        <Grid Background="Transparent">
+            <Border x:Name="TrackBg"
+                    Background="{DynamicResource AppScrollTrack}"
+                    CornerRadius="6"
+                    Margin="1,0"
+                    Opacity="0"/>
+            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageUpCommand"
+                                  Style="{StaticResource ScrollBarPageButton}"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb x:Name="ScrollThumb"
+                           Style="{StaticResource ScrollBarThumb}"
+                           Width="3" MinHeight="28"
+                           HorizontalAlignment="Center"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageDownCommand"
+                                  Style="{StaticResource ScrollBarPageButton}"/>
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <!-- Bound to the ScrollViewer, not the ScrollBar: the bar expands as soon as
+                 the pointer enters the scrolling area, so it is already grabbable -->
+            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
+                         Value="True">
+                <DataTrigger.EnterActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="ScrollThumb"
+                                             Storyboard.TargetProperty="Width"
+                                             To="8" Duration="0:0:0.13">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetName="TrackBg"
+                                             Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.13"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </DataTrigger.EnterActions>
+                <DataTrigger.ExitActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="ScrollThumb"
+                                             Storyboard.TargetProperty="Width"
+                                             To="3" Duration="0:0:0.13">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetName="TrackBg"
+                                             Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.13"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </DataTrigger.ExitActions>
+            </DataTrigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <ControlTemplate x:Key="HorizontalScrollBarTemplate" TargetType="ScrollBar">
+        <Grid Background="Transparent">
+            <Border x:Name="TrackBg"
+                    Background="{DynamicResource AppScrollTrack}"
+                    CornerRadius="6"
+                    Margin="0,1"
+                    Opacity="0"/>
+            <Track x:Name="PART_Track">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageLeftCommand"
+                                  Style="{StaticResource ScrollBarPageButton}"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb x:Name="ScrollThumb"
+                           Style="{StaticResource ScrollBarThumb}"
+                           Height="3" MinWidth="28"
+                           VerticalAlignment="Center"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageRightCommand"
+                                  Style="{StaticResource ScrollBarPageButton}"/>
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
+                         Value="True">
+                <DataTrigger.EnterActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="ScrollThumb"
+                                             Storyboard.TargetProperty="Height"
+                                             To="8" Duration="0:0:0.13">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetName="TrackBg"
+                                             Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.13"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </DataTrigger.EnterActions>
+                <DataTrigger.ExitActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="ScrollThumb"
+                                             Storyboard.TargetProperty="Height"
+                                             To="3" Duration="0:0:0.13">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetName="TrackBg"
+                                             Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.13"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </DataTrigger.ExitActions>
+            </DataTrigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background"  Value="Transparent"/>
+        <Setter Property="Width"       Value="12"/>
+        <Setter Property="MinWidth"    Value="12"/>
+        <Setter Property="Template"    Value="{StaticResource VerticalScrollBarTemplate}"/>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width"     Value="Auto"/>
+                <Setter Property="MinWidth"  Value="0"/>
+                <Setter Property="Height"    Value="12"/>
+                <Setter Property="MinHeight" Value="12"/>
+                <Setter Property="Template"  Value="{StaticResource HorizontalScrollBarTemplate}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
 </ResourceDictionary>
