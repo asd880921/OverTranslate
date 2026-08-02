@@ -88,27 +88,13 @@ public partial class App
             while (_activateEvent!.WaitOne())
             {
                 if (Dispatcher.HasShutdownStarted) break;
-                Dispatcher.Invoke(ShowOrActivateTranslationWindow);
+                Dispatcher.Invoke(ShowOrActivateShell);
             }
         }
         catch { /* event disposed on exit — normal shutdown */ }
     }
 
-    internal void ShowOrActivateTranslationWindow()
-    {
-        var existing = Windows.OfType<TranslationWindow>().FirstOrDefault();
-        if (existing != null)
-        {
-            if (existing.WindowState == WindowState.Minimized)
-                existing.WindowState = WindowState.Normal;
-            existing.Activate();
-            return;
-        }
-        var settings = SettingsService.Instance.Current;
-        var win = new TranslationWindow("", "", settings.SourceLanguage, settings.TargetLanguage);
-        win.Show();
-        win.Activate();
-    }
+    internal static void ShowOrActivateShell() => ShellWindow.ShowOrActivate(ShellPage.Translation);
 
     protected override void OnExit(ExitEventArgs e)
     {

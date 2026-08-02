@@ -1,46 +1,27 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
-using Microsoft.Win32;
 using OverTranslate.Views;
+using Microsoft.Win32;
+// UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
+using UserControl = System.Windows.Controls.UserControl;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace OverTranslate.Views.Settings;
 
-public partial class SettingsWindow : Window
+public partial class SettingsPage : UserControl
 {
-    private static SettingsWindow? _instance;
-
-    public static void ShowOrActivate(Window? owner = null)
-    {
-        if (_instance != null)
-        {
-            if (owner != null && !ReferenceEquals(_instance.Owner, owner))
-                _instance.Owner = owner;
-            if (_instance.WindowState == WindowState.Minimized)
-                _instance.WindowState = WindowState.Normal;
-            _instance.Activate();
-            return;
-        }
-        _instance = new SettingsWindow();
-        if (owner != null)
-            _instance.Owner = owner;
-        _instance.Show();
-        _instance.Dispatcher.BeginInvoke(() => _instance.Activate(), DispatcherPriority.ApplicationIdle);
-    }
-
     private bool _isRecording;
     private uint _pendingModifiers;
     private uint _pendingVKey;
     private bool _themeRadioInit;
 
-    public SettingsWindow()
+    public SettingsPage()
     {
         InitializeComponent();
-        Icon = AppIconService.CreateWindowIcon();
         LoadSettings();
-        Closed += (_, _) => _instance = null;
     }
 
     private void LoadSettings()
@@ -98,7 +79,7 @@ public partial class SettingsWindow : Window
             Title = "選擇截圖儲存資料夾",
             InitialDirectory = ScreenshotPathBox.Text
         };
-        if (dialog.ShowDialog(this) == true)
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
             ScreenshotPathBox.Text = dialog.FolderName;
     }
 
@@ -124,7 +105,7 @@ public partial class SettingsWindow : Window
         ApiKeyBox.Visibility   = vis;
     }
 
-    private void ProviderBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         UpdateApiKeyVisibility();
         ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
@@ -176,7 +157,7 @@ public partial class SettingsWindow : Window
         RecordBtn.Content = "錄製";
     }
 
-    private void HotkeyBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    private void HotkeyBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (!_isRecording) return;
         e.Handled = true;

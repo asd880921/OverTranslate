@@ -1,13 +1,16 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using NLog;
 using OverTranslate.Models;
 using OverTranslate.Services;
-using OverTranslate.Views.Settings;
+// UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
+using UserControl = System.Windows.Controls.UserControl;
+using Button = System.Windows.Controls.Button;
 
 namespace OverTranslate.Views.Translation;
 
-public partial class TranslationWindow : Window
+public partial class TranslationPage : UserControl
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
     private readonly TranslationService _translationService = new();
@@ -25,20 +28,19 @@ public partial class TranslationWindow : Window
     private (string Text, string Src, string Tgt, TranslationProvider Provider)? _lastDone;
 
     // The TTS button currently driving playback (so a second click stops instead of replaying).
-    private System.Windows.Controls.Button? _ttsActiveBtn;
+    private Button? _ttsActiveBtn;
 
-    public TranslationWindow(string sourceText, string translatedText, string sourceLang, string targetLang)
+    public TranslationPage()
     {
         InitializeComponent();
-        Icon = AppIconService.CreateWindowIcon();
 
         _debounce = new DispatcherTimer { Interval = DebounceDelay };
         _debounce.Tick += (_, _) => { _debounce.Stop(); _ = TranslateNowAsync(); };
 
+        var settings = SettingsService.Instance.Current;
+
         _suppressAuto = true;
-        InitializeSelectors(sourceLang, targetLang);
-        SourceTextBox.Text     = sourceText;
-        TranslatedTextBox.Text = translatedText;
+        InitializeSelectors(settings.SourceLanguage, settings.TargetLanguage);
         _suppressAuto = false;
 
         _tts.StateChanged += OnTtsStateChanged;
@@ -50,22 +52,22 @@ public partial class TranslationWindow : Window
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
     }
 
-    private void SourceTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    private void SourceTextBox_TextChanged(object sender, TextChangedEventArgs e)
         => RequestTranslate();
 
-    private void SrcLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void SrcLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         SaveCurrentLanguageSelection();
         RequestTranslate();
     }
 
-    private void TgtLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void TgtLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         SaveCurrentLanguageSelection();
         RequestTranslate();
     }
 
-    private void ProviderBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ProviderBox.SelectedValue is not TranslationProvider provider) return;
         SaveProviderSelection(provider);
@@ -93,8 +95,6 @@ public partial class TranslationWindow : Window
         }
         _debounce.Start();
     }
-
-    private void SettingsBtn_Click(object sender, RoutedEventArgs e) => SettingsWindow.ShowOrActivate(this);
 
     private void SwapBtn_Click(object sender, RoutedEventArgs e)
     {
@@ -134,7 +134,7 @@ public partial class TranslationWindow : Window
 
     /// <summary>
     /// Translates the current source text with the chosen engine only (no hedge/fallback, per the
-    /// manual window's design): a timeout/failure shows an error + retry rather than switching engines.
+    /// manual page's design): a timeout/failure shows an error + retry rather than switching engines.
     /// Guarded by a sequence id so a stale result never overwrites a newer one.
     /// </summary>
     private async Task TranslateNowAsync()
@@ -163,7 +163,7 @@ public partial class TranslationWindow : Window
 
         try
         {
-            var block = new OcrTextBlock(text, new System.Windows.Rect());
+            var block = new OcrTextBlock(text, new Rect());
             var (results, _) = await _translationService.TranslateAsync([block], srcLang, tgtLang, apiKey, resilient: false);
             if (seq != _seq) return;    // a newer request superseded this one — let it own the UI
 
@@ -177,7 +177,7 @@ public partial class TranslationWindow : Window
             if (seq != _seq) return;
             SetTranslating(false);
 
-            // This window sends to the chosen engine only (resilient: false), so any failure lands
+            // This page sends to the chosen engine only (resilient: false), so any failure lands
             // here verbatim — and the free endpoints throw whatever their internals produce (e.g.
             // GTranslate surfacing a raw System.Text.Json parse error when Google's undocumented
             // RPC endpoint answers with something that isn't JSON). Catch everything and lead with
@@ -211,7 +211,7 @@ public partial class TranslationWindow : Window
                                 LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string));
 
     // Click the same button while it's speaking → stop. Click the other → switch playback to it.
-    private async Task ToggleTtsAsync(System.Windows.Controls.Button btn, string text, string lang)
+    private async Task ToggleTtsAsync(Button btn, string text, string lang)
     {
         if (_tts.IsActive && _ttsActiveBtn == btn) { _tts.Stop(); return; }
         if (string.IsNullOrWhiteSpace(text)) return;
@@ -259,11 +259,11 @@ public partial class TranslationWindow : Window
     private void ShowRetry(bool visible)
         => RetryBtn.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
-    protected override void OnClosed(EventArgs e)
+    /// <summary>Releases the debounce timer and TTS playback when the shell window is destroyed.</summary>
+    public void Teardown()
     {
         _debounce.Stop();
         _tts.Dispose();
-        base.OnClosed(e);
     }
 
     private void SetStatus(string text, bool isError)

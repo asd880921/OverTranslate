@@ -5,9 +5,9 @@ namespace OverTranslate.Views.Shell;
 
 public partial class TrayMenuWindow : Window
 {
+    public event EventHandler? CaptureRequested;
     public event EventHandler? OpenTranslationRequested;
     public event EventHandler? OpenSettingsRequested;
-    public event EventHandler? OpenAboutRequested;
     public event EventHandler? ExitRequested;
 
     private readonly System.Drawing.Point _cursorPhys;
@@ -58,6 +58,12 @@ public partial class TrayMenuWindow : Window
         Close();
     }
 
+    private void CaptureBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CaptureRequested?.Invoke(this, EventArgs.Empty);
+        Dismiss();
+    }
+
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
     {
         OpenTranslationRequested?.Invoke(this, EventArgs.Empty);
@@ -67,12 +73,6 @@ public partial class TrayMenuWindow : Window
     private void SettingsBtn_Click(object sender, RoutedEventArgs e)
     {
         OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
-        Dismiss();
-    }
-
-    private void AboutBtn_Click(object sender, RoutedEventArgs e)
-    {
-        OpenAboutRequested?.Invoke(this, EventArgs.Empty);
         Dismiss();
     }
 

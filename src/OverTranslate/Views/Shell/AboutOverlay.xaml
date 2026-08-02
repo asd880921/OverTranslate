@@ -1,0 +1,104 @@
+<UserControl x:Class="OverTranslate.Views.Shell.AboutOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed"
+             Focusable="True">
+
+    <!-- Scrim: swallows clicks so the page underneath stays inert, and dismisses on click -->
+    <Grid x:Name="Scrim"
+          Background="#8C000000"
+          MouseLeftButtonDown="Scrim_MouseLeftButtonDown">
+
+        <Border x:Name="Card"
+                Width="400"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                CornerRadius="12"
+                Background="{DynamicResource AppCardBg}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1"
+                RenderTransformOrigin="0.5,0.5"
+                MouseLeftButtonDown="Card_MouseLeftButtonDown">
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+            </Border.RenderTransform>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.3" Color="#000000"/>
+            </Border.Effect>
+
+            <Grid Margin="24,20,24,24">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Close button floats over the title block's top-right corner -->
+                <Button Grid.Row="0"
+                        Style="{StaticResource OverlayCloseButton}"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,-4,-8,0"
+                        ToolTip="關閉"
+                        Click="CloseBtn_Click"/>
+
+                <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="24,4,24,18">
+                    <TextBlock Text="OverTranslate"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="22"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource AppTextPrimary}"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="VersionText"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="13"
+                               Foreground="{DynamicResource AppTextSecondary}"
+                               HorizontalAlignment="Center"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <Rectangle Grid.Row="1" Height="1" Fill="{DynamicResource AppSeparator}"/>
+
+                <StackPanel Grid.Row="2" Margin="0,16,0,16">
+                    <Grid Margin="0,0,0,12">
+                        <TextBlock Text="作者"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   HorizontalAlignment="Left"/>
+                        <TextBlock Text="Hon.Lu (asd880921)"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppTextPrimary}"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <Button Style="{StaticResource FlatButton}"
+                            Height="34"
+                            HorizontalAlignment="Stretch"
+                            Click="GitHubBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Text="&#xE774;"
+                                       Width="22" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource AppTextSecondary}"/>
+                            <TextBlock Text="在 GitHub 上查看原始碼"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource AppFont}"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <TextBlock Grid.Row="3"
+                           Text="按下快捷鍵、框選任意畫面區域，翻譯結果直接浮現在原位。支援多種翻譯引擎與內建 OCR，適用於遊戲介面、PDF、影片字幕等任何無法選取的文字。"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppTextSecondary}"
+                           TextWrapping="Wrap"
+                           LineHeight="18"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

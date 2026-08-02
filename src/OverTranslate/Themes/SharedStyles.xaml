@@ -619,6 +619,138 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->
+    <!--  PAGE HEADER (shell content pages)          -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="PageTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"   Value="26"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+    </Style>
+
+    <Style x:Key="PageSubtitle" TargetType="TextBlock">
+        <Setter Property="FontFamily"   Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"     Value="13"/>
+        <Setter Property="Foreground"   Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="Margin"       Value="0,4,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  SIDEBAR NAV                                -->
+    <!--  Selected state lives on RadioButton's      -->
+    <!--  IsChecked, so grouping is free. Icon and   -->
+    <!--  label inherit Foreground so one trigger    -->
+    <!--  recolours both.                            -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="NavItem" TargetType="RadioButton">
+        <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"    Value="{StaticResource AppFontSize}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Background"  Value="Transparent"/>
+        <Setter Property="Cursor"      Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Margin="8,2"
+                            Padding="12,0"
+                            Height="40">
+                        <ContentPresenter VerticalAlignment="Center"
+                                          HorizontalAlignment="Left"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentSubtle}"/>
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource AppAccent}"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Same visuals, no selected state — for actions that open a dialog
+         rather than switching pages (關於) -->
+    <Style x:Key="NavActionItem" TargetType="Button">
+        <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"    Value="{StaticResource AppFontSize}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="Background"  Value="Transparent"/>
+        <Setter Property="Cursor"      Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Margin="8,2"
+                            Padding="12,0"
+                            Height="36">
+                        <ContentPresenter VerticalAlignment="Center"
+                                          HorizontalAlignment="Left"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonPressedBg}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Circular close button for the modal overlay -->
+    <Style x:Key="OverlayCloseButton" TargetType="Button">
+        <Setter Property="FontFamily"  Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize"    Value="11"/>
+        <Setter Property="Foreground"  Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="Background"  Value="{DynamicResource AppButtonBg}"/>
+        <Setter Property="Width"       Value="30"/>
+        <Setter Property="Height"      Value="30"/>
+        <Setter Property="Cursor"      Value="Hand"/>
+        <Setter Property="Content"     Value="&#xE711;"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="15">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonPressedBg}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
     <!--  SCROLLBAR (Win11-style auto-expand)        -->
     <!--  Implicit style: applies to every scrolling -->
     <!--  surface (translation panes, combo popups). -->

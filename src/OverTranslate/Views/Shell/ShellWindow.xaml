@@ -1,0 +1,114 @@
+<Window x:Class="OverTranslate.Views.Shell.ShellWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:OverTranslate.Views.Shell"
+        Title="OverTranslate"
+        Width="1000" Height="640"
+        MinWidth="780" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True"
+        Background="{DynamicResource AppWindowBg}">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="208"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ══════════ Sidebar ══════════ -->
+        <Border Grid.Column="0"
+                Background="{DynamicResource AppHeaderBg}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="0,0,1,0">
+            <DockPanel>
+
+                <!-- Brand -->
+                <StackPanel DockPanel.Dock="Top"
+                            Orientation="Horizontal"
+                            Margin="18,18,16,20">
+                    <Image x:Name="BrandIcon" Width="30" Height="30"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="OverTranslate"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppTextPrimary}"/>
+                        <TextBlock x:Name="VersionText"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource AppTextMuted}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- 關於 opens a modal overlay rather than switching pages, so it sits
+                     apart from the nav list and never takes the selected state -->
+                <Button x:Name="AboutBtn"
+                        DockPanel.Dock="Bottom"
+                        Style="{StaticResource NavActionItem}"
+                        Margin="8,0,8,12"
+                        Click="AboutBtn_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14" Text="&#xE946;"
+                                   Width="24" VerticalAlignment="Center"/>
+                        <TextBlock Text="關於" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Nav list + sliding selection indicator -->
+                <Grid VerticalAlignment="Top">
+                    <Border x:Name="NavIndicator"
+                            Width="3" Height="18"
+                            CornerRadius="1.5"
+                            Background="{DynamicResource AppAccent}"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Margin="4,0,0,0">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="NavIndicatorTransform"/>
+                        </Border.RenderTransform>
+                    </Border>
+
+                    <StackPanel x:Name="NavPanel">
+                        <RadioButton x:Name="TranslationNav"
+                                     Style="{StaticResource NavItem}"
+                                     GroupName="ShellNav"
+                                     Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="15" Text="&#xE8C1;"
+                                           Width="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="文字翻譯" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton x:Name="SettingsNav"
+                                     Style="{StaticResource NavItem}"
+                                     GroupName="ShellNav"
+                                     Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="15" Text="&#xE713;"
+                                           Width="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="設定" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <!-- ══════════ Content ══════════ -->
+        <ContentControl Grid.Column="1"
+                        x:Name="ContentHost"
+                        RenderTransformOrigin="0.5,0.5">
+            <ContentControl.RenderTransform>
+                <TranslateTransform x:Name="ContentTransform"/>
+            </ContentControl.RenderTransform>
+        </ContentControl>
+
+        <!-- ══════════ About modal ══════════ -->
+        <shell:AboutOverlay Grid.ColumnSpan="2" x:Name="About"/>
+    </Grid>
+</Window>

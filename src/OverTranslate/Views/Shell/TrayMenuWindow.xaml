@@ -59,6 +59,21 @@
 
             <StackPanel Width="196">
 
+                <!-- 截圖翻譯 — the app's primary action, same as pressing the hotkey -->
+                <Button x:Name="CaptureBtn"
+                        Style="{StaticResource TrayMenuItem}"
+                        Click="CaptureBtn_Click">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14" Text="&#xE123;"
+                                   Width="22" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppTextSecondary}"/>
+                        <TextBlock Text="截圖翻譯" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Rectangle Height="1" Margin="8,3" Fill="{DynamicResource AppSeparator}"/>
+
                 <!-- 開啟翻譯視窗 -->
                 <Button x:Name="OpenWindowBtn"
                         Style="{StaticResource TrayMenuItem}"
@@ -82,19 +97,6 @@
                                    Width="22" VerticalAlignment="Center"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
                         <TextBlock Text="設定" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-
-                <!-- 關於 -->
-                <Button x:Name="AboutBtn"
-                        Style="{StaticResource TrayMenuItem}"
-                        Click="AboutBtn_Click">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                   FontSize="14" Text="&#xE946;"
-                                   Width="22" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource AppTextSecondary}"/>
-                        <TextBlock Text="關於" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 

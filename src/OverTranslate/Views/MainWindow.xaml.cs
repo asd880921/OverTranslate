@@ -426,22 +426,8 @@ public partial class MainWindow : Window
         var srcLang = _toolbarWindow?.CurrentSourceLang ?? SettingsService.Instance.Current.SourceLanguage;
         var tgtLang = _toolbarWindow?.CurrentTargetLang ?? SettingsService.Instance.Current.TargetLanguage;
 
-        var existing = System.Windows.Application.Current.Windows
-            .OfType<TranslationWindow>().FirstOrDefault();
-
-        if (existing != null)
-        {
-            if (existing.WindowState == WindowState.Minimized)
-                existing.WindowState = WindowState.Normal;
-            existing.SetContent(srcText, tgtText, srcLang, tgtLang);
-            existing.Activate();
-        }
-        else
-        {
-            var win = new TranslationWindow(srcText, tgtText, srcLang, tgtLang);
-            win.Show();
-            win.Activate();
-        }
+        var shell = ShellWindow.ShowOrActivate(ShellPage.Translation);
+        shell.TranslationPage.SetContent(srcText, tgtText, srcLang, tgtLang);
 
         CloseAll(); // close overlay, dim background, and toolbar
     }
@@ -470,25 +456,22 @@ public partial class MainWindow : Window
         ReferenceEquals(toolbar, _toolbarWindow) &&
         ReferenceEquals(captureWindow, _captureWindow);
 
-    private static TranslationWindow? GetTranslationWindow() =>
-        System.Windows.Application.Current.Windows.OfType<TranslationWindow>().FirstOrDefault();
-
-    private static void OpenSettings() => SettingsWindow.ShowOrActivate(GetTranslationWindow());
+    private static void OpenSettings() => ShellWindow.ShowOrActivate(ShellPage.Settings);
 
     private void ShowTrayMenu()
     {
         if (_trayMenu != null) return;
         _trayMenu = new TrayMenuWindow();
+        _trayMenu.CaptureRequested         += (_, _) => OnHotkeyPressed(this, EventArgs.Empty);
         _trayMenu.OpenTranslationRequested += (_, _) => OpenTranslationWindow();
         _trayMenu.OpenSettingsRequested    += (_, _) => OpenSettings();
-        _trayMenu.OpenAboutRequested       += (_, _) => AboutWindow.ShowOrActivate(GetTranslationWindow());
         _trayMenu.ExitRequested            += (_, _) => ExitApp();
         _trayMenu.Closed                   += (_, _) => _trayMenu = null;
         _trayMenu.Show();
     }
 
     private static void OpenTranslationWindow() =>
-        ((App)System.Windows.Application.Current).ShowOrActivateTranslationWindow();
+        ShellWindow.ShowOrActivate(ShellPage.Translation);
 
     private void ExitApp()
     {
