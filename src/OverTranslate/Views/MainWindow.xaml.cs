@@ -101,7 +101,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(async () =>
         {
-            if (_overlayWindow != null || _toolbarWindow != null || _captureWindow != null)
+            if (HasActiveSession)
             {
                 CloseAll();
                 return;
@@ -137,7 +137,10 @@ public partial class MainWindow : Window
 
                 // Installed for the whole session, before anything is shown, so Esc cancels
                 // identically before and after a selection is drawn and regardless of who owns the
-                // keyboard focus.
+                // keyboard focus. Release any previous one first: this hook swallows Esc
+                // process-wide, so an orphaned instance would break Esc across the entire desktop,
+                // which is far worse than the stuck overlay it exists to prevent.
+                DisposeEscapeHook();
                 _escapeHook = GlobalEscapeHook.Install(CloseAll);
 
                 captureWindow.Show();
@@ -536,12 +539,16 @@ public partial class MainWindow : Window
     // was actually torn down, which is what tells the caller the app is back in a clean state.
     internal bool ForceCloseOverlays()
     {
-        if (_overlayWindow == null && _toolbarWindow == null && _captureWindow == null)
-            return false;
+        if (!HasActiveSession) return false;
 
         CloseAll();
         return true;
     }
+
+    // The Esc hook counts: it is process-wide, so a session that left only the hook behind still
+    // needs tearing down even though every window is already gone.
+    private bool HasActiveSession =>
+        _overlayWindow != null || _toolbarWindow != null || _captureWindow != null || _escapeHook != null;
 
     private bool IsCurrentSelectionSession(int sessionId, ToolbarWindow? toolbar, ScreenCaptureWindow? captureWindow) =>
         sessionId == _selectionSessionId &&
@@ -567,6 +574,7 @@ public partial class MainWindow : Window
 
     private void ExitApp()
     {
+        DisposeEscapeHook();
         _hotkey?.Dispose();
         if (_notifyIcon != null)
         {
