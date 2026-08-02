@@ -611,8 +611,42 @@
                                     HorizontalAlignment="Left"
                                     Background="{TemplateBinding Foreground}"
                                     CornerRadius="3"/>
+                            <!-- Deliberately NOT named PART_GlowRect: ProgressBar claims that name
+                                 and replaces its RenderTransform with one it never animates, which
+                                 leaves the bar frozen. Driving it from the template instead. -->
+                            <Rectangle x:Name="IndeterminateGlow"
+                                       Width="90"
+                                       HorizontalAlignment="Left"
+                                       RadiusX="3" RadiusY="3"
+                                       Fill="{TemplateBinding Foreground}"
+                                       Visibility="Collapsed">
+                                <Rectangle.RenderTransform>
+                                    <TranslateTransform X="-90"/>
+                                </Rectangle.RenderTransform>
+                            </Rectangle>
                         </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsIndeterminate" Value="True">
+                            <Setter TargetName="PART_Indicator"    Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="IndeterminateGlow" Property="Visibility" Value="Visible"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="GlowLoop">
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <!-- Travels past the widest bar this style is used at; the
+                                             surrounding Grid clips the overshoot. -->
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="IndeterminateGlow"
+                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                            From="-90" To="460" Duration="0:0:1.4"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="GlowLoop"/>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

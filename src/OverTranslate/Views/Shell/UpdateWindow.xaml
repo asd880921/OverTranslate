@@ -73,6 +73,16 @@
                              Value="0"
                              Margin="0,14,0,0"
                              Visibility="Collapsed"/>
+
+                <!-- Failures are reported here rather than through a system MessageBox, which was
+                     the only OS-styled dialog left in the app and matched nothing around it. -->
+                <TextBlock x:Name="ErrorText"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppError}"
+                           TextWrapping="Wrap"
+                           Visibility="Collapsed"
+                           Margin="0,12,0,0"/>
                 <TextBlock FontFamily="{StaticResource AppFont}"
                            FontSize="12"
                            Margin="0,8,0,0"

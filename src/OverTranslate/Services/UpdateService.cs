@@ -39,9 +39,22 @@ public static class UpdateService
         }
     }
 
-    public static async Task DownloadAndApplyAsync(UpdateInfo info, Action<int>? onProgress = null)
+    /// <param name="onApplying">
+    /// Raised once the download has genuinely finished, before the (blocking, progress-less) apply
+    /// step begins. Callers must not rely on <paramref name="onProgress"/> reaching 100 to detect
+    /// this: Velopack budgets its progress across download/extract/delta-merge phases and regularly
+    /// stops reporting partway (a delta update commonly ends around 70), which would otherwise leave
+    /// the UI reading "downloading" while the update is already being applied. Awaited, so the
+    /// caller can repaint before ApplyUpdatesAndRestart takes over the thread and closes the app.
+    /// </param>
+    public static async Task DownloadAndApplyAsync(
+        UpdateInfo info, Action<int>? onProgress = null, Func<Task>? onApplying = null)
     {
         await info.Manager.DownloadUpdatesAsync(info.VelopackInfo, onProgress);
+
+        if (onApplying is not null)
+            await onApplying();
+
         info.Manager.ApplyUpdatesAndRestart(info.VelopackInfo);
     }
 
