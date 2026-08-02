@@ -91,13 +91,24 @@
                     </Button>
                 </StackPanel>
 
+                <!-- The reader is already using the app, so a feature pitch here has no audience.
+                     What they cannot know from the UI is that it is free and open source, and that
+                     starring it actually helps. The star is drawn from the icon font rather than the
+                     ⭐ emoji: WPF has no colour-font support, so the emoji would fall back to a
+                     black-and-white glyph at an unpredictable size. -->
                 <TextBlock Grid.Row="3"
-                           Text="按下快捷鍵、框選任意畫面區域，翻譯結果直接浮現在原位。支援多種翻譯引擎與內建 OCR，適用於遊戲介面、PDF、影片字幕等任何無法選取的文字。"
                            FontFamily="{StaticResource AppFont}"
                            FontSize="12"
                            Foreground="{DynamicResource AppTextSecondary}"
                            TextWrapping="Wrap"
-                           LineHeight="18"/>
+                           LineHeight="18">
+                    <Run Text="免費開源，可自由使用。如果覺得有幫助，也歡迎到 GitHub 幫忙點個"/>
+                    <Run Text="&#xE735;"
+                         FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                         FontSize="11"
+                         Foreground="{DynamicResource AppAccent}"/>
+                    <Run Text="Star，感謝！"/>
+                </TextBlock>
             </Grid>
         </Border>
     </Grid>
