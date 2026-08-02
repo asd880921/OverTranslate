@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\\..\\src\\OverTranslate\\OverTranslate.csproj" />
+    <ProjectReference Include="..\..\src\OverTranslate\OverTranslate.csproj" />
   </ItemGroup>
 
 </Project>
