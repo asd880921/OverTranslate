@@ -243,6 +243,15 @@ public partial class MainWindow : Window
             _lastSelPhysWidth  = requestCaptureWindow.Selection.Width;
             _lastSelPhysHeight = requestCaptureWindow.Selection.Height;
             selRect = requestCaptureWindow.Selection;
+
+            // The capture window owns CroppedBitmap and disposes it the instant it closes (Esc,
+            // CloseAll, re-capture). OCR runs on a thread pool thread and the colour sampling below
+            // happens after a second await, so both would read freed GDI+ memory if they used that
+            // instance directly. Take our own copy up front — cloning here is safe because we are
+            // still on the UI thread with no await since PrepareForTranslation — and let its
+            // lifetime match this request instead of the window's.
+            using var workBitmap = ClonePixels(requestCaptureWindow.CroppedBitmap!);
+
             _overlayWindow?.ShowProcessing(
                 _lastSelPhysLeft,
                 _lastSelPhysTop,
@@ -250,7 +259,7 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 "辨識中");
 
-            var recognizedBlocks = await _ocrService.RecognizeAsync(requestCaptureWindow.CroppedBitmap!, req.SourceLang);
+            var recognizedBlocks = await _ocrService.RecognizeAsync(workBitmap, req.SourceLang);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -274,10 +283,7 @@ public partial class MainWindow : Window
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
-            var croppedBitmap = requestCaptureWindow.CroppedBitmap;
-            if (croppedBitmap is null)
-                return;
-
+            var croppedBitmap = workBitmap;
             var bmpData = croppedBitmap.LockBits(
                 new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height),
                 ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
@@ -351,6 +357,11 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    // Deep copy of a capture crop, owned by the caller. Clone(Rectangle, PixelFormat) allocates a
+    // fresh GDI+ bitmap and copies the pixels, so the copy stays valid after the source is disposed.
+    private static Bitmap ClonePixels(Bitmap source) =>
+        source.Clone(new Rectangle(0, 0, source.Width, source.Height), source.PixelFormat);
 
     // Builds the "copy screenshot" image by compositing what the user actually sees in the
     // selection — WITHOUT OverTranslate's own editing chrome. The background is the clean original
