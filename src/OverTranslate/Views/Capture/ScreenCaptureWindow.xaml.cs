@@ -97,7 +97,11 @@ public partial class ScreenCaptureWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key == Key.Escape && !_processingStarted)
+        // Esc must cancel at any stage, including after processing started. This is the fallback
+        // path for when OverlayWindow's low-level keyboard hook is not in play (not yet installed,
+        // already torn down, or dropped by Windows) — without it, a session that fails mid-flight
+        // leaves this full-screen dim window on top of everything with no way to close it.
+        if (e.Key == Key.Escape)
         {
             _selectionTcs.TrySetResult(false);
             Close();

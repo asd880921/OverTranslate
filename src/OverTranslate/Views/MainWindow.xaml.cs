@@ -126,30 +126,41 @@ public partial class MainWindow : Window
                 return;
             }
 
-            Log.Debug("Capture session starting, bounds={Bounds}", screenBounds);
-            var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
-            _captureWindow = captureWindow;
-            captureWindow.Show();
-
-            bool selected = await captureWindow.WaitForSelectionAsync();
-            if (!selected || !captureWindow.HasSelection)
+            // Anything that escapes from here would leave the full-screen dim window on top of the
+            // desktop with no owner left to close it, so the whole session setup is guarded.
+            try
             {
-                captureWindow.Close();
-                _captureWindow = null;
-                screenshot.Dispose();
-                return;
+                Log.Debug("Capture session starting, bounds={Bounds}", screenBounds);
+                var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
+                _captureWindow = captureWindow;
+                captureWindow.Show();
+
+                bool selected = await captureWindow.WaitForSelectionAsync();
+                if (!selected || !captureWindow.HasSelection)
+                {
+                    captureWindow.Close();
+                    _captureWindow = null;
+                    screenshot.Dispose();
+                    return;
+                }
+
+                var settings      = SettingsService.Instance.Current;
+                var selection     = captureWindow.Selection;
+                EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage, hasTranslated: false);
+
+                // Fire in the same pass that built the overlay, before it paints: the toolbar's first
+                // frame already reads "翻譯中..." and the overlay's first frame already shows "辨識中".
+                // Deferring this to a later dispatcher pass only adds a visible gap where the toolbar
+                // sits idle after the selection is done.
+                if (settings.AutoTranslateAfterSelection)
+                    _toolbarWindow?.RequestTranslate();
             }
-
-            var settings      = SettingsService.Instance.Current;
-            var selection     = captureWindow.Selection;
-            EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage, hasTranslated: false);
-
-            // Fire in the same pass that built the overlay, before it paints: the toolbar's first
-            // frame already reads "翻譯中..." and the overlay's first frame already shows "辨識中".
-            // Deferring this to a later dispatcher pass only adds a visible gap where the toolbar
-            // sits idle after the selection is done.
-            if (settings.AutoTranslateAfterSelection)
-                _toolbarWindow?.RequestTranslate();
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Capture session setup failed — tearing down overlay windows");
+                CloseAll();
+                screenshot.Dispose();
+            }
         });
     }
 
@@ -467,14 +478,43 @@ public partial class MainWindow : Window
         // Detach handler before closing so we drive the teardown order ourselves
         if (_overlayWindow != null && _overlayClosedHandler != null)
             _overlayWindow.Closed -= _overlayClosedHandler;
-        _overlayWindow?.CloseOverlay();
+
+        // Each window is torn down independently: the capture window paints a full-screen dim layer
+        // that is click-through once processing starts, so if an earlier Close() threw we must still
+        // reach it. Clearing the field first also guarantees the state never claims a window that is
+        // actually gone, which would make the next hotkey press a no-op teardown.
+        CloseWindow(_overlayWindow, w => w.CloseOverlay(), nameof(OverlayWindow));
         _overlayWindow = null;
 
-        _toolbarWindow?.Close();
+        CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
         _toolbarWindow = null;
 
-        _captureWindow?.Close();
+        CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
         _captureWindow = null;
+    }
+
+    private static void CloseWindow<T>(T? window, Action<T> close, string name) where T : Window
+    {
+        if (window == null) return;
+        try
+        {
+            close(window);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to close {Window} — forcing teardown of the remaining windows", name);
+        }
+    }
+
+    // Last-resort teardown for the unhandled-exception handler. Returns whether a capture session
+    // was actually torn down, which is what tells the caller the app is back in a clean state.
+    internal bool ForceCloseOverlays()
+    {
+        if (_overlayWindow == null && _toolbarWindow == null && _captureWindow == null)
+            return false;
+
+        CloseAll();
+        return true;
     }
 
     private bool IsCurrentSelectionSession(int sessionId, ToolbarWindow? toolbar, ScreenCaptureWindow? captureWindow) =>

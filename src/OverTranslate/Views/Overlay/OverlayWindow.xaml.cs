@@ -674,7 +674,12 @@ public partial class OverlayWindow : Window
             int vkCode = Marshal.ReadInt32(lParam);
             if (vkCode == VK_ESCAPE)
             {
-                Dispatcher.Invoke(CloseOverlay);
+                // Post instead of Invoke: a low-level hook callback that blocks longer than
+                // LowLevelHooksTimeout (5s by default) gets silently removed from the hook chain by
+                // Windows, after which Esc stops working entirely and the overlay can no longer be
+                // dismissed. Dispatcher.Invoke would block here whenever the UI thread is busy
+                // (OCR, translation, a modal error), so never wait on it from inside the hook.
+                Dispatcher.BeginInvoke(CloseOverlay);
                 return (IntPtr)1;
             }
         }

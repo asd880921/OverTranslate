@@ -36,6 +36,15 @@ public partial class App
         DispatcherUnhandledException += (_, ex) =>
         {
             Log.Error(ex.Exception, "Unhandled UI exception");
+
+            // A crash during a capture session used to take the process down while its full-screen
+            // dim window stayed painted over the desktop — unclosable, because the code that owned
+            // it was gone. Tear the session down first; if there was one, its state is now fully
+            // reset (windows closed, fields cleared, session id bumped), so keeping the app alive in
+            // its tray-idle state is strictly better than dying with the overlay stuck on screen.
+            // Exceptions outside a capture session keep the original fail-fast behaviour.
+            if ((MainWindow as Views.MainWindow)?.ForceCloseOverlays() == true)
+                ex.Handled = true;
         };
         AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
         {
