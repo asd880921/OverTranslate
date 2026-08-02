@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
 using OverTranslate.Views;
@@ -11,52 +13,184 @@ using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace OverTranslate.Views.Settings;
 
+/// <summary>
+/// Settings persist the moment a control changes — there is no save button, so every handler
+/// routes through <see cref="Persist"/>, which is inert while <see cref="_loading"/> is set.
+/// </summary>
 public partial class SettingsPage : UserControl
 {
+    // Typing shouldn't hit the disk on every keystroke; the key is written once typing pauses.
+    private static readonly TimeSpan ApiKeyDebounce = TimeSpan.FromMilliseconds(600);
+
+    private readonly DispatcherTimer _apiKeyDebounce;
+    private readonly DispatcherTimer _statusHold;
+
     private bool _isRecording;
     private uint _pendingModifiers;
     private uint _pendingVKey;
-    private bool _themeRadioInit;
+
+    /// <summary>True while the controls are being populated, so initialization never writes back.</summary>
+    private bool _loading;
 
     public SettingsPage()
     {
         InitializeComponent();
+
+        _apiKeyDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
+        _apiKeyDebounce.Tick += (_, _) =>
+        {
+            _apiKeyDebounce.Stop();
+            Persist(s => s.ApiKey = ApiKeyBox.Text.Trim());
+        };
+
+        _statusHold = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1600) };
+        _statusHold.Tick += (_, _) => { _statusHold.Stop(); FadeStatusOut(); };
+
         LoadSettings();
     }
 
+    /// <summary>
+    /// Re-reads the stored settings. The translation page writes the same language/provider
+    /// fields, so navigating back here has to pick up whatever it changed.
+    /// </summary>
+    public void Reload() => LoadSettings();
+
     private void LoadSettings()
     {
-        var s = SettingsService.Instance.Current;
+        _loading = true;
+        try
+        {
+            var s = SettingsService.Instance.Current;
 
-        SourceLangBox.ItemsSource = LanguageData.OcrSourceLanguages;
-        SourceLangBox.SelectedValue = LanguageData.GetValidOcrSourceCode(s.SourceLanguage);
-        if (SourceLangBox.SelectedValue == null) SourceLangBox.SelectedIndex = 0;
+            SourceLangBox.ItemsSource = LanguageData.OcrSourceLanguages;
+            SourceLangBox.SelectedValue = LanguageData.GetValidOcrSourceCode(s.SourceLanguage);
+            if (SourceLangBox.SelectedValue == null) SourceLangBox.SelectedIndex = 0;
 
-        ProviderBox.ItemsSource = LanguageData.Providers;
-        ProviderBox.SelectedValue = s.Provider;
-        if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
-        ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
+            ProviderBox.ItemsSource = LanguageData.Providers;
+            ProviderBox.SelectedValue = s.Provider;
+            if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+            ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
 
-        HotkeyBox.Text = s.HotkeyDisplay;
-        ApiKeyBox.Text = s.ApiKey;
+            HotkeyBox.Text = s.HotkeyDisplay;
+            ApiKeyBox.Text = s.ApiKey;
 
-        _pendingModifiers = s.HotkeyModifiers;
-        _pendingVKey      = s.HotkeyVirtualKey;
+            _pendingModifiers = s.HotkeyModifiers;
+            _pendingVKey      = s.HotkeyVirtualKey;
 
-        _themeRadioInit = true;
-        LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
-        DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
-        _themeRadioInit = false;
+            LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
+            DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
 
-        StartupCheckBox.IsChecked = StartupService.IsEnabled;
+            StartupCheckBox.IsChecked = StartupService.IsEnabled;
 
-        AutoTranslateCheckBox.IsChecked = s.AutoTranslateAfterSelection;
+            AutoTranslateCheckBox.IsChecked = s.AutoTranslateAfterSelection;
 
-        SaveScreenshotCheckBox.IsChecked = s.SaveScreenshotToDisk;
-        ScreenshotPathBox.Text = ScreenshotSaveService.ResolveDirectory(s.ScreenshotSavePath);
+            SaveScreenshotCheckBox.IsChecked = s.SaveScreenshotToDisk;
+            ScreenshotPathBox.Text = ScreenshotSaveService.ResolveDirectory(s.ScreenshotSavePath);
 
+            UpdateApiKeyVisibility();
+            UpdateScreenshotPathVisibility();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    // ── Persistence ──────────────────────────────────────────────────────────
+
+    private void Persist(Action<AppSettings> apply)
+    {
+        if (_loading) return;
+        apply(SettingsService.Instance.Current);
+        SettingsService.Instance.Save();
+        FlashSaved();
+    }
+
+    private void FlashSaved()
+    {
+        StatusText.Text       = "✓ 已儲存";
+        StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AppSuccess");
+
+        StatusText.BeginAnimation(OpacityProperty, null);
+        StatusText.Opacity = 1;
+        AutoSaveHint.Opacity = 0;
+
+        _statusHold.Stop();
+        _statusHold.Start();
+    }
+
+    private void FadeStatusOut()
+    {
+        var fade = new DoubleAnimation
+        {
+            From = 1, To = 0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(300))
+        };
+        fade.Completed += (_, _) => AutoSaveHint.Opacity = 1;
+        StatusText.BeginAnimation(OpacityProperty, fade);
+    }
+
+    private void ShowError(string message)
+    {
+        _statusHold.Stop();
+        StatusText.BeginAnimation(OpacityProperty, null);
+        StatusText.Text       = message;
+        StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AppError");
+        StatusText.Opacity    = 1;
+        AutoSaveHint.Opacity  = 0;
+    }
+
+    // ── Field handlers ───────────────────────────────────────────────────────
+
+    private void SourceLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        => Persist(s => s.SourceLanguage = LanguageData.GetValidOcrSourceCode(SourceLangBox.SelectedValue as string));
+
+    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
         UpdateApiKeyVisibility();
+        ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
+        Persist(s => s.Provider = ProviderBox.SelectedValue is TranslationProvider p
+            ? p
+            : TranslationProvider.Microsoft);
+    }
+
+    private void ApiKeyBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        _apiKeyDebounce.Stop();
+        _apiKeyDebounce.Start();
+    }
+
+    private void AutoTranslate_Toggled(object sender, RoutedEventArgs e)
+        => Persist(s => s.AutoTranslateAfterSelection = AutoTranslateCheckBox.IsChecked == true);
+
+    // Startup lives in the registry rather than the settings file, so it saves on its own path
+    private void Startup_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        try
+        {
+            StartupService.Set(StartupCheckBox.IsChecked == true);
+            FlashSaved();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"✗ 無法設定開機啟動：{ex.Message}");
+        }
+    }
+
+    private void ThemeRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        var theme = DarkThemeRadio.IsChecked == true ? ThemeService.Dark : ThemeService.Light;
+        ThemeService.Apply(theme);
+        Persist(s => s.Theme = theme);
+    }
+
+    private void SaveScreenshotCheckBox_Toggled(object sender, RoutedEventArgs e)
+    {
         UpdateScreenshotPathVisibility();
+        Persist(s => s.SaveScreenshotToDisk = SaveScreenshotCheckBox.IsChecked == true);
     }
 
     private void UpdateScreenshotPathVisibility()
@@ -65,9 +199,6 @@ public partial class SettingsPage : UserControl
             ? Visibility.Visible
             : Visibility.Collapsed;
     }
-
-    private void SaveScreenshotCheckBox_Toggled(object sender, RoutedEventArgs e)
-        => UpdateScreenshotPathVisibility();
 
     private void ScreenshotPathBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -79,8 +210,15 @@ public partial class SettingsPage : UserControl
             Title = "選擇截圖儲存資料夾",
             InitialDirectory = ScreenshotPathBox.Text
         };
-        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
-            ScreenshotPathBox.Text = dialog.FolderName;
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+
+        ScreenshotPathBox.Text = dialog.FolderName;
+        // Store "" when the folder matches the default, so the setting follows the system
+        // Pictures folder instead of freezing today's expanded path.
+        Persist(s => s.ScreenshotSavePath = string.Equals(
+            dialog.FolderName, ScreenshotSaveService.DefaultDirectory, StringComparison.OrdinalIgnoreCase)
+            ? ""
+            : dialog.FolderName);
     }
 
     private void OpenScreenshotFolderBtn_Click(object sender, RoutedEventArgs e)
@@ -91,8 +229,7 @@ public partial class SettingsPage : UserControl
         }
         catch (Exception ex)
         {
-            StatusText.Text       = $"✗ 無法開啟資料夾：{ex.Message}";
-            StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AppError");
+            ShowError($"✗ 無法開啟資料夾：{ex.Message}");
         }
     }
 
@@ -105,20 +242,7 @@ public partial class SettingsPage : UserControl
         ApiKeyBox.Visibility   = vis;
     }
 
-    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        UpdateApiKeyVisibility();
-        ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
-    }
-
-    private void ThemeRadio_Checked(object sender, RoutedEventArgs e)
-    {
-        if (_themeRadioInit) return;
-        var theme = DarkThemeRadio.IsChecked == true ? ThemeService.Dark : ThemeService.Light;
-        ThemeService.Apply(theme);
-        SettingsService.Instance.Current.Theme = theme;
-        SettingsService.Instance.Save();
-    }
+    // ── Hotkey recording ─────────────────────────────────────────────────────
 
     private void RecordBtn_Click(object sender, RoutedEventArgs e)
     {
@@ -182,37 +306,20 @@ public partial class SettingsPage : UserControl
         _pendingModifiers = mods;
         _pendingVKey      = vk;
 
-        HotkeyBox.Text    = $"{GlobalHotkey.ModifiersToString(mods)}+{key}";
+        var display = $"{GlobalHotkey.ModifiersToString(mods)}+{key}";
+        HotkeyBox.Text    = display;
         _isRecording      = false;
         RecordBtn.Content = "錄製";
-    }
 
-    private void SaveBtn_Click(object sender, RoutedEventArgs e)
-    {
-        var s = SettingsService.Instance.Current;
-        s.HotkeyModifiers  = _pendingModifiers;
-        s.HotkeyVirtualKey = _pendingVKey;
-        s.HotkeyDisplay    = HotkeyBox.Text;
-        s.SourceLanguage   = LanguageData.GetValidOcrSourceCode(SourceLangBox.SelectedValue as string);
-        s.Provider         = ProviderBox.SelectedValue is TranslationProvider p ? p : TranslationProvider.Microsoft;
-        s.ApiKey           = ApiKeyBox.Text.Trim();
-        s.AutoTranslateAfterSelection = AutoTranslateCheckBox.IsChecked == true;
-        s.SaveScreenshotToDisk = SaveScreenshotCheckBox.IsChecked == true;
-        // Store "" when the folder matches the default, so the setting follows the system
-        // Pictures folder instead of freezing today's expanded path.
-        var chosenPath = ScreenshotPathBox.Text.Trim();
-        s.ScreenshotSavePath = string.Equals(
-            chosenPath, ScreenshotSaveService.DefaultDirectory, StringComparison.OrdinalIgnoreCase)
-            ? ""
-            : chosenPath;
+        Persist(s =>
+        {
+            s.HotkeyModifiers  = _pendingModifiers;
+            s.HotkeyVirtualKey = _pendingVKey;
+            s.HotkeyDisplay    = display;
+        });
 
-        SettingsService.Instance.Save();
-        StartupService.Set(StartupCheckBox.IsChecked == true);
-
+        // The global hook holds the old combination until it is rebound
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();
-
-        StatusText.Text       = "✓ 設定已儲存";
-        StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AppSuccess");
     }
 }

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using OverTranslate.Services;
 
 namespace OverTranslate.Views.Shell;
 
@@ -17,6 +18,10 @@ public partial class TrayMenuWindow : Window
     {
         InitializeComponent();
         _cursorPhys = System.Windows.Forms.Cursor.Position;
+
+        // Half-width parens so the hint stays visually tight next to the label
+        var hotkey = SettingsService.Instance.Current.HotkeyDisplay;
+        CaptureHotkeyText.Text = string.IsNullOrWhiteSpace(hotkey) ? "" : $"({hotkey})";
 
         // Start off-screen; Loaded repositions after ActualWidth/Height are measured
         Left = -9999;

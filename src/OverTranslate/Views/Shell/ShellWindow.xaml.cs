@@ -97,6 +97,8 @@ public partial class ShellWindow : Window
     private void ShowPage(ShellPage page)
     {
         _current = page;
+
+        if (page == ShellPage.Settings) _settingsPage.Reload();
         ContentHost.Content = page == ShellPage.Settings ? _settingsPage : (UIElement)_translationPage;
 
         MoveIndicatorTo(page == ShellPage.Settings ? SettingsNav : TranslationNav);

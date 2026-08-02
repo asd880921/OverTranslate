@@ -27,8 +27,9 @@
                                 CornerRadius="4"
                                 Margin="4,1"
                                 Padding="10,0">
+                            <!-- Stretch so an item can push a trailing hint to the right edge -->
                             <ContentPresenter VerticalAlignment="Center"
-                                              HorizontalAlignment="Left"/>
+                                              HorizontalAlignment="Stretch"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -63,13 +64,23 @@
                 <Button x:Name="CaptureBtn"
                         Style="{StaticResource TrayMenuItem}"
                         Click="CaptureBtn_Click">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                   FontSize="14" Text="&#xE123;"
-                                   Width="22" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource AppTextSecondary}"/>
-                        <TextBlock Text="截圖翻譯" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <DockPanel VerticalAlignment="Center">
+                        <!-- Trailing hotkey hint: the tray menu is the only place that
+                             advertises the shortcut, so it is worth the width -->
+                        <TextBlock x:Name="CaptureHotkeyText"
+                                   DockPanel.Dock="Right"
+                                   FontSize="11"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppTextMuted}"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" Text="&#xE123;"
+                                       Width="22" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource AppTextSecondary}"/>
+                            <TextBlock Text="截圖翻譯" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DockPanel>
                 </Button>
 
                 <Rectangle Height="1" Margin="8,3" Fill="{DynamicResource AppSeparator}"/>
