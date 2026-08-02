@@ -7,7 +7,6 @@
         ResizeMode="CanMinimize"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
-        Topmost="True"
         Closing="Window_Closing"
         Background="{DynamicResource AppWindowBg}">
 
