@@ -1,4 +1,4 @@
-using OverTranslate;
+using OverTranslate.Layout;
 using Xunit;
 
 namespace OverTranslate.Tests;

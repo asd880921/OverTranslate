@@ -3,8 +3,9 @@ using System.Windows.Threading;
 using NLog;
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Views.Settings;
 
-namespace OverTranslate;
+namespace OverTranslate.Views.Translation;
 
 public partial class TranslationWindow : Window
 {

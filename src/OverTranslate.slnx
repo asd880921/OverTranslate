@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="../tests/OverTranslate.Tests/OverTranslate.Tests.csproj" />
   <Project Path="OverTranslate/OverTranslate.csproj" />
 </Solution>

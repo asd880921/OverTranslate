@@ -53,4 +53,11 @@
     <!-- Separator -->
     <SolidColorBrush x:Key="AppSeparator"      Color="#E0E0E0"/>
 
+    <!-- Scrollbar — track uses alpha so it reads correctly over both
+         AppSurfaceBg (white) and AppWindowBg (grey) panes -->
+    <SolidColorBrush x:Key="AppScrollThumb"        Color="#C2C2C2"/>
+    <SolidColorBrush x:Key="AppScrollThumbHover"   Color="#8A8A8A"/>
+    <SolidColorBrush x:Key="AppScrollThumbPressed" Color="#5F5F5F"/>
+    <SolidColorBrush x:Key="AppScrollTrack"        Color="#0A000000"/>
+
 </ResourceDictionary>

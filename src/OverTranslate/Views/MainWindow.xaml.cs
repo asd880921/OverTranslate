@@ -5,8 +5,13 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
 using OverTranslate.Services;
+using OverTranslate.Views.Capture;
+using OverTranslate.Views.Overlay;
+using OverTranslate.Views.Settings;
+using OverTranslate.Views.Shell;
+using OverTranslate.Views.Translation;
 
-namespace OverTranslate;
+namespace OverTranslate.Views;
 
 public partial class MainWindow : Window
 {

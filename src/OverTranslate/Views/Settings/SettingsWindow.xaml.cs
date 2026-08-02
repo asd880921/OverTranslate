@@ -4,8 +4,9 @@ using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
 using Microsoft.Win32;
+using OverTranslate.Views;
 
-namespace OverTranslate;
+namespace OverTranslate.Views.Settings;
 
 public partial class SettingsWindow : Window
 {
