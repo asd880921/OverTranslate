@@ -325,7 +325,8 @@ public partial class MainWindow : Window
                 "翻譯中");
 
             var (translated, _) = await _translationService.TranslateAsync(
-                _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey);
+                _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey,
+                cancellationToken: cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 

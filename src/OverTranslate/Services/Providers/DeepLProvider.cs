@@ -15,9 +15,11 @@ public class DeepLProvider : ITranslationProvider
             : "https://api.deepl.com/v2/translate";
 
     public async Task<(List<TranslatedBlock> Blocks, string DetectedLang)> TranslateAsync(
-        List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey)
+        List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey,
+        CancellationToken cancellationToken = default)
     {
         if (blocks.Count == 0) return ([], "");
+        cancellationToken.ThrowIfCancellationRequested();
 
         var content = new List<KeyValuePair<string, string>>();
         foreach (var b in blocks)
@@ -32,10 +34,11 @@ public class DeepLProvider : ITranslationProvider
         request.Headers.Add("Authorization", $"DeepL-Auth-Key {apiKey}");
         request.Content = new FormUrlEncodedContent(content);
 
-        var response = await _http.SendAsync(request);
+        // Unlike the GTranslate engines, this request really can be aborted mid-flight.
+        var response = await _http.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(json);
         var translations = doc.RootElement.GetProperty("translations");
 

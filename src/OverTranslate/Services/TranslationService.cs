@@ -79,10 +79,11 @@ public class TranslationService
     /// so a timeout/failure throws straight to the caller (used by the manual translation window).
     /// </param>
     public async Task<(List<TranslatedBlock> Blocks, string DetectedLang)> TranslateAsync(
-        List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey, bool resilient = true)
+        List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey, bool resilient = true,
+        CancellationToken cancellationToken = default)
     {
         var provider = resilient ? Current : Direct;
-        var result   = await provider.TranslateAsync(blocks, sourceLang, targetLang, apiKey);
+        var result   = await provider.TranslateAsync(blocks, sourceLang, targetLang, apiKey, cancellationToken);
         LastEngineUsage = (provider as ResilientProvider)?.LastUsage;
         return result;
     }
