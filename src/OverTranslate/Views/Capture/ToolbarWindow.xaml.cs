@@ -4,7 +4,7 @@ using OverTranslate.Models;
 using OverTranslate.Services;
 using OverTranslate.Services.Providers;
 
-namespace OverTranslate;
+namespace OverTranslate.Views.Capture;
 
 public partial class ToolbarWindow : Window
 {

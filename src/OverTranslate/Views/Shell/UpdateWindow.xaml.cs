@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Navigation;
 using OverTranslate.Services;
 
-namespace OverTranslate;
+namespace OverTranslate.Views.Shell;
 
 public partial class UpdateWindow : Window
 {

@@ -5,8 +5,9 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using OverTranslate.Services;
+using OverTranslate.Layout;
 
-namespace OverTranslate;
+namespace OverTranslate.Views.Overlay;
 
 public partial class OverlayWindow : Window
 {

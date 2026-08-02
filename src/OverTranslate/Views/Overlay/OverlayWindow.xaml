@@ -1,4 +1,4 @@
-<Window x:Class="OverTranslate.OverlayWindow"
+<Window x:Class="OverTranslate.Views.Overlay.OverlayWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None"

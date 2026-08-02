@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 
-namespace OverTranslate;
+namespace OverTranslate.Views.Shell;
 
 public partial class TrayMenuWindow : Window
 {

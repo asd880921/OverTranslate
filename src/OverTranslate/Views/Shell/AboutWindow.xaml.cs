@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
 
-namespace OverTranslate;
+namespace OverTranslate.Views.Shell;
 
 public partial class AboutWindow : Window
 {

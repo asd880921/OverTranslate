@@ -1,4 +1,4 @@
-<Window x:Class="OverTranslate.TranslationWindow"
+<Window x:Class="OverTranslate.Views.Translation.TranslationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="OverTranslate 翻譯視窗"
