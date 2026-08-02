@@ -48,9 +48,10 @@ internal sealed class GlobalEscapeHook : IDisposable
     {
         var hook = new GlobalEscapeHook(onEscape);
 
-        using var process = System.Diagnostics.Process.GetCurrentProcess();
-        using var module = process.MainModule!;
-        hook._hookId = SetWindowsHookEx(WH_KEYBOARD_LL, hook._proc, GetModuleHandle(module.ModuleName), 0);
+        // GetModuleHandle(null) returns this process's own module handle directly. Resolving it via
+        // Process.GetCurrentProcess().MainModule enumerates the process module list and costs
+        // milliseconds on a path that runs while the capture window is being presented.
+        hook._hookId = SetWindowsHookEx(WH_KEYBOARD_LL, hook._proc, GetModuleHandle(null), 0);
 
         if (hook._hookId == IntPtr.Zero)
         {

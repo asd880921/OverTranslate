@@ -51,7 +51,14 @@ public partial class ScreenCaptureWindow : Window
         Width  = SystemParameters.VirtualScreenWidth;
         Height = SystemParameters.VirtualScreenHeight;
 
-        ScreenshotImage.Source = BitmapToDisplaySource(screenshot);
+        // Tag the capture with the DPI that makes its DIP size equal this window's, so WPF maps it
+        // 1:1 instead of rescaling a full virtual-desktop image on the first frame. At 96 DPI a
+        // 5120px-wide capture claims to be 5120 DIP while the window is only ~4130 DIP, and that
+        // mismatch is paid for on every render of the largest visual in the app.
+        double captureDpi = Width > 0
+            ? 96.0 * physBounds.Width / Width
+            : 96.0;
+        ScreenshotImage.Source = BitmapToDisplaySource(screenshot, captureDpi);
         Cursor = LoadCrosshairCursor();
 
         // Honour the OS "show animations" setting: when it is off, the reveal collapses to an
@@ -81,6 +88,10 @@ public partial class ScreenCaptureWindow : Window
         // window — the window starts fully transparent to avoid an OS white flash, and an animation
         // that ran during that period would simply be missed.
         HintHost.ItemsSource = BuildHintSpots();
+
+        // Claimed only once the first frame is on screen. Activating before that forces a
+        // foreground switch while the window is still empty, which flashes its black background.
+        Activate();
     }
 
     // One card per monitor, positioned at each screen's top-left corner. This window spans the whole
@@ -373,7 +384,7 @@ public partial class ScreenCaptureWindow : Window
         new(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y),
             Math.Abs(b.X - a.X), Math.Abs(b.Y - a.Y));
 
-    private static BitmapSource BitmapToDisplaySource(Bitmap bmp)
+    private static BitmapSource BitmapToDisplaySource(Bitmap bmp, double dpi = 96)
     {
         var locked = bmp.LockBits(
             new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height),
@@ -382,7 +393,7 @@ public partial class ScreenCaptureWindow : Window
         try
         {
             var src = BitmapSource.Create(
-                bmp.Width, bmp.Height, 96, 96,
+                bmp.Width, bmp.Height, dpi, dpi,
                 PixelFormats.Bgra32,
                 null,
                 locked.Scan0,

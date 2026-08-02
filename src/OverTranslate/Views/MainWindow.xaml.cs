@@ -134,19 +134,17 @@ public partial class MainWindow : Window
                 Log.Debug("Capture session starting, bounds={Bounds}", screenBounds);
                 var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
                 _captureWindow = captureWindow;
+                captureWindow.Show();
 
-                // Installed for the whole session, before anything is shown, so Esc cancels
-                // identically before and after a selection is drawn and regardless of who owns the
-                // keyboard focus. Release any previous one first: this hook swallows Esc
-                // process-wide, so an orphaned instance would break Esc across the entire desktop,
-                // which is far worse than the stuck overlay it exists to prevent.
+                // After Show, not before: everything on the path between creating the window and
+                // presenting it delays the first frame, during which the window's black background
+                // is what the user sees. The hook is still installed within the same dispatcher
+                // pass, so Esc is live long before anyone can press it.
+                // Release any previous one first — this hook swallows Esc process-wide, so an
+                // orphaned instance would break Esc across the entire desktop, which is far worse
+                // than the stuck overlay it exists to prevent.
                 DisposeEscapeHook();
                 _escapeHook = GlobalEscapeHook.Install(CloseAll);
-
-                captureWindow.Show();
-                // Belt-and-braces: the hook above already makes Esc work without focus, but the
-                // capture window should still be the one receiving keys and clicks.
-                captureWindow.Activate();
 
                 bool selected = await captureWindow.WaitForSelectionAsync();
                 if (!selected || !captureWindow.HasSelection)
