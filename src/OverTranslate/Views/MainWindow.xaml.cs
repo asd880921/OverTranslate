@@ -219,12 +219,15 @@ public partial class MainWindow : Window
         _overlayWindow = new OverlayWindow(blocks, selPhysLeft, selPhysTop, selPhysWidth, selPhysHeight, sourceLang, targetLang);
         if (_captureWindow != null)
             _overlayWindow.Owner = _captureWindow;
+        // This runs when the overlay closes on its own (Esc via the keyboard hook). Same fault
+        // tolerance as CloseAll: a throwing toolbar Close() must not strand the capture window's
+        // full-screen dim layer, which is the one window the user cannot get rid of.
         _overlayClosedHandler = (_, _) =>
         {
             _selectionSessionId++;
-            _toolbarWindow?.Close();
+            CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
             _toolbarWindow = null;
-            _captureWindow?.Close();
+            CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
             _captureWindow = null;
             _overlayWindow = null;
         };
