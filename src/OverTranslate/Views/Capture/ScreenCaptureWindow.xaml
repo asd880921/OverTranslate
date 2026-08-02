@@ -93,18 +93,37 @@
             <Border.Effect>
                 <DropShadowEffect BlurRadius="28" ShadowDepth="0" Opacity="0.16" Color="#000000"/>
             </Border.Effect>
-            <StackPanel>
-                <TextBlock Foreground="{DynamicResource AppTextPrimary}"
-                           FontFamily="{StaticResource AppFont}"
-                           FontSize="14"
-                           FontWeight="SemiBold"
-                           Text="拖曳選取翻譯區域"/>
-                <TextBlock Foreground="{DynamicResource AppTextSecondary}"
-                           FontFamily="{StaticResource AppFont}"
-                           FontSize="12"
-                           Margin="0,4,0,0"
-                           Text="按 ESC 取消"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Foreground="{DynamicResource AppTextPrimary}"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Text="拖曳選取翻譯區域"/>
+                    <TextBlock Foreground="{DynamicResource AppTextSecondary}"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="12"
+                               Margin="0,4,0,0"
+                               Text="按 ESC 或 ✕ 取消"/>
+                </StackPanel>
+
+                <!-- Before a selection is drawn this is the only clickable way out: the toolbar's
+                     close button does not exist yet, so a mouse-only user would otherwise be stuck
+                     with the keyboard as their sole escape. -->
+                <Button x:Name="CancelCaptureBtn"
+                        Grid.Column="1"
+                        Content="✕"
+                        Style="{StaticResource IconButton}"
+                        Margin="16,0,0,0"
+                        VerticalAlignment="Center"
+                        ToolTip="取消截圖"
+                        Click="CancelCaptureBtn_Click"/>
+            </Grid>
         </Border>
     </Grid>
 </Window>

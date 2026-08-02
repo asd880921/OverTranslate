@@ -108,6 +108,14 @@ public partial class ScreenCaptureWindow : Window
         }
     }
 
+    // Same cancellation as Esc. The button lives inside InfoBorder, which is collapsed the moment a
+    // drag begins, so this only ever runs while no selection exists.
+    private void CancelCaptureBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _selectionTcs.TrySetResult(false);
+        Close();
+    }
+
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         if (_processingStarted || _hasSelection) return;
