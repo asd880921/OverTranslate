@@ -3,7 +3,6 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
@@ -32,20 +31,18 @@ public partial class AboutOverlay : UserControl
     {
         Visibility = Visibility.Visible;
 
-        BeginAnimation(OpacityProperty, new DoubleAnimation
+        // Fade only. The card used to also scale up from 0.96, but WPF abandons pixel-aligned text
+        // rendering for anything animating under a RenderTransform, and scaling is the worst case:
+        // every glyph is resampled at a slightly different size each frame. The card's text was
+        // visibly soft until the animation ended and then snapped sharp. Alpha alone leaves every
+        // glyph on its exact final pixel throughout.
+        var fade = new DoubleAnimation { From = 0, To = 1, Duration = FadeDuration };
+        fade.Completed += (_, _) =>
         {
-            From = 0, To = 1, Duration = FadeDuration
-        });
-
-        // Slight scale-up so the card reads as coming forward rather than blinking in
-        var grow = new DoubleAnimation
-        {
-            From = 0.96, To = 1,
-            Duration = FadeDuration,
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            BeginAnimation(OpacityProperty, null);
+            Opacity = 1;
         };
-        CardScale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
-        CardScale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+        BeginAnimation(OpacityProperty, fade);
 
         // Focus lets the control receive Escape without the page underneath stealing it
         Focus();

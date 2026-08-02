@@ -17,11 +17,7 @@
                 Background="{DynamicResource AppCardBg}"
                 BorderBrush="{DynamicResource AppBorder}"
                 BorderThickness="1"
-                RenderTransformOrigin="0.5,0.5"
                 MouseLeftButtonDown="Card_MouseLeftButtonDown">
-            <Border.RenderTransform>
-                <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
-            </Border.RenderTransform>
             <Border.Effect>
                 <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.3" Color="#000000"/>
             </Border.Effect>

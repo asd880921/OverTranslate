@@ -30,6 +30,9 @@ public partial class ShellWindow : Window
     private static readonly Duration IndicatorDuration = new(TimeSpan.FromMilliseconds(180));
     private static readonly Duration ContentDuration   = new(TimeSpan.FromMilliseconds(120));
 
+    // Token for the in-flight content transition; see AnimateContentIn.
+    private object? _contentTransition;
+
     private readonly TranslationPage _translationPage = new();
     private readonly SettingsPage    _settingsPage    = new();
 
@@ -99,7 +102,7 @@ public partial class ShellWindow : Window
         _current = page;
 
         if (page == ShellPage.Settings) _settingsPage.Reload();
-        ContentHost.Content = page == ShellPage.Settings ? _settingsPage : (UIElement)_translationPage;
+        ContentHost.Child = page == ShellPage.Settings ? _settingsPage : (UIElement)_translationPage;
 
         MoveIndicatorTo(page == ShellPage.Settings ? SettingsNav : TranslationNav);
         AnimateContentIn();
@@ -137,16 +140,35 @@ public partial class ShellWindow : Window
 
     private void AnimateContentIn()
     {
-        ContentHost.BeginAnimation(OpacityProperty, new DoubleAnimation
+        // Identifies this particular transition, so a fast page switch cannot have the previous
+        // animation's completion handler tear down the animation that replaced it.
+        var transition = new object();
+        _contentTransition = transition;
+
+        // Fade only — no slide. WPF drops pixel-aligned, ClearType text rendering for anything
+        // moving under a RenderTransform, which is what made the old slide's final stretch look
+        // soft: the text was already fully visible and, to the eye, standing still, yet was still
+        // being resampled at fractional pixel positions. A fade leaves every glyph on its exact
+        // final pixel for the whole transition, so there is nothing to resample; only alpha
+        // changes, and it does so while the text is still too faint to judge sharpness by.
+        var fade = new DoubleAnimation { From = 0, To = 1, Duration = ContentDuration };
+        fade.Completed += (_, _) =>
         {
-            From = 0, To = 1, Duration = ContentDuration
-        });
-        ContentTransform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation
-        {
-            From = 8, To = 0,
-            Duration = ContentDuration,
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        });
+            if (!ReferenceEquals(_contentTransition, transition)) return;
+            ReleaseContentAnimations();
+        };
+
+        ContentHost.BeginAnimation(OpacityProperty, fade);
+    }
+
+    // DoubleAnimation defaults to FillBehavior.HoldEnd, which keeps Opacity under the animation
+    // clock's control even after the animation has visually finished, holding the content in an
+    // intermediate composition layer indefinitely. Handing the property back to the element ends
+    // that as soon as the fade is done.
+    private void ReleaseContentAnimations()
+    {
+        ContentHost.BeginAnimation(OpacityProperty, null);
+        ContentHost.Opacity = 1;
     }
 
     private void AboutBtn_Click(object sender, RoutedEventArgs e) => About.Open();
