@@ -61,12 +61,6 @@ public partial class ScreenCaptureWindow : Window
         ScreenshotImage.Source = BitmapToDisplaySource(screenshot, captureDpi);
         Cursor = LoadCrosshairCursor();
 
-        // Honour the OS "show animations" setting: when it is off, the reveal collapses to an
-        // instant state change rather than being skipped, so the card still appears.
-        Resources["HintRevealDuration"] = SystemParameters.ClientAreaAnimation
-            ? new Duration(TimeSpan.FromSeconds(0.35))
-            : new Duration(TimeSpan.Zero);
-
         Closed += (_, _) =>
         {
             _selectionTcs.TrySetResult(false);
@@ -83,11 +77,6 @@ public partial class ScreenCaptureWindow : Window
         base.OnContentRendered(e);
         DimPath.Data = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
         Opacity = 1;
-
-        // Populated here rather than earlier so the cards' Loaded reveal plays against a visible
-        // window — the window starts fully transparent to avoid an OS white flash, and an animation
-        // that ran during that period would simply be missed.
-        HintHost.ItemsSource = BuildHintSpots();
 
         // Claimed only once the first frame is on screen. Activating before that forces a
         // foreground switch while the window is still empty, which flashes its black background.
@@ -121,6 +110,12 @@ public partial class ScreenCaptureWindow : Window
             _dpiX = src.CompositionTarget.TransformToDevice.M11;
             _dpiY = src.CompositionTarget.TransformToDevice.M22;
         }
+
+        // Filled as soon as the DPI is known, so the cards take part in the window's first layout
+        // pass and are already painted when it becomes visible. (They used to be deferred to
+        // OnContentRendered so their reveal animation would not play against a hidden window; with
+        // no animation left, deferring only adds work between the first frame and the reveal.)
+        HintHost.ItemsSource = BuildHintSpots();
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
