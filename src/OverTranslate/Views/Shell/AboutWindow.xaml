@@ -1,4 +1,4 @@
-<Window x:Class="OverTranslate.AboutWindow"
+<Window x:Class="OverTranslate.Views.Shell.AboutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="關於 OverTranslate"

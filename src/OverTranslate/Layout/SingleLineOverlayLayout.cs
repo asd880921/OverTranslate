@@ -1,4 +1,4 @@
-namespace OverTranslate;
+namespace OverTranslate.Layout;
 
 internal readonly record struct SingleLineOverlayInput(
     double OriginalFontSize,

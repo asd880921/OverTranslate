@@ -10,7 +10,7 @@ using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
 
-namespace OverTranslate;
+namespace OverTranslate.Views.Capture;
 
 public partial class ScreenCaptureWindow : Window
 {
