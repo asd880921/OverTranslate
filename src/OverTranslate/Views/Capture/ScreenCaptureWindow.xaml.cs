@@ -54,6 +54,12 @@ public partial class ScreenCaptureWindow : Window
         ScreenshotImage.Source = BitmapToDisplaySource(screenshot);
         Cursor = LoadCrosshairCursor();
 
+        // Honour the OS "show animations" setting: when it is off, the reveal collapses to an
+        // instant state change rather than being skipped, so the card still appears.
+        Resources["HintRevealDuration"] = SystemParameters.ClientAreaAnimation
+            ? new Duration(TimeSpan.FromSeconds(0.35))
+            : new Duration(TimeSpan.Zero);
+
         Closed += (_, _) =>
         {
             _selectionTcs.TrySetResult(false);
@@ -70,7 +76,29 @@ public partial class ScreenCaptureWindow : Window
         base.OnContentRendered(e);
         DimPath.Data = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
         Opacity = 1;
+
+        // Populated here rather than earlier so the cards' Loaded reveal plays against a visible
+        // window — the window starts fully transparent to avoid an OS white flash, and an animation
+        // that ran during that period would simply be missed.
+        HintHost.ItemsSource = BuildHintSpots();
     }
+
+    // One card per monitor, positioned at each screen's top-left corner. This window spans the whole
+    // virtual desktop, so a single corner-anchored card would land on whichever monitor happens to
+    // hold the virtual origin — often not the one being looked at.
+    private List<HintSpot> BuildHintSpots()
+    {
+        const double margin = 12;
+
+        return System.Windows.Forms.Screen.AllScreens
+            .Select(screen => new HintSpot(
+                screen.Bounds.Left / _dpiX - SystemParameters.VirtualScreenLeft + margin,
+                screen.Bounds.Top  / _dpiY - SystemParameters.VirtualScreenTop  + margin))
+            .ToList();
+    }
+
+    // Window-local DIP position of one hint card.
+    private sealed record HintSpot(double X, double Y);
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -108,8 +136,8 @@ public partial class ScreenCaptureWindow : Window
         }
     }
 
-    // Same cancellation as Esc. The button lives inside InfoBorder, which is collapsed the moment a
-    // drag begins, so this only ever runs while no selection exists.
+    // Same cancellation as Esc. The button lives inside the hint cards, which are collapsed the
+    // moment a drag begins, so this only ever runs while no selection exists.
     private void CancelCaptureBtn_Click(object sender, RoutedEventArgs e)
     {
         _selectionTcs.TrySetResult(false);
@@ -122,7 +150,7 @@ public partial class ScreenCaptureWindow : Window
         base.OnMouseLeftButtonDown(e);
         _startPoint  = e.GetPosition(this);
         _isDragging  = true;
-        InfoBorder.Visibility    = Visibility.Collapsed;
+        HintHost.Visibility      = Visibility.Collapsed;
         SelectionRect.Visibility = Visibility.Visible;
         CaptureMouse();
         DrawRect(_startPoint, _startPoint);
@@ -155,7 +183,7 @@ public partial class ScreenCaptureWindow : Window
             _hasSelection = false;
             SelectionRect.Visibility = Visibility.Collapsed;
             SetHandlesVisibility(false);
-            InfoBorder.Visibility = Visibility.Visible;
+            HintHost.Visibility = Visibility.Visible;
             return;
         }
 

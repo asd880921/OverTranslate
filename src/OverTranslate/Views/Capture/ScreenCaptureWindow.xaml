@@ -82,48 +82,136 @@
             </Thumb>
         </Canvas>
 
-        <!-- Info label -->
-        <Border x:Name="InfoBorder"
-                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
-                Background="{DynamicResource AppCardBg}"
-                BorderBrush="{DynamicResource AppBorder}"
-                BorderThickness="1"
-                CornerRadius="14"
-                Padding="14,11">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="28" ShadowDepth="0" Opacity="0.16" Color="#000000"/>
-            </Border.Effect>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+        <!-- Info card, repeated once per monitor (see BuildHintSpots): on a multi-monitor desktop a
+             single card sits on whichever screen holds the virtual desktop's top-left corner, which
+             may not be the one the user is looking at. -->
+        <ItemsControl x:Name="HintHost">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Canvas/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
 
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Foreground="{DynamicResource AppTextPrimary}"
-                               FontFamily="{StaticResource AppFont}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Text="拖曳選取翻譯區域"/>
-                    <TextBlock Foreground="{DynamicResource AppTextSecondary}"
-                               FontFamily="{StaticResource AppFont}"
-                               FontSize="12"
-                               Margin="0,4,0,0"
-                               Text="按 ESC 或 ✕ 取消"/>
-                </StackPanel>
+            <ItemsControl.ItemContainerStyle>
+                <Style TargetType="ContentPresenter">
+                    <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                    <Setter Property="Canvas.Top"  Value="{Binding Y}"/>
+                </Style>
+            </ItemsControl.ItemContainerStyle>
 
-                <!-- Before a selection is drawn this is the only clickable way out: the toolbar's
-                     close button does not exist yet, so a mouse-only user would otherwise be stuck
-                     with the keyboard as their sole escape. -->
-                <Button x:Name="CancelCaptureBtn"
-                        Grid.Column="1"
-                        Content="✕"
-                        Style="{StaticResource IconButton}"
-                        Margin="16,0,0,0"
-                        VerticalAlignment="Center"
-                        ToolTip="取消截圖"
-                        Click="CancelCaptureBtn_Click"/>
-            </Grid>
-        </Border>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{DynamicResource AppCardBg}"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="8,8,18,8"
+                            RenderTransformOrigin="0,0">
+                        <!-- Deeper than the app's usual card shadow on purpose: this one floats over
+                             the user's frozen desktop, which is busy and unpredictable, so it needs
+                             more separation than a card on a known background would. -->
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="32" ShadowDepth="2" Direction="270"
+                                              Opacity="0.28" Color="#000000"/>
+                        </Border.Effect>
+
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="0.94" ScaleY="0.94"/>
+                                <TranslateTransform Y="-6"/>
+                            </TransformGroup>
+                        </Border.RenderTransform>
+
+                        <!-- Materialize rather than plain-fade: scale and offset settle together so
+                             the card reads as arriving, anchored to the corner it lives in. Eased
+                             out with no overshoot — nothing here was flung by the user. -->
+                        <Border.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         From="0" To="1"
+                                                         Duration="{DynamicResource HintRevealDuration}"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Children[0].ScaleX"
+                                                         To="1" Duration="{DynamicResource HintRevealDuration}">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Children[0].ScaleY"
+                                                         To="1" Duration="{DynamicResource HintRevealDuration}">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Children[1].Y"
+                                                         To="0" Duration="{DynamicResource HintRevealDuration}">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Border.Triggers>
+
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Leading position: before a selection exists this is the only
+                                 clickable way out, so it reads first instead of trailing the copy. -->
+                            <Button Content="✕"
+                                    Style="{StaticResource IconButton}"
+                                    VerticalAlignment="Center"
+                                    ToolTip="取消截圖"
+                                    Click="CancelCaptureBtn_Click"/>
+
+                            <Rectangle Width="1" Height="34"
+                                       Margin="8,0,14,0"
+                                       VerticalAlignment="Center"
+                                       Fill="{DynamicResource AppSeparator}"/>
+
+                            <StackPanel VerticalAlignment="Center">
+                                <!-- Tracking is size-specific: the heading tightens slightly as it
+                                     grows, the smaller line opens up a touch to stay legible. -->
+                                <TextBlock Foreground="{DynamicResource AppTextPrimary}"
+                                           FontFamily="{StaticResource AppFont}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Text="拖曳選取翻譯區域"/>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                    <TextBlock Foreground="{DynamicResource AppTextSecondary}"
+                                               FontFamily="{StaticResource AppFont}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Text="按"/>
+
+                                    <!-- Drawn as a keycap so the shortcut reads as a physical key
+                                         rather than as prose. -->
+                                    <Border Background="{DynamicResource AppButtonBg}"
+                                            BorderBrush="{DynamicResource AppButtonBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="6,1"
+                                            Margin="5,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Foreground="{DynamicResource AppTextSecondary}"
+                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontSize="10.5"
+                                                   FontWeight="SemiBold"
+                                                   Text="ESC"/>
+                                    </Border>
+
+                                    <TextBlock Foreground="{DynamicResource AppTextSecondary}"
+                                               FontFamily="{StaticResource AppFont}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Text="取消"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
     </Grid>
 </Window>
