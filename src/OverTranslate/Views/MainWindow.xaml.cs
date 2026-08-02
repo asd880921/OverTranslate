@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -246,6 +246,7 @@ public partial class MainWindow : Window
             _selectionSessionId++;
             DisposeEscapeHook();
             CancelSession();
+            ToastWindow.Dismiss();
             CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
             _toolbarWindow = null;
             CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
@@ -313,7 +314,7 @@ public partial class MainWindow : Window
             if (_lastOcrBlocks.Count == 0)
             {
                 requestToolbar?.SetTranslationState(false);
-                ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
+                ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect, ToastKind.Info);
                 return;
             }
 
@@ -389,7 +390,7 @@ public partial class MainWindow : Window
                 return;
 
             requestToolbar?.SetTranslationState(false);
-            ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
+            ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect, ToastKind.Info);
         }
         catch (Exception ex)
         {
@@ -465,7 +466,7 @@ public partial class MainWindow : Window
             var settings = SettingsService.Instance.Current;
             if (!settings.SaveScreenshotToDisk)
             {
-                ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect);
+                ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect, ToastKind.Success);
                 return;
             }
 
@@ -473,7 +474,7 @@ public partial class MainWindow : Window
             try
             {
                 var savedPath = ScreenshotSaveService.Save(result, settings.ScreenshotSavePath);
-                ShowBalloon("已複製", $"已複製到剪貼簿，並儲存至：\n{savedPath}", selRect);
+                ShowBalloon("已複製", $"已複製到剪貼簿，並儲存至：\n{savedPath}", selRect, ToastKind.Success);
             }
             catch (Exception ex)
             {
@@ -511,6 +512,11 @@ public partial class MainWindow : Window
         _selectionSessionId++;
         DisposeEscapeHook();
         CancelSession();
+
+        // A toast is positioned against the selection it reported on. Once that selection is gone
+        // it has nothing left to point at, so it goes with the session rather than lingering on an
+        // empty desktop until its own timer runs out.
+        ToastWindow.Dismiss();
 
         // Detach handler before closing so we drive the teardown order ourselves
         if (_overlayWindow != null && _overlayClosedHandler != null)
@@ -608,10 +614,9 @@ public partial class MainWindow : Window
         System.Windows.Application.Current.Shutdown();
     }
 
-    private static void ShowBalloon(string title, string message, System.Windows.Rect? sel = null)
-    {
-        new ToastWindow(title, message, sel).Show();
-    }
+    private static void ShowBalloon(
+        string title, string message, System.Windows.Rect? sel = null, ToastKind kind = ToastKind.Error) =>
+        ToastWindow.Show(title, message, sel, kind);
 
     private static System.Windows.Media.Color SampleAverageColor(
         BitmapData data, int bmpW, int bmpH, System.Windows.Rect bounds, string sourceLanguage)

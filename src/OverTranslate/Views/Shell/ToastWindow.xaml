@@ -10,73 +10,82 @@
         Width="320"
         SizeToContent="Height">
 
-    <Border Background="{DynamicResource ToastBg}"
-            CornerRadius="10"
-            Padding="16,12"
-            BorderBrush="{DynamicResource ToastBorder}"
-            BorderThickness="1">
+    <!-- Margin leaves room for the shadow to render outside the visual -->
+    <Border Margin="8,6,8,10">
+        <Border Background="{DynamicResource ToastBg}"
+                CornerRadius="10"
+                BorderBrush="{DynamicResource ToastBorder}"
+                BorderThickness="1">
+            <!-- Matches the toolbar and hint card: this floats over the user's own screen content,
+                 so it needs a shadow to read as a separate layer rather than a painted rectangle. -->
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.18" Color="#000000"/>
+            </Border.Effect>
 
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <!-- HEADER -->
-            <Grid Grid.Row="0" VerticalAlignment="Top">
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock x:Name="TitleText"
-                           FontWeight="SemiBold"
-                           FontSize="13"
-                           Foreground="{DynamicResource ToastTitle}"
-                           TextWrapping="Wrap"
-                           VerticalAlignment="Center"
-                           Margin="0,0,8,4"/>
+                <!-- Status stripe: the only thing distinguishing a success from a failure at a
+                     glance. Colour is assigned in code from the ToastKind. -->
+                <Rectangle x:Name="AccentBar"
+                           Grid.Column="0"
+                           Width="3"
+                           RadiusX="1.5" RadiusY="1.5"
+                           Margin="8,10,0,10"/>
 
-                <!-- Copy Button -->
-                <Button Grid.Column="1"
-                        Click="CopyButton_Click"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Padding="4"
-                        Cursor="Hand"
-                        ToolTip="Copy">
+                <Grid Grid.Column="1" Margin="12,12,16,12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <TextBlock Text="⧉"
-                               FontSize="14"
-                               Foreground="{DynamicResource ToastCopyBtn}"/>
+                    <!-- HEADER -->
+                    <Grid Grid.Row="0" VerticalAlignment="Top">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Opacity" Value="0.6"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <ContentPresenter/>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Opacity" Value="1"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
+                        <TextBlock x:Name="TitleText"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource ToastTitle}"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,4"/>
+
+                        <!-- Same icon button as the toolbar and hint card, so it behaves the way
+                             every other icon button in the app does (hover fill, pressed state). -->
+                        <Button Grid.Column="1"
+                                Content="⧉"
+                                Style="{StaticResource ToolbarIconButton}"
+                                VerticalAlignment="Top"
+                                Margin="0,-4,-4,0"
+                                ToolTip="複製訊息"
+                                Click="CopyButton_Click"/>
+                    </Grid>
+
+                    <!-- MESSAGE -->
+                    <TextBlock Grid.Row="1"
+                               x:Name="MessageText"
+                               FontSize="12"
+                               Foreground="{DynamicResource ToastMessage}"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,0"/>
+
+                    <TextBlock Grid.Row="2"
+                               x:Name="CopyHint"
+                               Text="已複製到剪貼簿"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppSuccess}"
+                               Visibility="Collapsed"
+                               Margin="0,6,0,0"/>
+                </Grid>
             </Grid>
-
-            <!-- MESSAGE -->
-            <TextBlock Grid.Row="1"
-                       x:Name="MessageText"
-                       FontSize="12"
-                       Foreground="{DynamicResource ToastMessage}"
-                       TextWrapping="Wrap"
-                       Margin="0,4,0,0"/>
-        </Grid>
+        </Border>
     </Border>
 </Window>
