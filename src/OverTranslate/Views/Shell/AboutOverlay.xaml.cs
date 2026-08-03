@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
@@ -31,18 +32,28 @@ public partial class AboutOverlay : UserControl
     {
         Visibility = Visibility.Visible;
 
-        // Fade only. The card used to also scale up from 0.96, but WPF abandons pixel-aligned text
-        // rendering for anything animating under a RenderTransform, and scaling is the worst case:
-        // every glyph is resampled at a slightly different size each frame. The card's text was
-        // visibly soft until the animation ended and then snapped sharp. Alpha alone leaves every
-        // glyph on its exact final pixel throughout.
+        // WPF switches text off pixel snapping as soon as it detects the text is being animated,
+        // then ramps snapping back on over roughly a second once the motion stops — which is why
+        // the card used to reach its final size and stay soft for a beat before turning sharp, and
+        // there is no API to shorten or disable that ramp. Rendering the card into a bitmap cache
+        // for the duration of the scale sidesteps it: the glyphs are rasterised once as static,
+        // snapped text and the render thread only scales the finished bitmap, so the detector never
+        // sees animating text. The cache is dropped again in ReleaseAnimations.
+        Card.CacheMode = new BitmapCache { SnapsToDevicePixels = true };
+
         var fade = new DoubleAnimation { From = 0, To = 1, Duration = FadeDuration };
-        fade.Completed += (_, _) =>
-        {
-            BeginAnimation(OpacityProperty, null);
-            Opacity = 1;
-        };
+        fade.Completed += (_, _) => ReleaseAnimations();
         BeginAnimation(OpacityProperty, fade);
+
+        // Slight scale-up so the card reads as coming forward rather than blinking in
+        var grow = new DoubleAnimation
+        {
+            From = 0.96, To = 1,
+            Duration = FadeDuration,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        CardScale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+        CardScale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
 
         // Focus lets the control receive Escape without the page underneath stealing it
         Focus();
@@ -54,10 +65,27 @@ public partial class AboutOverlay : UserControl
         fade.Completed += (_, _) =>
         {
             Visibility = Visibility.Collapsed;
-            BeginAnimation(OpacityProperty, null);
-            Opacity = 1;
+            ReleaseAnimations();
         };
         BeginAnimation(OpacityProperty, fade);
+    }
+
+    // DoubleAnimation defaults to FillBehavior.HoldEnd, so the animated properties stay under the
+    // animation clock's control long after the animation has visually finished, which keeps the
+    // card in an intermediate composition layer indefinitely. Handing the properties back to their
+    // owners drops that layer as soon as the transition is over.
+    private void ReleaseAnimations()
+    {
+        BeginAnimation(OpacityProperty, null);
+        Opacity = 1;
+
+        CardScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        CardScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        CardScale.ScaleX = 1;
+        CardScale.ScaleY = 1;
+
+        // Back to rendering the live visual tree — the cache existed only for the transition.
+        Card.CacheMode = null;
     }
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();

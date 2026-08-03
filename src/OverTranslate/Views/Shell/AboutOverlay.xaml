@@ -9,15 +9,24 @@
           Background="#8C000000"
           MouseLeftButtonDown="Scrim_MouseLeftButtonDown">
 
+        <!-- The card is centred in the scrim, so at an odd window width its left edge lands on a
+             half pixel and WPF's default Ideal text formatting happily sub-pixel-positions every
+             glyph there, leaving the whole card looking soft. Layout rounding snaps the card to
+             whole device pixels so the text inside always starts on the pixel grid. -->
         <Border x:Name="Card"
                 Width="400"
+                UseLayoutRounding="True"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 CornerRadius="12"
                 Background="{DynamicResource AppCardBg}"
                 BorderBrush="{DynamicResource AppBorder}"
                 BorderThickness="1"
+                RenderTransformOrigin="0.5,0.5"
                 MouseLeftButtonDown="Card_MouseLeftButtonDown">
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+            </Border.RenderTransform>
             <Border.Effect>
                 <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.3" Color="#000000"/>
             </Border.Effect>

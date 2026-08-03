@@ -100,15 +100,20 @@
         </Border>
 
         <!-- ══════════ Content ══════════ -->
-        <!-- A Border rather than a ContentControl so the layer has an opaque background of its own.
-             While the fade animation runs, WPF renders this subtree into an intermediate surface,
-             and ClearType sub-pixel antialiasing is impossible over transparent pixels — which is
-             why the text went soft mid-transition. An opaque backing plus ClearTypeHint keeps text
-             rendering identical throughout the animation instead of only after it ends. -->
+        <!-- A Border rather than a ContentControl so the animated layer has an opaque background of
+             its own: the slide runs this subtree through a bitmap cache (see AnimateContentIn) and
+             through an opacity animation, both of which are intermediate surfaces that WPF assumes
+             may be transparent, and ClearType sub-pixel antialiasing cannot run over transparent
+             pixels. An opaque backing plus ClearTypeHint tells WPF the surface really is opaque, so
+             ClearType stays on for the whole transition. -->
         <Border Grid.Column="1"
                 x:Name="ContentHost"
                 Background="{DynamicResource AppWindowBg}"
-                RenderOptions.ClearTypeHint="Enabled"/>
+                RenderOptions.ClearTypeHint="Enabled">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ContentTransform"/>
+            </Border.RenderTransform>
+        </Border>
 
         <!-- ══════════ About modal ══════════ -->
         <shell:AboutOverlay Grid.ColumnSpan="2" x:Name="About"/>

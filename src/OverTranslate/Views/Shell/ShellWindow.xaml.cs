@@ -145,12 +145,18 @@ public partial class ShellWindow : Window
         var transition = new object();
         _contentTransition = transition;
 
-        // Fade only — no slide. WPF drops pixel-aligned, ClearType text rendering for anything
-        // moving under a RenderTransform, which is what made the old slide's final stretch look
-        // soft: the text was already fully visible and, to the eye, standing still, yet was still
-        // being resampled at fractional pixel positions. A fade leaves every glyph on its exact
-        // final pixel for the whole transition, so there is nothing to resample; only alpha
-        // changes, and it does so while the text is still too faint to judge sharpness by.
+        // WPF switches text off pixel snapping as soon as it detects the text is being animated or
+        // scrolled, then ramps snapping back on over roughly a second once the motion stops. That
+        // ramp is why the page used to sit visibly settled and stay soft for a beat before turning
+        // sharp, and there is no API to shorten or disable it. Rendering the page into a bitmap
+        // cache for the duration of the slide sidesteps the whole mechanism: the glyphs are
+        // rasterised once as static, snapped text, and the render thread then only moves the
+        // finished bitmap, so nothing ever looks like animating text to the detector.
+        // SnapsToDevicePixels keeps that bitmap on whole pixels as it moves, so no frame of the
+        // slide is resampled either. The cache is dropped again in ReleaseContentAnimations.
+        ContentHost.CacheMode = new BitmapCache { SnapsToDevicePixels = true };
+
+        // Both animations run for the same duration, so one Completed handler covers the pair.
         var fade = new DoubleAnimation { From = 0, To = 1, Duration = ContentDuration };
         fade.Completed += (_, _) =>
         {
@@ -159,16 +165,30 @@ public partial class ShellWindow : Window
         };
 
         ContentHost.BeginAnimation(OpacityProperty, fade);
+        ContentTransform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation
+        {
+            From = 8, To = 0,
+            Duration = ContentDuration,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
     }
 
-    // DoubleAnimation defaults to FillBehavior.HoldEnd, which keeps Opacity under the animation
-    // clock's control even after the animation has visually finished, holding the content in an
-    // intermediate composition layer indefinitely. Handing the property back to the element ends
-    // that as soon as the fade is done.
+    // DoubleAnimation defaults to FillBehavior.HoldEnd, which keeps the animated properties under
+    // the animation clock's control even after the animation has visually finished, holding the
+    // content in an intermediate composition layer indefinitely. Handing the properties back to the
+    // elements drops that layer the moment the transition ends, so the settled page renders exactly
+    // as it would have if it had never animated.
     private void ReleaseContentAnimations()
     {
         ContentHost.BeginAnimation(OpacityProperty, null);
         ContentHost.Opacity = 1;
+
+        ContentTransform.BeginAnimation(TranslateTransform.YProperty, null);
+        ContentTransform.Y = 0;
+
+        // Back to rendering the live visual tree — the cache existed only for the slide, and the
+        // settled page has to be real text again for selection, scrolling and DPI changes.
+        ContentHost.CacheMode = null;
     }
 
     private void AboutBtn_Click(object sender, RoutedEventArgs e) => About.Open();
