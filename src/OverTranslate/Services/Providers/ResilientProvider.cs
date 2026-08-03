@@ -66,11 +66,13 @@ public class ResilientProvider : ITranslationProvider
     public bool RequiresApiKey => false;
 
     public async Task<(List<TranslatedBlock> Blocks, string DetectedLang)> TranslateAsync(
-        List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey)
+        List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey,
+        CancellationToken cancellationToken = default)
     {
         if (blocks.Count == 0) return ([], "");
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var tasks   = blocks.Select(b => TranslateBlockHedged(b.Text, sourceLang, targetLang));
+        var tasks   = blocks.Select(b => TranslateBlockHedged(b.Text, sourceLang, targetLang, cancellationToken));
         var results = await Task.WhenAll(tasks);
 
         var langVotes   = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -105,20 +107,26 @@ public class ResilientProvider : ITranslationProvider
     }
 
     private async Task<(string Translation, string DetectedLang, string Engine)> TranslateBlockHedged(
-        string text, string sourceLang, string targetLang)
+        string text, string sourceLang, string targetLang, CancellationToken cancellationToken)
     {
         var pending   = new List<Task<(string Translation, string DetectedLang, string Engine)>>();
         int next      = 0;
-        var deadline  = Task.Delay(_timeout);
+        // Tied to the token so an abandoned batch does not leave timers armed for the full timeout.
+        var deadline  = Task.Delay(_timeout, cancellationToken);
 
         StartNext(); // always launch the primary engine immediately
 
         while (pending.Count > 0)
         {
             // Launch a backup once the hedge delay elapses (until engines run out).
-            Task trigger = next < _engines.Length ? Task.Delay(_hedgeDelay) : deadline;
+            Task trigger = next < _engines.Length ? Task.Delay(_hedgeDelay, cancellationToken) : deadline;
 
             var finished = await Task.WhenAny(pending.Cast<Task>().Append(trigger));
+
+            // Checked before interpreting the result: cancellation must propagate rather than be
+            // mistaken for "every engine failed", which would silently return the untranslated text
+            // as if it were a real answer.
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (finished == trigger)
             {
@@ -142,6 +150,7 @@ public class ResilientProvider : ITranslationProvider
         }
 
         Observe(pending);
+        cancellationToken.ThrowIfCancellationRequested();
         return (text, "", "(none)"); // every engine failed/timed out — fall back to the original text
 
         void StartNext()
@@ -152,7 +161,7 @@ public class ResilientProvider : ITranslationProvider
 
         async Task<(string, string, string)> RunAsync(GTranslateProvider engine)
         {
-            var (translation, detLang) = await engine.TranslateOneAsync(text, sourceLang, targetLang);
+            var (translation, detLang) = await engine.TranslateOneAsync(text, sourceLang, targetLang, cancellationToken);
             return (translation, detLang, engine.Name);
         }
 

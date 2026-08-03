@@ -51,7 +51,14 @@ public partial class ScreenCaptureWindow : Window
         Width  = SystemParameters.VirtualScreenWidth;
         Height = SystemParameters.VirtualScreenHeight;
 
-        ScreenshotImage.Source = BitmapToDisplaySource(screenshot);
+        // Tag the capture with the DPI that makes its DIP size equal this window's, so WPF maps it
+        // 1:1 instead of rescaling a full virtual-desktop image on the first frame. At 96 DPI a
+        // 5120px-wide capture claims to be 5120 DIP while the window is only ~4130 DIP, and that
+        // mismatch is paid for on every render of the largest visual in the app.
+        double captureDpi = Width > 0
+            ? 96.0 * physBounds.Width / Width
+            : 96.0;
+        ScreenshotImage.Source = BitmapToDisplaySource(screenshot, captureDpi);
         Cursor = LoadCrosshairCursor();
 
         Closed += (_, _) =>
@@ -70,7 +77,28 @@ public partial class ScreenCaptureWindow : Window
         base.OnContentRendered(e);
         DimPath.Data = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
         Opacity = 1;
+
+        // Claimed only once the first frame is on screen. Activating before that forces a
+        // foreground switch while the window is still empty, which flashes its black background.
+        Activate();
     }
+
+    // One card per monitor, positioned at each screen's top-left corner. This window spans the whole
+    // virtual desktop, so a single corner-anchored card would land on whichever monitor happens to
+    // hold the virtual origin — often not the one being looked at.
+    private List<HintSpot> BuildHintSpots()
+    {
+        const double margin = 12;
+
+        return System.Windows.Forms.Screen.AllScreens
+            .Select(screen => new HintSpot(
+                screen.Bounds.Left / _dpiX - SystemParameters.VirtualScreenLeft + margin,
+                screen.Bounds.Top  / _dpiY - SystemParameters.VirtualScreenTop  + margin))
+            .ToList();
+    }
+
+    // Window-local DIP position of one hint card.
+    private sealed record HintSpot(double X, double Y);
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -82,6 +110,12 @@ public partial class ScreenCaptureWindow : Window
             _dpiX = src.CompositionTarget.TransformToDevice.M11;
             _dpiY = src.CompositionTarget.TransformToDevice.M22;
         }
+
+        // Filled as soon as the DPI is known, so the cards take part in the window's first layout
+        // pass and are already painted when it becomes visible. (They used to be deferred to
+        // OnContentRendered so their reveal animation would not play against a hidden window; with
+        // no animation left, deferring only adds work between the first frame and the reveal.)
+        HintHost.ItemsSource = BuildHintSpots();
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -97,11 +131,23 @@ public partial class ScreenCaptureWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key == Key.Escape && !_processingStarted)
+        // Esc must cancel at any stage, including after processing started. This is the fallback
+        // path for when OverlayWindow's low-level keyboard hook is not in play (not yet installed,
+        // already torn down, or dropped by Windows) — without it, a session that fails mid-flight
+        // leaves this full-screen dim window on top of everything with no way to close it.
+        if (e.Key == Key.Escape)
         {
             _selectionTcs.TrySetResult(false);
             Close();
         }
+    }
+
+    // Same cancellation as Esc. The button lives inside the hint cards, which are collapsed the
+    // moment a drag begins, so this only ever runs while no selection exists.
+    private void CancelCaptureBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _selectionTcs.TrySetResult(false);
+        Close();
     }
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
@@ -110,7 +156,7 @@ public partial class ScreenCaptureWindow : Window
         base.OnMouseLeftButtonDown(e);
         _startPoint  = e.GetPosition(this);
         _isDragging  = true;
-        InfoBorder.Visibility    = Visibility.Collapsed;
+        HintHost.Visibility      = Visibility.Collapsed;
         SelectionRect.Visibility = Visibility.Visible;
         CaptureMouse();
         DrawRect(_startPoint, _startPoint);
@@ -143,7 +189,7 @@ public partial class ScreenCaptureWindow : Window
             _hasSelection = false;
             SelectionRect.Visibility = Visibility.Collapsed;
             SetHandlesVisibility(false);
-            InfoBorder.Visibility = Visibility.Visible;
+            HintHost.Visibility = Visibility.Visible;
             return;
         }
 
@@ -333,7 +379,7 @@ public partial class ScreenCaptureWindow : Window
         new(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y),
             Math.Abs(b.X - a.X), Math.Abs(b.Y - a.Y));
 
-    private static BitmapSource BitmapToDisplaySource(Bitmap bmp)
+    private static BitmapSource BitmapToDisplaySource(Bitmap bmp, double dpi = 96)
     {
         var locked = bmp.LockBits(
             new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height),
@@ -342,7 +388,7 @@ public partial class ScreenCaptureWindow : Window
         try
         {
             var src = BitmapSource.Create(
-                bmp.Width, bmp.Height, 96, 96,
+                bmp.Width, bmp.Height, dpi, dpi,
                 PixelFormats.Bgra32,
                 null,
                 locked.Scan0,

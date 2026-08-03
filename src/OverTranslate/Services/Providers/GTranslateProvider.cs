@@ -46,11 +46,13 @@ public class GTranslateProvider : ITranslationProvider
     };
 
     public async Task<(List<TranslatedBlock> Blocks, string DetectedLang)> TranslateAsync(
-        List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey)
+        List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey,
+        CancellationToken cancellationToken = default)
     {
         if (blocks.Count == 0) return ([], "");
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var tasks   = blocks.Select(b => TranslateOneAsync(b.Text, sourceLang, targetLang));
+        var tasks   = blocks.Select(b => TranslateOneAsync(b.Text, sourceLang, targetLang, cancellationToken));
         var results = await Task.WhenAll(tasks);
 
         var langVotes  = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -69,9 +71,16 @@ public class GTranslateProvider : ITranslationProvider
 
     // Translates a single text fragment. Detected language is returned as a DeepL-style code.
     // Throws if the underlying free endpoint fails — the caller (ResilientProvider) decides on fallback.
+    //
+    // GTranslate's ITranslator.TranslateAsync takes no CancellationToken, so a request already in
+    // flight cannot be aborted. The token is honoured at the only point where it still helps: before
+    // the call is made. That is what keeps an abandoned batch from issuing the requests it has not
+    // started yet, including every hedged backup ResilientProvider would have launched.
     public async Task<(string Translation, string DetectedLang)> TranslateOneAsync(
-        string text, string sourceLang, string targetLang)
+        string text, string sourceLang, string targetLang, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (_targetOverrides.TryGetValue(targetLang, out var overrideLang))
             targetLang = overrideLang;
 

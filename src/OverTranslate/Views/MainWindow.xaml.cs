@@ -1,9 +1,10 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
+using NLog;
 using OverTranslate.Services;
 using OverTranslate.Views.Capture;
 using OverTranslate.Views.Overlay;
@@ -15,12 +16,16 @@ namespace OverTranslate.Views;
 
 public partial class MainWindow : Window
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
     private NotifyIcon? _notifyIcon;
     private TrayMenuWindow? _trayMenu;
     private GlobalHotkey? _hotkey;
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
+    private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
+    private CancellationTokenSource? _sessionCts; // cancelled on teardown so abandoned work stops
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
     private readonly OcrService _ocrService = new();
     private readonly TranslationService _translationService = new();
@@ -97,7 +102,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(async () =>
         {
-            if (_overlayWindow != null || _toolbarWindow != null || _captureWindow != null)
+            if (HasActiveSession)
             {
                 CloseAll();
                 return;
@@ -117,31 +122,64 @@ public partial class MainWindow : Window
                 using var g = Graphics.FromImage(screenshot);
                 g.CopyFromScreen(left, top, 0, 0, screenBounds.Size, CopyPixelOperation.SourceCopy);
             }
-            catch { return; }
-
-            var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
-            _captureWindow = captureWindow;
-            captureWindow.Show();
-
-            bool selected = await captureWindow.WaitForSelectionAsync();
-            if (!selected || !captureWindow.HasSelection)
+            catch (Exception ex)
             {
-                captureWindow.Close();
-                _captureWindow = null;
-                screenshot.Dispose();
+                Log.Error(ex, "Screen capture failed — aborting selection");
                 return;
             }
 
-            var settings      = SettingsService.Instance.Current;
-            var selection     = captureWindow.Selection;
-            EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage, hasTranslated: false);
+            // Anything that escapes from here would leave the full-screen dim window on top of the
+            // desktop with no owner left to close it, so the whole session setup is guarded.
+            try
+            {
+                Log.Debug("Capture session starting, bounds={Bounds}", screenBounds);
+                var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
+                _captureWindow = captureWindow;
+                captureWindow.Show();
 
-            // Fire in the same pass that built the overlay, before it paints: the toolbar's first
-            // frame already reads "翻譯中..." and the overlay's first frame already shows "辨識中".
-            // Deferring this to a later dispatcher pass only adds a visible gap where the toolbar
-            // sits idle after the selection is done.
-            if (settings.AutoTranslateAfterSelection)
-                _toolbarWindow?.RequestTranslate();
+                // After Show, not before: everything on the path between creating the window and
+                // presenting it delays the first frame, during which the window's black background
+                // is what the user sees. The hook is still installed within the same dispatcher
+                // pass, so Esc is live long before anyone can press it.
+                // Release any previous one first — this hook swallows Esc process-wide, so an
+                // orphaned instance would break Esc across the entire desktop, which is far worse
+                // than the stuck overlay it exists to prevent.
+                DisposeEscapeHook();
+                _escapeHook = GlobalEscapeHook.Install(CloseAll);
+
+                CancelSession();
+                _sessionCts = new CancellationTokenSource();
+
+                bool selected = await captureWindow.WaitForSelectionAsync();
+                if (!selected || !captureWindow.HasSelection)
+                {
+                    // Also reached when the capture window cancelled itself (its own Esc fallback),
+                    // which never goes through CloseAll — so the session is torn down here too.
+                    DisposeEscapeHook();
+                    CancelSession();
+                    captureWindow.Close();
+                    _captureWindow = null;
+                    screenshot.Dispose();
+                    return;
+                }
+
+                var settings      = SettingsService.Instance.Current;
+                var selection     = captureWindow.Selection;
+                EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage, hasTranslated: false);
+
+                // Fire in the same pass that built the overlay, before it paints: the toolbar's first
+                // frame already reads "翻譯中..." and the overlay's first frame already shows "辨識中".
+                // Deferring this to a later dispatcher pass only adds a visible gap where the toolbar
+                // sits idle after the selection is done.
+                if (settings.AutoTranslateAfterSelection)
+                    _toolbarWindow?.RequestTranslate();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Capture session setup failed — tearing down overlay windows");
+                CloseAll();
+                screenshot.Dispose();
+            }
         });
     }
 
@@ -200,12 +238,18 @@ public partial class MainWindow : Window
         _overlayWindow = new OverlayWindow(blocks, selPhysLeft, selPhysTop, selPhysWidth, selPhysHeight, sourceLang, targetLang);
         if (_captureWindow != null)
             _overlayWindow.Owner = _captureWindow;
+        // This runs when the overlay closes on its own (Esc via the keyboard hook). Same fault
+        // tolerance as CloseAll: a throwing toolbar Close() must not strand the capture window's
+        // full-screen dim layer, which is the one window the user cannot get rid of.
         _overlayClosedHandler = (_, _) =>
         {
             _selectionSessionId++;
-            _toolbarWindow?.Close();
+            DisposeEscapeHook();
+            CancelSession();
+            ToastWindow.Dismiss();
+            CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
             _toolbarWindow = null;
-            _captureWindow?.Close();
+            CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
             _captureWindow = null;
             _overlayWindow = null;
         };
@@ -218,6 +262,9 @@ public partial class MainWindow : Window
         var requestToolbar = sender as ToolbarWindow;
         var requestCaptureWindow = _captureWindow;
         var requestSessionId = _selectionSessionId;
+        // Captured now: _sessionCts is replaced by the next capture, and this request must keep
+        // observing the token belonging to the session it was started for.
+        var cancellationToken = _sessionCts?.Token ?? CancellationToken.None;
         var settings = SettingsService.Instance.Current;
         var selRect  = requestCaptureWindow?.Selection
             ?? new System.Windows.Rect(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
@@ -243,6 +290,15 @@ public partial class MainWindow : Window
             _lastSelPhysWidth  = requestCaptureWindow.Selection.Width;
             _lastSelPhysHeight = requestCaptureWindow.Selection.Height;
             selRect = requestCaptureWindow.Selection;
+
+            // The capture window owns CroppedBitmap and disposes it the instant it closes (Esc,
+            // CloseAll, re-capture). OCR runs on a thread pool thread and the colour sampling below
+            // happens after a second await, so both would read freed GDI+ memory if they used that
+            // instance directly. Take our own copy up front — cloning here is safe because we are
+            // still on the UI thread with no await since PrepareForTranslation — and let its
+            // lifetime match this request instead of the window's.
+            using var workBitmap = ClonePixels(requestCaptureWindow.CroppedBitmap!);
+
             _overlayWindow?.ShowProcessing(
                 _lastSelPhysLeft,
                 _lastSelPhysTop,
@@ -250,7 +306,7 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 "辨識中");
 
-            var recognizedBlocks = await _ocrService.RecognizeAsync(requestCaptureWindow.CroppedBitmap!, req.SourceLang);
+            var recognizedBlocks = await _ocrService.RecognizeAsync(workBitmap, req.SourceLang, cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -258,7 +314,7 @@ public partial class MainWindow : Window
             if (_lastOcrBlocks.Count == 0)
             {
                 requestToolbar?.SetTranslationState(false);
-                ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
+                ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect, ToastKind.Info);
                 return;
             }
 
@@ -270,14 +326,12 @@ public partial class MainWindow : Window
                 "翻譯中");
 
             var (translated, _) = await _translationService.TranslateAsync(
-                _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey);
+                _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey,
+                cancellationToken: cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
-            var croppedBitmap = requestCaptureWindow.CroppedBitmap;
-            if (croppedBitmap is null)
-                return;
-
+            var croppedBitmap = workBitmap;
             var bmpData = croppedBitmap.LockBits(
                 new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height),
                 ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
@@ -323,16 +377,25 @@ public partial class MainWindow : Window
             requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
             requestToolbar?.SetEngineBadge(_translationService.LastEngineUsage);
         }
+        // The session was torn down (Esc, re-capture, toolbar close) while this was in flight.
+        // Expected and user-initiated — it must stay completely silent, with no error toast.
+        catch (OperationCanceledException)
+        {
+            Log.Debug("Translate request abandoned — capture session ended");
+        }
         catch (InvalidOperationException ex) when (ex.Message.Contains("sequence contains no elements", StringComparison.OrdinalIgnoreCase))
         {
+            Log.Debug(ex, "OCR produced no text blocks");
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
             requestToolbar?.SetTranslationState(false);
-            ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect);
+            ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect, ToastKind.Info);
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Translate request failed (src={Src}, tgt={Tgt}, selection={Sel})",
+                req.SourceLang, req.TargetLang, selRect);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -351,6 +414,11 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    // Deep copy of a capture crop, owned by the caller. Clone(Rectangle, PixelFormat) allocates a
+    // fresh GDI+ bitmap and copies the pixels, so the copy stays valid after the source is disposed.
+    private static Bitmap ClonePixels(Bitmap source) =>
+        source.Clone(new Rectangle(0, 0, source.Width, source.Height), source.PixelFormat);
 
     // Builds the "copy screenshot" image by compositing what the user actually sees in the
     // selection — WITHOUT OverTranslate's own editing chrome. The background is the clean original
@@ -398,7 +466,7 @@ public partial class MainWindow : Window
             var settings = SettingsService.Instance.Current;
             if (!settings.SaveScreenshotToDisk)
             {
-                ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect);
+                ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect, ToastKind.Success);
                 return;
             }
 
@@ -406,15 +474,17 @@ public partial class MainWindow : Window
             try
             {
                 var savedPath = ScreenshotSaveService.Save(result, settings.ScreenshotSavePath);
-                ShowBalloon("已複製", $"已複製到剪貼簿，並儲存至：\n{savedPath}", selRect);
+                ShowBalloon("已複製", $"已複製到剪貼簿，並儲存至：\n{savedPath}", selRect, ToastKind.Success);
             }
             catch (Exception ex)
             {
+                Log.Warn(ex, "Screenshot copied to clipboard but saving to disk failed");
                 ShowBalloon("已複製（儲存失敗）", $"已複製到剪貼簿，但無法儲存到本機：{ex.Message}", selRect);
             }
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Copy screenshot failed");
             ShowBalloon("複製失敗", $"無法複製截圖：{ex.Message}", selRect);
         }
     }
@@ -426,22 +496,8 @@ public partial class MainWindow : Window
         var srcLang = _toolbarWindow?.CurrentSourceLang ?? SettingsService.Instance.Current.SourceLanguage;
         var tgtLang = _toolbarWindow?.CurrentTargetLang ?? SettingsService.Instance.Current.TargetLanguage;
 
-        var existing = System.Windows.Application.Current.Windows
-            .OfType<TranslationWindow>().FirstOrDefault();
-
-        if (existing != null)
-        {
-            if (existing.WindowState == WindowState.Minimized)
-                existing.WindowState = WindowState.Normal;
-            existing.SetContent(srcText, tgtText, srcLang, tgtLang);
-            existing.Activate();
-        }
-        else
-        {
-            var win = new TranslationWindow(srcText, tgtText, srcLang, tgtLang);
-            win.Show();
-            win.Activate();
-        }
+        var shell = ShellWindow.ShowOrActivate(ShellPage.Translation);
+        shell.TranslationPage.SetContent(srcText, tgtText, srcLang, tgtLang);
 
         CloseAll(); // close overlay, dim background, and toolbar
     }
@@ -451,47 +507,104 @@ public partial class MainWindow : Window
 
     private void CloseAll()
     {
+        Log.Debug("Tearing down capture session (overlay={Overlay}, toolbar={Toolbar}, capture={Capture})",
+            _overlayWindow != null, _toolbarWindow != null, _captureWindow != null);
         _selectionSessionId++;
+        DisposeEscapeHook();
+        CancelSession();
+
+        // A toast is positioned against the selection it reported on. Once that selection is gone
+        // it has nothing left to point at, so it goes with the session rather than lingering on an
+        // empty desktop until its own timer runs out.
+        ToastWindow.Dismiss();
+
         // Detach handler before closing so we drive the teardown order ourselves
         if (_overlayWindow != null && _overlayClosedHandler != null)
             _overlayWindow.Closed -= _overlayClosedHandler;
-        _overlayWindow?.CloseOverlay();
+
+        // Each window is torn down independently: the capture window paints a full-screen dim layer
+        // that is click-through once processing starts, so if an earlier Close() threw we must still
+        // reach it. Clearing the field first also guarantees the state never claims a window that is
+        // actually gone, which would make the next hotkey press a no-op teardown.
+        CloseWindow(_overlayWindow, w => w.CloseOverlay(), nameof(OverlayWindow));
         _overlayWindow = null;
 
-        _toolbarWindow?.Close();
+        CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
         _toolbarWindow = null;
 
-        _captureWindow?.Close();
+        CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
         _captureWindow = null;
     }
+
+    // The hook is process-wide and swallows Esc, so it must never outlive the session that owns it.
+    private void DisposeEscapeHook()
+    {
+        _escapeHook?.Dispose();
+        _escapeHook = null;
+    }
+
+    // Signals recognition/translation started by this session to stop. The source is not disposed
+    // here: work already in flight still holds the token, and disposing it underneath them would
+    // throw. Letting it be collected is the safe trade for an object this small.
+    private void CancelSession()
+    {
+        _sessionCts?.Cancel();
+        _sessionCts = null;
+    }
+
+    private static void CloseWindow<T>(T? window, Action<T> close, string name) where T : Window
+    {
+        if (window == null) return;
+        try
+        {
+            close(window);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to close {Window} — forcing teardown of the remaining windows", name);
+        }
+    }
+
+    // Last-resort teardown for the unhandled-exception handler. Returns whether a capture session
+    // was actually torn down, which is what tells the caller the app is back in a clean state.
+    internal bool ForceCloseOverlays()
+    {
+        if (!HasActiveSession) return false;
+
+        CloseAll();
+        return true;
+    }
+
+    // The Esc hook counts: it is process-wide, so a session that left only the hook behind still
+    // needs tearing down even though every window is already gone.
+    private bool HasActiveSession =>
+        _overlayWindow != null || _toolbarWindow != null || _captureWindow != null || _escapeHook != null;
 
     private bool IsCurrentSelectionSession(int sessionId, ToolbarWindow? toolbar, ScreenCaptureWindow? captureWindow) =>
         sessionId == _selectionSessionId &&
         ReferenceEquals(toolbar, _toolbarWindow) &&
         ReferenceEquals(captureWindow, _captureWindow);
 
-    private static TranslationWindow? GetTranslationWindow() =>
-        System.Windows.Application.Current.Windows.OfType<TranslationWindow>().FirstOrDefault();
-
-    private static void OpenSettings() => SettingsWindow.ShowOrActivate(GetTranslationWindow());
+    private static void OpenSettings() => ShellWindow.ShowOrActivate(ShellPage.Settings);
 
     private void ShowTrayMenu()
     {
         if (_trayMenu != null) return;
         _trayMenu = new TrayMenuWindow();
+        _trayMenu.CaptureRequested         += (_, _) => OnHotkeyPressed(this, EventArgs.Empty);
         _trayMenu.OpenTranslationRequested += (_, _) => OpenTranslationWindow();
         _trayMenu.OpenSettingsRequested    += (_, _) => OpenSettings();
-        _trayMenu.OpenAboutRequested       += (_, _) => AboutWindow.ShowOrActivate(GetTranslationWindow());
         _trayMenu.ExitRequested            += (_, _) => ExitApp();
         _trayMenu.Closed                   += (_, _) => _trayMenu = null;
         _trayMenu.Show();
     }
 
     private static void OpenTranslationWindow() =>
-        ((App)System.Windows.Application.Current).ShowOrActivateTranslationWindow();
+        ShellWindow.ShowOrActivate(ShellPage.Translation);
 
     private void ExitApp()
     {
+        DisposeEscapeHook();
         _hotkey?.Dispose();
         if (_notifyIcon != null)
         {
@@ -501,10 +614,9 @@ public partial class MainWindow : Window
         System.Windows.Application.Current.Shutdown();
     }
 
-    private static void ShowBalloon(string title, string message, System.Windows.Rect? sel = null)
-    {
-        new ToastWindow(title, message, sel).Show();
-    }
+    private static void ShowBalloon(
+        string title, string message, System.Windows.Rect? sel = null, ToastKind kind = ToastKind.Error) =>
+        ToastWindow.Show(title, message, sel, kind);
 
     private static System.Windows.Media.Color SampleAverageColor(
         BitmapData data, int bmpW, int bmpH, System.Windows.Rect bounds, string sourceLanguage)
