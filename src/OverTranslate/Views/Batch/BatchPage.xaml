@@ -203,9 +203,9 @@
 
                         <TextBlock Text="文字方向" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <CheckBox x:Name="VerticalTextCheckBox"
-                                  Content="文字是直的，由上往下讀"
+                                  Content="直排文字（由上往下閱讀）"
                                   Style="{StaticResource ModernCheckBox}"/>
-                        <TextBlock Text="日文漫畫大多採用直排文字。若圖片為橫排文字，請保持關閉。"
+                        <TextBlock Text="日文漫畫常使用直排文字，遇到此類圖片時請勾選。"
                                    Style="{StaticResource FieldHint}"
                                    Margin="26,6,0,18" TextWrapping="Wrap" LineHeight="16"/>
 
