@@ -1,0 +1,108 @@
+<Window x:Class="OverTranslate.Views.Batch.RegionSelectWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="選取要翻譯的區塊"
+        Width="1280" Height="860"
+        MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppWindowBg}">
+
+    <Grid Margin="20,16,20,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Header: what to do, where you are, and the zoom controls ── -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="選取要翻譯的區塊" Style="{StaticResource PageTitle}"/>
+                <TextBlock x:Name="PositionText" Style="{StaticResource PageSubtitle}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="ZoomOutBtn" Style="{StaticResource IconButton}"
+                        Width="34" Height="34" ToolTip="縮小" Click="ZoomOut_Click">
+                    <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" Text="&#xE71F;"/>
+                </Button>
+                <TextBlock x:Name="ZoomText" Width="52" Margin="6,0"
+                           VerticalAlignment="Center" TextAlignment="Center"
+                           FontFamily="{StaticResource AppFont}" FontSize="12"
+                           Foreground="{DynamicResource AppTextSecondary}"/>
+                <Button x:Name="ZoomInBtn" Style="{StaticResource IconButton}"
+                        Width="34" Height="34" ToolTip="放大" Click="ZoomIn_Click">
+                    <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" Text="&#xE710;"/>
+                </Button>
+                <Button x:Name="ZoomFitBtn" Content="符合視窗" Style="{StaticResource FlatButton}"
+                        Height="34" Margin="8,0,0,0" Click="ZoomFit_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ── The page itself ── -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource AppSurfaceBg}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1"
+                CornerRadius="6"
+                ClipToBounds="True">
+            <ScrollViewer x:Name="Scroller"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="12">
+                <!-- Sized to the scaled page so the scrollbars describe the page, not the window -->
+                <Grid x:Name="PageHost" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image x:Name="PageImage"
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           Stretch="Fill"/>
+                    <!-- Transparent background so drags anywhere over the page are captured -->
+                    <Canvas x:Name="RegionCanvas"
+                            Background="#01000000"
+                            Cursor="Cross"
+                            MouseLeftButtonDown="Canvas_MouseLeftButtonDown"
+                            MouseMove="Canvas_MouseMove"
+                            MouseLeftButtonUp="Canvas_MouseLeftButtonUp"/>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+
+        <TextBlock Grid.Row="2"
+                   x:Name="HintText"
+                   Margin="2,10,0,0"
+                   FontFamily="{StaticResource AppFont}" FontSize="12"
+                   Foreground="{DynamicResource AppTextMuted}"
+                   Text="在圖片上拖曳就能框出要翻譯的區塊，同一張可以框很多個。框錯了按框角的 ✕ 就能移除。"/>
+
+        <!-- ── Where to go from here ── -->
+        <Grid Grid.Row="3" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" x:Name="PrevBtn" Content="上一張"
+                    Style="{StaticResource FlatButton}" Height="36" MinWidth="92"
+                    Click="Prev_Click"/>
+            <Button Grid.Column="1" x:Name="ClearBtn" Content="清掉這張的框"
+                    Style="{StaticResource FlatButton}" Height="36" MinWidth="110" Margin="8,0,0,0"
+                    Click="Clear_Click"/>
+
+            <TextBlock Grid.Column="2" x:Name="SummaryText"
+                       VerticalAlignment="Center" Margin="16,0"
+                       FontFamily="{StaticResource AppFont}" FontSize="12"
+                       Foreground="{DynamicResource AppTextSecondary}"/>
+
+            <Button Grid.Column="3" x:Name="NextBtn" Content="下一張"
+                    Style="{StaticResource AccentButton}" Height="36" MinWidth="132"
+                    Click="Next_Click"/>
+        </Grid>
+    </Grid>
+</Window>

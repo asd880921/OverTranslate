@@ -1,20 +1,23 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Services;
+using OverTranslate.Views.Batch;
 using OverTranslate.Views.Settings;
 using OverTranslate.Views.Translation;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so this name collides
 using Point = System.Windows.Point;
+using RadioButton = System.Windows.Controls.RadioButton;
 
 namespace OverTranslate.Views.Shell;
 
 public enum ShellPage
 {
     Translation,
+    Batch,
     Settings
 }
 
@@ -35,6 +38,10 @@ public partial class ShellWindow : Window
 
     private readonly TranslationPage _translationPage = new();
     private readonly SettingsPage    _settingsPage    = new();
+
+    // Built on first visit: it decodes thumbnails and holds an OCR engine, neither of which should
+    // cost anything for someone who only ever uses the capture hotkey.
+    private BatchPage? _batchPage;
 
     private ShellPage? _current;
 
@@ -80,7 +87,7 @@ public partial class ShellWindow : Window
 
     public void Navigate(ShellPage page)
     {
-        var target = page == ShellPage.Settings ? SettingsNav : TranslationNav;
+        var target = NavFor(page);
         if (target.IsChecked == true)
         {
             // Already here — still make sure the content is mounted (first call from the ctor)
@@ -92,19 +99,35 @@ public partial class ShellWindow : Window
 
     private void Nav_Checked(object sender, RoutedEventArgs e)
     {
-        var page = ReferenceEquals(sender, SettingsNav) ? ShellPage.Settings : ShellPage.Translation;
+        var page =
+            ReferenceEquals(sender, SettingsNav) ? ShellPage.Settings :
+            ReferenceEquals(sender, BatchNav)    ? ShellPage.Batch :
+                                                   ShellPage.Translation;
         if (_current == page) return;
         ShowPage(page);
     }
+
+    private RadioButton NavFor(ShellPage page) => page switch
+    {
+        ShellPage.Settings => SettingsNav,
+        ShellPage.Batch    => BatchNav,
+        _                  => TranslationNav,
+    };
 
     private void ShowPage(ShellPage page)
     {
         _current = page;
 
         if (page == ShellPage.Settings) _settingsPage.Reload();
-        ContentHost.Child = page == ShellPage.Settings ? _settingsPage : (UIElement)_translationPage;
 
-        MoveIndicatorTo(page == ShellPage.Settings ? SettingsNav : TranslationNav);
+        ContentHost.Child = page switch
+        {
+            ShellPage.Settings => _settingsPage,
+            ShellPage.Batch    => _batchPage ??= new BatchPage(),
+            _                  => _translationPage,
+        };
+
+        MoveIndicatorTo(NavFor(page));
         AnimateContentIn();
     }
 
@@ -198,6 +221,7 @@ public partial class ShellWindow : Window
         // The window is destroyed on close (not hidden), so the pages' timers, TTS playback
         // and HTTP handles have to go with it.
         _translationPage.Teardown();
+        _batchPage?.Teardown();
         _instance = null;
         base.OnClosed(e);
     }

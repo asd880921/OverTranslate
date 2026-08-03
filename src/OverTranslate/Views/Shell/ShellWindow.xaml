@@ -83,6 +83,18 @@
                             </StackPanel>
                         </RadioButton>
 
+                        <RadioButton x:Name="BatchNav"
+                                     Style="{StaticResource NavItem}"
+                                     GroupName="ShellNav"
+                                     Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="15" Text="&#xEB9F;"
+                                           Width="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="批次翻譯" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
                         <RadioButton x:Name="SettingsNav"
                                      Style="{StaticResource NavItem}"
                                      GroupName="ShellNav"

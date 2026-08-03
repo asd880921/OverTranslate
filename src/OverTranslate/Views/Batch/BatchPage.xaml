@@ -1,0 +1,243 @@
+﻿<UserControl x:Class="OverTranslate.Views.Batch.BatchPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Margin="28,22,28,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Page header ── -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock Text="批次翻譯" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="一次翻譯多張圖片，翻好的圖會另存成新檔，不會動到原圖"
+                       Style="{StaticResource PageSubtitle}"/>
+        </StackPanel>
+
+        <!-- ── The list is the subject of this page, so it takes the room; settings sit beside it ── -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="260"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="290"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ══════ Image list ══════ -->
+            <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <TextBlock Text="圖片" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock x:Name="CountText"
+                                   HorizontalAlignment="Right" VerticalAlignment="Top"
+                                   FontFamily="{StaticResource AppFont}" FontSize="12"
+                                   Foreground="{DynamicResource AppTextMuted}"/>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button x:Name="AddBtn" Content="加入圖片"
+                                Style="{StaticResource FlatButton}" Height="34" MinWidth="92"
+                                Click="Add_Click"/>
+                        <Button x:Name="ClearBtn" Content="全部清空"
+                                Style="{StaticResource FlatButton}" Height="34" MinWidth="88" Margin="8,0,0,0"
+                                Click="Clear_Click"/>
+                    </StackPanel>
+
+                    <!-- Drop target covers the whole list area, empty or not, so dragging more in
+                         later works exactly like the first time -->
+                    <Grid Grid.Row="2" AllowDrop="True" Drop="List_Drop" DragOver="List_DragOver">
+                        <ListBox x:Name="ImageList"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 HorizontalContentAlignment="Stretch"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0,0,0,2"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="Root"
+                                                        Background="Transparent"
+                                                        CornerRadius="4"
+                                                        Padding="8,6">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Root" Property="Background"
+                                                                Value="{DynamicResource AppButtonHoverBg}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0"
+                                                Width="34" Height="34"
+                                                CornerRadius="3"
+                                                Background="{DynamicResource AppInputBg}"
+                                                Margin="0,0,10,0">
+                                            <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding FileName}"
+                                                       FontFamily="{StaticResource AppFont}" FontSize="13"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource AppTextPrimary}"/>
+                                            <TextBlock Text="{Binding FolderName}"
+                                                       FontFamily="{StaticResource AppFont}" FontSize="11"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource AppTextMuted}"/>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="2"
+                                                Style="{StaticResource IconButton}"
+                                                Width="28" Height="28"
+                                                ToolTip="從清單移除"
+                                                Click="Remove_Click">
+                                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                       FontSize="12" Text="&#xE711;"/>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Empty state: says what to do, not just that there is nothing here -->
+                        <Border x:Name="EmptyState"
+                                BorderBrush="{DynamicResource AppSubtleBorder}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Background="Transparent"
+                                IsHitTestVisible="False">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="26" Text="&#xEB9F;"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                                <TextBlock Text="把圖片拖進來"
+                                           Margin="0,10,0,0"
+                                           HorizontalAlignment="Center"
+                                           FontFamily="{StaticResource AppFont}" FontSize="13"
+                                           Foreground="{DynamicResource AppTextSecondary}"/>
+                                <TextBlock Text="或按上面的「加入圖片」。可以分好幾次從不同資料夾挑，會一直往下加。"
+                                           Margin="0,4,0,0" MaxWidth="260"
+                                           TextAlignment="Center" TextWrapping="Wrap"
+                                           FontFamily="{StaticResource AppFont}" FontSize="11"
+                                           Foreground="{DynamicResource AppTextMuted}"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- ══════ Settings ══════ -->
+            <Border Grid.Column="2" Style="{StaticResource CardBorder}" Margin="0" VerticalAlignment="Stretch">
+                <StackPanel>
+                    <TextBlock Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
+
+                    <TextBlock Text="原文語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                    <ComboBox x:Name="SourceLangBox"
+                              Style="{StaticResource ModernComboBox}"
+                              SelectedValuePath="Code"
+                              Margin="0,0,0,12"/>
+
+                    <TextBlock Text="翻成" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                    <ComboBox x:Name="TargetLangBox"
+                              Style="{StaticResource ModernComboBox}"
+                              SelectedValuePath="Code"
+                              Margin="0,0,0,16"/>
+
+                    <TextBlock Text="要翻譯哪些部分" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                    <RadioButton x:Name="WholeImageRadio"
+                                 Style="{StaticResource ThemeRadioButton}"
+                                 GroupName="BatchScope"
+                                 Content="整張圖片"
+                                 IsChecked="True"
+                                 Margin="0,0,0,2"/>
+                    <TextBlock Text="直接掃描整張圖，不用一張張確認"
+                               Style="{StaticResource FieldHint}" Margin="32,0,0,10"/>
+                    <RadioButton x:Name="SelectRegionsRadio"
+                                 Style="{StaticResource ThemeRadioButton}"
+                                 GroupName="BatchScope"
+                                 Content="我自己框選"
+                                 Margin="0,0,0,2"/>
+                    <TextBlock Text="按下開始後會逐張讓你框，一張可以框很多個區塊"
+                               Style="{StaticResource FieldHint}" Margin="32,0,0,16"/>
+
+                    <TextBlock Text="翻好的圖存到" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                    <TextBox x:Name="OutputBox"
+                             Style="{StaticResource ModernTextBox}"
+                             IsReadOnly="True"
+                             Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="BrowseBtn" Content="換資料夾"
+                                Style="{StaticResource FlatButton}" Height="32" MinWidth="88"
+                                Click="Browse_Click"/>
+                        <Button x:Name="OpenFolderBtn" Content="開啟"
+                                Style="{StaticResource FlatButton}" Height="32" MinWidth="62" Margin="8,0,0,0"
+                                Click="OpenFolder_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ── Action bar: always reachable, and the only place that reports what is happening ── -->
+        <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock x:Name="StatusText"
+                           FontFamily="{StaticResource AppFont}" FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource AppTextSecondary}"/>
+                <ProgressBar x:Name="Progress"
+                             Style="{StaticResource SlimProgressBar}"
+                             Margin="0,8,0,0"
+                             Visibility="Collapsed"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="OpenResultBtn" Content="開啟資料夾"
+                        Style="{StaticResource FlatButton}" Height="38" MinWidth="104"
+                        Margin="0,0,8,0"
+                        Visibility="Collapsed"
+                        Click="OpenFolder_Click"/>
+                <Button x:Name="StopBtn" Content="停止"
+                        Style="{StaticResource FlatButton}" Height="38" MinWidth="88"
+                        Visibility="Collapsed"
+                        Click="Stop_Click"/>
+                <Button x:Name="StartBtn" Content="開始翻譯"
+                        Style="{StaticResource AccentButton}" Height="38" MinWidth="124"
+                        Click="Start_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>
