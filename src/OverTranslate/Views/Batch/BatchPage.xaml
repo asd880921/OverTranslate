@@ -172,6 +172,14 @@
                               SelectedValuePath="Code"
                               Margin="0,0,0,16"/>
 
+                    <TextBlock Text="文字排版" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                    <CheckBox x:Name="VerticalTextCheckBox"
+                              Content="文字是直的，由上往下讀"
+                              Style="{StaticResource ModernCheckBox}"
+                              Margin="0,0,0,2"/>
+                    <TextBlock Text="日文漫畫大多是這樣排的。沒開的話會認不出字；橫著讀的圖片保持關閉就好。"
+                               Style="{StaticResource FieldHint}" Margin="26,0,0,16"/>
+
                     <TextBlock Text="要翻譯哪些部分" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                     <RadioButton x:Name="WholeImageRadio"
                                  Style="{StaticResource ThemeRadioButton}"

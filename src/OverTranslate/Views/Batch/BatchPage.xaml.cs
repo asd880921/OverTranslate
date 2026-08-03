@@ -255,7 +255,8 @@ public partial class BatchPage : UserControl
         try
         {
             result = await service.RunAsync(
-                queue, _outputDirectory, sourceLang, targetLang, apiKey, progress, _cts.Token);
+                queue, _outputDirectory, sourceLang, targetLang, apiKey,
+                VerticalTextCheckBox.IsChecked == true, progress, _cts.Token);
         }
         catch (OperationCanceledException)
         {
@@ -298,6 +299,7 @@ public partial class BatchPage : UserControl
         BrowseBtn.IsEnabled = false;
         SourceLangBox.IsEnabled = false;
         TargetLangBox.IsEnabled = false;
+        VerticalTextCheckBox.IsEnabled = false;
         WholeImageRadio.IsEnabled = false;
         SelectRegionsRadio.IsEnabled = false;
     }
@@ -313,6 +315,7 @@ public partial class BatchPage : UserControl
         BrowseBtn.IsEnabled = true;
         SourceLangBox.IsEnabled = true;
         TargetLangBox.IsEnabled = true;
+        VerticalTextCheckBox.IsEnabled = true;
         WholeImageRadio.IsEnabled = true;
         SelectRegionsRadio.IsEnabled = true;
         RefreshIdleState();

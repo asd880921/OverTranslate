@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows;
@@ -58,6 +58,7 @@ public sealed class BatchTranslationService : IDisposable
         string sourceLanguage,
         string targetLanguage,
         string apiKey,
+        bool verticalText = false,
         IProgress<BatchProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -77,8 +78,8 @@ public sealed class BatchTranslationService : IDisposable
             try
             {
                 await TranslateOneAsync(
-                    image, outputDirectory, sourceLanguage, targetLanguage, apiKey, usedNames,
-                    cancellationToken);
+                    image, outputDirectory, sourceLanguage, targetLanguage, apiKey, verticalText,
+                    usedNames, cancellationToken);
                 succeeded++;
             }
             catch (OperationCanceledException)
@@ -102,6 +103,7 @@ public sealed class BatchTranslationService : IDisposable
         string sourceLanguage,
         string targetLanguage,
         string apiKey,
+        bool verticalText,
         HashSet<string> usedNames,
         CancellationToken cancellationToken)
     {
@@ -118,7 +120,8 @@ public sealed class BatchTranslationService : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
 
             using var crop = Crop(source, region);
-            var recognized = await _ocrService.RecognizeAsync(crop, sourceLanguage, cancellationToken);
+            var recognized = await _ocrService.RecognizeAsync(
+                crop, sourceLanguage, cancellationToken, verticalText);
             if (recognized.Count == 0)
                 continue;
 
