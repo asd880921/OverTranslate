@@ -199,16 +199,23 @@ public partial class BatchPage : UserControl
         if (_isRunning) return;
 
         var existing = _items.Select(item => item.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        int skipped = 0;
+        int added = 0;
+        int duplicates = 0;
 
         foreach (var path in Expand(paths).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
         {
-            if (!existing.Add(path)) { skipped++; continue; }
+            if (!existing.Add(path)) { duplicates++; continue; }
             _items.Add(new BatchListItem(path));
+            added++;
         }
 
-        if (skipped > 0)
-            StatusText.Text = $"已加入。有 {skipped} 張本來就在清單裡，跳過了。";
+        StatusText.Text = (added, duplicates) switch
+        {
+            ( > 0, 0) => $"已加入 {added} 張圖片",
+            ( > 0, _) => $"已加入 {added} 張圖片，{duplicates} 張重複圖片已略過",
+            (0, > 0) => $"{duplicates} 張圖片已存在清單中，未新增圖片",
+            _ => "沒有可加入的圖片，請確認檔案格式",
+        };
     }
 
     private static IEnumerable<string> Expand(IEnumerable<string> paths)
@@ -245,15 +252,18 @@ public partial class BatchPage : UserControl
     private void Remove_Click(object sender, RoutedEventArgs e)
     {
         if (_isRunning) return;
-        if (sender is FrameworkElement { DataContext: BatchListItem item })
-            _items.Remove(item);
+        if (sender is not FrameworkElement { DataContext: BatchListItem item }) return;
+
+        _items.Remove(item);
+        StatusText.Text = $"已移除 {item.FileName}";
     }
 
     private void Clear_Click(object sender, RoutedEventArgs e)
     {
         if (_isRunning) return;
+        var cleared = _items.Count;
         _items.Clear();
-        StatusText.Text = "";
+        StatusText.Text = cleared > 0 ? $"已清空清單，移除 {cleared} 張圖片" : "";
     }
 
     // ── Output folder ────────────────────────────────────────────────────────────────────────
@@ -448,10 +458,5 @@ public partial class BatchPage : UserControl
         EmptyState.Visibility = _items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         StartBtn.IsEnabled = _items.Count > 0;
         ClearBtn.IsEnabled = _items.Count > 0;
-
-        if (_items.Count > 0 && string.IsNullOrEmpty(StatusText.Text))
-            StatusText.Text = $"準備好了，共 {_items.Count} 張。";
-        else if (_items.Count == 0)
-            StatusText.Text = "";
     }
 }
