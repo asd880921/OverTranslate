@@ -342,10 +342,10 @@ public sealed class BatchTranslationService : IDisposable
 
     private static string Describe(Exception ex) => ex switch
     {
-        NotSupportedException => "這個語言目前無法辨識",
+        NotSupportedException => "目前不支援此語言的辨識",
         FileNotFoundException or DirectoryNotFoundException => "找不到檔案",
-        UnauthorizedAccessException => "沒有權限讀取或寫入",
-        OutOfMemoryException => "圖片太大或格式不支援",
+        UnauthorizedAccessException => "沒有讀取或寫入權限",
+        OutOfMemoryException => "圖片過大或格式不支援",
         _ => ex.Message,
     };
 

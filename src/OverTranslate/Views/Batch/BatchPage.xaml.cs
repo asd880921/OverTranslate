@@ -146,7 +146,7 @@ public partial class BatchPage : UserControl
         // before the user starts rather than in the failure list afterwards.
         if (provider?.RequiresApiKey == true && string.IsNullOrWhiteSpace(SettingsService.Instance.Current.ApiKey))
         {
-            ProviderHint.Text = "這個服務需要 API 金鑰，請先到「設定」填好，否則整批都會失敗。";
+            ProviderHint.Text = "此服務需要 API 金鑰，請先至「設定」填寫，否則所有圖片都會失敗。";
             ProviderHint.Visibility = Visibility.Visible;
             return;
         }
@@ -299,7 +299,7 @@ public partial class BatchPage : UserControl
         }
         catch (Exception)
         {
-            StatusText.Text = "打不開這個資料夾，請確認路徑還在。";
+            StatusText.Text = "無法開啟資料夾，請確認路徑是否存在";
         }
     }
 
@@ -323,7 +323,7 @@ public partial class BatchPage : UserControl
 
             if (picker.Result is null)
             {
-                StatusText.Text = "已取消，清單還在，可以再按一次開始。";
+                StatusText.Text = "已取消框選，清單保留";
                 return;
             }
 
@@ -344,8 +344,8 @@ public partial class BatchPage : UserControl
         {
             Progress.Value = report.Completed;
             StatusText.Text = string.IsNullOrEmpty(report.FileName)
-                ? "快好了…"
-                : $"正在翻第 {report.Completed + 1} 張，共 {report.Total} 張 · {report.FileName}";
+                ? "即將完成"
+                : $"正在翻譯第 {report.Completed + 1} 張，共 {report.Total} 張 · {report.FileName}";
         });
 
         BatchResult result;
@@ -362,7 +362,7 @@ public partial class BatchPage : UserControl
         catch (Exception ex)
         {
             LeaveRunningState();
-            StatusText.Text = $"沒能開始：{ex.Message}";
+            StatusText.Text = $"無法開始翻譯：{ex.Message}";
             return;
         }
         finally
@@ -378,7 +378,7 @@ public partial class BatchPage : UserControl
     private void Stop_Click(object sender, RoutedEventArgs e)
     {
         _cts?.Cancel();
-        StatusText.Text = "正在停下來…已經翻好的會留著。";
+        StatusText.Text = "正在停止，已完成的圖片會保留";
     }
 
     private void EnterRunningState(int total)
@@ -424,12 +424,12 @@ public partial class BatchPage : UserControl
         var failed = result.Failures.Count;
         StatusText.Text = (result.Cancelled, result.Succeeded, failed) switch
         {
-            (true, 0, _) => "已停止，還沒有任何圖被翻譯。",
-            (true, var done, _) => $"已停止。翻好的 {done} 張已經存起來了。",
-            (false, 0, 0) => "沒有圖片可以處理。",
-            (false, var done, 0) => $"完成！{done} 張都翻好了。",
-            (false, 0, var bad) => $"{bad} 張都沒能處理：{FirstReasons(result)}",
-            (false, var done, var bad) => $"完成 {done} 張，有 {bad} 張跳過了：{FirstReasons(result)}",
+            (true, 0, _) => "已停止，尚未完成任何圖片",
+            (true, var done, _) => $"已停止，已完成的 {done} 張圖片已儲存",
+            (false, 0, 0) => "沒有可處理的圖片",
+            (false, var done, 0) => $"已完成 {done} 張圖片的翻譯",
+            (false, 0, var bad) => $"{bad} 張圖片全部失敗：{FirstReasons(result)}",
+            (false, var done, var bad) => $"已完成 {done} 張圖片，{bad} 張已略過：{FirstReasons(result)}",
         };
 
         // A long run finishes while the user is off doing something else, so this has to arrive
@@ -437,7 +437,7 @@ public partial class BatchPage : UserControl
         if (result is { Cancelled: false, Succeeded: > 0 })
             TrayNotificationService.Show(
                 "圖片翻譯完成",
-                $"{result.Succeeded} 張已存到 {result.OutputDirectory}",
+                $"已完成 {result.Succeeded} 張圖片，已儲存至 {result.OutputDirectory}",
                 failed > 0 ? ToolTipIcon.Warning : ToolTipIcon.Info);
     }
 

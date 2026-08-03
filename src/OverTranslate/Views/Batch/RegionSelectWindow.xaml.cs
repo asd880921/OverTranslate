@@ -90,8 +90,8 @@ public partial class RegionSelectWindow : Window
             PageImage.Source = null;
         }
 
-        PositionText.Text = $"第 {_index + 1} / {_queue.Count} 張 · {image.FileName}";
-        NextBtn.Content = _index == _queue.Count - 1 ? "完成，開始翻譯" : "下一張";
+        PositionText.Text = $"第 {_index + 1} 張，共 {_queue.Count} 張 · {image.FileName}";
+        NextBtn.Content = _index == _queue.Count - 1 ? "完成並開始翻譯" : "下一張";
         PrevBtn.IsEnabled = _index > 0;
 
         if (_fitToWindow) ApplyFit(); else ApplyScale();
@@ -206,8 +206,8 @@ public partial class RegionSelectWindow : Window
             RegionCanvas.Children.Add(BuildRegionVisual(regions[i], i));
 
         SummaryText.Text = regions.Count == 0
-            ? "這張沒有框任何區塊，等一下會整張掃描翻譯"
-            : $"這張框了 {regions.Count} 個區塊";
+            ? "未框選任何區域，此張圖片將整張辨識翻譯"
+            : $"已框選 {regions.Count} 個區域";
 
         HintText.Visibility = _page is null ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -239,7 +239,7 @@ public partial class RegionSelectWindow : Window
             Padding = new Thickness(0),
             FontSize = 10,
             Cursor = Cursors.Hand,
-            ToolTip = "移除這個區塊",
+            ToolTip = "移除此區域",
             Foreground = Brushes.White,
             Background = accent,
             BorderThickness = new Thickness(0),
