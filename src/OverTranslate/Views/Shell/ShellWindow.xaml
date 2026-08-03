@@ -1,4 +1,4 @@
-<Window x:Class="OverTranslate.Views.Shell.ShellWindow"
+﻿<Window x:Class="OverTranslate.Views.Shell.ShellWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:OverTranslate.Views.Shell"
@@ -91,7 +91,7 @@
                                 <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                            FontSize="15" Text="&#xEB9F;"
                                            Width="24" VerticalAlignment="Center"/>
-                                <TextBlock Text="批次翻譯" VerticalAlignment="Center"/>
+                                <TextBlock Text="圖片翻譯" VerticalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
 

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using OverTranslate.Models;
 using OverTranslate.Services;
@@ -91,8 +92,9 @@ public partial class BatchPage : UserControl
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
         RefreshProviderHint();
 
-        _outputDirectory = System.IO.Path.Combine(
-            ScreenshotSaveService.ResolveDirectory(settings.ScreenshotSavePath), "批次翻譯");
+        // Starts where 設定's screenshot location points, so there is one place in the app that
+        // answers "where do my files go" rather than two that quietly disagree.
+        _outputDirectory = ScreenshotSaveService.ResolveDirectory(settings.ScreenshotSavePath);
         OutputBox.Text = _outputDirectory;
 
         RefreshIdleState();
@@ -245,6 +247,13 @@ public partial class BatchPage : UserControl
 
     // ── Output folder ────────────────────────────────────────────────────────────────────────
 
+    private void OutputBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_isRunning) return;
+        e.Handled = true;   // a read-only box would otherwise just take focus and look inert
+        Browse_Click(sender, e);
+    }
+
     private void Browse_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.OpenFolderDialog
@@ -358,7 +367,6 @@ public partial class BatchPage : UserControl
         Progress.Value = 0;
         Progress.Visibility = Visibility.Visible;
         StopBtn.Visibility = Visibility.Visible;
-        OpenResultBtn.Visibility = Visibility.Collapsed;
         StartBtn.Visibility = Visibility.Collapsed;
         AddBtn.IsEnabled = false;
         ClearBtn.IsEnabled = false;
@@ -391,8 +399,6 @@ public partial class BatchPage : UserControl
 
     private void ReportResult(BatchResult result)
     {
-        OpenResultBtn.Visibility = result.Succeeded > 0 ? Visibility.Visible : Visibility.Collapsed;
-
         var failed = result.Failures.Count;
         StatusText.Text = (result.Cancelled, result.Succeeded, failed) switch
         {

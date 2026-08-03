@@ -1,7 +1,9 @@
-﻿<UserControl x:Class="OverTranslate.Views.Batch.BatchPage"
+<UserControl x:Class="OverTranslate.Views.Batch.BatchPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <!-- Spacing runs on one scale: 6 from a label to its control, 6 from a control to its hint,
+         18 between groups. A settings column without a consistent rhythm reads as a pile. -->
     <Grid Margin="28,22,28,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -11,12 +13,11 @@
 
         <!-- ── Page header ── -->
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
-            <TextBlock Text="批次翻譯" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="一次翻譯多張圖片，翻好的圖會另存成新檔，不會動到原圖"
+            <TextBlock Text="圖片翻譯" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="選擇一張或多張圖片，自動辨識文字並翻譯後輸出。"
                        Style="{StaticResource PageSubtitle}"/>
         </StackPanel>
 
-        <!-- ── The list is the subject of this page, so it takes the room; settings sit beside it ── -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="260"/>
@@ -24,35 +25,36 @@
                 <ColumnDefinition Width="290"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ══════ Image list ══════ -->
+            <!-- ══════ The queue — the subject of this page, so it gets the room ══════ -->
             <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0">
-                        <TextBlock Text="圖片" Style="{StaticResource SectionHeader}"/>
+                    <!-- Actions and count share one line: no section header is needed when the
+                         buttons already say what the list is. -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="AddBtn" Content="新增圖片"
+                                    Style="{StaticResource FlatButton}" Height="34" MinWidth="92"
+                                    Click="Add_Click"/>
+                            <Button x:Name="ClearBtn" Content="全部清空"
+                                    Style="{StaticResource FlatButton}" Height="34" MinWidth="88"
+                                    Margin="8,0,0,0"
+                                    Click="Clear_Click"/>
+                        </StackPanel>
+
                         <TextBlock x:Name="CountText"
-                                   HorizontalAlignment="Right" VerticalAlignment="Top"
-                                   FontFamily="{StaticResource AppFont}" FontSize="12"
-                                   Foreground="{DynamicResource AppTextMuted}"/>
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   FontFamily="{StaticResource AppFont}" FontSize="13"
+                                   Foreground="{DynamicResource AppTextSecondary}"/>
                     </Grid>
 
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
-                        <Button x:Name="AddBtn" Content="加入圖片"
-                                Style="{StaticResource FlatButton}" Height="34" MinWidth="92"
-                                Click="Add_Click"/>
-                        <Button x:Name="ClearBtn" Content="全部清空"
-                                Style="{StaticResource FlatButton}" Height="34" MinWidth="88" Margin="8,0,0,0"
-                                Click="Clear_Click"/>
-                    </StackPanel>
-
-                    <!-- Drop target covers the whole list area, empty or not, so dragging more in
-                         later works exactly like the first time -->
-                    <Grid Grid.Row="2" AllowDrop="True" Drop="List_Drop" DragOver="List_DragOver">
+                    <!-- Drop target covers the whole area, full or empty, so dragging more in later
+                         works exactly as it did the first time -->
+                    <Grid Grid.Row="1" AllowDrop="True" Drop="List_Drop" DragOver="List_DragOver">
                         <ListBox x:Name="ImageList"
                                  Background="Transparent"
                                  BorderThickness="0"
@@ -108,7 +110,7 @@
                                                        FontFamily="{StaticResource AppFont}" FontSize="13"
                                                        TextTrimming="CharacterEllipsis"
                                                        Foreground="{DynamicResource AppTextPrimary}"/>
-                                            <StackPanel Orientation="Horizontal">
+                                            <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
                                                 <TextBlock Text="{Binding FolderName}"
                                                            FontFamily="{StaticResource AppFont}" FontSize="11"
                                                            TextTrimming="CharacterEllipsis"
@@ -133,27 +135,28 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <!-- Empty state: says what to do, not just that there is nothing here -->
+                        <!-- Empty state says what to do, not merely that there is nothing here -->
                         <Border x:Name="EmptyState"
                                 BorderBrush="{DynamicResource AppSubtleBorder}"
                                 BorderThickness="1"
                                 CornerRadius="6"
                                 Background="Transparent"
                                 IsHitTestVisible="False">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                        Margin="24,0">
                                 <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                            FontSize="26" Text="&#xEB9F;"
                                            HorizontalAlignment="Center"
                                            Foreground="{DynamicResource AppTextMuted}"/>
                                 <TextBlock Text="把圖片拖進來"
-                                           Margin="0,10,0,0"
+                                           Margin="0,12,0,0"
                                            HorizontalAlignment="Center"
-                                           FontFamily="{StaticResource AppFont}" FontSize="13"
+                                           FontFamily="{StaticResource AppFont}" FontSize="14"
                                            Foreground="{DynamicResource AppTextSecondary}"/>
-                                <TextBlock Text="或按上面的「加入圖片」。可以分好幾次從不同資料夾挑，會一直往下加。"
-                                           Margin="0,4,0,0" MaxWidth="260"
-                                           TextAlignment="Center" TextWrapping="Wrap"
-                                           FontFamily="{StaticResource AppFont}" FontSize="11"
+                                <TextBlock Text="或按上方的「新增圖片」。可以分多次從不同資料夾挑選，會持續往下累加。"
+                                           Margin="0,6,0,0" MaxWidth="280"
+                                           TextAlignment="Center" TextWrapping="Wrap" LineHeight="18"
+                                           FontFamily="{StaticResource AppFont}" FontSize="12"
                                            Foreground="{DynamicResource AppTextMuted}"/>
                             </StackPanel>
                         </Border>
@@ -162,69 +165,88 @@
             </Border>
 
             <!-- ══════ Settings ══════ -->
-            <Border Grid.Column="2" Style="{StaticResource CardBorder}" Margin="0" VerticalAlignment="Stretch">
-                <StackPanel>
-                    <TextBlock Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
+            <Border Grid.Column="2" Style="{StaticResource CardBorder}" Margin="0">
+                <!-- Scrolls on its own: a short window must not clip the output folder off the
+                     bottom, which is the one control the user has to reach before starting. -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <TextBlock Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
 
-                    <TextBlock Text="原文語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
-                    <ComboBox x:Name="SourceLangBox"
-                              Style="{StaticResource ModernComboBox}"
-                              SelectedValuePath="Code"
-                              Margin="0,0,0,12"/>
+                        <TextBlock Text="原文語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="SourceLangBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  SelectedValuePath="Code"
+                                  Margin="0,0,0,14"/>
 
-                    <TextBlock Text="翻成" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
-                    <ComboBox x:Name="TargetLangBox"
-                              Style="{StaticResource ModernComboBox}"
-                              SelectedValuePath="Code"
-                              Margin="0,0,0,16"/>
+                        <TextBlock Text="翻成" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="TargetLangBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  SelectedValuePath="Code"
+                                  Margin="0,0,0,14"/>
 
-                    <TextBlock Text="翻譯服務" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
-                    <ComboBox x:Name="ProviderBox"
-                              Style="{StaticResource ModernComboBox}"
-                              SelectedValuePath="Provider"
-                              SelectionChanged="ProviderBox_SelectionChanged"/>
-                    <TextBlock x:Name="ProviderHint"
-                               Style="{StaticResource FieldHint}" Margin="0,4,0,16"/>
+                        <TextBlock Text="翻譯服務" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="ProviderBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  SelectedValuePath="Provider"
+                                  SelectionChanged="ProviderBox_SelectionChanged"/>
+                        <TextBlock x:Name="ProviderHint"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="0,6,0,18" TextWrapping="Wrap" LineHeight="16"/>
 
-                    <TextBlock Text="文字排版" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                    <CheckBox x:Name="VerticalTextCheckBox"
-                              Content="文字是直的，由上往下讀"
-                              Style="{StaticResource ModernCheckBox}"
-                              Margin="0,0,0,2"/>
-                    <TextBlock Text="日文漫畫大多是這樣排的。沒開的話會認不出字；橫著讀的圖片保持關閉就好。"
-                               Style="{StaticResource FieldHint}" Margin="26,0,0,16"/>
+                        <TextBlock Text="文字方向" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <CheckBox x:Name="VerticalTextCheckBox"
+                                  Content="文字是直的，由上往下讀"
+                                  Style="{StaticResource ModernCheckBox}"/>
+                        <TextBlock Text="日文漫畫大多採用直排文字。若圖片為橫排文字，請保持關閉。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="26,6,0,18" TextWrapping="Wrap" LineHeight="16"/>
 
-                    <TextBlock Text="要翻譯哪些部分" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                    <RadioButton x:Name="WholeImageRadio"
-                                 Style="{StaticResource ThemeRadioButton}"
-                                 GroupName="BatchScope"
-                                 Content="整張圖片"
-                                 IsChecked="True"
-                                 Margin="0,0,0,2"/>
-                    <TextBlock Text="直接掃描整張圖，不用一張張確認"
-                               Style="{StaticResource FieldHint}" Margin="32,0,0,10"/>
-                    <RadioButton x:Name="SelectRegionsRadio"
-                                 Style="{StaticResource ThemeRadioButton}"
-                                 GroupName="BatchScope"
-                                 Content="我自己框選"
-                                 Margin="0,0,0,2"/>
-                    <TextBlock Text="按下開始後會逐張讓你框，一張可以框很多個區塊"
-                               Style="{StaticResource FieldHint}" Margin="32,0,0,16"/>
+                        <TextBlock Text="要翻譯哪些部分" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <RadioButton x:Name="WholeImageRadio"
+                                     Style="{StaticResource ThemeRadioButton}"
+                                     GroupName="BatchScope"
+                                     Content="整張圖片"
+                                     IsChecked="True"
+                                     Margin="0"/>
+                        <TextBlock Text="直接辨識整張圖片，不需逐張框選。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="32,6,0,12" TextWrapping="Wrap" LineHeight="16"/>
+                        <RadioButton x:Name="SelectRegionsRadio"
+                                     Style="{StaticResource ThemeRadioButton}"
+                                     GroupName="BatchScope"
+                                     Content="手動框選"
+                                     Margin="0"/>
+                        <TextBlock Text="開始後會依序開啟每張圖片，可自行框選一個或多個翻譯區域。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="32,6,0,18" TextWrapping="Wrap" LineHeight="16"/>
 
-                    <TextBlock Text="翻好的圖存到" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
-                    <TextBox x:Name="OutputBox"
-                             Style="{StaticResource ModernTextBox}"
-                             IsReadOnly="True"
-                             Margin="0,0,0,8"/>
-                    <StackPanel Orientation="Horizontal">
-                        <Button x:Name="BrowseBtn" Content="換資料夾"
-                                Style="{StaticResource FlatButton}" Height="32" MinWidth="88"
-                                Click="Browse_Click"/>
-                        <Button x:Name="OpenFolderBtn" Content="開啟"
-                                Style="{StaticResource FlatButton}" Height="32" MinWidth="62" Margin="8,0,0,0"
-                                Click="OpenFolder_Click"/>
+                        <TextBlock Text="輸出資料夾" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- Clicking the path picks a folder, exactly as the screenshot location
+                                 row in 設定 does, so a control that looks the same behaves the same -->
+                            <TextBox Grid.Column="0" x:Name="OutputBox"
+                                     Style="{StaticResource ModernTextBox}"
+                                     IsReadOnly="True"
+                                     Cursor="Hand"
+                                     Margin="0,0,4,0"
+                                     ToolTip="點擊以選擇輸出資料夾"
+                                     PreviewMouseLeftButtonDown="OutputBox_PreviewMouseLeftButtonDown"/>
+                            <Button Grid.Column="1" x:Name="BrowseBtn"
+                                    Style="{StaticResource IconButton}"
+                                    Width="34" Height="34"
+                                    ToolTip="選擇輸出資料夾"
+                                    Click="Browse_Click">
+                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="14" Text="&#xE8B7;"/>
+                            </Button>
+                        </Grid>
                     </StackPanel>
-                </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 
@@ -247,10 +269,10 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <!-- Always available: the folder is worth opening before a run as well as after -->
                 <Button x:Name="OpenResultBtn" Content="開啟資料夾"
                         Style="{StaticResource FlatButton}" Height="38" MinWidth="104"
                         Margin="0,0,8,0"
-                        Visibility="Collapsed"
                         Click="OpenFolder_Click"/>
                 <Button x:Name="StopBtn" Content="停止"
                         Style="{StaticResource FlatButton}" Height="38" MinWidth="88"
