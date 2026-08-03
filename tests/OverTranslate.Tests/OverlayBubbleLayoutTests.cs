@@ -170,6 +170,31 @@ public class OverlayBubbleLayoutTests
         Assert.True(bubble.Top >= 300 && bubble.Top <= 312, $"top {bubble.Top} ignored the region offset");
     }
 
+    // The screen overlay relies on growing sideways to keep a translation on one line, and its
+    // selection already bounds that growth. This default must not change.
+    [Fact]
+    public void WithoutACeiling_AShortLineIsAllowedToGrowSideways()
+    {
+        var block = Block(100, 400, 60, 24, translated: "一段明顯比原文寬的翻譯內容");
+
+        var bubble = Assert.Single(OverlayBubbleLayout.Calculate([block], Context()));
+
+        Assert.True(bubble.Width > 64 * 2.5,
+            $"width {bubble.Width} suggests the unlimited default stopped expanding");
+    }
+
+    // Exporting a page has no selection edge, so an unbounded bubble stretches across the artwork.
+    [Fact]
+    public void WithACeiling_TheBubbleStopsExpandingAndWrapsInstead()
+    {
+        var block = Block(100, 400, 60, 24, translated: "一段明顯比原文寬的翻譯內容");
+        var bounded = Context() with { MaxWidthFactor = 2.2 };
+
+        var bubble = Assert.Single(OverlayBubbleLayout.Calculate([block], bounded));
+
+        Assert.True(bubble.Width <= 64 * 2.2 + 0.5, $"width {bubble.Width} broke the ceiling");
+    }
+
     [Fact]
     public void FontSize_StaysReadableForTinySourceText()
     {

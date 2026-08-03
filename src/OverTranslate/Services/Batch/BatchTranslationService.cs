@@ -42,6 +42,10 @@ public sealed class BatchTranslationService : IDisposable
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
+    // Enough width for the translation to read as a sentence, without the bubble swallowing the
+    // panel around it. Tuned against a comic page: below ~2 the text stacks into a narrow ribbon.
+    private const double VerticalBubbleWidthFactor = 2.2;
+
     private readonly OcrService _ocrService = new();
     private readonly TranslationService _translationService = new();
     private readonly Dispatcher _dispatcher;
@@ -136,7 +140,9 @@ public sealed class BatchTranslationService : IDisposable
         // Even a page where nothing was recognised is written out, so the output folder mirrors the
         // input one — a missing file would read as "the run broke here", not "no text on this page".
         await _dispatcher.InvokeAsync(
-            () => Compose(image.Path, source.Width, source.Height, rendered, sourceLanguage, targetLanguage, outputPath));
+            () => Compose(
+                image.Path, source.Width, source.Height, rendered,
+                sourceLanguage, targetLanguage, verticalText, outputPath));
     }
 
     private sealed record RenderedRegion(Rect Region, IReadOnlyList<TranslatedBlock> Blocks);
@@ -172,6 +178,7 @@ public sealed class BatchTranslationService : IDisposable
         IReadOnlyList<RenderedRegion> regions,
         string sourceLanguage,
         string targetLanguage,
+        bool verticalText,
         string outputPath)
     {
         var page = new BitmapImage();
@@ -200,7 +207,10 @@ public sealed class BatchTranslationService : IDisposable
                     CanvasWidth: width,
                     CanvasHeight: height,
                     SourceLanguage: sourceLanguage,
-                    TargetLanguage: targetLanguage);
+                    TargetLanguage: targetLanguage,
+                    // A vertical column is a narrow target and the page offers no selection edge to
+                    // stop at, so without this a two-word line spreads right across the drawing.
+                    MaxWidthFactor: verticalText ? VerticalBubbleWidthFactor : double.PositiveInfinity);
 
                 // Backgrounds for the whole region first, then the text: a later bubble's opaque
                 // background must never land on an earlier bubble's glyphs.

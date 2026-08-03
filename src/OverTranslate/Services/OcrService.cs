@@ -78,14 +78,106 @@ public class OcrService : IDisposable
 
         var blocks = await RecognizeAndGroupAsync(engine, rotated, sourceLanguage, cancellationToken);
 
-        return blocks.Select(block => block with
+        var columns = blocks.Select(block => block with
         {
             Bounds = MapBack(block.Bounds, bitmap.Width),
-            SourceLineBounds = block.SourceLineBounds?.Select(line => MapBack(line, bitmap.Width)).ToList(),
+            SourceLineBounds = null,
             // Turned back, a column is tall and narrow, so its width — not its height — is the size
             // the glyphs were actually drawn at.
             SourceGlyphHeight = block.Bounds.Height,
         }).ToList();
+
+        return MergeColumns(columns);
+    }
+
+    /// <summary>
+    /// Joins the columns of one speech balloon back into a single block, right to left.
+    /// <para>
+    /// Each column comes out of the detector on its own, which leaves the translation squeezed into
+    /// a strip barely one glyph wide. Columns of the same balloon share a top edge — vertical text
+    /// starts at the top — and sit side by side, so that pair of facts separates them from the
+    /// next balloon reliably enough to merge on.
+    /// </para>
+    /// <para>
+    /// The merged block carries its columns as line bounds, which is what puts it on the layout's
+    /// existing multi-line path: the translation then wraps across the balloon's full width instead
+    /// of down a single column.
+    /// </para>
+    /// </summary>
+    private static List<OcrTextBlock> MergeColumns(List<OcrTextBlock> columns)
+    {
+        // Right to left is the reading order, so this is also the order the text joins in.
+        var remaining = columns.OrderByDescending(column => column.Bounds.X).ToList();
+        var merged = new List<OcrTextBlock>();
+
+        while (remaining.Count > 0)
+        {
+            var group = new List<OcrTextBlock> { remaining[0] };
+            remaining.RemoveAt(0);
+
+            // A balloon is a chain: each column only has to touch one already in the group, or a
+            // four-column balloon would never gather past its second column.
+            for (bool grew = true; grew;)
+            {
+                grew = false;
+                for (int i = remaining.Count - 1; i >= 0; i--)
+                {
+                    if (!group.Any(member => SameBalloon(member, remaining[i])))
+                        continue;
+
+                    group.Add(remaining[i]);
+                    remaining.RemoveAt(i);
+                    grew = true;
+                }
+            }
+
+            merged.Add(Combine(group));
+        }
+
+        return merged;
+    }
+
+    private static bool SameBalloon(OcrTextBlock a, OcrTextBlock b)
+    {
+        double columnWidth = Math.Max(a.Bounds.Width, b.Bounds.Width);
+
+        // Columns of one balloon start level with each other; a different balloon that happens to
+        // sit alongside almost never does.
+        if (Math.Abs(a.Bounds.Y - b.Bounds.Y) > columnWidth * 0.6)
+            return false;
+
+        double gap = Math.Max(a.Bounds.Left, b.Bounds.Left) - Math.Min(a.Bounds.Right, b.Bounds.Right);
+        return gap <= columnWidth * 0.6;
+    }
+
+    private static OcrTextBlock Combine(List<OcrTextBlock> group)
+    {
+        var ordered = group.OrderByDescending(column => column.Bounds.X).ToList();
+        var bounds = ordered.Select(column => column.Bounds).Aggregate(Rect.Union);
+        var widths = ordered.Select(column => column.Bounds.Width).OrderBy(width => width).ToList();
+        var glyphSize = widths[widths.Count / 2];
+
+        // A lone column still needs to wrap, or the translation is scaled down to fit one line
+        // across a strip one glyph wide. Its stack of character cells stands in for the lines it
+        // would have had, which both enables wrapping and caps how many lines are reasonable.
+        var lines = ordered.Count > 1
+            ? ordered.Select(column => column.Bounds).ToList()
+            : SplitIntoCharacterCells(bounds, glyphSize);
+
+        return new OcrTextBlock(
+            string.Concat(ordered.Select(column => column.Text)),
+            bounds,
+            lines,
+            glyphSize);
+    }
+
+    private static List<Rect> SplitIntoCharacterCells(Rect column, double glyphSize)
+    {
+        int cells = Math.Max(1, (int)Math.Round(column.Height / Math.Max(1, glyphSize)));
+        return Enumerable.Range(0, cells)
+            .Select(i => new Rect(
+                column.X, column.Y + i * column.Height / cells, column.Width, column.Height / cells))
+            .ToList();
     }
 
     /// <summary>

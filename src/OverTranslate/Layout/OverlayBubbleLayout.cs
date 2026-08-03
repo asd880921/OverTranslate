@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using OverTranslate.Services;
@@ -47,7 +47,15 @@ public sealed record OverlayLayoutContext(
     double CanvasWidth,
     double CanvasHeight,
     string SourceLanguage,
-    string TargetLanguage);
+    string TargetLanguage,
+    /// <summary>
+    /// How far a bubble may grow sideways, as a multiple of the text it covers. Unlimited by
+    /// default, which is what the screen overlay wants: there the selection is already drawn
+    /// tightly around the text, so the selection's own edge is the real limit. Exporting a whole
+    /// page has no such edge, and an unbounded bubble stretches a short line clear across the
+    /// artwork, so that path sets a bound.
+    /// </summary>
+    double MaxWidthFactor = double.PositiveInfinity);
 
 /// <summary>
 /// Places translation bubbles over the text they cover, sizing each one to stay readable without
@@ -128,7 +136,11 @@ public static class OverlayBubbleLayout
             fontSize = Math.Min(fontSize * 1.08, fontSize + 1.25);
 
         var typeface = CreateTypeface();
-        double availableWidth = Math.Max(BubbleMinWidth, ctx.CanvasWidth - OverlayPadding * 2);
+        double widthCeiling = double.IsPositiveInfinity(ctx.MaxWidthFactor)
+            ? double.PositiveInfinity
+            : Math.Max(BubbleMinWidth, borderW * ctx.MaxWidthFactor);
+        double availableWidth = Math.Min(
+            widthCeiling, Math.Max(BubbleMinWidth, ctx.CanvasWidth - OverlayPadding * 2));
         double targetBorderW = borderW;
         bool preferRightExpansion = false;
         bool wrap = false;
@@ -143,7 +155,8 @@ public static class OverlayBubbleLayout
             var sourceLineCount = block.SourceLineBounds!.Count;
             var hasLowerBlock = HasLowerOverlappingBlock(block, blocks);
             var maxLineCount = hasLowerBlock ? sourceLineCount : sourceLineCount + 1;
-            var rightAvailableW = GetRightExpansionWidth(block, blocks, canvasX, canvasY, wpfH, ctx);
+            var rightAvailableW = Math.Min(
+                widthCeiling, GetRightExpansionWidth(block, blocks, canvasX, canvasY, wpfH, ctx));
             var preferredGroupedWidth = Math.Min(
                 availableWidth,
                 Math.Max(borderW, Math.Min(measured.Width + BubbleHorizontalPadding, rightAvailableW)));
@@ -163,7 +176,8 @@ public static class OverlayBubbleLayout
         }
         else if (isSingleLineSource)
         {
-            double rightAvailableW = GetRightExpansionWidth(block, blocks, canvasX, canvasY, wpfH, ctx);
+            double rightAvailableW = Math.Min(
+                widthCeiling, GetRightExpansionWidth(block, blocks, canvasX, canvasY, wpfH, ctx));
             var layout = SingleLineOverlayLayout.Calculate(new(
                 fontSize,
                 borderW,
