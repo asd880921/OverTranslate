@@ -65,6 +65,15 @@ public partial class BatchPage : UserControl
     private static readonly string[] SupportedExtensions =
         [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".tiff"];
 
+    /// <summary>
+    /// 圖片\OverTranslate\圖片翻譯 — a folder of this feature's own, deliberately fixed rather than
+    /// following 設定's screenshot location: translated pages and screenshots are different kinds of
+    /// output, and a shared folder turns into a pile. Choosing another folder here is honoured
+    /// exactly as given and is not written back to settings, so it cannot disturb screenshots.
+    /// </summary>
+    private static string DefaultOutputDirectory => System.IO.Path.Combine(
+        ScreenshotSaveService.DefaultDirectory, "圖片翻譯");
+
     private readonly ObservableCollection<BatchListItem> _items = [];
     private CancellationTokenSource? _cts;
     private bool _isRunning;
@@ -92,9 +101,7 @@ public partial class BatchPage : UserControl
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
         RefreshProviderHint();
 
-        // Starts where 設定's screenshot location points, so there is one place in the app that
-        // answers "where do my files go" rather than two that quietly disagree.
-        _outputDirectory = ScreenshotSaveService.ResolveDirectory(settings.ScreenshotSavePath);
+        _outputDirectory = DefaultOutputDirectory;
         OutputBox.Text = _outputDirectory;
 
         RefreshIdleState();
@@ -140,10 +147,14 @@ public partial class BatchPage : UserControl
         if (provider?.RequiresApiKey == true && string.IsNullOrWhiteSpace(SettingsService.Instance.Current.ApiKey))
         {
             ProviderHint.Text = "這個服務需要 API 金鑰，請先到「設定」填好，否則整批都會失敗。";
+            ProviderHint.Visibility = Visibility.Visible;
             return;
         }
 
         ProviderHint.Text = provider?.Hint ?? "";
+        ProviderHint.Visibility = string.IsNullOrEmpty(ProviderHint.Text)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     /// <summary>
@@ -273,6 +284,7 @@ public partial class BatchPage : UserControl
     {
         try
         {
+            Directory.CreateDirectory(_outputDirectory);
             ScreenshotSaveService.OpenFolder(_outputDirectory);
         }
         catch (Exception)

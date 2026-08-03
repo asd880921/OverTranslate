@@ -1,4 +1,4 @@
-<UserControl x:Class="OverTranslate.Views.Batch.BatchPage"
+﻿<UserControl x:Class="OverTranslate.Views.Batch.BatchPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
@@ -148,12 +148,12 @@
                                            FontSize="26" Text="&#xEB9F;"
                                            HorizontalAlignment="Center"
                                            Foreground="{DynamicResource AppTextMuted}"/>
-                                <TextBlock Text="把圖片拖進來"
+                                <TextBlock Text="拖放圖片到此處"
                                            Margin="0,12,0,0"
                                            HorizontalAlignment="Center"
                                            FontFamily="{StaticResource AppFont}" FontSize="14"
                                            Foreground="{DynamicResource AppTextSecondary}"/>
-                                <TextBlock Text="或按上方的「新增圖片」。可以分多次從不同資料夾挑選，會持續往下累加。"
+                                <TextBlock Text="或點擊「新增圖片」加入圖片，可從不同資料夾分批加入。"
                                            Margin="0,6,0,0" MaxWidth="280"
                                            TextAlignment="Center" TextWrapping="Wrap" LineHeight="18"
                                            FontFamily="{StaticResource AppFont}" FontSize="12"
@@ -168,8 +168,11 @@
             <Border Grid.Column="2" Style="{StaticResource CardBorder}" Margin="0">
                 <!-- Scrolls on its own: a short window must not clip the output folder off the
                      bottom, which is the one control the user has to reach before starting. -->
+                <!-- Padding keeps the scrollbar clear of the fields; without it the bar sits hard
+                     against the combo boxes and reads as part of them -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="0,0,10,0">
                     <StackPanel>
                         <TextBlock Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
 
@@ -179,20 +182,24 @@
                                   SelectedValuePath="Code"
                                   Margin="0,0,0,14"/>
 
-                        <TextBlock Text="翻成" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <TextBlock Text="目標語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <ComboBox x:Name="TargetLangBox"
                                   Style="{StaticResource ModernComboBox}"
                                   SelectedValuePath="Code"
                                   Margin="0,0,0,14"/>
 
                         <TextBlock Text="翻譯服務" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                        <ComboBox x:Name="ProviderBox"
-                                  Style="{StaticResource ModernComboBox}"
-                                  SelectedValuePath="Provider"
-                                  SelectionChanged="ProviderBox_SelectionChanged"/>
-                        <TextBlock x:Name="ProviderHint"
-                                   Style="{StaticResource FieldHint}"
-                                   Margin="0,6,0,18" TextWrapping="Wrap" LineHeight="16"/>
+                        <!-- Grouped so the spacing below stays the same whether or not the chosen
+                             service has anything to warn about -->
+                        <StackPanel Margin="0,0,0,18">
+                            <ComboBox x:Name="ProviderBox"
+                                      Style="{StaticResource ModernComboBox}"
+                                      SelectedValuePath="Provider"
+                                      SelectionChanged="ProviderBox_SelectionChanged"/>
+                            <TextBlock x:Name="ProviderHint"
+                                       Style="{StaticResource FieldHint}"
+                                       Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                        </StackPanel>
 
                         <TextBlock Text="文字方向" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <CheckBox x:Name="VerticalTextCheckBox"
