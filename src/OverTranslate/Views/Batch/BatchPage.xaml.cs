@@ -23,6 +23,15 @@ public sealed class BatchListItem(string path)
     public string FolderName { get; } = new DirectoryInfo(
         System.IO.Path.GetDirectoryName(path) ?? string.Empty).Name;
 
+    /// <summary>
+    /// The areas the user marked on this page, in image pixels. Kept on the row rather than thrown
+    /// away with the run, so a second pass — different engine, different target language, or just
+    /// a retry — does not mean drawing every box again. Removing the row is what discards them.
+    /// </summary>
+    public List<Rect> Regions { get; } = [];
+
+    public string RegionSummary => Regions.Count == 0 ? "" : $"已框 {Regions.Count} 區";
+
     /// <summary>Decoded small: a queue of 60 full-size comic pages would otherwise cost hundreds of MB.</summary>
     public BitmapImage? Thumbnail { get; } = LoadThumbnail(path);
 
@@ -87,6 +96,23 @@ public partial class BatchPage : UserControl
         OutputBox.Text = _outputDirectory;
 
         RefreshIdleState();
+    }
+
+    /// <summary>
+    /// Copies what the user just drew back onto the rows. The picker walks the queue in list order,
+    /// so the two line up by index.
+    /// </summary>
+    private void StoreRegions(IReadOnlyList<BatchImage> queue)
+    {
+        for (int i = 0; i < queue.Count && i < _items.Count; i++)
+        {
+            _items[i].Regions.Clear();
+            _items[i].Regions.AddRange(queue[i].Regions);
+        }
+
+        // BatchListItem is deliberately immutable apart from this, so the rows are told to re-read
+        // rather than carrying change notification for one field.
+        ImageList.Items.Refresh();
     }
 
     /// <summary>
@@ -252,7 +278,12 @@ public partial class BatchPage : UserControl
     {
         if (_isRunning || _items.Count == 0) return;
 
-        var queue = _items.Select(item => new BatchImage(item.Path, [])).ToList();
+        // Whole-image mode ignores any boxes still on the rows; it does not erase them, so
+        // switching back to marked areas finds the earlier work intact.
+        var queue = _items
+            .Select(item => new BatchImage(
+                item.Path, SelectRegionsRadio.IsChecked == true ? item.Regions : []))
+            .ToList();
 
         if (SelectRegionsRadio.IsChecked == true)
         {
@@ -266,6 +297,7 @@ public partial class BatchPage : UserControl
             }
 
             queue = [.. picker.Result];
+            StoreRegions(queue);
         }
 
         var sourceLang = LanguageData.GetValidOcrSourceCode(SourceLangBox.SelectedValue as string);

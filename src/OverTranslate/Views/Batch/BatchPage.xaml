@@ -108,10 +108,16 @@
                                                        FontFamily="{StaticResource AppFont}" FontSize="13"
                                                        TextTrimming="CharacterEllipsis"
                                                        Foreground="{DynamicResource AppTextPrimary}"/>
-                                            <TextBlock Text="{Binding FolderName}"
-                                                       FontFamily="{StaticResource AppFont}" FontSize="11"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Foreground="{DynamicResource AppTextMuted}"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding FolderName}"
+                                                           FontFamily="{StaticResource AppFont}" FontSize="11"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource AppTextMuted}"/>
+                                                <TextBlock Text="{Binding RegionSummary}"
+                                                           Margin="8,0,0,0"
+                                                           FontFamily="{StaticResource AppFont}" FontSize="11"
+                                                           Foreground="{DynamicResource AppAccent}"/>
+                                            </StackPanel>
                                         </StackPanel>
 
                                         <Button Grid.Column="2"
