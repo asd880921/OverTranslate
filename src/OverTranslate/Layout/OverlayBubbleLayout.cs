@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Buffers;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using OverTranslate.Services;
@@ -333,6 +334,30 @@ public static class OverlayBubbleLayout
 
     private static int Capacity(double width, double height, double cell) =>
         (int)Math.Max(0, Math.Floor(width / cell)) * (int)Math.Max(0, Math.Floor(height / cell));
+
+    /// <summary>
+    /// Characters whose shape points sideways, and so have to be turned a quarter turn when the
+    /// text runs downwards. Square characters — every ideograph and kana, and the full-width
+    /// punctuation built for them — are already drawn the right way up and are left alone.
+    /// <para>
+    /// Half-width Latin letters and digits are deliberately absent. Vertical typography does turn
+    /// them, but it turns a whole run at once so the word lies on its side and still reads; turning
+    /// them one cell at a time would leave a column of individually toppled letters, which is worse
+    /// than the upright column they get today.
+    /// </para>
+    /// </summary>
+    private static readonly SearchValues<char> RotatedGlyphs = SearchValues.Create(
+        // Brackets and quotation marks — the opening side has to face up, not left
+        "「」『』（）〔〕［］｛｝〈〉《》【】〖〗〘〙〚〛⦅⦆｟｠()[]{}<>" +
+        // Dashes, rules and the prolonged sound mark: a horizontal stroke has to become vertical
+        "—–―─━‐‑‒-－〜～ーｰ＿_＝=" +
+        // Ellipses and leaders: three dots in a row have to become three dots in a column
+        "…⋯‥");
+
+    /// <summary>
+    /// Whether <paramref name="glyph"/> must be turned a quarter turn clockwise when set vertically.
+    /// </summary>
+    public static bool RotatesInVerticalText(char glyph) => RotatedGlyphs.Contains(glyph);
 
     /// <summary>Cell each character occupies, in reading order: down a column, then leftwards.</summary>
     public static IEnumerable<(char Glyph, Rect Cell)> VerticalCells(OverlayBubble bubble)

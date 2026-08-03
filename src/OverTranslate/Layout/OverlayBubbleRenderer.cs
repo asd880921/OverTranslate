@@ -4,6 +4,7 @@ using System.Windows.Media;
 // UseWindowsForms puts System.Drawing in the implicit usings, so these names collide
 using Brushes = System.Windows.Media.Brushes;
 using FontFamily = System.Windows.Media.FontFamily;
+using Point = System.Windows.Point;
 
 namespace OverTranslate.Layout;
 
@@ -43,6 +44,12 @@ public static class OverlayBubbleRenderer
                         TextAlignment = TextAlignment.Center,
                         FontFamily = new FontFamily(OverlayBubbleLayout.FontFamilyName),
                     };
+                    if (OverlayBubbleLayout.RotatesInVerticalText(glyph))
+                    {
+                        cell.RenderTransformOrigin = new Point(0.5, 0.5);
+                        cell.RenderTransform = new RotateTransform(90);
+                    }
+
                     Canvas.SetLeft(cell, cellRect.X);
                     Canvas.SetTop(cell, cellRect.Y + (cellRect.Height - bubble.FontSize * 1.2) / 2);
                     textCanvas.Children.Add(cell);

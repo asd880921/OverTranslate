@@ -252,9 +252,19 @@ public sealed class BatchTranslationService : IDisposable
                     96);
 
                 // Centred in its cell, so a column of mixed glyph widths still reads as a column.
-                dc.DrawText(drawn, new Point(
+                var origin = new Point(
                     cell.X + (cell.Width - drawn.Width) / 2,
-                    cell.Y + (cell.Height - drawn.Height) / 2));
+                    cell.Y + (cell.Height - drawn.Height) / 2);
+
+                bool turn = OverlayBubbleLayout.RotatesInVerticalText(glyph);
+                if (turn)
+                    dc.PushTransform(new RotateTransform(
+                        90, cell.X + cell.Width / 2, cell.Y + cell.Height / 2));
+
+                dc.DrawText(drawn, origin);
+
+                if (turn)
+                    dc.Pop();
             }
 
             return;

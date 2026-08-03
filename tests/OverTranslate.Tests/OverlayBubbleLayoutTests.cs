@@ -255,6 +255,32 @@ public class OverlayBubbleLayoutTests
         Assert.Equal(translated.Length, OverlayBubbleLayout.VerticalCells(bubble).Count());
     }
 
+    // Set vertically, a glyph drawn as a horizontal stroke has to be turned or it reads as a
+    // leftover from the horizontal layout — the ellipsis and the dash are the two that show up in
+    // nearly every translated line.
+    [Theory]
+    [InlineData('…')] [InlineData('⋯')] [InlineData('‥')]
+    [InlineData('—')] [InlineData('–')] [InlineData('―')] [InlineData('─')] [InlineData('━')]
+    [InlineData('-')] [InlineData('－')] [InlineData('〜')] [InlineData('～')]
+    [InlineData('ー')] [InlineData('ｰ')] [InlineData('＿')] [InlineData('＝')]
+    [InlineData('「')] [InlineData('」')] [InlineData('『')] [InlineData('』')]
+    [InlineData('（')] [InlineData('）')] [InlineData('【')] [InlineData('】')]
+    [InlineData('《')] [InlineData('》')] [InlineData('〈')] [InlineData('〉')]
+    [InlineData('［')] [InlineData('］')] [InlineData('｛')] [InlineData('｝')]
+    [InlineData('(')] [InlineData(')')] [InlineData('[')] [InlineData(']')]
+    public void SidewaysGlyphs_AreTurned(char glyph) =>
+        Assert.True(OverlayBubbleLayout.RotatesInVerticalText(glyph), $"'{glyph}' was left lying down");
+
+    // Square glyphs are already the right way up; turning them would be the bug.
+    [Theory]
+    [InlineData('中')] [InlineData('あ')] [InlineData('ア')] [InlineData('한')]
+    [InlineData('、')] [InlineData('。')] [InlineData('，')] [InlineData('！')] [InlineData('？')]
+    [InlineData('：')] [InlineData('；')] [InlineData('・')]
+    [InlineData('Ａ')] [InlineData('０')]   // full-width forms are made for vertical setting
+    [InlineData('A')] [InlineData('0')]     // half-width runs would have to turn as a run, not per cell
+    public void UprightGlyphs_AreLeftAlone(char glyph) =>
+        Assert.False(OverlayBubbleLayout.RotatesInVerticalText(glyph), $"'{glyph}' was turned needlessly");
+
     [Fact]
     public void FontSize_StaysReadableForTinySourceText()
     {
