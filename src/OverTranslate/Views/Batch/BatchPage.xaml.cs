@@ -425,11 +425,12 @@ public partial class BatchPage : UserControl
         StatusText.Text = (result.Cancelled, result.Succeeded, failed) switch
         {
             (true, 0, _) => "已停止，尚未完成任何圖片",
-            (true, var done, _) => $"已停止，已完成的 {done} 張圖片已儲存",
+            (true, var done, _) => $"已停止，已完成的 {done} 張圖片已儲存至\n{result.OutputDirectory}",
             (false, 0, 0) => "沒有可處理的圖片",
-            (false, var done, 0) => $"已完成 {done} 張圖片的翻譯",
+            (false, var done, 0) => $"已完成 {done} 張圖片，已儲存至\n{result.OutputDirectory}",
             (false, 0, var bad) => $"{bad} 張圖片全部失敗：{FirstReasons(result)}",
-            (false, var done, var bad) => $"已完成 {done} 張圖片，{bad} 張已略過：{FirstReasons(result)}",
+            (false, var done, var bad) =>
+                $"已完成 {done} 張圖片，{bad} 張已略過（{FirstReasons(result)}），已儲存至\n{result.OutputDirectory}",
         };
 
         // A long run finishes while the user is off doing something else, so this has to arrive

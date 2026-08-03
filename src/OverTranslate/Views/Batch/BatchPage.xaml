@@ -265,9 +265,11 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                <!-- Wraps rather than trims: the completion line ends in the output path, and a
+                     path the user cannot read in full defeats the point of showing it -->
                 <TextBlock x:Name="StatusText"
                            FontFamily="{StaticResource AppFont}" FontSize="12"
-                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="Wrap" LineHeight="17"
                            Foreground="{DynamicResource AppTextSecondary}"/>
                 <ProgressBar x:Name="Progress"
                              Style="{StaticResource SlimProgressBar}"
