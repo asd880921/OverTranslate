@@ -172,6 +172,14 @@
                               SelectedValuePath="Code"
                               Margin="0,0,0,16"/>
 
+                    <TextBlock Text="翻譯服務" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                    <ComboBox x:Name="ProviderBox"
+                              Style="{StaticResource ModernComboBox}"
+                              SelectedValuePath="Provider"
+                              SelectionChanged="ProviderBox_SelectionChanged"/>
+                    <TextBlock x:Name="ProviderHint"
+                               Style="{StaticResource FieldHint}" Margin="0,4,0,16"/>
+
                     <TextBlock Text="文字排版" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                     <CheckBox x:Name="VerticalTextCheckBox"
                               Content="文字是直的，由上往下讀"

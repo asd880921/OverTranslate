@@ -77,11 +77,45 @@ public partial class BatchPage : UserControl
         TargetLangBox.SelectedValue = LanguageData.GetValidTargetCode(settings.TargetLanguage);
         if (TargetLangBox.SelectedValue == null) TargetLangBox.SelectedIndex = 0;
 
+        ProviderBox.ItemsSource = LanguageData.Providers;
+        ProviderBox.SelectedValue = settings.Provider;
+        if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+        RefreshProviderHint();
+
         _outputDirectory = System.IO.Path.Combine(
             ScreenshotSaveService.ResolveDirectory(settings.ScreenshotSavePath), "批次翻譯");
         OutputBox.Text = _outputDirectory;
 
         RefreshIdleState();
+    }
+
+    /// <summary>
+    /// The engine is a single app-wide choice, as it is on the translation page and the capture
+    /// toolbar, so picking one here is remembered everywhere rather than being a hidden per-page
+    /// setting the user has to keep in their head.
+    /// </summary>
+    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ProviderBox.SelectedValue is not TranslationProvider provider) return;
+
+        SettingsService.Instance.Current.Provider = provider;
+        SettingsService.Instance.Save();
+        RefreshProviderHint();
+    }
+
+    private void RefreshProviderHint()
+    {
+        var provider = ProviderBox.SelectedItem as ProviderItem;
+
+        // A missing key is the one thing that would fail every single image in the run, so say so
+        // before the user starts rather than in the failure list afterwards.
+        if (provider?.RequiresApiKey == true && string.IsNullOrWhiteSpace(SettingsService.Instance.Current.ApiKey))
+        {
+            ProviderHint.Text = "這個服務需要 API 金鑰，請先到「設定」填好，否則整批都會失敗。";
+            return;
+        }
+
+        ProviderHint.Text = provider?.Hint ?? "";
     }
 
     /// <summary>
@@ -300,6 +334,7 @@ public partial class BatchPage : UserControl
         SourceLangBox.IsEnabled = false;
         TargetLangBox.IsEnabled = false;
         VerticalTextCheckBox.IsEnabled = false;
+        ProviderBox.IsEnabled = false;
         WholeImageRadio.IsEnabled = false;
         SelectRegionsRadio.IsEnabled = false;
     }
@@ -316,6 +351,7 @@ public partial class BatchPage : UserControl
         SourceLangBox.IsEnabled = true;
         TargetLangBox.IsEnabled = true;
         VerticalTextCheckBox.IsEnabled = true;
+        ProviderBox.IsEnabled = true;
         WholeImageRadio.IsEnabled = true;
         SelectRegionsRadio.IsEnabled = true;
         RefreshIdleState();
@@ -355,6 +391,7 @@ public partial class BatchPage : UserControl
     {
         if (_isRunning) return;
 
+        RefreshProviderHint();
         CountText.Text = _items.Count == 0 ? "" : $"{_items.Count} 張";
         EmptyState.Visibility = _items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         StartBtn.IsEnabled = _items.Count > 0;
