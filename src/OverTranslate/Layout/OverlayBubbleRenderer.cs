@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 // UseWindowsForms puts System.Drawing in the implicit usings, so these names collide
@@ -27,6 +27,32 @@ public static class OverlayBubbleRenderer
                 Height = bubble.Height,
                 ClipToBounds = true,
             };
+
+            if (bubble.Vertical)
+            {
+                foreach (var (glyph, cellRect) in OverlayBubbleLayout.VerticalCells(bubble))
+                {
+                    var cell = new TextBlock
+                    {
+                        Text = glyph.ToString(),
+                        FontSize = bubble.FontSize,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = new SolidColorBrush(bubble.Foreground),
+                        Width = cellRect.Width,
+                        Height = cellRect.Height,
+                        TextAlignment = TextAlignment.Center,
+                        FontFamily = new FontFamily(OverlayBubbleLayout.FontFamilyName),
+                    };
+                    Canvas.SetLeft(cell, cellRect.X);
+                    Canvas.SetTop(cell, cellRect.Y + (cellRect.Height - bubble.FontSize * 1.2) / 2);
+                    textCanvas.Children.Add(cell);
+                }
+
+                Canvas.SetLeft(background, bubble.Left);
+                Canvas.SetTop(background, bubble.Top);
+                backgroundCanvas.Children.Add(background);
+                continue;
+            }
 
             var text = new Border
             {

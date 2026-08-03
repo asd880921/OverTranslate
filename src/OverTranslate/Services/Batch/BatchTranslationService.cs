@@ -210,7 +210,8 @@ public sealed class BatchTranslationService : IDisposable
                     TargetLanguage: targetLanguage,
                     // A vertical column is a narrow target and the page offers no selection edge to
                     // stop at, so without this a two-word line spreads right across the drawing.
-                    MaxWidthFactor: verticalText ? VerticalBubbleWidthFactor : double.PositiveInfinity);
+                    MaxWidthFactor: verticalText ? VerticalBubbleWidthFactor : double.PositiveInfinity,
+                    VerticalText: verticalText);
 
                 // Backgrounds for the whole region first, then the text: a later bubble's opaque
                 // background must never land on an earlier bubble's glyphs.
@@ -237,6 +238,28 @@ public sealed class BatchTranslationService : IDisposable
 
     private static void DrawBubbleText(DrawingContext dc, OverlayBubble bubble, Typeface typeface)
     {
+        if (bubble.Vertical)
+        {
+            foreach (var (glyph, cell) in OverlayBubbleLayout.VerticalCells(bubble))
+            {
+                var drawn = new FormattedText(
+                    glyph.ToString(),
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    System.Windows.FlowDirection.LeftToRight,
+                    typeface,
+                    bubble.FontSize,
+                    new SolidColorBrush(bubble.Foreground),
+                    96);
+
+                // Centred in its cell, so a column of mixed glyph widths still reads as a column.
+                dc.DrawText(drawn, new Point(
+                    cell.X + (cell.Width - drawn.Width) / 2,
+                    cell.Y + (cell.Height - drawn.Height) / 2));
+            }
+
+            return;
+        }
+
         // Matches the padding the on-screen bubble's Border applies (3,2,3,2).
         const double padX = 3;
         const double padY = 2;

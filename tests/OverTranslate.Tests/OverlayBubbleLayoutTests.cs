@@ -195,6 +195,66 @@ public class OverlayBubbleLayoutTests
         Assert.True(bubble.Width <= 64 * 2.2 + 0.5, $"width {bubble.Width} broke the ceiling");
     }
 
+    // ── Vertical (comic) layout ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void HorizontalLayout_IsNotVertical()
+    {
+        var bubble = Assert.Single(OverlayBubbleLayout.Calculate([Block(10, 10, 200, 24)], Context()));
+
+        Assert.False(bubble.Vertical);
+    }
+
+    // The whole point of keeping the direction: the replacement needs no more room than the text it
+    // covers, so it cannot spill onto the artwork around it.
+    [Fact]
+    public void VerticalLayout_StaysWithinTheSourceFootprint()
+    {
+        var column = Block(500, 200, 44, 260, translated: "關於我們別擔心");
+        var vertical = Context() with { VerticalText = true };
+
+        var bubble = Assert.Single(OverlayBubbleLayout.Calculate([column], vertical));
+
+        Assert.True(bubble.Vertical);
+        Assert.True(bubble.Width <= 44 + 8, $"width {bubble.Width} grew past the column it replaces");
+        Assert.True(bubble.Left <= 500 && bubble.Left + bubble.Width >= 544, "the source is left uncovered");
+    }
+
+    [Fact]
+    public void VerticalCells_RunDownThenLeftwards()
+    {
+        var column = Block(500, 200, 40, 200, translated: "一二三四五六");
+        var vertical = Context() with { VerticalText = true };
+
+        var bubble = Assert.Single(OverlayBubbleLayout.Calculate([column], vertical));
+        var cells = OverlayBubbleLayout.VerticalCells(bubble).ToList();
+
+        Assert.Equal(6, cells.Count);
+        Assert.Equal('一', cells[0].Glyph);
+
+        // Second character sits below the first, never beside it.
+        Assert.True(cells[1].Cell.Y > cells[0].Cell.Y, "the column does not read downwards");
+        Assert.Equal(cells[0].Cell.X, cells[1].Cell.X, 3);
+
+        // Whichever character starts the next column must sit to the LEFT of the first one.
+        var nextColumn = cells.FirstOrDefault(c => c.Cell.X < cells[0].Cell.X - 1);
+        if (nextColumn.Cell.Width > 0)
+            Assert.True(nextColumn.Cell.X < cells[0].Cell.X, "columns do not run right to left");
+    }
+
+    // A long translation must not silently lose its tail.
+    [Fact]
+    public void VerticalLayout_KeepsEveryCharacter()
+    {
+        const string translated = "這是一段相當長的翻譯內容需要很多空間才放得下";
+        var column = Block(500, 200, 40, 160, translated: translated);
+        var vertical = Context() with { VerticalText = true };
+
+        var bubble = Assert.Single(OverlayBubbleLayout.Calculate([column], vertical));
+
+        Assert.Equal(translated.Length, OverlayBubbleLayout.VerticalCells(bubble).Count());
+    }
+
     [Fact]
     public void FontSize_StaysReadableForTinySourceText()
     {

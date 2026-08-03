@@ -24,7 +24,11 @@ public sealed record OverlayBubble(
     double FontSize,
     bool Wrap,
     Color Background,
-    Color Foreground);
+    Color Foreground,
+    /// <summary>Set when the text is stacked downwards in columns running right to left.</summary>
+    bool Vertical = false,
+    /// <summary>Side of one character's cell. Only meaningful when <see cref="Vertical"/>.</summary>
+    double CellSize = 0);
 
 /// <summary>Everything the layout needs to know about the surface it is drawing onto.</summary>
 /// <param name="OriginPhysX">
@@ -55,7 +59,13 @@ public sealed record OverlayLayoutContext(
     /// page has no such edge, and an unbounded bubble stretches a short line clear across the
     /// artwork, so that path sets a bound.
     /// </summary>
-    double MaxWidthFactor = double.PositiveInfinity);
+    double MaxWidthFactor = double.PositiveInfinity,
+    /// <summary>
+    /// Lay the translation out downwards, as the source was. Keeping the direction means the
+    /// bubble needs no more room than the text it replaces, so nothing spills over the artwork,
+    /// and the page still reads the way it was drawn to.
+    /// </summary>
+    bool VerticalText = false);
 
 /// <summary>
 /// Places translation bubbles over the text they cover, sizing each one to stay readable without
@@ -126,6 +136,9 @@ public static class OverlayBubbleLayout
             double lum = (0.299 * bg.R + 0.587 * bg.G + 0.114 * bg.B) / 255.0;
             textColor = lum > 0.5 ? Colors.Black : Colors.White;
         }
+
+        if (ctx.VerticalText)
+            return CalculateVertical(block, canvasX, canvasY, wpfW, wpfH, sourceFontReferenceHeight, bg, textColor, ctx);
 
         bool isSmallSourceText = sourceFontReferenceHeight <= 14;
         bool isSingleLineSource = IsSingleLineSource(block.OriginalText, sourceFontReferenceHeight);
@@ -269,6 +282,77 @@ public static class OverlayBubbleLayout
 
         return new OverlayBubble(
             block.TranslatedText, left, top, targetBorderW, actualBorderH, fontSize, wrap, bg, textColor);
+    }
+
+    /// <summary>
+    /// Fills the source's own footprint with a grid of character cells, columns running right to
+    /// left. The cell starts at the size the original glyphs were and shrinks only as far as it
+    /// must for the translation to fit, so the replacement sits where the original did.
+    /// </summary>
+    private static OverlayBubble CalculateVertical(
+        TranslatedBlock block,
+        double canvasX,
+        double canvasY,
+        double wpfW,
+        double wpfH,
+        double sourceGlyphSize,
+        Color background,
+        Color foreground,
+        OverlayLayoutContext ctx)
+    {
+        double borderW = Math.Max(wpfW + BubbleExpand * 2, BubbleMinWidth);
+        double borderH = wpfH + BubbleExpand * 2;
+
+        // Line breaks belong to the source's own wrapping; the grid does its own.
+        var text = new string(block.TranslatedText.Where(c => !char.IsWhiteSpace(c)).ToArray());
+        int needed = Math.Max(1, text.Length);
+
+        double cell = Math.Max(SingleLineAbsoluteMinFontSize, sourceGlyphSize);
+        while (cell > SingleLineEmergencyMinFontSize && Capacity(borderW, borderH, cell) < needed)
+            cell -= 0.5;
+
+        // Still short of room at the smallest readable cell: let the grid overflow downwards rather
+        // than drop characters, since a truncated line is worse than a slightly tall bubble.
+        double columns = Math.Max(1, Math.Floor(borderW / cell));
+        double rows = Math.Max(1, Math.Ceiling(needed / columns));
+        borderH = Math.Max(borderH, rows * cell);
+
+        double left = Math.Clamp(
+            canvasX - BubbleExpand, OverlayPadding, Math.Max(OverlayPadding, ctx.CanvasWidth - borderW - OverlayPadding));
+        double top = Math.Clamp(
+            canvasY - BubbleExpand, OverlayPadding, Math.Max(OverlayPadding, ctx.CanvasHeight - borderH - OverlayPadding));
+
+        return new OverlayBubble(
+            text, left, top, borderW, borderH,
+            FontSize: cell * 0.92,   // a little air around each glyph, as the source has
+            Wrap: false,
+            background, foreground,
+            Vertical: true,
+            CellSize: cell);
+    }
+
+    private static int Capacity(double width, double height, double cell) =>
+        (int)Math.Max(0, Math.Floor(width / cell)) * (int)Math.Max(0, Math.Floor(height / cell));
+
+    /// <summary>Cell each character occupies, in reading order: down a column, then leftwards.</summary>
+    public static IEnumerable<(char Glyph, Rect Cell)> VerticalCells(OverlayBubble bubble)
+    {
+        double cell = bubble.CellSize > 0 ? bubble.CellSize : bubble.FontSize;
+        int columns = Math.Max(1, (int)Math.Floor(bubble.Width / cell));
+        int rows = Math.Max(1, (int)Math.Floor(bubble.Height / cell));
+
+        for (int i = 0; i < bubble.Text.Length; i++)
+        {
+            int column = i / rows;
+            int row = i % rows;
+            if (column >= columns) yield break;
+
+            yield return (bubble.Text[i], new Rect(
+                bubble.Left + bubble.Width - (column + 1) * cell,
+                bubble.Top + row * cell,
+                cell,
+                cell));
+        }
     }
 
     private static bool IsSingleLineSource(string originalText, double sourceHeight) =>
