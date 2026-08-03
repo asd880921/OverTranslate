@@ -63,6 +63,8 @@ public partial class MainWindow : Window
             Visible = true
         };
 
+        TrayNotificationService.Attach(_notifyIcon);
+
         _notifyIcon.MouseClick += (_, e) =>
         {
             if (e.Button == MouseButtons.Left)  OpenTranslationWindow();

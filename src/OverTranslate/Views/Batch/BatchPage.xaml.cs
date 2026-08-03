@@ -7,7 +7,7 @@ using System.Windows.Media.Imaging;
 using OverTranslate.Models;
 using OverTranslate.Services;
 using OverTranslate.Services.Batch;
-using OverTranslate.Views.Shell;
+using ToolTipIcon = System.Windows.Forms.ToolTipIcon;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
 using DragEventArgs = System.Windows.DragEventArgs;
@@ -410,11 +410,13 @@ public partial class BatchPage : UserControl
             (false, var done, var bad) => $"完成 {done} 張，有 {bad} 張跳過了：{FirstReasons(result)}",
         };
 
+        // A long run finishes while the user is off doing something else, so this has to arrive
+        // through Windows' own notifications rather than a toast inside a window they left.
         if (result is { Cancelled: false, Succeeded: > 0 })
-            ToastWindow.Show(
-                "批次翻譯完成",
+            TrayNotificationService.Show(
+                "圖片翻譯完成",
                 $"{result.Succeeded} 張已存到 {result.OutputDirectory}",
-                kind: failed > 0 ? ToastKind.Info : ToastKind.Success);
+                failed > 0 ? ToolTipIcon.Warning : ToolTipIcon.Info);
     }
 
     // Names the files that failed rather than just counting them, so the user knows what to re-check.
