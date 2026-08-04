@@ -79,6 +79,36 @@ public class OcrServiceTests
     }
 
     [Fact]
+    public async Task OnnxEngine_SameTextWithDifferentMargins_RecognizesIdentically()
+    {
+        // Two captures of the same screen region: pixel-for-pixel identical text, the second
+        // framed with a few more pixels of empty margin (264x56 vs 270x60, the text offset by
+        // exactly (7, 1)). Nothing about the glyphs differs, so the recognized text must not
+        // differ either — before the detector-alignment fix the tighter crop read
+        // "Skill(domain-modeling)" as "Skill(Donain-nodeling)".
+        using var engine = new OnnxOcrEngine();
+        using var tight = LoadFixture("capture-264x56.png");
+        using var loose = LoadFixture("capture-270x60.png");
+
+        var tightText = TextOf(await engine.RecognizeAsync(tight, "EN"));
+        var looseText = TextOf(await engine.RecognizeAsync(loose, "EN"));
+
+        Assert.Equal(looseText, tightText);
+        Assert.Contains("skill(domain-modeling)", tightText);
+    }
+
+    private static Bitmap LoadFixture(string name) =>
+        new(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
+
+    // A leading bullet is trimmed before comparing. The capture starts with a 3px dot, and whether
+    // the detector stretches the line's box far enough left to swallow it still depends on where
+    // in the frame the dot lands — sensitivity to translation, which sizing the input cannot
+    // remove. What the fix under test does guarantee, and what this compares, is that the same
+    // glyphs are read as the same characters.
+    private static string TextOf(IEnumerable<OcrTextBlock> blocks) =>
+        string.Join("\n", blocks.Select(b => b.Text.TrimStart('•', ' ')));
+
+    [Fact]
     public async Task OnnxEngine_SwitchingLanguages_ReloadsActiveModel()
     {
         // Switching model keys disposes the previous runtime and loads the next one, so the

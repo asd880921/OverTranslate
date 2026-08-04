@@ -93,8 +93,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 runtime.ModelName,
                 ThreadCount);
 
+            var options = CreateOptions();
             using var skBitmap = ConvertToSkBitmap(bitmap);
-            var result = runtime.Engine.Detect(skBitmap, CreateOptions());
+            using var detectorInput = AlignForDetector(skBitmap, options.Padding);
+            var result = runtime.Engine.Detect(detectorInput, options);
             var converted = ConvertBlocks(result.TextBlocks);
 
             // On a non-CJK (Latin) page the shared general model occasionally misreads icons
@@ -374,6 +376,66 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 block.Bounds.Height,
                 block.Text);
         }
+    }
+
+    // RapidOcrNet feeds the detector an image whose width and height have each been rounded down
+    // to a multiple of DetectorAlignment — and rounded down a whole extra step, via
+    // (n / 32 - 1) * 32 in ScaleParam.GetScaleParam. The two axes are quantised independently, so
+    // the amount of squashing differs between them by an amount that depends on the exact capture
+    // size. A 264x56 capture reaches the detector squashed to 0.88x horizontally but 0.62x
+    // vertically; widen the same selection by six pixels and 270x60 comes out 0.86x by 1.00x. That
+    // is why two captures of identical pixels could recognise differently ("domain" -> "donain"):
+    // the user's selection box, not the glyphs, was choosing the aspect ratio.
+    //
+    // Detect() pads the bitmap by options.Padding on all four sides and, for anything below
+    // ImgResize, targets exactly that padded long side — so the scale factor is already 1.0 on the
+    // long axis and the quantisation is the only thing left distorting the image. Growing the
+    // bitmap so the padded dimensions land on multiples of DetectorAlignment skips the
+    // quantisation on both axes, and the detector sees native, undistorted pixels.
+    //
+    // Only the right and bottom edges grow, leaving block coordinates in the caller's frame, and
+    // the added pixels are the same transparent black Detect() already surrounds every capture
+    // with — this pushes that border out by under 32px rather than introducing a new edge.
+    //
+    // WHAT THIS DOES NOT FIX. Above ImgResize a real downscale takes over, and there this buys
+    // nothing: Detect() scales the padded image so its long side lands on ImgResize exactly (a
+    // multiple of 32, so that axis survives), then quantises the short axis anyway, costing it
+    // another 0-63px. A 2330x1102 capture still reaches the detector squashed by 5.2%, a
+    // 2554x1437 one by 2.9% — small next to the 30% above, but still an amount that moves with
+    // the selection size. Captures that large therefore behave exactly as they did before this
+    // change, residual squash included.
+    //
+    // Doing that downscale ourselves, uniformly, would remove the squash at every size. It was
+    // measured and did not pay: on a ground-truth benchmark of a real capture across five canvas
+    // sizes it scored 111/120 against 115/120 for leaving the library to it (and 110/120 with a
+    // sharper resampler). That is inside the benchmark's noise, so the honest reading is "no
+    // measurable gain" rather than "worse" — but an unmeasurable gain does not justify changing
+    // how every large capture is fed. Revisit only with a benchmark strong enough to resolve it.
+    private const int DetectorAlignment = 32;
+
+    private static SKBitmap AlignForDetector(SKBitmap src, int detectPadding)
+    {
+        var aligned = new SKBitmap(
+            AlignedLength(src.Width, detectPadding),
+            AlignedLength(src.Height, detectPadding),
+            src.ColorType,
+            src.AlphaType);
+
+        using (var canvas = new SKCanvas(aligned))
+        {
+            canvas.Clear(SKColors.Transparent);
+            canvas.DrawBitmap(src, 0, 0);
+        }
+
+        return aligned;
+    }
+
+    // Smallest length >= the original for which length + Detect()'s own padding is a multiple of
+    // DetectorAlignment.
+    private static int AlignedLength(int length, int detectPadding)
+    {
+        var overshoot = (length + 2 * detectPadding) % DetectorAlignment;
+        return overshoot == 0 ? length : length + (DetectorAlignment - overshoot);
     }
 
     private static SKBitmap ConvertToSkBitmap(Bitmap bitmap)
