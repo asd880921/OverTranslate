@@ -16,8 +16,6 @@ public partial class OverlayWindow : Window
     private const double BubbleMinWidth = 30;
     private const double BubbleHorizontalPadding = 6;
     private const double BubbleVerticalPadding = 6;
-    private const double DefaultMinFontSize = 13.0;
-    private const double SmallTextMinFontSize = 14.5;
     private const double SingleLineAbsoluteMinFontSize = 9.5;
     private const double SingleLineReadableMinFontSize = 10.0;
     private const double SingleLineEmergencyMinFontSize = 7.0;
@@ -243,13 +241,10 @@ public partial class OverlayWindow : Window
                 textBrush = lum > 0.5 ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.White;
             }
 
-            bool isSmallSourceText = sourceFontReferenceHeight <= 14;
             bool isSingleLineSource = IsSingleLineSource(block.OriginalText, sourceFontReferenceHeight);
             bool isGroupedMultiLineSource = block.SourceLineBounds is { Count: > 1 };
-            double minFontSize = isSmallSourceText ? SmallTextMinFontSize : DefaultMinFontSize;
-            double fontSize = Math.Max(minFontSize, sourceFontReferenceHeight * (isSmallSourceText ? 1.18 : 1.06));
-            if (ShouldSlightlyBoostTinyEnglishToCjk(sourceFontReferenceHeight))
-                fontSize = Math.Min(fontSize * 1.08, fontSize + 1.25);
+            double minFontSize = SourceFontScale.MinFontSize(sourceFontReferenceHeight);
+            double fontSize = SourceFontScale.Calculate(sourceFontReferenceHeight, IsLatinSourceToCjkTarget());
             var typeface = new Typeface(
                 new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
@@ -480,8 +475,9 @@ public partial class OverlayWindow : Window
         return lineHeights[lineHeights.Count / 2];
     }
 
-    private bool ShouldSlightlyBoostTinyEnglishToCjk(double sourceFontReferenceHeight) =>
-        sourceFontReferenceHeight <= 14 &&
+    // No height test of its own — SourceFontScale fades the boost out with height, so gating it
+    // here too would put back a step at whatever height the gate used.
+    private bool IsLatinSourceToCjkTarget() =>
         _currentSourceLanguage.Equals("EN", StringComparison.OrdinalIgnoreCase) &&
         IsCjkLanguage(_currentTargetLanguage);
 
