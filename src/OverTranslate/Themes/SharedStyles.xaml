@@ -779,6 +779,76 @@
         </Setter>
     </Style>
 
+    <!-- The nav rail's one primary action (截圖翻譯). Borrows the app's existing tonal-accent
+         surface — 1px AppAccent border over an AppAccentSubtle fill, the same pair
+         ToolbarSubtleAccentButton and the theme picker already use — rather than inventing a
+         material for one control. The accent outline is what separates it from NavItem's selected
+         state, which shares the tint but is never bordered, and the drop shadow is what keeps it
+         reading as a raised, pressable object instead of a highlighted row.
+         The shadow is allowed to spill past the 8,2 margin: nothing in the rail's DockPanel or
+         StackPanel clips its children, so it renders in full without extra reserved space. -->
+    <Style x:Key="NavPrimaryAction" TargetType="Button">
+        <Setter Property="FontFamily"   Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"     Value="{StaticResource AppFontSize}"/>
+        <Setter Property="Foreground"   Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Background"   Value="{DynamicResource AppAccentSubtle}"/>
+        <Setter Property="Cursor"       Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <!-- The content is a SIBLING of the material, never its child. Any element
+                         carrying an Effect pushes its whole subtree through an intermediate render
+                         surface, and ClearType sub-pixel antialiasing cannot run there — text
+                         nested inside this Border came out visibly soft next to the nav items.
+                         Same trap ShellWindow's page transition documents for BitmapCache. -->
+                    <Grid Margin="8,2" Height="44">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{DynamicResource AppAccent}"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                            <!-- Effects are Freezables, so they have no template namescope entry
+                                 and cannot be reached by TargetName. Each state swaps the whole
+                                 effect rather than one of its properties. -->
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Direction="270"
+                                                  Opacity="0.14" Color="#000000"/>
+                            </Border.Effect>
+                        </Border>
+                        <ContentPresenter Margin="12,0" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <!-- Rises toward the pointer: one step deeper tint, one step more shadow.
+                             Deliberately NOT ToolbarSubtleAccentButton's flip to a solid accent
+                             fill — at 44px full-rail width that is a wall of colour, which is the
+                             very thing the tonal treatment exists to avoid. -->
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentSubtleHover}"/>
+                            <Setter TargetName="Root" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270"
+                                                      Opacity="0.20" Color="#000000"/>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <!-- and settles back down when pressed, rather than only changing colour -->
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentSubtlePressed}"/>
+                            <Setter TargetName="Root" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270"
+                                                      Opacity="0.10" Color="#000000"/>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Circular close button for the modal overlay -->
     <Style x:Key="OverlayCloseButton" TargetType="Button">
         <Setter Property="FontFamily"  Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>

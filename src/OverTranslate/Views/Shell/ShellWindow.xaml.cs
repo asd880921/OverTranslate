@@ -57,6 +57,7 @@ public partial class ShellWindow : Window
         }
 
         _instance.Navigate(page);
+        _instance.RefreshHotkeyHint();
 
         var shell = _instance;
         shell.Dispatcher.BeginInvoke(shell.Activate, DispatcherPriority.ApplicationIdle);
@@ -73,9 +74,30 @@ public partial class ShellWindow : Window
         VersionText.Text = $"v{Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0"}";
 
         _instance = this;
+        RefreshHotkeyHint();
 
         // Nav_Checked drives navigation, so this also renders the initial page
         TranslationNav.IsChecked = true;
+    }
+
+    /// <summary>
+    /// Re-reads the shortcut into the capture button's second line. The shell outlives any number
+    /// of visits to 設定, so this runs on every ShowOrActivate rather than only at construction.
+    /// </summary>
+    private void RefreshHotkeyHint()
+    {
+        var hotkey = SettingsService.Instance.Current.HotkeyDisplay;
+        // Blank rather than a "未設定" placeholder: the label already says what the button does,
+        // and a slot that only ever holds a shortcut should be empty when there is none.
+        CaptureHotkeyText.Text = string.IsNullOrWhiteSpace(hotkey) ? "" : hotkey;
+    }
+
+    private void CaptureBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // MainWindow owns the whole capture session (hotkey, screenshot, overlay, teardown), so
+        // the shell only asks for one and hands itself over to be hidden and brought back.
+        if (System.Windows.Application.Current.MainWindow is MainWindow main)
+            main.StartCaptureFromShell(this);
     }
 
     public void Navigate(ShellPage page)
