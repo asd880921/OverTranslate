@@ -19,13 +19,18 @@
     <SolidColorBrush x:Key="AppAccentHover"    Color="#106EBE"/>
     <SolidColorBrush x:Key="AppAccentPressed"  Color="#005A9E"/>
     <SolidColorBrush x:Key="AppAccentFg"       Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="AppAccentSubtle"   Color="#EEF4FF"/>
+    <!-- ~13% AppAccent over white. The old #EEF4FF was mixed against #FFFFFF and works there, but
+         its heaviest duty is the nav rail's selected row, which sits on AppHeaderBg #F5F5F5 — only
+         7 levels of red and 1 of green away from it, so the selection all but vanished. Dark has no
+         such problem (#1A2E3D on #1C1C1C separates by 33 levels of blue), which is why only this
+         theme moves. -->
+    <SolidColorBrush x:Key="AppAccentSubtle"   Color="#DEEDFB"/>
 
     <!-- Interaction steps for AppAccentSubtle, for tonal surfaces that stay tonal on hover instead
          of flipping to the solid accent — a full-width nav card is far too large an area to flood
          with accent on mouse-over the way a 28px toolbar button can. -->
-    <SolidColorBrush x:Key="AppAccentSubtleHover"   Color="#E1ECFF"/>
-    <SolidColorBrush x:Key="AppAccentSubtlePressed" Color="#D3E2FC"/>
+    <SolidColorBrush x:Key="AppAccentSubtleHover"   Color="#CFE4F8"/>
+    <SolidColorBrush x:Key="AppAccentSubtlePressed" Color="#BFD9F4"/>
 
     <!-- Buttons -->
     <SolidColorBrush x:Key="AppButtonBg"       Color="#FFFFFF"/>
