@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using OverTranslate.Services;
 
 namespace OverTranslate.Views.Shell;
 
@@ -15,8 +16,13 @@ public enum ToastKind
 
 public partial class ToastWindow : Window
 {
-    private const int DisplayMs = 5000;
+    private const int DisplayMs = 3000;
     private const int FadeMs    = 350;
+
+    // Shorter than the timed fade: the reader has already decided, so the toast owes them an
+    // acknowledgement rather than a farewell.
+    private const int CloseFadeMs = 120;
+
     private const double Gap = 8;
 
     // At most one toast is on screen. A newer message replaces the older one outright instead of
@@ -27,6 +33,13 @@ public partial class ToastWindow : Window
     private readonly Rect? _selPhysRect;
     private DispatcherTimer? _autoCloseTimer;
     private bool _closed;
+    private bool _fadingOut;
+
+    // Set once the user has dismissed the toast, so the hover handlers stop reviving it. Without it,
+    // a pointer that leaves and re-enters during the closing fade cancels that fade — and by then
+    // the countdown is stopped and the toast is no longer the current one, so nothing would ever
+    // close it again.
+    private bool _userDismissed;
 
     /// <summary>Shows a toast, replacing whichever one is currently on screen.</summary>
     public static void Show(string title, string message, Rect? selPhysRect = null, ToastKind kind = ToastKind.Info)
@@ -85,65 +98,66 @@ public partial class ToastWindow : Window
         Left = -9999;
         Top  = -9999;
 
+        // Nothing is shown until the position is settled: the first placement can still be moved by
+        // WPF resizing the window on a DPI change, and watching the toast travel to its final spot
+        // reads as a glitch.
+        Opacity = 0;
+
         Loaded += (_, _) =>
         {
             PositionWindow();
+
+            // Re-applied once the window has landed: crossing to a monitor at another scale makes
+            // WPF resize it and Windows offer a replacement position, either of which undoes the
+            // alignment just made.
+            Dispatcher.BeginInvoke(
+                new Action(() => { PositionWindow(); Opacity = 1; }), DispatcherPriority.Loaded);
+
             StartAutoClose();
         };
     }
 
     private void PositionWindow()
     {
-        // Get DPI scale from this window's presentation source
-        var src  = PresentationSource.FromVisual(this);
-        double dpiX = src?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-        double dpiY = src?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
-
+        // All physical pixels, scaled by the monitor being placed on. Reading the scale off this
+        // window instead reports the monitor it currently sits on — which until this runs is the
+        // one holding the off-screen parking position, not the one it is headed for.
         if (_selPhysRect.HasValue)
         {
             var sel = _selPhysRect.Value;
 
-            // Find the screen that contains the selection centre (physical pixels).
-            // SystemParameters.WorkArea only covers the primary screen, so we must
-            // resolve the correct screen explicitly for multi-monitor support.
-            int centrePhysX = (int)(sel.Left + sel.Width  / 2);
-            int centrePhysY = (int)(sel.Top  + sel.Height / 2);
-            var screen = System.Windows.Forms.Screen.FromPoint(
-                new System.Drawing.Point(centrePhysX, centrePhysY));
-            var wa = screen.WorkingArea; // physical pixels of the target screen
+            // SystemParameters.WorkArea only covers the primary screen, so the target screen has to
+            // be resolved explicitly for multi-monitor support.
+            int centreX = (int)(sel.Left + sel.Width  / 2);
+            int centreY = (int)(sel.Top  + sel.Height / 2);
+            var wa = System.Windows.Forms.Screen
+                .FromPoint(new System.Drawing.Point(centreX, centreY)).WorkingArea;
+            double scale = ScreenGeometry.ScaleAt(centreX, centreY);
 
-            // Convert physical px → WPF DIP
-            double selLeft = sel.Left    / dpiX;
-            double selTop  = sel.Top     / dpiY;
-            double selW    = sel.Width   / dpiX;
-            double waLeft  = wa.Left     / dpiX;
-            double waRight = wa.Right    / dpiX;
-            double waTop   = wa.Top      / dpiY;
+            double w   = ActualWidth  * scale;
+            double h   = ActualHeight * scale;
+            double gap = Gap * scale;
 
-            // Horizontally centered over selection, clamped to this screen's work area
-            double cx   = selLeft + selW / 2;
-            double posX = Math.Clamp(cx - ActualWidth / 2, waLeft + 4, waRight - ActualWidth - 4);
+            // Math.Clamp throws when the toast is wider than the monitor it must fit on.
+            double minX = wa.Left + 4 * scale;
+            double maxX = Math.Max(minX, wa.Right - w - 4 * scale);
+            double posX = Math.Clamp(sel.Left + sel.Width / 2 - w / 2, minX, maxX);
 
-            // Preferred: just above the selection
-            double aboveY = selTop - ActualHeight - Gap;
-            if (aboveY >= waTop)
-            {
-                Left = posX;
-                Top  = aboveY;
-            }
-            else
-            {
-                // No room above → show at the top edge inside the selection
-                Left = posX;
-                Top  = selTop + Gap;
-            }
+            // Preferred just above the selection; otherwise at its top edge, inside it.
+            double aboveY = sel.Top - h - gap;
+            double posY   = aboveY >= wa.Top ? aboveY : sel.Top + gap;
+
+            ScreenGeometry.MoveToPhysical(this, (int)Math.Round(posX), (int)Math.Round(posY));
         }
         else
         {
-            // Fallback: bottom-right corner of primary screen
-            var wa = SystemParameters.WorkArea;
-            Left = wa.Right  - ActualWidth  - 16;
-            Top  = wa.Bottom - ActualHeight - 16;
+            // Fallback: bottom-right corner of the primary screen
+            var wa = (System.Windows.Forms.Screen.PrimaryScreen
+                      ?? System.Windows.Forms.Screen.AllScreens[0]).WorkingArea;
+            double scale = ScreenGeometry.ScaleAt(wa.Left + wa.Width / 2, wa.Top + wa.Height / 2);
+            ScreenGeometry.MoveToPhysical(this,
+                (int)Math.Round(wa.Right  - ActualWidth  * scale - 16 * scale),
+                (int)Math.Round(wa.Bottom - ActualHeight * scale - 16 * scale));
         }
     }
 
@@ -161,12 +175,14 @@ public partial class ToastWindow : Window
 
     private void PauseAutoClose()
     {
-        if (_closed) return;
+        if (_closed || _userDismissed) return;
 
         _autoCloseTimer?.Stop();
 
-        // The pointer may have arrived mid-fade; clearing the animation hands Opacity back so it
-        // can be restored, otherwise the animated value would keep overriding the assignment.
+        // Cancels a fade already in flight. The flag is what actually calls it off: removing the
+        // animation does not reliably suppress its Completed handler, so without this the toast
+        // would close under a pointer that is resting on it to read.
+        _fadingOut = false;
         BeginAnimation(OpacityProperty, null);
         Opacity = 1;
     }
@@ -175,14 +191,25 @@ public partial class ToastWindow : Window
     // reader just finished, and giving them the leftover 200ms of a spent timer reads as a glitch.
     private void ResumeAutoClose()
     {
-        if (_closed) return;
+        if (_closed || _userDismissed) return;
         _autoCloseTimer?.Start();
     }
 
-    private void FadeOutAndClose()
+    private void FadeOutAndClose(int durationMs = FadeMs)
     {
-        var fade = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(FadeMs));
-        fade.Completed += (_, _) => Close();
+        if (_closed) return;
+
+        // Windows' "animation effects" setting is the local equivalent of a reduced-motion
+        // preference; a fade is motion the user has asked not to be shown.
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            Close();
+            return;
+        }
+
+        _fadingOut = true;
+        var fade = new DoubleAnimation(Opacity, 0.0, TimeSpan.FromMilliseconds(durationMs));
+        fade.Completed += (_, _) => { if (_fadingOut) Close(); };
         BeginAnimation(OpacityProperty, fade);
     }
 
@@ -193,5 +220,16 @@ public partial class ToastWindow : Window
         // Confirm in place: the toast is about to be dismissed by the pointer leaving, so a second
         // toast announcing the copy would replace this one and lose the message just copied.
         CopyHint.Visibility = Visibility.Visible;
+    }
+
+    // Hovering has already stopped the countdown, so without this the only way out of a toast the
+    // reader is done with is to move the pointer away and wait.
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ReferenceEquals(_current, this))
+            _current = null;
+        _userDismissed = true;
+        _autoCloseTimer?.Stop();
+        FadeOutAndClose(CloseFadeMs);
     }
 }

@@ -48,7 +48,12 @@
     <SolidColorBrush x:Key="ToastBorder"       Color="#44FFFFFF"/>
     <SolidColorBrush x:Key="ToastTitle"        Color="#FFFFFF"/>
     <SolidColorBrush x:Key="ToastMessage"      Color="#CCCCCC"/>
-    <SolidColorBrush x:Key="ToastCopyBtn"      Color="#AAFFFFFF"/>
+    <!-- Icon buttons sit on the dark toast, never on the window background, so they cannot use the
+         themed button brushes: in Light those resolve to dark-on-dark glyphs and a white hover. -->
+    <SolidColorBrush x:Key="ToastIconFg"        Color="#AAFFFFFF"/>
+    <SolidColorBrush x:Key="ToastIconFgHover"   Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ToastIconHoverBg"   Color="#22FFFFFF"/>
+    <SolidColorBrush x:Key="ToastIconPressedBg" Color="#33FFFFFF"/>
 
     <!-- Separator -->
     <SolidColorBrush x:Key="AppSeparator"      Color="#383838"/>

@@ -106,6 +106,12 @@
                             BorderThickness="1"
                             CornerRadius="14"
                             Padding="8,8,18,8">
+                        <!-- This window spans every monitor and so renders at one DPI; without this
+                             the card is undersized on a monitor running at a higher scale. -->
+                        <Border.LayoutTransform>
+                            <ScaleTransform ScaleX="{Binding Scale}" ScaleY="{Binding Scale}"/>
+                        </Border.LayoutTransform>
+
                         <!-- Deeper than the app's usual card shadow on purpose: this one floats over
                              the user's frozen desktop, which is busy and unpredictable, so it needs
                              more separation than a card on a known background would. -->

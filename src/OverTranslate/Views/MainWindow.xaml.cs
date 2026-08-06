@@ -112,21 +112,22 @@ public partial class MainWindow : Window
             System.Drawing.Rectangle screenBounds;
             try
             {
-                var allScreens = Screen.AllScreens;
-                int left   = allScreens.Min(s => s.Bounds.Left);
-                int top    = allScreens.Min(s => s.Bounds.Top);
-                int right  = allScreens.Max(s => s.Bounds.Right);
-                int bottom = allScreens.Max(s => s.Bounds.Bottom);
-                screenBounds = new System.Drawing.Rectangle(left, top, right - left, bottom - top);
+                screenBounds = ScreenGeometry.VirtualDesktopBounds();
                 screenshot = new Bitmap(screenBounds.Width, screenBounds.Height);
                 using var g = Graphics.FromImage(screenshot);
-                g.CopyFromScreen(left, top, 0, 0, screenBounds.Size, CopyPixelOperation.SourceCopy);
+                g.CopyFromScreen(screenBounds.Left, screenBounds.Top, 0, 0,
+                    screenBounds.Size, CopyPixelOperation.SourceCopy);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Screen capture failed — aborting selection");
                 return;
             }
+
+            // After the capture, never before: this writes a log line, and NLog is configured with
+            // keepFileOpen="false", so on the way in it would delay the freeze the user just asked
+            // for. The values it reports are the same either side of the capture.
+            DisplayDiagnostics.LogSnapshot("hotkey");
 
             // Anything that escapes from here would leave the full-screen dim window on top of the
             // desktop with no owner left to close it, so the whole session setup is guarded.
@@ -136,6 +137,11 @@ public partial class MainWindow : Window
                 var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
                 _captureWindow = captureWindow;
                 captureWindow.Show();
+
+                // Diagnostic: where the dim window physically landed and at what scale, versus the
+                // screenBounds the screenshot was taken with. A difference between the two is the
+                // misalignment users report, and Stretch="Fill" makes it invisible otherwise.
+                DisplayDiagnostics.LogSnapshot("capture-window-shown", captureWindow);
 
                 // After Show, not before: everything on the path between creating the window and
                 // presenting it delays the first frame, during which the window's black background
@@ -513,9 +519,10 @@ public partial class MainWindow : Window
         DisposeEscapeHook();
         CancelSession();
 
-        // A toast is positioned against the selection it reported on. Once that selection is gone
-        // it has nothing left to point at, so it goes with the session rather than lingering on an
-        // empty desktop until its own timer runs out.
+        // A toast is positioned against the selection it reported on. Once that selection is gone it
+        // has nothing left to point at, so it goes with the session rather than lingering on an
+        // empty desktop until its own timer runs out. The close button on the toast is what covers
+        // the reader who wants it gone sooner.
         ToastWindow.Dismiss();
 
         // Detach handler before closing so we drive the teardown order ourselves

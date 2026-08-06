@@ -1,5 +1,5 @@
 using System.Windows;
-using System.Windows.Interop;
+using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
 using OverTranslate.Services.Providers;
@@ -50,43 +50,50 @@ public partial class ToolbarWindow : Window
     {
         base.OnSourceInitialized(e);
         PositionNearSelection();
+
+        // Re-applied once the window has landed: crossing to a monitor at another scale makes WPF
+        // resize the window and Windows offer a replacement position, either of which moves the
+        // edge just aligned to the selection. Same inputs, so it is a no-op on a uniform desktop.
+        Dispatcher.BeginInvoke(new Action(PositionNearSelection), DispatcherPriority.Loaded);
     }
 
     private void PositionNearSelection()
     {
-        var src = PresentationSource.FromVisual(this);
-        double dpiX = src?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-        double dpiY = src?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
-
-        double selLeft = _selPhysLeft / dpiX;
-        double selTop  = _selPhysTop  / dpiY;
-        double selW    = _selPhysWidth  / dpiX;
-        double selH    = _selPhysHeight / dpiY;
-
         UpdateLayout();
-        double tbW = ActualWidth  > 0 ? ActualWidth  : 490;
-        double tbH = ActualHeight > 0 ? ActualHeight : 38;
 
-        double screenRight  = SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth;
-        double screenBottom = SystemParameters.VirtualScreenTop  + SystemParameters.VirtualScreenHeight;
+        // All physical pixels, scaled by the monitor the selection is on. Deriving the scale from
+        // this window instead reads whichever monitor WPF created it on: a toolbar measured at 96
+        // DPI and then placed onto a 144 DPI monitor lands a factor of 1.5 from the selection.
+        int centreX = (int)(_selPhysLeft + _selPhysWidth  / 2);
+        int centreY = (int)(_selPhysTop  + _selPhysHeight / 2);
+        double scale = ScreenGeometry.ScaleAt(centreX, centreY);
 
-        double left = selLeft + (selW - tbW) / 2;
-        left = Math.Clamp(left, SystemParameters.VirtualScreenLeft + 4, screenRight - tbW - 4);
+        // WPF lays out in DIP regardless of DPI, so the DIP size scales straight to target pixels.
+        double tbW = (ActualWidth  > 0 ? ActualWidth  : 490) * scale;
+        double tbH = (ActualHeight > 0 ? ActualHeight : 38)  * scale;
 
-        const double gap = 6;
-        double yBelow = selTop + selH + gap;
-        double yAbove = selTop - tbH - gap;
+        var wa = System.Windows.Forms.Screen
+            .FromPoint(new System.Drawing.Point(centreX, centreY)).WorkingArea;
+        double margin = 4 * scale;
+        double gap    = 6 * scale;
+
+        // Math.Clamp throws when the toolbar is wider than the monitor it must fit on.
+        double minLeft = wa.Left + margin;
+        double maxLeft = Math.Max(minLeft, wa.Right - tbW - margin);
+        double left = Math.Clamp(_selPhysLeft + (_selPhysWidth - tbW) / 2, minLeft, maxLeft);
+
+        double yBelow = _selPhysTop + _selPhysHeight + gap;
+        double yAbove = _selPhysTop - tbH - gap;
 
         double top;
-        if (yBelow + tbH <= screenBottom)
+        if (yBelow + tbH <= wa.Bottom)
             top = yBelow;
-        else if (yAbove >= SystemParameters.VirtualScreenTop)
+        else if (yAbove >= wa.Top)
             top = yAbove;
         else
-            top = selTop + selH - tbH - 2;
+            top = _selPhysTop + _selPhysHeight - tbH - 2 * scale;
 
-        Left = left;
-        Top  = top;
+        ScreenGeometry.MoveToPhysical(this, (int)Math.Round(left), (int)Math.Round(top));
     }
 
     private void SrcLangBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

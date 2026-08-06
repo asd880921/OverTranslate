@@ -73,6 +73,10 @@ public partial class App
 
         ThemeService.Apply(SettingsService.Instance.Current.Theme);
 
+        // Diagnostic baseline: the process's DPI awareness is fixed at launch, so a snapshot here
+        // also tells us whether the topology changed by the time a capture runs.
+        DisplayDiagnostics.LogSnapshot("startup");
+
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 

@@ -58,15 +58,26 @@
                                    VerticalAlignment="Center"
                                    Margin="0,0,8,4"/>
 
-                        <!-- Same icon button as the toolbar and hint card, so it behaves the way
-                             every other icon button in the app does (hover fill, pressed state). -->
-                        <Button Grid.Column="1"
-                                Content="⧉"
-                                Style="{StaticResource ToolbarIconButton}"
-                                VerticalAlignment="Top"
-                                Margin="0,-4,-4,0"
-                                ToolTip="複製訊息"
-                                Click="CopyButton_Click"/>
+                        <!-- Same icon buttons as the toolbar and hint card, so they behave the way
+                             every other icon button in the app does (hover fill, pressed state).
+                             Close sits rightmost, where Windows puts it on every other surface. -->
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Top"
+                                    Margin="0,-5,-6,0">
+                            <Button Content="⧉"
+                                    Style="{StaticResource ToastIconButton}"
+                                    ToolTip="複製訊息"
+                                    Click="CopyButton_Click"/>
+
+                            <!-- A hair smaller: ✕ carries more ink than ⧉ at the same point size,
+                                 and the two must read as one pair rather than two weights. -->
+                            <Button Content="✕"
+                                    Style="{StaticResource ToastIconButton}"
+                                    FontSize="11"
+                                    ToolTip="關閉"
+                                    Click="CloseButton_Click"/>
+                        </StackPanel>
                     </Grid>
 
                     <!-- MESSAGE -->
