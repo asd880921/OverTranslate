@@ -519,9 +519,10 @@ public partial class MainWindow : Window
         DisposeEscapeHook();
         CancelSession();
 
-        // A toast is positioned against the selection it reported on. Once that selection is gone
-        // it has nothing left to point at, so it goes with the session rather than lingering on an
-        // empty desktop until its own timer runs out.
+        // A toast is positioned against the selection it reported on. Once that selection is gone it
+        // has nothing left to point at, so it goes with the session rather than lingering on an
+        // empty desktop until its own timer runs out. The close button on the toast is what covers
+        // the reader who wants it gone sooner.
         ToastWindow.Dismiss();
 
         // Detach handler before closing so we drive the teardown order ourselves

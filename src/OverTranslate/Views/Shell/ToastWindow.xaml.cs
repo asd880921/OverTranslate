@@ -16,8 +16,13 @@ public enum ToastKind
 
 public partial class ToastWindow : Window
 {
-    private const int DisplayMs = 5000;
+    private const int DisplayMs = 3000;
     private const int FadeMs    = 350;
+
+    // Shorter than the timed fade: the reader has already decided, so the toast owes them an
+    // acknowledgement rather than a farewell.
+    private const int CloseFadeMs = 120;
+
     private const double Gap = 8;
 
     // At most one toast is on screen. A newer message replaces the older one outright instead of
@@ -28,6 +33,13 @@ public partial class ToastWindow : Window
     private readonly Rect? _selPhysRect;
     private DispatcherTimer? _autoCloseTimer;
     private bool _closed;
+    private bool _fadingOut;
+
+    // Set once the user has dismissed the toast, so the hover handlers stop reviving it. Without it,
+    // a pointer that leaves and re-enters during the closing fade cancels that fade — and by then
+    // the countdown is stopped and the toast is no longer the current one, so nothing would ever
+    // close it again.
+    private bool _userDismissed;
 
     /// <summary>Shows a toast, replacing whichever one is currently on screen.</summary>
     public static void Show(string title, string message, Rect? selPhysRect = null, ToastKind kind = ToastKind.Info)
@@ -163,12 +175,14 @@ public partial class ToastWindow : Window
 
     private void PauseAutoClose()
     {
-        if (_closed) return;
+        if (_closed || _userDismissed) return;
 
         _autoCloseTimer?.Stop();
 
-        // The pointer may have arrived mid-fade; clearing the animation hands Opacity back so it
-        // can be restored, otherwise the animated value would keep overriding the assignment.
+        // Cancels a fade already in flight. The flag is what actually calls it off: removing the
+        // animation does not reliably suppress its Completed handler, so without this the toast
+        // would close under a pointer that is resting on it to read.
+        _fadingOut = false;
         BeginAnimation(OpacityProperty, null);
         Opacity = 1;
     }
@@ -177,14 +191,25 @@ public partial class ToastWindow : Window
     // reader just finished, and giving them the leftover 200ms of a spent timer reads as a glitch.
     private void ResumeAutoClose()
     {
-        if (_closed) return;
+        if (_closed || _userDismissed) return;
         _autoCloseTimer?.Start();
     }
 
-    private void FadeOutAndClose()
+    private void FadeOutAndClose(int durationMs = FadeMs)
     {
-        var fade = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(FadeMs));
-        fade.Completed += (_, _) => Close();
+        if (_closed) return;
+
+        // Windows' "animation effects" setting is the local equivalent of a reduced-motion
+        // preference; a fade is motion the user has asked not to be shown.
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            Close();
+            return;
+        }
+
+        _fadingOut = true;
+        var fade = new DoubleAnimation(Opacity, 0.0, TimeSpan.FromMilliseconds(durationMs));
+        fade.Completed += (_, _) => { if (_fadingOut) Close(); };
         BeginAnimation(OpacityProperty, fade);
     }
 
@@ -195,5 +220,16 @@ public partial class ToastWindow : Window
         // Confirm in place: the toast is about to be dismissed by the pointer leaving, so a second
         // toast announcing the copy would replace this one and lose the message just copied.
         CopyHint.Visibility = Visibility.Visible;
+    }
+
+    // Hovering has already stopped the countdown, so without this the only way out of a toast the
+    // reader is done with is to move the pointer away and wait.
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ReferenceEquals(_current, this))
+            _current = null;
+        _userDismissed = true;
+        _autoCloseTimer?.Stop();
+        FadeOutAndClose(CloseFadeMs);
     }
 }
