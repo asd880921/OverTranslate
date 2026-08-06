@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
-using System.Windows.Threading;
 using NLog;
 using OverTranslate.Services;
 using OverTranslate.Views.Capture;
@@ -106,9 +105,8 @@ public partial class MainWindow : Window
     /// Starts a capture from the shell window's nav rail. The shell has to leave the screen first:
     /// <see cref="RunCaptureSessionAsync"/> grabs the desktop with a synchronous CopyFromScreen, so
     /// a still-visible shell ends up baked into the very image the user is about to select from.
-    /// Hiding alone is not enough either — the hide has to reach the compositor before the grab
-    /// runs, which is what the deferred dispatcher pass buys (the tray menu solved the same problem
-    /// the same way).
+    /// <see cref="WindowScreenPresence.HideAndWaitForScreen"/> is what makes that ordering real —
+    /// it does not return until the compositor has presented a frame without the window.
     /// </summary>
     public void StartCaptureFromShell(Window shell)
     {
@@ -119,19 +117,38 @@ public partial class MainWindow : Window
         }
 
         _shellHiddenForCapture = shell;
-        shell.Hide();
+        WindowScreenPresence.HideAndWaitForScreen(shell);
 
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, async () =>
+        // Started inline, not queued. This used to go through the dispatcher at Background
+        // priority, which sits *below* Input: hiding the shell hands activation to another window
+        // and the user is already moving the mouse toward what they want to select, so the queued
+        // capture kept being overtaken by that input and started whenever the stream happened to
+        // pause. There is nothing left to wait for either — HideAndWaitForScreen has already
+        // cleared the screen, and the button whose press feedback the deferral used to protect is
+        // no longer visible.
+        _ = RunShellCaptureAsync();
+    }
+
+    private async Task RunShellCaptureAsync()
+    {
+        try
         {
             await RunCaptureSessionAsync("shell-button");
-
-            // A session that is now live owns the screen, and the shell stays away until it ends —
-            // CloseAll and the overlay's own teardown both restore it. Reaching here with no
-            // session means the user cancelled during selection, and a window that vanished
-            // because they pressed a button inside it must come straight back.
+        }
+        catch (Exception ex)
+        {
+            // Nothing awaits this task, so an escaping exception would otherwise be silent.
+            Log.Error(ex, "Capture started from the shell window failed");
+        }
+        finally
+        {
+            // A live session owns the screen, and the shell stays away until it ends — CloseAll and
+            // the overlay's own teardown both restore it. No session here means the user cancelled
+            // during selection, and a window that vanished because they pressed a button inside it
+            // must come straight back.
             if (!HasActiveSession)
                 RestoreShellAfterCapture();
-        });
+        }
     }
 
     // Set for the lifetime of a shell-initiated capture. Null for hotkey captures, which never hid
