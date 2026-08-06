@@ -124,16 +124,16 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // After the capture, never before: this writes a log line, and NLog is configured with
-            // keepFileOpen="false", so on the way in it would delay the freeze the user just asked
-            // for. The values it reports are the same either side of the capture.
+            // After the capture, never before: with the level enabled this queries every monitor and
+            // writes a multi-line record, which on the way in would delay the freeze the user just
+            // asked for. The values it reports are the same either side of the capture.
             DisplayDiagnostics.LogSnapshot("hotkey");
 
             // Anything that escapes from here would leave the full-screen dim window on top of the
             // desktop with no owner left to close it, so the whole session setup is guarded.
             try
             {
-                Log.Debug("Capture session starting, bounds={Bounds}", screenBounds);
+                Log.Info("Capture session starting, bounds={Bounds}", screenBounds);
                 var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
                 _captureWindow = captureWindow;
                 captureWindow.Show();
@@ -513,7 +513,9 @@ public partial class MainWindow : Window
 
     private void CloseAll()
     {
-        Log.Debug("Tearing down capture session (overlay={Overlay}, toolbar={Toolbar}, capture={Capture})",
+        // Paired with "Capture session starting": between them they show whether a session the user
+        // reports as stuck ever actually ended.
+        Log.Info("Tearing down capture session (overlay={Overlay}, toolbar={Toolbar}, capture={Capture})",
             _overlayWindow != null, _toolbarWindow != null, _captureWindow != null);
         _selectionSessionId++;
         DisposeEscapeHook();

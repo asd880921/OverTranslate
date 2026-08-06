@@ -73,9 +73,10 @@ public partial class App
 
         ThemeService.Apply(SettingsService.Instance.Current.Theme);
 
-        // Diagnostic baseline: the process's DPI awareness is fixed at launch, so a snapshot here
-        // also tells us whether the topology changed by the time a capture runs.
-        DisplayDiagnostics.LogSnapshot("startup");
+        // Kept in the shipped log: the process's DPI awareness is fixed at launch, and a misreported
+        // monitor size is invisible to every managed API, so without this a display-geometry report
+        // cannot be diagnosed from a log at all.
+        DisplayDiagnostics.LogSnapshot("startup", level: LogLevel.Info);
 
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;

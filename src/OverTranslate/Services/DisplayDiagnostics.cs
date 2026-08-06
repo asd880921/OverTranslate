@@ -41,8 +41,16 @@ internal static class DisplayDiagnostics
     // Writes one multi-line snapshot of the display topology. `phase` labels the call site so
     // several snapshots in one session can be told apart. Never throws: a diagnostic must not be
     // able to break the flow it is observing.
-    public static void LogSnapshot(string phase, Window? window = null)
+    //
+    // Defaults to Debug, which the shipped configuration drops: repeating the topology on every
+    // capture fills the log with copies of what the launch snapshot already said. Pass Info for the
+    // one snapshot worth keeping.
+    public static void LogSnapshot(string phase, Window? window = null, LogLevel? level = null)
     {
+        level ??= LogLevel.Debug;
+        if (!Log.IsEnabled(level))
+            return;
+
         try
         {
             var sb = new StringBuilder();
@@ -52,7 +60,7 @@ internal static class DisplayDiagnostics
             AppendScreens(sb);
             if (window != null)
                 AppendWindow(sb, window);
-            Log.Debug(sb.ToString().TrimEnd());
+            Log.Log(level, sb.ToString().TrimEnd());
         }
         catch (Exception ex)
         {
