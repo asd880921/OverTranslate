@@ -81,10 +81,12 @@ public partial class ShellWindow : Window
     }
 
     /// <summary>
-    /// Re-reads the shortcut into the capture button's second line. The shell outlives any number
-    /// of visits to 設定, so this runs on every ShowOrActivate rather than only at construction.
+    /// Re-reads the shortcut into the capture button's trailing hint. Called on construction and on
+    /// every ShowOrActivate, and directly by <see cref="Settings.SettingsPage"/> the moment a new
+    /// shortcut is recorded — the rail is visible the whole time the user is on 設定, so waiting
+    /// for the next navigation would leave the wrong shortcut on screen next to the button.
     /// </summary>
-    private void RefreshHotkeyHint()
+    public void RefreshHotkeyHint()
     {
         var hotkey = SettingsService.Instance.Current.HotkeyDisplay;
         // Blank rather than a "未設定" placeholder: the label already says what the button does,

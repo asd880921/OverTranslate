@@ -321,5 +321,10 @@ public partial class SettingsPage : UserControl
         // The global hook holds the old combination until it is rebound
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();
+
+        // The nav rail advertises this shortcut beside 截圖翻譯 and is on screen right now, so it
+        // has to be told; nothing else re-reads it until the shell is next shown or activated.
+        if (Window.GetWindow(this) is Shell.ShellWindow shell)
+            shell.RefreshHotkeyHint();
     }
 }
