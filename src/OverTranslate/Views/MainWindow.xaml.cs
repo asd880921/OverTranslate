@@ -108,10 +108,6 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Diagnostic: the geometry every later step depends on, recorded before anything uses
-            // it. See DisplayDiagnostics for why the managed values alone cannot be trusted.
-            DisplayDiagnostics.LogSnapshot("hotkey");
-
             Bitmap screenshot;
             System.Drawing.Rectangle screenBounds;
             try
@@ -127,6 +123,11 @@ public partial class MainWindow : Window
                 Log.Error(ex, "Screen capture failed — aborting selection");
                 return;
             }
+
+            // After the capture, never before: this writes a log line, and NLog is configured with
+            // keepFileOpen="false", so on the way in it would delay the freeze the user just asked
+            // for. The values it reports are the same either side of the capture.
+            DisplayDiagnostics.LogSnapshot("hotkey");
 
             // Anything that escapes from here would leave the full-screen dim window on top of the
             // desktop with no owner left to close it, so the whole session setup is guarded.

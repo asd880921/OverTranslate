@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using OverTranslate.Services;
 
 namespace OverTranslate.Views.Shell;
 
@@ -88,62 +89,57 @@ public partial class ToastWindow : Window
         Loaded += (_, _) =>
         {
             PositionWindow();
+
+            // Re-applied once the window has landed: crossing to a monitor at another scale makes
+            // WPF resize it and Windows offer a replacement position, either of which undoes the
+            // alignment just made. Same inputs, so it is a no-op on a uniform desktop.
+            Dispatcher.BeginInvoke(new Action(PositionWindow), DispatcherPriority.Loaded);
+
             StartAutoClose();
         };
     }
 
     private void PositionWindow()
     {
-        // Get DPI scale from this window's presentation source
-        var src  = PresentationSource.FromVisual(this);
-        double dpiX = src?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-        double dpiY = src?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
-
+        // All physical pixels, scaled by the monitor being placed on. Reading the scale off this
+        // window instead reports the monitor it currently sits on — which until this runs is the
+        // one holding the off-screen parking position, not the one it is headed for.
         if (_selPhysRect.HasValue)
         {
             var sel = _selPhysRect.Value;
 
-            // Find the screen that contains the selection centre (physical pixels).
-            // SystemParameters.WorkArea only covers the primary screen, so we must
-            // resolve the correct screen explicitly for multi-monitor support.
-            int centrePhysX = (int)(sel.Left + sel.Width  / 2);
-            int centrePhysY = (int)(sel.Top  + sel.Height / 2);
-            var screen = System.Windows.Forms.Screen.FromPoint(
-                new System.Drawing.Point(centrePhysX, centrePhysY));
-            var wa = screen.WorkingArea; // physical pixels of the target screen
+            // SystemParameters.WorkArea only covers the primary screen, so the target screen has to
+            // be resolved explicitly for multi-monitor support.
+            int centreX = (int)(sel.Left + sel.Width  / 2);
+            int centreY = (int)(sel.Top  + sel.Height / 2);
+            var wa = System.Windows.Forms.Screen
+                .FromPoint(new System.Drawing.Point(centreX, centreY)).WorkingArea;
+            double scale = ScreenGeometry.ScaleAt(centreX, centreY);
 
-            // Convert physical px → WPF DIP
-            double selLeft = sel.Left    / dpiX;
-            double selTop  = sel.Top     / dpiY;
-            double selW    = sel.Width   / dpiX;
-            double waLeft  = wa.Left     / dpiX;
-            double waRight = wa.Right    / dpiX;
-            double waTop   = wa.Top      / dpiY;
+            double w   = ActualWidth  * scale;
+            double h   = ActualHeight * scale;
+            double gap = Gap * scale;
 
-            // Horizontally centered over selection, clamped to this screen's work area
-            double cx   = selLeft + selW / 2;
-            double posX = Math.Clamp(cx - ActualWidth / 2, waLeft + 4, waRight - ActualWidth - 4);
+            // Math.Clamp throws when the toast is wider than the monitor it must fit on.
+            double minX = wa.Left + 4 * scale;
+            double maxX = Math.Max(minX, wa.Right - w - 4 * scale);
+            double posX = Math.Clamp(sel.Left + sel.Width / 2 - w / 2, minX, maxX);
 
-            // Preferred: just above the selection
-            double aboveY = selTop - ActualHeight - Gap;
-            if (aboveY >= waTop)
-            {
-                Left = posX;
-                Top  = aboveY;
-            }
-            else
-            {
-                // No room above → show at the top edge inside the selection
-                Left = posX;
-                Top  = selTop + Gap;
-            }
+            // Preferred just above the selection; otherwise at its top edge, inside it.
+            double aboveY = sel.Top - h - gap;
+            double posY   = aboveY >= wa.Top ? aboveY : sel.Top + gap;
+
+            ScreenGeometry.MoveToPhysical(this, (int)Math.Round(posX), (int)Math.Round(posY));
         }
         else
         {
-            // Fallback: bottom-right corner of primary screen
-            var wa = SystemParameters.WorkArea;
-            Left = wa.Right  - ActualWidth  - 16;
-            Top  = wa.Bottom - ActualHeight - 16;
+            // Fallback: bottom-right corner of the primary screen
+            var wa = (System.Windows.Forms.Screen.PrimaryScreen
+                      ?? System.Windows.Forms.Screen.AllScreens[0]).WorkingArea;
+            double scale = ScreenGeometry.ScaleAt(wa.Left + wa.Width / 2, wa.Top + wa.Height / 2);
+            ScreenGeometry.MoveToPhysical(this,
+                (int)Math.Round(wa.Right  - ActualWidth  * scale - 16 * scale),
+                (int)Math.Round(wa.Bottom - ActualHeight * scale - 16 * scale));
         }
     }
 

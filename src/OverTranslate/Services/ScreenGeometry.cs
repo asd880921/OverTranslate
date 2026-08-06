@@ -16,8 +16,12 @@ internal static class ScreenGeometry
 {
     private const int WM_DPICHANGED = 0x02E0;
 
+    private const uint SWP_NOSIZE     = 0x0001;
     private const uint SWP_NOZORDER   = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
+
+    private const int MDT_EFFECTIVE_DPI = 0;
+    private const int MONITOR_DEFAULTTONEAREST = 2;
 
     public static Rectangle VirtualDesktopBounds()
     {
@@ -54,6 +58,32 @@ internal static class ScreenGeometry
         Apply(source.Handle, bounds);
     }
 
+    // Scale of the monitor under a physical point. Must be read from the monitor, not from the
+    // window being placed: a window reports the DPI of wherever it currently sits, which before the
+    // move is not the monitor it is about to land on.
+    public static double ScaleAt(int physX, int physY)
+    {
+        try
+        {
+            IntPtr monitor = MonitorFromPoint(new POINT { X = physX, Y = physY }, MONITOR_DEFAULTTONEAREST);
+            if (GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, out uint dpiX, out _) == 0 && dpiX > 0)
+                return dpiX / 96.0;
+        }
+        catch (DllNotFoundException) { /* shcore missing — pre-8.1 */ }
+        return 1.0;
+    }
+
+    // Moves a window to an exact pixel position, leaving its size to WPF. Window.Left/Top would be
+    // converted with the DPI of the monitor the window is on before the move, so a window crossing
+    // to a monitor at another scale lands off by that scale factor.
+    public static void MoveToPhysical(Window window, int physX, int physY)
+    {
+        IntPtr hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        SetWindowPos(hwnd, IntPtr.Zero, physX, physY, 0, 0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
     private static void Apply(IntPtr hwnd, Rectangle bounds)
     {
         if (hwnd == IntPtr.Zero) return;
@@ -61,8 +91,17 @@ internal static class ScreenGeometry
             SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT { public int X; public int Y; }
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowPos(
         IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromPoint(POINT pt, int dwFlags);
+
+    [DllImport("shcore.dll")]
+    private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
 }
