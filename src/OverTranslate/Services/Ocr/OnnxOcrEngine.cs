@@ -85,7 +85,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         var runtime = AcquireRuntime(normalizedLanguage);
         try
         {
-            Log.Debug(
+            Log.Info(
                 "Running ONNX OCR on {W}x{H} bitmap, lang={Lang}, model={Model}, threads={Threads}",
                 bitmap.Width,
                 bitmap.Height,
@@ -106,7 +106,9 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
             var blocks = NormalizeBlocks(converted, isCjk);
 
-            Log.Debug(
+            // Counts and lengths only — enough to tell "found nothing" from "found the wrong thing"
+            // without the recognised text itself, which LogBlocks keeps at Debug.
+            Log.Info(
                 "ONNX OCR lang={Lang} rawBlocks={RawBlocks} blocks={Blocks} strLen={StrLen}",
                 normalizedLanguage,
                 result.TextBlocks.Length,
@@ -358,6 +360,8 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             .ToList();
     }
 
+    // Debug on purpose, and the shipped configuration drops that level: this is the text the user
+    // just had on screen, so it must never reach a log file that gets sent to anyone.
     private static void LogBlocks(string language, IReadOnlyList<OcrTextBlock> blocks)
     {
         if (!Log.IsDebugEnabled)
