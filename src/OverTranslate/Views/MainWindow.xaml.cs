@@ -108,19 +108,19 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // Diagnostic: the geometry every later step depends on, recorded before anything uses
+            // it. See DisplayDiagnostics for why the managed values alone cannot be trusted.
+            DisplayDiagnostics.LogSnapshot("hotkey");
+
             Bitmap screenshot;
             System.Drawing.Rectangle screenBounds;
             try
             {
-                var allScreens = Screen.AllScreens;
-                int left   = allScreens.Min(s => s.Bounds.Left);
-                int top    = allScreens.Min(s => s.Bounds.Top);
-                int right  = allScreens.Max(s => s.Bounds.Right);
-                int bottom = allScreens.Max(s => s.Bounds.Bottom);
-                screenBounds = new System.Drawing.Rectangle(left, top, right - left, bottom - top);
+                screenBounds = ScreenGeometry.VirtualDesktopBounds();
                 screenshot = new Bitmap(screenBounds.Width, screenBounds.Height);
                 using var g = Graphics.FromImage(screenshot);
-                g.CopyFromScreen(left, top, 0, 0, screenBounds.Size, CopyPixelOperation.SourceCopy);
+                g.CopyFromScreen(screenBounds.Left, screenBounds.Top, 0, 0,
+                    screenBounds.Size, CopyPixelOperation.SourceCopy);
             }
             catch (Exception ex)
             {
@@ -136,6 +136,11 @@ public partial class MainWindow : Window
                 var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
                 _captureWindow = captureWindow;
                 captureWindow.Show();
+
+                // Diagnostic: where the dim window physically landed and at what scale, versus the
+                // screenBounds the screenshot was taken with. A difference between the two is the
+                // misalignment users report, and Stretch="Fill" makes it invisible otherwise.
+                DisplayDiagnostics.LogSnapshot("capture-window-shown", captureWindow);
 
                 // After Show, not before: everything on the path between creating the window and
                 // presenting it delays the first frame, during which the window's black background

@@ -34,6 +34,12 @@ public partial class OverlayWindow : Window
 
     private double _dpiX = 1.0;
     private double _dpiY = 1.0;
+
+    // Pixel rect this window covers. Left/Top/Width/Height cannot stand in for it: they are DIP
+    // scaled by one monitor's DPI, which on a mixed-DPI desktop is not the rect the OCR coordinates
+    // (physical pixels) are measured in.
+    private readonly System.Drawing.Rectangle _physBounds = ScreenGeometry.VirtualDesktopBounds();
+
     private bool _isLoaded;
     private List<TranslatedBlock> _currentBlocks;
     private double _currentSelectionScreenX;
@@ -61,7 +67,7 @@ public partial class OverlayWindow : Window
         _currentSourceLanguage = sourceLanguage;
         _currentTargetLanguage = targetLanguage;
 
-        // Cover all screens using WPF DIP coordinates (NOT physical pixel Screen.Bounds).
+        // Provisional: OnSourceInitialized pins the window to _physBounds instead.
         Left   = SystemParameters.VirtualScreenLeft;
         Top    = SystemParameters.VirtualScreenTop;
         Width  = SystemParameters.VirtualScreenWidth;
@@ -92,6 +98,9 @@ public partial class OverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         int style = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+
+        // Before Loaded reads the DPI: pinning settles which monitor the window belongs to.
+        ScreenGeometry.PinPhysicalBounds(this, _physBounds);
     }
 
     // Shows a centered status card and clears old bubbles so the indicator is unobstructed.
@@ -100,8 +109,8 @@ public partial class OverlayWindow : Window
         BubbleBackgroundCanvas.Children.Clear();
         BubbleTextCanvas.Children.Clear();
 
-        double winPhysLeft = Left * _dpiX;
-        double winPhysTop  = Top  * _dpiY;
+        double winPhysLeft = _physBounds.Left;
+        double winPhysTop  = _physBounds.Top;
 
         ProcessingText.Text = statusText;
         ProcessingBorder.Visibility = Visibility.Hidden;
@@ -169,8 +178,8 @@ public partial class OverlayWindow : Window
         if (BubbleBackgroundCanvas.Children.Count == 0 && BubbleTextCanvas.Children.Count == 0)
             return null;
 
-        int fullW = Math.Max(1, (int)Math.Round(Width  * _dpiX));
-        int fullH = Math.Max(1, (int)Math.Round(Height * _dpiY));
+        int fullW = Math.Max(1, _physBounds.Width);
+        int fullH = Math.Max(1, _physBounds.Height);
 
         // Render the whole overlay content (both bubble layers) at physical resolution. The
         // processing indicator is Collapsed whenever bubbles exist, so it does not appear.
@@ -180,8 +189,8 @@ public partial class OverlayWindow : Window
 
         // The overlay window spans the whole virtual screen; the selection sits at this physical
         // offset within it.
-        int cropX = Math.Clamp((int)Math.Round(selPhysLeft - Left * _dpiX), 0, fullW - 1);
-        int cropY = Math.Clamp((int)Math.Round(selPhysTop  - Top  * _dpiY), 0, fullH - 1);
+        int cropX = Math.Clamp((int)Math.Round(selPhysLeft - _physBounds.Left), 0, fullW - 1);
+        int cropY = Math.Clamp((int)Math.Round(selPhysTop  - _physBounds.Top),  0, fullH - 1);
         int cropW = Math.Clamp(selPhysWidth,  1, fullW - cropX);
         int cropH = Math.Clamp(selPhysHeight, 1, fullH - cropY);
 
@@ -202,8 +211,8 @@ public partial class OverlayWindow : Window
         BubbleTextCanvas.Children.Clear();
 
         // Window top-left in physical pixels
-        double winPhysLeft = Left * _dpiX;
-        double winPhysTop = Top * _dpiY;
+        double winPhysLeft = _physBounds.Left;
+        double winPhysTop = _physBounds.Top;
         double canvasWidth = BubbleBackgroundCanvas.ActualWidth > 0 ? BubbleBackgroundCanvas.ActualWidth : Width;
         double canvasHeight = BubbleBackgroundCanvas.ActualHeight > 0 ? BubbleBackgroundCanvas.ActualHeight : Height;
 
@@ -540,7 +549,7 @@ public partial class OverlayWindow : Window
     {
         double currentLeft = canvasX - BubbleExpand;
         double currentRight = currentLeft + wpfW + BubbleExpand * 2;
-        double selectionTop = (selScreenY - Top * _dpiY) / _dpiY;
+        double selectionTop = (selScreenY - _physBounds.Top) / _dpiY;
         double selectionBottom = selectionTop + selScreenHeight / _dpiY;
         double bottomLimit = Math.Min(canvasHeight - OverlayPadding, selectionBottom);
 
@@ -594,7 +603,7 @@ public partial class OverlayWindow : Window
         double currentLeft = canvasX - BubbleExpand;
         double currentTop = canvasY - BubbleExpand;
         double currentBottom = currentTop + wpfH + BubbleExpand * 2;
-        double selectionLeft = (selScreenX - Left * _dpiX) / _dpiX;
+        double selectionLeft = (selScreenX - _physBounds.Left) / _dpiX;
         double selectionRight = selectionLeft + selScreenWidth / _dpiX;
         double rightLimit = Math.Min(canvasWidth - OverlayPadding, selectionRight);
 

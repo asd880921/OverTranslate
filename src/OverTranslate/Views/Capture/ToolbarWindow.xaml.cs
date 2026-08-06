@@ -67,11 +67,21 @@ public partial class ToolbarWindow : Window
         double tbW = ActualWidth  > 0 ? ActualWidth  : 490;
         double tbH = ActualHeight > 0 ? ActualHeight : 38;
 
-        double screenRight  = SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth;
-        double screenBottom = SystemParameters.VirtualScreenTop  + SystemParameters.VirtualScreenHeight;
+        // Bounded by the monitor holding the selection, converted with this window's own DPI. The
+        // virtual-desktop DIP rectangle must not be mixed in here: it is scaled by the system DPI
+        // while selLeft/selTop above use this window's DPI, and those differ on a mixed-DPI desktop.
+        var screen = System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point(
+            (int)(_selPhysLeft + _selPhysWidth  / 2),
+            (int)(_selPhysTop  + _selPhysHeight / 2)));
+        double screenLeft   = screen.WorkingArea.Left   / dpiX;
+        double screenRight  = screen.WorkingArea.Right  / dpiX;
+        double screenTop    = screen.WorkingArea.Top    / dpiY;
+        double screenBottom = screen.WorkingArea.Bottom / dpiY;
 
-        double left = selLeft + (selW - tbW) / 2;
-        left = Math.Clamp(left, SystemParameters.VirtualScreenLeft + 4, screenRight - tbW - 4);
+        // Math.Clamp throws when the toolbar is wider than the monitor it must fit on.
+        double minLeft = screenLeft + 4;
+        double maxLeft = Math.Max(minLeft, screenRight - tbW - 4);
+        double left = Math.Clamp(selLeft + (selW - tbW) / 2, minLeft, maxLeft);
 
         const double gap = 6;
         double yBelow = selTop + selH + gap;
@@ -80,7 +90,7 @@ public partial class ToolbarWindow : Window
         double top;
         if (yBelow + tbH <= screenBottom)
             top = yBelow;
-        else if (yAbove >= SystemParameters.VirtualScreenTop)
+        else if (yAbove >= screenTop)
             top = yAbove;
         else
             top = selTop + selH - tbH - 2;

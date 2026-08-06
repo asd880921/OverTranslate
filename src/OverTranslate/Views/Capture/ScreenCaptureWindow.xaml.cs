@@ -4,6 +4,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Controls.Primitives;
+using OverTranslate.Services;
 using WPoint = System.Windows.Point;
 using Key = System.Windows.Input.Key;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -46,19 +47,13 @@ public partial class ScreenCaptureWindow : Window
 
         Opacity = 0; // prevent OS white-background flash
 
+        // Provisional: OnSourceInitialized replaces this with the pixel rect the screenshot was
+        // captured from. Needed only so the window has a size before its handle exists.
         Left   = SystemParameters.VirtualScreenLeft;
         Top    = SystemParameters.VirtualScreenTop;
         Width  = SystemParameters.VirtualScreenWidth;
         Height = SystemParameters.VirtualScreenHeight;
 
-        // Tag the capture with the DPI that makes its DIP size equal this window's, so WPF maps it
-        // 1:1 instead of rescaling a full virtual-desktop image on the first frame. At 96 DPI a
-        // 5120px-wide capture claims to be 5120 DIP while the window is only ~4130 DIP, and that
-        // mismatch is paid for on every render of the largest visual in the app.
-        double captureDpi = Width > 0
-            ? 96.0 * physBounds.Width / Width
-            : 96.0;
-        ScreenshotImage.Source = BitmapToDisplaySource(screenshot, captureDpi);
         Cursor = LoadCrosshairCursor();
 
         Closed += (_, _) =>
@@ -92,8 +87,8 @@ public partial class ScreenCaptureWindow : Window
 
         return System.Windows.Forms.Screen.AllScreens
             .Select(screen => new HintSpot(
-                screen.Bounds.Left / _dpiX - SystemParameters.VirtualScreenLeft + margin,
-                screen.Bounds.Top  / _dpiY - SystemParameters.VirtualScreenTop  + margin))
+                (screen.Bounds.Left - _physBounds.Left) / _dpiX + margin,
+                (screen.Bounds.Top  - _physBounds.Top)  / _dpiY + margin))
             .ToList();
     }
 
@@ -104,12 +99,23 @@ public partial class ScreenCaptureWindow : Window
     {
         base.OnSourceInitialized(e);
         _hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+
+        // Before the DPI is read: pinning the window settles which monitor it belongs to, and that
+        // is what the DPI below describes.
+        ScreenGeometry.PinPhysicalBounds(this, _physBounds);
+
         var src = PresentationSource.FromVisual(this);
         if (src?.CompositionTarget != null)
         {
             _dpiX = src.CompositionTarget.TransformToDevice.M11;
             _dpiY = src.CompositionTarget.TransformToDevice.M22;
         }
+
+        // Tag the capture with the DPI that makes its DIP size equal this window's, so WPF maps it
+        // 1:1 instead of rescaling a full virtual-desktop image on the first frame. At 96 DPI a
+        // 5120px-wide capture claims to be 5120 DIP while the window is only ~4130 DIP, and that
+        // mismatch is paid for on every render of the largest visual in the app.
+        ScreenshotImage.Source = BitmapToDisplaySource(_screenshot, 96.0 * _dpiX);
 
         // Filled as soon as the DPI is known, so the cards take part in the window's first layout
         // pass and are already painted when it becomes visible. (They used to be deferred to
@@ -273,8 +279,8 @@ public partial class ScreenCaptureWindow : Window
 
     private void UpdateSelectionMetadata()
     {
-        double absPhysX = (SystemParameters.VirtualScreenLeft + _selectionWpfRect.X) * _dpiX;
-        double absPhysY = (SystemParameters.VirtualScreenTop  + _selectionWpfRect.Y) * _dpiY;
+        double absPhysX = _physBounds.Left + _selectionWpfRect.X * _dpiX;
+        double absPhysY = _physBounds.Top  + _selectionWpfRect.Y * _dpiY;
         int bmpW = Math.Max(1, (int)(_selectionWpfRect.Width  * _dpiX));
         int bmpH = Math.Max(1, (int)(_selectionWpfRect.Height * _dpiY));
         Selection = new Rect(absPhysX, absPhysY, bmpW, bmpH);
