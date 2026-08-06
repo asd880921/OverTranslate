@@ -60,30 +60,9 @@
 
             <StackPanel Width="196">
 
-                <!-- 截圖翻譯 — the app's primary action, same as pressing the hotkey -->
-                <Button x:Name="CaptureBtn"
-                        Style="{StaticResource TrayMenuItem}"
-                        Click="CaptureBtn_Click">
-                    <DockPanel VerticalAlignment="Center">
-                        <!-- Trailing hotkey hint: the tray menu is the only place that
-                             advertises the shortcut, so it is worth the width -->
-                        <TextBlock x:Name="CaptureHotkeyText"
-                                   DockPanel.Dock="Right"
-                                   FontSize="11"
-                                   Margin="8,0,0,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource AppTextMuted}"/>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" Text="&#xE123;"
-                                       Width="22" VerticalAlignment="Center"
-                                       Foreground="{DynamicResource AppTextSecondary}"/>
-                            <TextBlock Text="截圖翻譯" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </DockPanel>
-                </Button>
-
-                <Rectangle Height="1" Margin="8,3" Fill="{DynamicResource AppSeparator}"/>
+                <!-- 截圖翻譯 is deliberately absent: it lives on the shell window's nav rail and on
+                     the shortcut. Three entry points for one action was one too many, and this menu
+                     is the one that has to stay short as the app grows. -->
 
                 <!-- 開啟翻譯視窗 -->
                 <Button x:Name="OpenWindowBtn"

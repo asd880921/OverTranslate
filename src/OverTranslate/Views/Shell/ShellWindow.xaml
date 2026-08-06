@@ -56,6 +56,44 @@
                     </StackPanel>
                 </Button>
 
+                <!-- 截圖翻譯 — the app's primary action, and since the tray menu no longer
+                     offers it, the only place other than the shortcut itself. It sits above the
+                     nav list rather than inside it because it performs an action instead of
+                     choosing a destination, and it lives on the shell rather than on a page so
+                     it stays reachable from 設定 too. Whitespace, not a rule, separates it: a
+                     divider would imply these are sections of one list. -->
+                <Button x:Name="CaptureBtn"
+                        DockPanel.Dock="Top"
+                        Style="{StaticResource NavPrimaryAction}"
+                        Margin="0,0,0,12"
+                        Click="CaptureBtn_Click">
+                    <DockPanel>
+                        <!-- Bare 24px glyph, identical geometry to the nav items below, so icons
+                             and labels share one column down the whole rail. A filled tile would
+                             need a gap a glyph gets for free and would knock this label out of
+                             that column. -->
+                        <TextBlock DockPanel.Dock="Left"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="15" Text="&#xE123;"
+                                   Width="24" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppAccent}"/>
+
+                        <!-- Trailing, muted, and on the same line: the shortcut is a reference the
+                             user reads once, not a second label competing with 截圖翻譯. Filled in
+                             on every ShowOrActivate so a shortcut changed in 設定 is never stale. -->
+                        <TextBlock x:Name="CaptureHotkeyText"
+                                   DockPanel.Dock="Right"
+                                   FontSize="11"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppTextMuted}"/>
+
+                        <TextBlock Text="截圖翻譯"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </DockPanel>
+                </Button>
+
                 <!-- Nav list + sliding selection indicator -->
                 <Grid VerticalAlignment="Top">
                     <Border x:Name="NavIndicator"

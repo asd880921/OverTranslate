@@ -21,6 +21,12 @@
     <SolidColorBrush x:Key="AppAccentFg"       Color="#000000"/>
     <SolidColorBrush x:Key="AppAccentSubtle"   Color="#1A2E3D"/>
 
+    <!-- Interaction steps for AppAccentSubtle, for tonal surfaces that stay tonal on hover instead
+         of flipping to the solid accent — a full-width nav card is far too large a area to flood
+         with accent on mouse-over the way a 28px toolbar button can. -->
+    <SolidColorBrush x:Key="AppAccentSubtleHover"   Color="#213B4E"/>
+    <SolidColorBrush x:Key="AppAccentSubtlePressed" Color="#152634"/>
+
     <!-- Buttons -->
     <SolidColorBrush x:Key="AppButtonBg"       Color="#333333"/>
     <SolidColorBrush x:Key="AppButtonBorder"   Color="#484848"/>

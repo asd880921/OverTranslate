@@ -1,13 +1,10 @@
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Threading;
-using OverTranslate.Services;
 
 namespace OverTranslate.Views.Shell;
 
 public partial class TrayMenuWindow : Window
 {
-    public event EventHandler? CaptureRequested;
     public event EventHandler? OpenTranslationRequested;
     public event EventHandler? OpenSettingsRequested;
     public event EventHandler? ExitRequested;
@@ -19,10 +16,6 @@ public partial class TrayMenuWindow : Window
     {
         InitializeComponent();
         _cursorPhys = System.Windows.Forms.Cursor.Position;
-
-        // Half-width parens so the hint stays visually tight next to the label
-        var hotkey = SettingsService.Instance.Current.HotkeyDisplay;
-        CaptureHotkeyText.Text = string.IsNullOrWhiteSpace(hotkey) ? "" : $"({hotkey})";
 
         // Start off-screen; Loaded repositions after ActualWidth/Height are measured
         Left = -9999;
@@ -62,19 +55,6 @@ public partial class TrayMenuWindow : Window
         if (_dismissed) return;
         _dismissed = true;
         Close();
-    }
-
-    private void CaptureBtn_Click(object sender, RoutedEventArgs e)
-    {
-        // Close this menu first, then let it actually leave the screen before the capture runs.
-        // CaptureRequested grabs the screen synchronously, so firing it inline would freeze this
-        // menu into the screenshot and make the brand-new capture window fight this window's
-        // teardown for the foreground — a fight it loses, which used to leave Esc dead until a
-        // selection had been drawn.
-        Dismiss();
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.Background,
-            () => CaptureRequested?.Invoke(this, EventArgs.Empty));
     }
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)

@@ -98,95 +98,170 @@ public partial class MainWindow : Window
         RegisterHotkey();
     }
 
-    private void OnHotkeyPressed(object? sender, EventArgs e)
+    private void OnHotkeyPressed(object? sender, EventArgs e) =>
+        Dispatcher.Invoke(async () => await RunCaptureSessionAsync());
+
+    /// <summary>
+    /// Starts a capture from the shell window's nav rail. The shell has to leave the screen first:
+    /// <see cref="RunCaptureSessionAsync"/> grabs the desktop with a synchronous CopyFromScreen, so
+    /// a still-visible shell ends up baked into the very image the user is about to select from.
+    /// <see cref="WindowScreenPresence.HideAndWaitForScreen"/> is what makes that ordering real —
+    /// it does not return until the compositor has presented a frame without the window.
+    /// </summary>
+    public void StartCaptureFromShell(Window shell)
     {
-        Dispatcher.Invoke(async () =>
+        if (HasActiveSession)
         {
-            if (HasActiveSession)
+            CloseAll();
+            return;
+        }
+
+        _shellHiddenForCapture = shell;
+        WindowScreenPresence.HideAndWaitForScreen(shell);
+
+        // Started inline, not queued. This used to go through the dispatcher at Background
+        // priority, which sits *below* Input: hiding the shell hands activation to another window
+        // and the user is already moving the mouse toward what they want to select, so the queued
+        // capture kept being overtaken by that input and started whenever the stream happened to
+        // pause. There is nothing left to wait for either — HideAndWaitForScreen has already
+        // cleared the screen, and the button whose press feedback the deferral used to protect is
+        // no longer visible.
+        _ = RunShellCaptureAsync();
+    }
+
+    private async Task RunShellCaptureAsync()
+    {
+        try
+        {
+            await RunCaptureSessionAsync("shell-button");
+        }
+        catch (Exception ex)
+        {
+            // Nothing awaits this task, so an escaping exception would otherwise be silent.
+            Log.Error(ex, "Capture started from the shell window failed");
+        }
+        finally
+        {
+            // A live session owns the screen, and the shell stays away until it ends — CloseAll and
+            // the overlay's own teardown both restore it. No session here means the user cancelled
+            // during selection, and a window that vanished because they pressed a button inside it
+            // must come straight back.
+            if (!HasActiveSession)
+                RestoreShellAfterCapture();
+        }
+    }
+
+    // Set for the lifetime of a shell-initiated capture. Null for hotkey captures, which never hid
+    // anything and so have nothing to put back.
+    private Window? _shellHiddenForCapture;
+
+    private void RestoreShellAfterCapture()
+    {
+        var shell = _shellHiddenForCapture;
+        _shellHiddenForCapture = null;
+        // Already visible when the toolbar's 開啟翻譯視窗 carried the result into it, which shows
+        // the shell itself before tearing the session down.
+        if (shell is null || shell.IsVisible) return;
+
+        try
+        {
+            shell.Show();
+            shell.Activate();
+        }
+        catch (Exception ex)
+        {
+            // Racing an app shutdown that already destroyed the window. Nothing left to restore,
+            // and it must not take the session teardown down with it.
+            Log.Warn(ex, "Could not restore the shell window after a capture");
+        }
+    }
+
+    private async Task RunCaptureSessionAsync(string origin = "hotkey")
+    {
+        if (HasActiveSession)
+        {
+            CloseAll();
+            return;
+        }
+
+        Bitmap screenshot;
+        System.Drawing.Rectangle screenBounds;
+        try
+        {
+            screenBounds = ScreenGeometry.VirtualDesktopBounds();
+            screenshot = new Bitmap(screenBounds.Width, screenBounds.Height);
+            using var g = Graphics.FromImage(screenshot);
+            g.CopyFromScreen(screenBounds.Left, screenBounds.Top, 0, 0,
+                screenBounds.Size, CopyPixelOperation.SourceCopy);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Screen capture failed — aborting selection");
+            return;
+        }
+
+        // After the capture, never before: with the level enabled this queries every monitor and
+        // writes a multi-line record, which on the way in would delay the freeze the user just
+        // asked for. The values it reports are the same either side of the capture.
+        DisplayDiagnostics.LogSnapshot(origin);
+
+        // Anything that escapes from here would leave the full-screen dim window on top of the
+        // desktop with no owner left to close it, so the whole session setup is guarded.
+        try
+        {
+            Log.Info("Capture session starting, origin={Origin}, bounds={Bounds}", origin, screenBounds);
+            var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
+            _captureWindow = captureWindow;
+            captureWindow.Show();
+
+            // Diagnostic: where the dim window physically landed and at what scale, versus the
+            // screenBounds the screenshot was taken with. A difference between the two is the
+            // misalignment users report, and Stretch="Fill" makes it invisible otherwise.
+            DisplayDiagnostics.LogSnapshot("capture-window-shown", captureWindow);
+
+            // After Show, not before: everything on the path between creating the window and
+            // presenting it delays the first frame, during which the window's black background
+            // is what the user sees. The hook is still installed within the same dispatcher
+            // pass, so Esc is live long before anyone can press it.
+            // Release any previous one first — this hook swallows Esc process-wide, so an
+            // orphaned instance would break Esc across the entire desktop, which is far worse
+            // than the stuck overlay it exists to prevent.
+            DisposeEscapeHook();
+            _escapeHook = GlobalEscapeHook.Install(CloseAll);
+
+            CancelSession();
+            _sessionCts = new CancellationTokenSource();
+
+            bool selected = await captureWindow.WaitForSelectionAsync();
+            if (!selected || !captureWindow.HasSelection)
             {
-                CloseAll();
-                return;
-            }
-
-            Bitmap screenshot;
-            System.Drawing.Rectangle screenBounds;
-            try
-            {
-                screenBounds = ScreenGeometry.VirtualDesktopBounds();
-                screenshot = new Bitmap(screenBounds.Width, screenBounds.Height);
-                using var g = Graphics.FromImage(screenshot);
-                g.CopyFromScreen(screenBounds.Left, screenBounds.Top, 0, 0,
-                    screenBounds.Size, CopyPixelOperation.SourceCopy);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Screen capture failed — aborting selection");
-                return;
-            }
-
-            // After the capture, never before: with the level enabled this queries every monitor and
-            // writes a multi-line record, which on the way in would delay the freeze the user just
-            // asked for. The values it reports are the same either side of the capture.
-            DisplayDiagnostics.LogSnapshot("hotkey");
-
-            // Anything that escapes from here would leave the full-screen dim window on top of the
-            // desktop with no owner left to close it, so the whole session setup is guarded.
-            try
-            {
-                Log.Info("Capture session starting, bounds={Bounds}", screenBounds);
-                var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
-                _captureWindow = captureWindow;
-                captureWindow.Show();
-
-                // Diagnostic: where the dim window physically landed and at what scale, versus the
-                // screenBounds the screenshot was taken with. A difference between the two is the
-                // misalignment users report, and Stretch="Fill" makes it invisible otherwise.
-                DisplayDiagnostics.LogSnapshot("capture-window-shown", captureWindow);
-
-                // After Show, not before: everything on the path between creating the window and
-                // presenting it delays the first frame, during which the window's black background
-                // is what the user sees. The hook is still installed within the same dispatcher
-                // pass, so Esc is live long before anyone can press it.
-                // Release any previous one first — this hook swallows Esc process-wide, so an
-                // orphaned instance would break Esc across the entire desktop, which is far worse
-                // than the stuck overlay it exists to prevent.
+                // Also reached when the capture window cancelled itself (its own Esc fallback),
+                // which never goes through CloseAll — so the session is torn down here too.
                 DisposeEscapeHook();
-                _escapeHook = GlobalEscapeHook.Install(CloseAll);
-
                 CancelSession();
-                _sessionCts = new CancellationTokenSource();
-
-                bool selected = await captureWindow.WaitForSelectionAsync();
-                if (!selected || !captureWindow.HasSelection)
-                {
-                    // Also reached when the capture window cancelled itself (its own Esc fallback),
-                    // which never goes through CloseAll — so the session is torn down here too.
-                    DisposeEscapeHook();
-                    CancelSession();
-                    captureWindow.Close();
-                    _captureWindow = null;
-                    screenshot.Dispose();
-                    return;
-                }
-
-                var settings      = SettingsService.Instance.Current;
-                var selection     = captureWindow.Selection;
-                EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage, hasTranslated: false);
-
-                // Fire in the same pass that built the overlay, before it paints: the toolbar's first
-                // frame already reads "翻譯中..." and the overlay's first frame already shows "辨識中".
-                // Deferring this to a later dispatcher pass only adds a visible gap where the toolbar
-                // sits idle after the selection is done.
-                if (settings.AutoTranslateAfterSelection)
-                    _toolbarWindow?.RequestTranslate();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Capture session setup failed — tearing down overlay windows");
-                CloseAll();
+                captureWindow.Close();
+                _captureWindow = null;
                 screenshot.Dispose();
+                return;
             }
-        });
+
+            var settings      = SettingsService.Instance.Current;
+            var selection     = captureWindow.Selection;
+            EnterOverlayState(captureWindow, selection, [], [], settings.SourceLanguage, hasTranslated: false);
+
+            // Fire in the same pass that built the overlay, before it paints: the toolbar's first
+            // frame already reads "翻譯中..." and the overlay's first frame already shows "辨識中".
+            // Deferring this to a later dispatcher pass only adds a visible gap where the toolbar
+            // sits idle after the selection is done.
+            if (settings.AutoTranslateAfterSelection)
+                _toolbarWindow?.RequestTranslate();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Capture session setup failed — tearing down overlay windows");
+            CloseAll();
+            screenshot.Dispose();
+        }
     }
 
     private void EnterOverlayState(
@@ -258,6 +333,7 @@ public partial class MainWindow : Window
             CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
             _captureWindow = null;
             _overlayWindow = null;
+            RestoreShellAfterCapture();
         };
         _overlayWindow.Closed += _overlayClosedHandler;
         _overlayWindow.Show();
@@ -543,6 +619,10 @@ public partial class MainWindow : Window
 
         CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
         _captureWindow = null;
+
+        // Last, so a shell hidden for this capture comes back only once the screen is clear of the
+        // dim layer and overlay it would otherwise be raised behind.
+        RestoreShellAfterCapture();
     }
 
     // The hook is process-wide and swallows Esc, so it must never outlive the session that owns it.
@@ -600,7 +680,6 @@ public partial class MainWindow : Window
     {
         if (_trayMenu != null) return;
         _trayMenu = new TrayMenuWindow();
-        _trayMenu.CaptureRequested         += (_, _) => OnHotkeyPressed(this, EventArgs.Empty);
         _trayMenu.OpenTranslationRequested += (_, _) => OpenTranslationWindow();
         _trayMenu.OpenSettingsRequested    += (_, _) => OpenSettings();
         _trayMenu.ExitRequested            += (_, _) => ExitApp();
