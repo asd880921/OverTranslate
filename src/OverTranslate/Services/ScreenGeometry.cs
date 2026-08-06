@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Screen = System.Windows.Forms.Screen;
 
 namespace OverTranslate.Services;
@@ -82,6 +83,16 @@ internal static class ScreenGeometry
         if (hwnd == IntPtr.Zero) return;
         SetWindowPos(hwnd, IntPtr.Zero, physX, physY, 0, 0,
             SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+        // Left/Top stay WPF's own properties, and it re-applies them on later layout and DPI
+        // events. Left holding their pre-move values, the window is flung back there and has to be
+        // dragged into place again, which reads as a flicker. Safe to assign now: the window is on
+        // the target monitor, so this conversion is the inverse of the one WPF will perform.
+        if (PresentationSource.FromVisual(window)?.CompositionTarget is CompositionTarget target)
+        {
+            window.Left = physX / target.TransformToDevice.M11;
+            window.Top  = physY / target.TransformToDevice.M22;
+        }
     }
 
     private static void Apply(IntPtr hwnd, Rectangle bounds)

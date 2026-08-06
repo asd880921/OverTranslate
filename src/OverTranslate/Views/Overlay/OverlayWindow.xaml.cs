@@ -114,6 +114,16 @@ public partial class OverlayWindow : Window
 
         ProcessingText.Text = statusText;
         ProcessingBorder.Visibility = Visibility.Hidden;
+
+        // This window spans every monitor and so renders at a single DPI; on a monitor at another
+        // scale the card would come out the wrong physical size. Applied before Measure so the
+        // desired size below is the transformed one the centring needs.
+        double relScale = ScreenGeometry.ScaleAt(
+            (int)(selPhysX + selPhysW / 2), (int)(selPhysY + selPhysH / 2)) / _dpiX;
+        ProcessingBorder.LayoutTransform = relScale == 1.0
+            ? Transform.Identity
+            : new ScaleTransform(relScale, relScale);
+
         ProcessingBorder.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
         var desired = ProcessingBorder.DesiredSize;
         double cx = (selPhysX + selPhysW / 2 - winPhysLeft) / _dpiX - desired.Width  / 2;

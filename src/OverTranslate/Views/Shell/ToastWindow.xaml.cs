@@ -86,14 +86,20 @@ public partial class ToastWindow : Window
         Left = -9999;
         Top  = -9999;
 
+        // Nothing is shown until the position is settled: the first placement can still be moved by
+        // WPF resizing the window on a DPI change, and watching the toast travel to its final spot
+        // reads as a glitch.
+        Opacity = 0;
+
         Loaded += (_, _) =>
         {
             PositionWindow();
 
             // Re-applied once the window has landed: crossing to a monitor at another scale makes
             // WPF resize it and Windows offer a replacement position, either of which undoes the
-            // alignment just made. Same inputs, so it is a no-op on a uniform desktop.
-            Dispatcher.BeginInvoke(new Action(PositionWindow), DispatcherPriority.Loaded);
+            // alignment just made.
+            Dispatcher.BeginInvoke(
+                new Action(() => { PositionWindow(); Opacity = 1; }), DispatcherPriority.Loaded);
 
             StartAutoClose();
         };

@@ -86,14 +86,26 @@ public partial class ScreenCaptureWindow : Window
         const double margin = 12;
 
         return System.Windows.Forms.Screen.AllScreens
-            .Select(screen => new HintSpot(
-                (screen.Bounds.Left - _physBounds.Left) / _dpiX + margin,
-                (screen.Bounds.Top  - _physBounds.Top)  / _dpiY + margin))
+            .Select(screen =>
+            {
+                // This window renders at a single DPI across the whole desktop, so a card sitting on
+                // a monitor at another scale comes out the wrong physical size. Scaling it by the
+                // ratio between the two restores the size the monitor's own DPI would have given.
+                double relScale = ScreenGeometry.ScaleAt(
+                    screen.Bounds.Left + screen.Bounds.Width  / 2,
+                    screen.Bounds.Top  + screen.Bounds.Height / 2) / _dpiX;
+
+                return new HintSpot(
+                    (screen.Bounds.Left - _physBounds.Left) / _dpiX + margin * relScale,
+                    (screen.Bounds.Top  - _physBounds.Top)  / _dpiY + margin * relScale,
+                    relScale);
+            })
             .ToList();
     }
 
-    // Window-local DIP position of one hint card.
-    private sealed record HintSpot(double X, double Y);
+    // Window-local DIP position of one hint card, and the scale that makes it read the same
+    // physical size as the monitor it sits on would give it.
+    private sealed record HintSpot(double X, double Y, double Scale);
 
     protected override void OnSourceInitialized(EventArgs e)
     {
