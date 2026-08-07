@@ -104,14 +104,27 @@ public class TextSimilarityTests
         Assert.True(TextSimilarity.IsSameSentence(second, first));
     }
 
-    [Fact]
-    public void ARereadingTooFarGoneToProveIsTreatedAsNewText()
+    [Theory]
+    // Pairs from a 693-translation sample, all of them one line read twice with its fragments in a
+    // different order or half its letters confused. Every one sits between 20% and 30% — the stretch
+    // the bound was raised across once there was enough data to read them all by hand.
+    [InlineData("rather dispiited Minato seem -san", "rather dispirited Minato-san. seem")]
+    [InlineData("heard a bunch of experts are there to study it.", "Mheard a bunchc are there to study it.")]
+    [InlineData("Look at this!tssparkling rellyriht!", "Look at this It's sparking realy bright!")]
+    public void AMangledRereadingIsStillTheSameSentence(string first, string second)
     {
-        // Also one subtitle read twice (26% apart, fragments in a different order), and knowingly
-        // given up on: the bound is set where a wrong "same sentence" cannot cost a missed line,
-        // and the price is that a re-reading this mangled is retranslated instead of discarded.
+        Assert.True(TextSimilarity.IsSameSentence(first, second));
+    }
+
+    [Fact]
+    public void AReadingThatFoundSomethingTheOtherMissedIsNewText()
+    {
+        // Where the bound stops, and why it stops there. This region holds a player's furniture as
+        // well as its subtitles; the second reading caught a subtitle the first did not. Calling
+        // these one line would hold the old translation on screen and lose the new subtitle.
         Assert.False(TextSimilarity.IsSameSentence(
-            "rather dispiited Minato seem -san", "rather dispirited Minato-san. seem"));
+            "Live House \"CiRcLE ライブハウス「さーく ｐｉｃｏ２-01",
+            "Live House \"CiRcLE This is nice!"));
     }
 
     [Theory]

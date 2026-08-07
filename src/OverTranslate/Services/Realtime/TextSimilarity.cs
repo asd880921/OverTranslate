@@ -44,22 +44,30 @@ internal static class TextSimilarity
     /// every one a real change of line. <b>No pair of genuinely different sentences came in under
     /// 50%, at any length</b>, so anything up to 30% would have been safe on this sample.
     ///
-    /// It is set at 20% rather than 30% deliberately, because the two ways of being wrong here do
-    /// not cost the same. Judging a re-reading a new sentence costs one needless retranslation and
-    /// a repaint; judging a new sentence a re-reading leaves the line on screen untranslated for as
-    /// long as it lasts, which is the failure this whole feature is for. So the bound sits well
-    /// inside the empty stretch, and the price is paid where it is cheap: a 26% pair in the sample
-    /// ("rather dispiited Minato seem -san") is now treated as new text and retranslated.
+    /// Set at 20% on that first sample and raised to 30% on a much larger one: 693 consecutive
+    /// translations from live sessions, with every pair between 20% and 50% read by hand. All 73 of
+    /// them were one line read twice — "heard a bunch of experts are there to study it." against
+    /// "Mheard a bunchc are there to study it.", the same player UI re-read a dozen ways — and not
+    /// one was a real change of line. Raising the bound to 30% catches 52 of them against 32 at
+    /// 20%, with nothing wrongly caught at either.
+    ///
+    /// It stops at 30% because past 40% the pairs stop being one line. There the region holds a
+    /// player's furniture as well as its subtitles, and a reading that found a new subtitle differs
+    /// from one that missed it by about that much — treating those as the same line would hold the
+    /// old translation on screen and lose the new subtitle, which is the failure this whole feature
+    /// exists to prevent, and it is far more expensive than a needless repaint.
     ///
     /// Not scaled further by length, though the temptation is real. A proportional bound already
-    /// tightens with length on its own — 2 characters at the 12-character floor against 8 at 40 —
+    /// tightens with length on its own — 3 characters at the 12-character floor against 12 at 40 —
     /// and every additional narrowing tried against the sample removed a true re-reading before it
-    /// removed any false one, starting with a 21-character line that differed by 19%. Short text is
-    /// instead kept out entirely by <see cref="MinLengthForTolerance"/>: "What?!" against
-    /// "EW What?!" is 33% apart and the same line, but at six characters one stray glyph is a third
-    /// of it, and no ratio can tell that from "Yes" against "No".
+    /// removed any false one, starting with a 21-character line that differed by 19%.
+    ///
+    /// Short text is kept out entirely by <see cref="MinLengthForTolerance"/>, and stays out even
+    /// though it churns the most: 86 of the sample's pairs were under 12 characters, "Yay!" read as
+    /// "Yay" and "Yaya" and "Yav!" over and over. No ratio can separate those from "Yes" against
+    /// "No", so they are a job for not recognising rubbish in the first place, not for tolerance.
     /// </remarks>
-    public const double MaxRereadDifferenceRatio = 0.2;
+    public const double MaxRereadDifferenceRatio = 0.3;
 
     /// <summary>
     /// Whether these are two readings of one sentence rather than two sentences — close enough to
