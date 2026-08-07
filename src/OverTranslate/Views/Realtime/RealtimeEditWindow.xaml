@@ -1,0 +1,22 @@
+<Window x:Class="OverTranslate.Views.Realtime.RealtimeEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False">
+
+    <!-- No dimming layer, unlike the screenshot flow: what the user is framing here is content that
+         is still playing, and they need to see it move to place the block over the right strip.
+         The near-invisible background is only there to make the empty area hit-testable, since a
+         fully transparent brush in a layered window would let the drag fall through to the app
+         underneath. -->
+    <Canvas x:Name="BlockCanvas"
+            Background="#01000000"
+            Cursor="Cross"
+            MouseLeftButtonDown="Canvas_MouseLeftButtonDown"
+            MouseMove="Canvas_MouseMove"
+            MouseLeftButtonUp="Canvas_MouseLeftButtonUp"/>
+</Window>

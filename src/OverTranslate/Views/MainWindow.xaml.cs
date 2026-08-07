@@ -8,6 +8,7 @@ using NLog;
 using OverTranslate.Services;
 using OverTranslate.Views.Capture;
 using OverTranslate.Views.Overlay;
+using OverTranslate.Views.Realtime;
 using OverTranslate.Views.Settings;
 using OverTranslate.Views.Shell;
 using OverTranslate.Views.Translation;
@@ -29,6 +30,12 @@ public partial class MainWindow : Window
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
     private readonly OcrService _ocrService = new();
     private readonly TranslationService _translationService = new();
+
+    // Lent to the realtime translation session, which runs its own loop but must not load a second
+    // ONNX runtime or open a second set of HTTP handles to do it. Sharing also means the two
+    // features queue on one inference gate instead of splitting the CPU between them.
+    internal OcrService SharedOcrService => _ocrService;
+    internal TranslationService SharedTranslationService => _translationService;
 
     // Kept alive so toolbar translate can re-run OCR/translation on the current selection
     private List<OcrTextBlock> _lastOcrBlocks = [];
@@ -692,6 +699,9 @@ public partial class MainWindow : Window
 
     private void ExitApp()
     {
+        // Its overlays are Topmost and click-through; left behind by a shutdown they would be
+        // painted onto the desktop with no process left to close them.
+        RealtimeSessionController.Instance.Stop();
         DisposeEscapeHook();
         _hotkey?.Dispose();
         if (_notifyIcon != null)

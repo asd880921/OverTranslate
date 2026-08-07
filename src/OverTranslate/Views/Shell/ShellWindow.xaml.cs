@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Services;
+using OverTranslate.Views.Realtime;
 using OverTranslate.Views.Settings;
 using OverTranslate.Views.Translation;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so this name collides
@@ -15,6 +16,7 @@ namespace OverTranslate.Views.Shell;
 public enum ShellPage
 {
     Translation,
+    Realtime,
     Settings
 }
 
@@ -34,6 +36,7 @@ public partial class ShellWindow : Window
     private object? _contentTransition;
 
     private readonly TranslationPage _translationPage = new();
+    private readonly RealtimePage    _realtimePage    = new();
     private readonly SettingsPage    _settingsPage    = new();
 
     private ShellPage? _current;
@@ -104,7 +107,7 @@ public partial class ShellWindow : Window
 
     public void Navigate(ShellPage page)
     {
-        var target = page == ShellPage.Settings ? SettingsNav : TranslationNav;
+        var target = NavItemFor(page);
         if (target.IsChecked == true)
         {
             // Already here — still make sure the content is mounted (first call from the ctor)
@@ -116,7 +119,10 @@ public partial class ShellWindow : Window
 
     private void Nav_Checked(object sender, RoutedEventArgs e)
     {
-        var page = ReferenceEquals(sender, SettingsNav) ? ShellPage.Settings : ShellPage.Translation;
+        var page =
+            ReferenceEquals(sender, SettingsNav) ? ShellPage.Settings :
+            ReferenceEquals(sender, RealtimeNav) ? ShellPage.Realtime :
+            ShellPage.Translation;
         if (_current == page) return;
         ShowPage(page);
     }
@@ -125,12 +131,28 @@ public partial class ShellWindow : Window
     {
         _current = page;
 
+        // Both of these read state that can change while the user is on another page — the settings
+        // file, and the attached monitors plus whether a realtime session is running.
         if (page == ShellPage.Settings) _settingsPage.Reload();
-        ContentHost.Child = page == ShellPage.Settings ? _settingsPage : (UIElement)_translationPage;
+        if (page == ShellPage.Realtime) _realtimePage.Reload();
 
-        MoveIndicatorTo(page == ShellPage.Settings ? SettingsNav : TranslationNav);
+        ContentHost.Child = page switch
+        {
+            ShellPage.Settings => _settingsPage,
+            ShellPage.Realtime => _realtimePage,
+            _                  => (UIElement)_translationPage
+        };
+
+        MoveIndicatorTo(NavItemFor(page));
         AnimateContentIn();
     }
+
+    private System.Windows.Controls.RadioButton NavItemFor(ShellPage page) => page switch
+    {
+        ShellPage.Settings => SettingsNav,
+        ShellPage.Realtime => RealtimeNav,
+        _                  => TranslationNav
+    };
 
     /// <summary>
     /// Slides the accent bar to the selected item. The offset is measured from the live layout
@@ -222,6 +244,9 @@ public partial class ShellWindow : Window
         // The window is destroyed on close (not hidden), so the pages' timers, TTS playback
         // and HTTP handles have to go with it.
         _translationPage.Teardown();
+        // Only detaches the page from the session controller: a realtime session already running is
+        // on the screen, not in this window, and closing the shell is not a request to end it.
+        _realtimePage.Teardown();
         _instance = null;
         base.OnClosed(e);
     }

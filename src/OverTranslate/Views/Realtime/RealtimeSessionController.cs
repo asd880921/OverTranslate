@@ -1,0 +1,262 @@
+using System.Windows;
+using System.Windows.Threading;
+using NLog;
+using OverTranslate.Services;
+using OverTranslate.Services.Realtime;
+
+namespace OverTranslate.Views.Realtime;
+
+/// <param name="ScreenBounds">
+/// The one screen the session may use, in physical pixels. Realtime translation is deliberately
+/// single-screen: every block then shares one DPI and one capture path, and the loop never has to
+/// reason about a window that straddles two monitors at different scales.
+/// </param>
+public sealed record RealtimeStartRequest(
+    System.Drawing.Rectangle ScreenBounds,
+    int MaxBlocks,
+    string SourceLanguage,
+    string TargetLanguage);
+
+/// <summary>
+/// Owns a realtime session end to end: the edit layer, the per-block overlays, the floating control
+/// and the polling loop, plus the shell window it hid to get out of the way.
+/// </summary>
+/// <remarks>
+/// A single instance, like the capture session in <see cref="MainWindow"/> and for the same reason:
+/// these windows are Topmost and cover the screen, so a second set would be unclosable furniture on
+/// top of the first. It borrows the OCR and translation services from <see cref="MainWindow"/>
+/// rather than creating its own — a second <see cref="OcrService"/> would load a second copy of the
+/// ONNX runtime, and the two features would then fight over the CPU instead of queueing.
+/// </remarks>
+internal sealed class RealtimeSessionController
+{
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
+    public static RealtimeSessionController Instance { get; } = new();
+
+    private RealtimeStartRequest? _request;
+    private RealtimeControlWindow? _control;
+    private RealtimeEditWindow? _edit;
+    private RealtimeTranslationSession? _session;
+    private GlobalEscapeHook? _escapeHook;
+    private Window? _hiddenShell;
+
+    private readonly Dictionary<int, RealtimeBlockWindow> _blockWindows = [];
+    private List<System.Drawing.Rectangle> _blocks = [];
+
+    private RealtimeSessionController() { }
+
+    /// <summary>Raised when the session starts or ends, so the page can re-render its controls.</summary>
+    public event EventHandler? StateChanged;
+
+    public bool IsActive => _control != null;
+
+    /// <summary>
+    /// Starts a session and drops straight into edit mode. <paramref name="shellToHide"/> is put
+    /// away for the duration and brought back by <see cref="Stop"/> — the user is about to frame
+    /// something on the screen the shell is sitting on.
+    /// </summary>
+    public void Start(RealtimeStartRequest request, Window? shellToHide)
+    {
+        if (IsActive) return;
+
+        Log.Info(
+            "Realtime session starting on screen {Screen}, max {Max} block(s), {Src}->{Tgt}",
+            request.ScreenBounds, request.MaxBlocks, request.SourceLanguage, request.TargetLanguage);
+
+        _request = request;
+        _blocks = [];
+        _hiddenShell = shellToHide;
+        _hiddenShell?.Hide();
+
+        var main = System.Windows.Application.Current.MainWindow as MainWindow;
+        _session = new RealtimeTranslationSession(
+            main?.SharedOcrService ?? new OcrService(),
+            main?.SharedTranslationService ?? new TranslationService());
+        _session.RegionUpdated += OnRegionUpdated;
+        _session.Failed += OnSessionFailed;
+        _session.BusyChanged += OnBusyChanged;
+
+        var control = new RealtimeControlWindow(request.ScreenBounds);
+        control.StartRequested += (_, _) => StartTranslating();
+        control.EditRequested += (_, _) => EnterEditMode();
+        control.CloseRequested += (_, _) => Stop();
+        _control = control;
+        control.Show();
+
+        EnterEditMode();
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Stop()
+    {
+        if (!IsActive) return;
+
+        Log.Info("Realtime session ending");
+
+        DisposeEscapeHook();
+
+        if (_session != null)
+        {
+            _session.RegionUpdated -= OnRegionUpdated;
+            _session.Failed -= OnSessionFailed;
+            _session.BusyChanged -= OnBusyChanged;
+            _session.Stop();
+            _session = null;
+        }
+
+        CloseBlockWindows();
+        CloseEditWindow();
+
+        CloseWindow(_control, nameof(RealtimeControlWindow));
+        _control = null;
+
+        _blocks = [];
+        _request = null;
+
+        RestoreShell();
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // ── Modes ────────────────────────────────────────────────────────────────────────────────────
+
+    private void EnterEditMode()
+    {
+        if (_request is not { } request || _control is not { } control) return;
+
+        _session?.Stop();
+        CloseBlockWindows();
+        CloseEditWindow();
+
+        var edit = new RealtimeEditWindow(request.ScreenBounds, _blocks, request.MaxBlocks);
+        edit.BlocksChanged += (_, _) =>
+        {
+            _blocks = [.. edit.GetPhysicalBlocks()];
+            control.SetBlockCount(_blocks.Count, request.MaxBlocks);
+        };
+        edit.LimitReached += (_, _) =>
+            control.ShowMessage($"最多同時 {request.MaxBlocks} 個區塊，請先移除一個");
+        _edit = edit;
+        edit.Show();
+
+        control.SetMode(RealtimeControlMode.Edit);
+        control.SetBlockCount(_blocks.Count, request.MaxBlocks);
+        // The edit layer was created after the control and would otherwise sit on top of it.
+        control.BringToFront();
+
+        // Only while editing. The hook swallows Esc process-wide, and a translating session can run
+        // for hours next to an application that needs its own Esc key.
+        DisposeEscapeHook();
+        _escapeHook = GlobalEscapeHook.Install(Stop);
+    }
+
+    private void StartTranslating()
+    {
+        if (_request is not { } request || _control is not { } control || _session is null) return;
+
+        if (_blocks.Count == 0)
+        {
+            control.ShowMessage("請先拖曳建立至少一個區塊");
+            return;
+        }
+
+        DisposeEscapeHook();
+        CloseEditWindow();
+
+        var regions = _blocks
+            .Select((bounds, index) => new RealtimeRegion(index, bounds))
+            .ToList();
+
+        foreach (var region in regions)
+        {
+            var window = new RealtimeBlockWindow(
+                region.Id, region.Bounds, request.SourceLanguage, request.TargetLanguage);
+            _blockWindows[region.Id] = window;
+            window.Show();
+        }
+
+        control.SetMode(RealtimeControlMode.Running);
+        control.BringToFront();
+
+        _session.Start(regions, request.SourceLanguage, request.TargetLanguage);
+    }
+
+    // ── Session callbacks (raised on the polling thread) ─────────────────────────────────────────
+
+    private void OnRegionUpdated(object? sender, RealtimeRegionUpdate update) =>
+        OnDispatcher(() =>
+        {
+            // The user may have gone back to edit mode while this pass was in flight; its window is
+            // gone and the result belongs to a layout that no longer exists.
+            if (_blockWindows.TryGetValue(update.RegionId, out var window))
+                window.SetLines(update.Lines);
+        });
+
+    private void OnSessionFailed(object? sender, string message) =>
+        OnDispatcher(() => _control?.ShowMessage(message));
+
+    private void OnBusyChanged(object? sender, bool busy) =>
+        OnDispatcher(() => _control?.SetBusy(busy));
+
+    private static void OnDispatcher(Action action)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        dispatcher.BeginInvoke(action, DispatcherPriority.Background);
+    }
+
+    // ── Teardown helpers ─────────────────────────────────────────────────────────────────────────
+
+    private void CloseEditWindow()
+    {
+        CloseWindow(_edit, nameof(RealtimeEditWindow));
+        _edit = null;
+    }
+
+    private void CloseBlockWindows()
+    {
+        foreach (var window in _blockWindows.Values)
+            CloseWindow(window, nameof(RealtimeBlockWindow));
+        _blockWindows.Clear();
+    }
+
+    private void DisposeEscapeHook()
+    {
+        _escapeHook?.Dispose();
+        _escapeHook = null;
+    }
+
+    private void RestoreShell()
+    {
+        var shell = _hiddenShell;
+        _hiddenShell = null;
+        if (shell is null || shell.IsVisible) return;
+
+        try
+        {
+            shell.Show();
+            shell.Activate();
+        }
+        catch (Exception ex)
+        {
+            // Racing an app shutdown that already destroyed the window — nothing left to restore,
+            // and it must not take the rest of the teardown down with it.
+            Log.Warn(ex, "Could not restore the shell window after a realtime session");
+        }
+    }
+
+    // Each window is closed independently: these are Topmost layers over the user's screen, so a
+    // throwing Close() must not strand the ones after it.
+    private static void CloseWindow(Window? window, string name)
+    {
+        if (window is null) return;
+        try
+        {
+            window.Close();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to close {Window} — forcing teardown of the remaining windows", name);
+        }
+    }
+}

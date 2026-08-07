@@ -454,6 +454,58 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->
+    <!--  SEGMENTED RADIO (compact value picker)     -->
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- For a small set of short, mutually exclusive values (1 / 2 / 3) where the value itself is
+         the label. ThemeRadioButton spends a 13px indicator on saying "this is a choice", which for
+         a row of numerals is more chrome than content — here the filled state carries that instead. -->
+    <Style x:Key="SegmentedRadioButton" TargetType="RadioButton">
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"   Value="{StaticResource AppFontSize}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Cursor"     Value="Hand"/>
+        <Setter Property="MinWidth"   Value="44"/>
+        <Setter Property="Height"     Value="32"/>
+        <Setter Property="Margin"     Value="0,0,6,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Root"
+                            Background="{DynamicResource AppButtonBg}"
+                            BorderBrush="{DynamicResource AppButtonBorder}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="12,0">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccent}"/>
+                            <Setter TargetName="Root" Property="BorderBrush"
+                                    Value="{DynamicResource AppAccent}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource AppAccentFg}"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="False"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
     <!--  VERTICAL SEPARATOR (toolbar divider)       -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="VerticalSeparator" TargetType="Separator">

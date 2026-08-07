@@ -121,6 +121,21 @@
                             </StackPanel>
                         </RadioButton>
 
+                        <!-- Its own destination rather than a mode of 文字翻譯: nothing on that page
+                             applies here, and a session started from it keeps running long after
+                             the user has navigated away. -->
+                        <RadioButton x:Name="RealtimeNav"
+                                     Style="{StaticResource NavItem}"
+                                     GroupName="ShellNav"
+                                     Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="15" Text="&#xE890;"
+                                           Width="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="即時翻譯" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
                         <RadioButton x:Name="SettingsNav"
                                      Style="{StaticResource NavItem}"
                                      GroupName="ShellNav"

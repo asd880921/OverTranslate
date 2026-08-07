@@ -1,0 +1,17 @@
+<Window x:Class="OverTranslate.Views.Realtime.RealtimeBlockWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Focusable="False"
+        IsHitTestVisible="False">
+
+    <!-- One window per watched block rather than a single desktop-spanning layer: a translucent
+         window is composed in software, so redrawing a subtitle-sized surface a few times a minute
+         costs nothing, while redrawing the whole desktop for the same change would not. -->
+    <Canvas x:Name="LineCanvas"/>
+</Window>
