@@ -139,9 +139,18 @@ internal sealed class RealtimeSessionController
         _edit = edit;
         edit.Show();
 
+        // Ownership, not a Topmost nudge: the edit layer covers the whole screen, so any moment it
+        // is above the control the user's clicks on the bar land on the drawing canvas instead —
+        // which reads as the buttons having stopped working. Re-asserting Topmost puts the control
+        // back on top once; an owned window is guaranteed to stay above its owner no matter what is
+        // clicked afterwards. CloseEditWindow clears this again before closing the owner, or the
+        // control would be closed along with it.
+        control.Owner = edit;
+
         control.SetMode(RealtimeControlMode.Edit);
         control.SetBlockCount(_blocks.Count, request.MaxBlocks);
-        // The edit layer was created after the control and would otherwise sit on top of it.
+        // Belt and braces alongside the ownership above: cheap, and the failure it guards against is
+        // a control bar the user cannot reach at all.
         control.BringToFront();
 
         // Only while editing. The hook swallows Esc process-wide, and a translating session can run
@@ -209,6 +218,11 @@ internal sealed class RealtimeSessionController
 
     private void CloseEditWindow()
     {
+        // Before the close, always: WPF closes owned windows with their owner, so leaving this set
+        // would take the control bar down with the edit layer.
+        if (_control is { } control && ReferenceEquals(control.Owner, _edit))
+            control.Owner = null;
+
         CloseWindow(_edit, nameof(RealtimeEditWindow));
         _edit = null;
     }

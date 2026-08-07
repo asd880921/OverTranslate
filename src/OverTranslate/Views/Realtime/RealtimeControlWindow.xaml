@@ -13,8 +13,15 @@
          set in code: this window is pinned onto a screen that may not be the one WPF laid it out
          for, and on a mixed-DPI desktop that means it would otherwise come out the wrong physical
          size. Same correction the capture toolbar and the processing card already apply. -->
+    <!-- Background, not the default null: a brushless region takes no part in hit testing, which in
+         a layered window means the mouse falls straight through it to whatever is underneath. That
+         put this margin — the ring the shadow lives in, right where the pointer approaches the bar —
+         under the edit layer's crosshair, so the bar read as unclickable before the pointer had even
+         reached it. Transparent keeps it invisible while making it part of this window. -->
     <Border x:Name="RootChrome"
             Margin="10,8,10,12"
+            Background="Transparent"
+            Cursor="Arrow"
             MouseLeftButtonDown="Chrome_MouseLeftButtonDown"
             MouseMove="Chrome_MouseMove"
             MouseLeftButtonUp="Chrome_MouseLeftButtonUp">

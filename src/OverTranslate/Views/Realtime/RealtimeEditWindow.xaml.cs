@@ -178,6 +178,18 @@ public partial class RealtimeEditWindow : Window
     {
         if (_drawPreview is null) return;
 
+        // A mouse-up can go missing — another window grabs the capture, the session is torn down
+        // mid-drag, the button is released while the pointer is off the desktop. The cost of not
+        // noticing is severe and easy to mistake for the bar being broken: a canvas that still holds
+        // the capture owns the cursor and every click across the whole screen, so the crosshair
+        // follows the pointer over the control bar and none of its buttons respond. The button state
+        // on the next move is the one signal that is always available.
+        if (e.LeftButton == MouseButtonState.Released)
+        {
+            AbandonDraw();
+            return;
+        }
+
         var box = NormalizeToCanvas(_drawOrigin, e.GetPosition(BlockCanvas));
         Canvas.SetLeft(_drawPreview, box.X);
         Canvas.SetTop(_drawPreview, box.Y);
@@ -189,14 +201,33 @@ public partial class RealtimeEditWindow : Window
     {
         if (_drawPreview is null) return;
 
-        BlockCanvas.ReleaseMouseCapture();
-        BlockCanvas.Children.Remove(_drawPreview);
-        _drawPreview = null;
-
+        // Read the box before tearing the drag down: AbandonDraw drops the capture, which raises
+        // LostMouseCapture and clears _drawPreview underneath us.
         var box = NormalizeToCanvas(_drawOrigin, e.GetPosition(BlockCanvas));
+        AbandonDraw();
+
+        // A click, or a slip of the hand, should not leave a useless sliver behind.
         if (box.Width < _minBlockWidth || box.Height < _minBlockHeight) return;
 
         AddBlock(box, notify: true);
+    }
+
+    // Capture lost to something else entirely (an Alt+Tab, another window taking it). The drag is
+    // over whether we like it or not, so drop the half-drawn box rather than leave it on the canvas.
+    private void Canvas_LostMouseCapture(object sender, MouseEventArgs e) => AbandonDraw();
+
+    /// <summary>Ends the in-progress drag without creating a block, leaving no capture behind.</summary>
+    private void AbandonDraw()
+    {
+        if (_drawPreview is not null)
+        {
+            BlockCanvas.Children.Remove(_drawPreview);
+            _drawPreview = null;
+        }
+
+        // Re-entrant by design: this raises LostMouseCapture, which calls back in — harmless, since
+        // the preview is already gone by then.
+        if (BlockCanvas.IsMouseCaptured) BlockCanvas.ReleaseMouseCapture();
     }
 
     private Rect NormalizeToCanvas(Point a, Point b)

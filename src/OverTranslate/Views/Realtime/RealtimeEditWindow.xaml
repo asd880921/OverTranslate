@@ -18,5 +18,6 @@
             Cursor="Cross"
             MouseLeftButtonDown="Canvas_MouseLeftButtonDown"
             MouseMove="Canvas_MouseMove"
-            MouseLeftButtonUp="Canvas_MouseLeftButtonUp"/>
+            MouseLeftButtonUp="Canvas_MouseLeftButtonUp"
+            LostMouseCapture="Canvas_LostMouseCapture"/>
 </Window>
