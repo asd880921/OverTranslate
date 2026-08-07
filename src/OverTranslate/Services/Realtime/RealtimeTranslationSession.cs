@@ -51,10 +51,14 @@ public sealed class RealtimeTranslationSession
     // lines that are still on screen, and an LRU here would cost more to maintain than it saves.
     private const int TranslationCacheLimit = 400;
 
-    // How many of a region's translations may be in flight at once. More than one because a slow
+    // How many translations may be in flight across the whole session. More than one because a slow
     // answer must not delay the line after it, and only a few because a provider that has stopped
-    // answering altogether would otherwise accumulate work for as long as the session runs.
-    private const int MaxConcurrentTranslations = 3;
+    // answering would otherwise accumulate work for as long as the session runs.
+    //
+    // Session-wide rather than per region: the free endpoints answer one account, and three regions
+    // each allowed three of their own would put nine requests in flight at once — which is where a
+    // provider starts rate-limiting, and a rate-limited pass fails, retries, and adds more load.
+    private const int MaxConcurrentTranslations = 4;
 
     private readonly OcrService _ocr;
     private readonly TranslationService _translation;
@@ -62,6 +66,16 @@ public sealed class RealtimeTranslationSession
     // Concurrent, because every region's loop shares it: two regions showing the same line of
     // dialogue should cost one translation, not one each.
     private readonly ConcurrentDictionary<string, string> _translationCache = new();
+
+    // Shared by every region's pump, for the reasons on MaxConcurrentTranslations.
+    private readonly SemaphoreSlim _translationSlots =
+        new(MaxConcurrentTranslations, MaxConcurrentTranslations);
+
+    // The Failed event promises at most one notification per distinct message, and a session-wide
+    // failure — a missing API key, a provider that is down — reaches every region at once. Held
+    // here rather than per region so three regions report it once between them, not three times.
+    private readonly object _failureGate = new();
+    private string? _lastReportedFailure;
     private CancellationTokenSource? _cts;
 
     // How many region loops are mid-pass. Only drives the busy indicator, so it is deliberately not
@@ -100,6 +114,9 @@ public sealed class RealtimeTranslationSession
         _cts = cts;
         Interlocked.Exchange(ref _grabFailureReported, 0);
         Interlocked.Exchange(ref _busyRegions, 0);
+        // Otherwise a session that ended on a failure would swallow the same one on the next run,
+        // which is the run where the user is checking whether they fixed it.
+        ClearFailure();
 
         Log.Info(
             "Realtime session started: {Count} region(s), {Src}->{Tgt}",
@@ -448,6 +465,27 @@ public sealed class RealtimeTranslationSession
 
     private void RaiseFailed(string message) => Failed?.Invoke(this, message);
 
+    /// <summary>Reports a failure once, however many regions run into it.</summary>
+    private void ReportFailure(string message)
+    {
+        lock (_failureGate)
+        {
+            if (message == _lastReportedFailure) return;
+            _lastReportedFailure = message;
+        }
+
+        RaiseFailed(message);
+    }
+
+    /// <summary>
+    /// Lets the next failure be reported again, after a pass has got through. Any region getting
+    /// through is evidence the trouble has passed, so this is shared too.
+    /// </summary>
+    private void ClearFailure()
+    {
+        lock (_failureGate) _lastReportedFailure = null;
+    }
+
     /// <summary>
     /// The recognised lines as pixel rectangles in region coordinates, which is what the change
     /// detector watches from here on. Rounded outwards so a box does not lose the row of pixels its
@@ -568,11 +606,8 @@ public sealed class RealtimeTranslationSession
         string targetLanguage,
         CancellationToken token)
     {
-        private readonly SemaphoreSlim _slots = new(MaxConcurrentTranslations, MaxConcurrentTranslations);
         private readonly RealtimePublishOrder _order = new();
-        private readonly object _gate = new();
 
-        private string? _lastReportedFailure;
         private int _retryRequested;
 
         /// <summary>Claims the number identifying this pass in the order the region was read.</summary>
@@ -581,7 +616,7 @@ public sealed class RealtimeTranslationSession
         /// <summary>Translates a pass's lines and draws them, both without holding up the caller.</summary>
         public void Post(long pass, List<OcrTextBlock> blocks, int ocrMs)
         {
-            if (!_slots.Wait(0))
+            if (!session._translationSlots.Wait(0))
             {
                 // Every slot is held by a translation that has not answered, so the provider is
                 // stalled rather than merely slow. Nothing in flight can be recalled to make room,
@@ -629,7 +664,7 @@ public sealed class RealtimeTranslationSession
                 finally
                 {
                     session.SetBusy(false);
-                    _slots.Release();
+                    session._translationSlots.Release();
                 }
             });
         }
@@ -645,21 +680,9 @@ public sealed class RealtimeTranslationSession
         }
 
         /// <summary>Reports a failure, but only if it is not the one already reported.</summary>
-        public void Report(string message)
-        {
-            lock (_gate)
-            {
-                if (message == _lastReportedFailure) return;
-                _lastReportedFailure = message;
-            }
+        public void Report(string message) => session.ReportFailure(message);
 
-            session.RaiseFailed(message);
-        }
-
-        public void ClearFailure()
-        {
-            lock (_gate) _lastReportedFailure = null;
-        }
+        public void ClearFailure() => session.ClearFailure();
 
         private void RequestRetry() => Interlocked.Exchange(ref _retryRequested, 1);
 
