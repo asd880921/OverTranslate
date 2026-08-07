@@ -131,7 +131,7 @@ internal sealed class RealtimeSessionController
             AlwaysOnTop.Reassert(control);
             // Says the click did something even when nothing was covering the bar, which is the
             // more common case: a user who tries this is looking for a sign of life.
-            control.ShowMessage("已置頂");
+            control.ShowMessage("已將即時翻譯視窗移至最上層");
         }
 
         Log.Info("Realtime layers re-asserted on top by request");
