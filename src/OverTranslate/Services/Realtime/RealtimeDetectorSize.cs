@@ -31,21 +31,55 @@ internal static class RealtimeDetectorSize
     /// </summary>
     public const int HalfScaleMinSide = 800;
 
+    /// <summary>
+    /// Fractions of the block to fall back to, in the order to try them, when the first size reads
+    /// nothing at all.
+    /// </summary>
+    /// <remarks>
+    /// The detector does not respond to scale smoothly, so there is no one size to get right.
+    /// Sweeping one frame that reliably failed: 0.45 read it perfectly, 0.52 read nothing, 0.59
+    /// read a fragment, 0.68 read it perfectly, 1.0 collapsed. Neighbouring sizes land on opposite
+    /// sides of working.
+    ///
+    /// Which fractions, from 280 frames the loop had given up on, 9 of which held readable text:
+    ///
+    /// <code>
+    ///   0.68 read 8 of 9      0.45 read 5      1.00 read 3
+    ///   0.35 read 7 of 9      0.52 read 3
+    /// </code>
+    ///
+    /// Those frames were kept precisely because the shipped pair failed on them, so the sample
+    /// cannot say 0.68 is a better first choice than 0.52 — it never saw the frames 0.52 reads
+    /// happily. What it does say is that 0.68 recovers most of what is currently lost, so it goes
+    /// first among the fallbacks. Native stays behind it rather than being dropped: it recovered
+    /// nine lines in a single measured session, and it is the only size that can read text too
+    /// small to survive any downscale at all.
+    /// </remarks>
+    public static readonly double[] FallbackFractions = [0.68, 1.0];
+
     /// <param name="primary">Detector input size to read with first.</param>
-    /// <param name="fallback">
-    /// Size to read with when the first attempt finds nothing at all, or null when there is no
-    /// second size worth trying. Empty is the signal because both ways of being out of range
-    /// produce it: text too large collapses into one unreadable box, text too small is never
-    /// detected.
+    /// <param name="fallbacks">
+    /// Sizes to try, in order, when a read finds nothing at all — stopping at the first that reads
+    /// something. Empty is the signal because every way of being out of the detector's range
+    /// produces it: text too large collapses into one unreadable box, text too small is never
+    /// detected, and a scale the model simply dislikes returns nothing.
     /// </param>
-    public static (int Primary, int? Fallback) For(int width, int height)
+    public static (int Primary, IReadOnlyList<int> Fallbacks) For(int width, int height)
     {
         var native = Math.Max(width, height);
 
         // ImgResize only ever downscales, so passing the longest side asks for the image as it is.
-        return native >= HalfScaleMinSide
-            ? (RoundToStride(native / 2), native)
-            : (native, null);
+        if (native < HalfScaleMinSide)
+            return (native, []);
+
+        var primary = RoundToStride(native / 2);
+        var fallbacks = FallbackFractions
+            .Select(fraction => fraction >= 1.0 ? native : RoundToStride((int)(native * fraction)))
+            .Where(size => size != primary)
+            .Distinct()
+            .ToList();
+
+        return (primary, fallbacks);
     }
 
     // The detector works on a grid; sizes off it are rounded up internally anyway, and rounding

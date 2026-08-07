@@ -11,10 +11,28 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     [Fact]
     public void ARegionLargeEnoughForSubtitlesIsReadAtHalfScaleFirst()
     {
-        var (primary, fallback) = RealtimeDetectorSize.For(1226, 196);
+        var (primary, _) = RealtimeDetectorSize.For(1226, 196);
 
-        Assert.Equal(613 / 32 * 32 + 32, primary); // 1226/2 rounded up onto the detector's grid
-        Assert.Equal(1226, fallback);              // native, for text too small to survive halving
+        Assert.Equal(640, primary); // 1226/2 rounded up onto the detector's grid
+    }
+
+    [Fact]
+    public void TheFallbacksAreTriedBestFirstAndEndAtNativeSize()
+    {
+        // 0.68 recovered 8 of the 9 readable frames the shipped pair had given up on, so it leads;
+        // native stays last because it is the only size that can read text too small to survive any
+        // downscale, and it recovered nine lines in a measured session.
+        var (_, fallbacks) = RealtimeDetectorSize.For(1415, 169);
+
+        Assert.Equal([992, 1415], fallbacks); // 1415 * 0.68, rounded onto the grid
+    }
+
+    [Fact]
+    public void ASizeThatWouldRepeatTheFirstAttemptIsNotTriedAgain()
+    {
+        var (primary, fallbacks) = RealtimeDetectorSize.For(1226, 196);
+
+        Assert.DoesNotContain(primary, fallbacks);
     }
 
     [Fact]
@@ -22,10 +40,10 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     {
         // 60px subtitles do not fit in a region this size, so halving could only take small text
         // further out of range.
-        var (primary, fallback) = RealtimeDetectorSize.For(400, 120);
+        var (primary, fallbacks) = RealtimeDetectorSize.For(400, 120);
 
         Assert.Equal(400, primary);
-        Assert.Null(fallback);
+        Assert.Empty(fallbacks);
     }
 
     [Fact]
