@@ -309,6 +309,14 @@ public sealed class RealtimeTranslationSession
         if (recognized is null)
             return new PassReading(PassOutcome.NoSlot, 0, 0, 0, state.RenderedText.Length);
 
+        // Thrown-away boxes are cleared out before the pass is judged empty, because a collapse is
+        // the strongest reason there is to try the other size: a detector that answered with one
+        // box across the whole block has not looked at the block, and reading nothing at all is the
+        // same evidence by a quieter route. Judging emptiness first left the one case that most
+        // needed a second look as the one case that never got it — measured on a line that
+        // collapsed on nearly every appearance and was simply lost each time.
+        recognized = RejectCollapsedBlocks(recognized, frame.Height, region.Id);
+
         // Nothing found can mean the text is out of the detector's range rather than absent, and
         // the two ways of being out of it need opposite sizes — so the one not tried yet gets a go
         // before the region is written off as empty. Only on empty: a pass that read something has
@@ -316,6 +324,9 @@ public sealed class RealtimeTranslationSession
         if (recognized.Count == 0 && fallbackSize is { } retrySize)
         {
             var retried = await _ocr.TryRecognizeAsync(frame, sourceLanguage, retrySize, token);
+            if (retried is not null)
+                retried = RejectCollapsedBlocks(retried, frame.Height, region.Id);
+
             if (retried is { Count: > 0 })
             {
                 Log.Info(
@@ -327,8 +338,6 @@ public sealed class RealtimeTranslationSession
 
         var ocrMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         token.ThrowIfCancellationRequested();
-
-        recognized = RejectCollapsedBlocks(recognized, frame.Height, region.Id);
 
         var sourceText = string.Join('\n', recognized.Select(block => block.Text));
         var textBounds = ToTextBounds(recognized);

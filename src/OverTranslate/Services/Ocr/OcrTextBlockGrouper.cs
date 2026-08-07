@@ -91,9 +91,17 @@ internal static class OcrTextBlockGrouper
         // overlap only ≈ 0.47. Their height ratios are inverted (0.81 < 0.84), so any single height
         // threshold either drops "to" or merges the buttons. Keep height tolerant and let the strict
         // overlap test below do the discriminating.
+        // 0.5 rather than 0.6, measured: a subtitle reading "Let's pay CiRCLE a visit on the way
+        // home." came back as an 888x88 box and a 141x51 one holding "home", a height ratio of
+        // 0.58. They sit 2px apart with the shorter box entirely inside the taller one's rows, and
+        // the guard rejected them anyway — so "home" was translated on its own and appeared as a
+        // stray word to the right of a sentence missing its ending. The word's box is short because
+        // the word has no descender, which is a property of the letters, not of whether they belong
+        // to the line. Discriminating between lines is the vertical-overlap test's job below, as the
+        // note above says; this only has to keep out boxes of wildly different size.
         var heightRatio = Math.Min(previous.Bounds.Height, current.Bounds.Height) /
                           Math.Max(previous.Bounds.Height, current.Bounds.Height);
-        if (heightRatio < 0.6)
+        if (heightRatio < 0.5)
             return false;
 
         var verticalOverlap = Math.Max(
