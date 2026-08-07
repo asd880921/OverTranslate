@@ -168,4 +168,17 @@ public static class LanguageData
             l.Code.Equals(targetCode, StringComparison.OrdinalIgnoreCase));
         return match?.Code ?? DefaultTargetLanguage;
     }
+
+    /// <summary>
+    /// The name a language is offered under, for saying back to the user what is in effect. Falls
+    /// back to the code, which is still readable, rather than to an empty string.
+    /// </summary>
+    public static string GetSourceDisplay(string? code) =>
+        OcrSourceLanguages.FirstOrDefault(l =>
+            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.Display ?? code ?? "";
+
+    /// <inheritdoc cref="GetSourceDisplay"/>
+    public static string GetTargetDisplay(string? code) =>
+        TargetLanguages.FirstOrDefault(l =>
+            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.Display ?? code ?? "";
 }

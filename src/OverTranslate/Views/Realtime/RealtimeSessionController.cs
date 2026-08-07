@@ -241,6 +241,9 @@ internal sealed class RealtimeSessionController
             window.Show();
         }
 
+        // Set before the mode switch renders, so the capsule appears with the pair already in it
+        // rather than showing the placeholder for a frame.
+        control.SetLanguages(request.SourceLanguage, request.TargetLanguage);
         control.SetMode(RealtimeControlMode.Running);
         control.BringToFront();
         _stayOnTop.Start();

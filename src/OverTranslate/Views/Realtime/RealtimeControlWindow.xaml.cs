@@ -46,6 +46,8 @@ public partial class RealtimeControlWindow : Window
 
     private RealtimeControlMode _mode = RealtimeControlMode.Edit;
     private string _editHint = "在螢幕上拖曳建立要翻譯的區塊";
+    // What the capsule says when it has nothing else to say. Replaced by SetLanguages once a
+    // session starts; a transient message borrows the same slot and RestoreText brings this back.
     private string _runStatus = "即時翻譯中";
 
     // The scale WPF renders this window at, which is the DPI of whatever monitor it was created on —
@@ -104,6 +106,24 @@ public partial class RealtimeControlWindow : Window
         SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
 
         WindowCaptureShield.Exclude(this);
+    }
+
+    /// <summary>
+    /// Puts the session's language pair where the running capsule's status text was.
+    /// </summary>
+    /// <remarks>
+    /// The pulsing dot beside it already says the session is running, so "即時翻譯中" was a second
+    /// way of saying the same thing, occupying the one line the user can see while the translation
+    /// window is hidden. The pair is the thing that cannot be checked anywhere else and the one
+    /// setting that fails silently when it is wrong: recognition told to read the wrong script does
+    /// not raise an error, it returns plausible nonsense, and this is where that is caught at a glance.
+    /// </remarks>
+    public void SetLanguages(string sourceCode, string targetCode)
+    {
+        _runStatus =
+            $"{Models.LanguageData.GetSourceDisplay(sourceCode)} → {Models.LanguageData.GetTargetDisplay(targetCode)}";
+
+        if (!_messageTimer.IsEnabled) RestoreText();
     }
 
     public void SetMode(RealtimeControlMode mode)
@@ -197,12 +217,16 @@ public partial class RealtimeControlWindow : Window
             _screenBounds.Left + _screenBounds.Width / 2,
             _screenBounds.Top + _screenBounds.Height / 2);
 
-        // Bottom centre: out of the way of the content in the middle of the screen, and the place a
-        // transient control is expected to be. The user can drag it anywhere from there. The 48px
-        // gap is scaled by the target monitor so it reads the same distance up on every display.
+        // Top centre. The bar started at the bottom, on the reasoning that the content is in the
+        // middle of the screen — which forgot what this feature is mostly pointed at. Subtitles sit
+        // bottom centre, and so do game HUDs, so the old default landed on the one part of the
+        // screen the user is here to read. The top edge is that position's opposite, and staying
+        // centred keeps the bar findable: a corner hides it better but a first-time user has to go
+        // looking. Dragging still overrides all of this. The 48px gap is scaled by the target
+        // monitor so it reads the same distance in from the edge on every display.
         _position = new System.Drawing.Point(
             _screenBounds.Left + (_screenBounds.Width - PhysicalWidth) / 2,
-            _screenBounds.Bottom - PhysicalHeight - (int)Math.Round(48 * targetScale));
+            _screenBounds.Top + (int)Math.Round(48 * targetScale));
 
         ClampIntoScreen();
     }
