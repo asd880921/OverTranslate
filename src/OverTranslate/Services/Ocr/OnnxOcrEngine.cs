@@ -24,9 +24,19 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // memory to baseline while idle. The next capture transparently reloads the needed model.
     private static readonly TimeSpan IdleReleaseDelay = TimeSpan.FromMinutes(1);
 
+    // Long enough that no real inference could still be running, short enough that a caller stuck
+    // behind a wedged one gets an error instead of never returning.
+    private static readonly TimeSpan ModelSwapDrainTimeout = TimeSpan.FromSeconds(10);
+
+    // How many inferences may run at once. Each already uses ThreadCount threads of its own, so the
+    // budget is cores/4 rather than cores/2. Measured on a 16-core machine against a 1200x200 screen
+    // grab: one pass 320ms; four concurrent passes 502ms in total, so 2.5x the throughput for 1.6x
+    // the latency. Five was slower than four, which is where the cap comes from.
+    private static readonly int InferenceSlots = Math.Clamp(Environment.ProcessorCount / 4, 1, 4);
+
     private readonly object _sync = new();
-    // Admits one inference at a time; see RecognizeAsync for why.
-    private readonly SemaphoreSlim _inferenceGate = new(1, 1);
+    // Admits a bounded number of concurrent inferences; see RecognizeAsync for why it is bounded.
+    private readonly SemaphoreSlim _inferenceGate = new(InferenceSlots, InferenceSlots);
     private readonly System.Threading.Timer _idleReleaseTimer;
     private RapidOcrRuntime? _current;
     private string? _currentModelKey;
@@ -50,12 +60,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
         return Task.Run(async () =>
         {
-            // One inference at a time. Overlapping captures (frame it wrong, Esc, frame again) used
-            // to run concurrently, and since each inference already uses ThreadCount threads they
-            // split the CPU between themselves: measured on real usage, four concurrent recognitions
-            // stretched a ~2s job to ~6s — and every one of those results was discarded anyway.
-            // Serialising keeps a single capture exactly as fast as it was while stopping abandoned
-            // work from starving the one the user is actually waiting for.
+            // Bounded, not unlimited. Each inference already uses ThreadCount threads, so past the
+            // slot count concurrent passes only split the same cores between themselves: overlapping
+            // captures (frame it wrong, Esc, frame again) used to pile up that way and starve the
+            // one the user was actually waiting for.
             await _inferenceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
@@ -65,6 +73,31 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 // where giving up is still free.
                 cancellationToken.ThrowIfCancellationRequested();
 
+                return RecognizeCore(bitmap, sourceLanguage);
+            }
+            finally
+            {
+                _inferenceGate.Release();
+            }
+        }, cancellationToken);
+    }
+
+    public Task<List<OcrTextBlock>?> TryRecognizeAsync(
+        Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
+    {
+        if (!OcrLanguageRouter.IsSupported(sourceLanguage))
+            throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
+
+        return Task.Run<List<OcrTextBlock>?>(() =>
+        {
+            // Inside the lambda, not before it: Task.Run with an already-cancelled token never runs
+            // the body, so a slot taken out here would never be given back.
+            if (!_inferenceGate.Wait(0, cancellationToken))
+                return null;
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 return RecognizeCore(bitmap, sourceLanguage);
             }
             finally
@@ -153,11 +186,26 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 return _current;
             }
 
-            // A different model is requested. Swapping is only safe when no Detect is running
-            // against the current runtime; _inUse > 0 here would mean two captures on different
-            // languages overlap, which the single-capture UI never produces. Guard anyway.
-            if (_inUse > 0)
-                throw new InvalidOperationException("無法在辨識進行中切換 OCR 模型。");
+            // A different model is requested, and swapping is only safe once no Detect is running
+            // against the current runtime. With concurrent inference this is genuinely reachable —
+            // a realtime session watching English while a screenshot is translated from Korean — so
+            // wait the others out rather than failing the pass. The timeout is a backstop: it means
+            // an inference has been running far longer than any real one does, and hanging here
+            // would take the caller's whole session with it.
+            while (_inUse > 0)
+            {
+                if (!Monitor.Wait(_sync, ModelSwapDrainTimeout))
+                    throw new InvalidOperationException("等待其他辨識結束以切換 OCR 模型時逾時。");
+
+                ObjectDisposedException.ThrowIf(_disposed, this);
+
+                // Whoever we were waiting for may have loaded the model we wanted in the meantime.
+                if (_current is not null && _currentModelKey == modelKey)
+                {
+                    _inUse++;
+                    return _current;
+                }
+            }
 
             // Release the previous model's sessions/arenas before loading the next one.
             // Clear the fields first so a failed load doesn't leave a disposed runtime cached.
@@ -181,6 +229,11 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         {
             if (_inUse > 0)
                 _inUse--;
+
+            // Wakes any pass waiting to swap models — see AcquireRuntime. Pulsed even when disposed,
+            // so a waiter is never left holding the door for a runtime that is going away.
+            if (_inUse == 0)
+                Monitor.PulseAll(_sync);
 
             if (_disposed)
                 return;
