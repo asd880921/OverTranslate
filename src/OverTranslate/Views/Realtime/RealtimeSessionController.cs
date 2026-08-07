@@ -44,7 +44,28 @@ internal sealed class RealtimeSessionController
     private readonly Dictionary<int, RealtimeBlockWindow> _blockWindows = [];
     private List<System.Drawing.Rectangle> _blocks = [];
 
-    private RealtimeSessionController() { }
+    /// <summary>
+    /// Keeps the layers at the front of the topmost band — see <see cref="AlwaysOnTop"/> for why
+    /// they slide behind other topmost windows without it, and why they cannot simply activate
+    /// themselves instead.
+    /// </summary>
+    /// <remarks>
+    /// A second is short enough that being covered is a blink rather than a state the user has to
+    /// do something about, and long enough that the cost is a handful of SetWindowPos calls — no
+    /// redraw, no allocation, nothing that touches the session.
+    /// </remarks>
+    private readonly DispatcherTimer _stayOnTop = new() { Interval = TimeSpan.FromSeconds(1) };
+
+    private RealtimeSessionController()
+    {
+        _stayOnTop.Tick += (_, _) =>
+        {
+            // The control bar last, so it ends up above the block layers it may overlap.
+            foreach (var block in _blockWindows.Values) AlwaysOnTop.Reassert(block);
+            if (_edit is { } edit) AlwaysOnTop.Reassert(edit);
+            if (_control is { } control) AlwaysOnTop.Reassert(control);
+        };
+    }
 
     /// <summary>Raised when the session starts or ends, so the page can re-render its controls.</summary>
     public event EventHandler? StateChanged;
@@ -94,6 +115,7 @@ internal sealed class RealtimeSessionController
 
         Log.Info("Realtime session ending");
 
+        _stayOnTop.Stop();
         DisposeEscapeHook();
 
         if (_session != null)
@@ -153,6 +175,8 @@ internal sealed class RealtimeSessionController
         // a control bar the user cannot reach at all.
         control.BringToFront();
 
+        _stayOnTop.Start();
+
         // Only while editing. The hook swallows Esc process-wide, and a translating session can run
         // for hours next to an application that needs its own Esc key.
         DisposeEscapeHook();
@@ -186,6 +210,7 @@ internal sealed class RealtimeSessionController
 
         control.SetMode(RealtimeControlMode.Running);
         control.BringToFront();
+        _stayOnTop.Start();
 
         _session.Start(regions, request.SourceLanguage, request.TargetLanguage);
     }
