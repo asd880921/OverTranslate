@@ -74,6 +74,22 @@ public partial class RealtimeControlWindow : Window
             ApplyScreenScale();
             PlaceInitially();
         };
+
+        // The bar is sized to its content, so every change of text changes its width — a status
+        // message replacing another, a block count going from one digit to two. Left where it is,
+        // the left edge stays put and the right edge walks in and out, which is the movement the eye
+        // notices. Growing from the middle instead keeps the bar where it was and makes the change
+        // read as the text changing rather than the bar moving.
+        SizeChanged += (_, e) =>
+        {
+            if (!IsLoaded || !e.WidthChanged || _isDragging) return;
+
+            var grown = (int)Math.Round((e.NewSize.Width - e.PreviousSize.Width) * _windowScale);
+            if (grown == 0) return;
+
+            _position = _position with { X = _position.X - grown / 2 };
+            ClampIntoScreen();
+        };
     }
 
     public event EventHandler? StartRequested;
