@@ -176,6 +176,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 blocks.Count,
                 result.StrRes?.Length ?? 0);
 
+            // Before the filters rather than after, and only when they took everything: a region
+            // that reads as empty has nothing left to log, which is exactly the case anyone is
+            // trying to diagnose. Where the rejected boxes sit and what they scored is what tells a
+            // line framed outside the block (a box against an edge, a couple of clipped glyphs)
+            // from one the confidence floor threw away (a box over the text, plausible words, a
+            // score just under the bar).
+            if (blocks.Count == 0 && result.TextBlocks.Length > 0)
+                LogRejectedBlocks(normalizedLanguage, result.TextBlocks);
+
             LogBlocks(normalizedLanguage, blocks);
             return blocks;
         }
@@ -444,6 +453,36 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
     // Debug on purpose, and the shipped configuration drops that level: this is the text the user
     // just had on screen, so it must never reach a log file that gets sent to anyone.
+    /// <summary>
+    /// Everything the detector found on a pass that ended up empty, with the score that decided it.
+    /// </summary>
+    private static void LogRejectedBlocks(string language, TextBlock[] blocks)
+    {
+        if (!Log.IsDebugEnabled)
+            return;
+
+        for (var index = 0; index < blocks.Length; index++)
+        {
+            var block = blocks[index];
+            var text = string.Concat(block.Chars ?? []).Trim();
+            var score = block.CharScores is { Length: > 0 } scores ? scores.Average() : 0;
+            var points = block.BoxPoints;
+
+            Log.Debug(
+                "ONNX OCR rejected lang={Lang} index={Index} score={Score:0.00} floor={Floor:0.00} " +
+                "bounds=({L},{T},{R},{B}) text=\"{Text}\"",
+                language,
+                index,
+                score,
+                MinRecognitionConfidence,
+                points is { Length: > 0 } ? points.Min(p => p.X) : -1,
+                points is { Length: > 0 } ? points.Min(p => p.Y) : -1,
+                points is { Length: > 0 } ? points.Max(p => p.X) : -1,
+                points is { Length: > 0 } ? points.Max(p => p.Y) : -1,
+                text);
+        }
+    }
+
     private static void LogBlocks(string language, IReadOnlyList<OcrTextBlock> blocks)
     {
         if (!Log.IsDebugEnabled)

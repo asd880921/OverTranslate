@@ -305,6 +305,8 @@ public sealed class RealtimeTranslationSession
         {
             // Checked before the "same text" shortcut below, because both are the empty string once
             // the region has genuinely gone quiet and only this branch counts that towards clearing.
+            RealtimeFrameDump.SaveUnread(frame, region.Id);
+
             var shownBefore = state.RenderedText.Length;
             state.MarkRendered(textBounds, capture, sourceText);
 
