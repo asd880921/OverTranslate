@@ -37,13 +37,35 @@ internal sealed class FrameFingerprint
     /// compression noise and antialiasing, well below the contrast between glyphs and their
     /// background.
     /// </summary>
-    private const int CellTolerance = 12;
+    /// <remarks>
+    /// Raised from 12 after measuring what each kind of change actually produces. At 12 a uniform
+    /// 16-level brightening of the band — a scene getting lighter behind an unchanged subtitle —
+    /// moved 84.8% of the cells, a bigger signal than replacing the subtitle itself, and the loop
+    /// duly recognised the same words again. It showed: over a whole live session 48% of the reads
+    /// that followed a gap under half a second came back identical to what was already on screen.
+    ///
+    /// Measured shares of cells moved, over a 1226x196 band:
+    ///
+    /// <code>
+    ///                              tolerance 12   16     24
+    ///   background +16 levels           84.8%    0.0%   0.0%
+    ///   subtitle replaced, same length  11.3%   10.2%   6.3%
+    ///   subtitle replaced, long line    25.0%   21.5%  18.4%
+    ///   subtitle disappears             14.5%   14.5%  13.7%
+    /// </code>
+    ///
+    /// 16 removes the drift entirely while every real change still clears
+    /// <see cref="ChangedCellPercent"/> two to four times over. Going further closes that margin —
+    /// at 24 a same-length replacement is down to 6.3% against a 5% bar — for nothing that 16 has
+    /// not already dealt with.
+    /// </remarks>
+    private const int CellTolerance = 16;
 
     /// <summary>
     /// What share of cells must have changed before the frame has. A single cell over the tolerance
     /// is a glint or a cursor; a line of text changing takes a good fraction of the grid with it.
     /// </summary>
-    private const int ChangedCellPercent = 5;
+    internal const int ChangedCellPercent = 5;
 
     private readonly byte[] _cells;
 
@@ -100,6 +122,23 @@ internal sealed class FrameFingerprint
                 changed++;
 
         return changed * 100 > _cells.Length * ChangedCellPercent;
+    }
+
+    /// <summary>
+    /// The share of cells that moved by more than <paramref name="tolerance"/>, which is the number
+    /// <see cref="Differs"/> compares against <see cref="ChangedCellPercent"/>. Exposed so the two
+    /// thresholds can be chosen against measured margins rather than argued about.
+    /// </summary>
+    internal double ChangedShare(FrameFingerprint? other, int tolerance)
+    {
+        if (other is null || other._cells.Length != _cells.Length || _cells.Length == 0) return 1;
+
+        var changed = 0;
+        for (var i = 0; i < _cells.Length; i++)
+            if (Math.Abs(_cells[i] - other._cells[i]) > tolerance)
+                changed++;
+
+        return (double)changed / _cells.Length;
     }
 
     private static byte[] Summarise(BitmapData data, Rectangle area, int cellsY)
