@@ -75,7 +75,7 @@ public partial class TrayMenuWindow : Window
 
     public void SetRealtimeRunning(bool running)
     {
-        OpenWindowLabel.Text = running ? "將即時翻譯視窗移至最上層" : "開啟翻譯視窗";
+        OpenWindowLabel.Text = running ? "置頂即時翻譯" : "開啟翻譯視窗";
         OpenWindowIcon.Text = running ? PinIcon : WindowIcon;
     }
 
