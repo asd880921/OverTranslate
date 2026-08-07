@@ -39,16 +39,27 @@ internal static class TextSimilarity
     /// <remarks>
     /// Measured over 69 consecutive reads of a live subtitle track. The distribution is strongly
     /// two-humped: 22 pairs under 10% (the same reading, which <see cref="IsSameContent"/> already
-    /// absorbs), 3 pairs between 10% and 30% — every one of them the same sentence read differently
-    /// ("Where haveyongone!" against "Where have you gone?!") — and 42 pairs above 50%, every one a
-    /// real change of line. Nothing at all landed between 44% and 50%, so the boundary sits in an
-    /// empty stretch rather than through the middle of anything.
+    /// absorbs), a handful between 10% and 30% — every one of them the same sentence read
+    /// differently ("Where haveyongone!" against "Where have you gone?!") — and 42 pairs above 50%,
+    /// every one a real change of line. <b>No pair of genuinely different sentences came in under
+    /// 50%, at any length</b>, so anything up to 30% would have been safe on this sample.
     ///
-    /// The two pairs that did land between 30% and 50% were "What?!" against "EW What?!": the same
-    /// sentence, but six characters long, where one stray glyph is a third of the line. That is what
-    /// <see cref="MinLengthForTolerance"/> already exists to keep out, and it guards this too.
+    /// It is set at 20% rather than 30% deliberately, because the two ways of being wrong here do
+    /// not cost the same. Judging a re-reading a new sentence costs one needless retranslation and
+    /// a repaint; judging a new sentence a re-reading leaves the line on screen untranslated for as
+    /// long as it lasts, which is the failure this whole feature is for. So the bound sits well
+    /// inside the empty stretch, and the price is paid where it is cheap: a 26% pair in the sample
+    /// ("rather dispiited Minato seem -san") is now treated as new text and retranslated.
+    ///
+    /// Not scaled further by length, though the temptation is real. A proportional bound already
+    /// tightens with length on its own — 2 characters at the 12-character floor against 8 at 40 —
+    /// and every additional narrowing tried against the sample removed a true re-reading before it
+    /// removed any false one, starting with a 21-character line that differed by 19%. Short text is
+    /// instead kept out entirely by <see cref="MinLengthForTolerance"/>: "What?!" against
+    /// "EW What?!" is 33% apart and the same line, but at six characters one stray glyph is a third
+    /// of it, and no ratio can tell that from "Yes" against "No".
     /// </remarks>
-    public const double MaxRereadDifferenceRatio = 0.3;
+    public const double MaxRereadDifferenceRatio = 0.2;
 
     /// <summary>
     /// Whether these are two readings of one sentence rather than two sentences — close enough to

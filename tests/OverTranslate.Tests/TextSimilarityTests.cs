@@ -94,15 +94,24 @@ public class TextSimilarityTests
 
     [Theory]
     // Consecutive reads of one unchanged subtitle, taken from a live session's log. Each pair is
-    // 10-30% apart: past what IsSameContent forgives, nowhere near a change of line.
+    // past what IsSameContent forgives and nowhere near a change of line.
     [InlineData("Where haveyongone!", "Where have you gone?!")]
     [InlineData("Where have you gonez", "Where have you gonez! E")]
-    [InlineData("rather dispiited Minato seem -san", "rather dispirited Minato-san. seem")]
     [InlineData("Oh,no! None ot the others Can tind a Way to", "Oh no! None ot the others can find a way to")]
     public void TwoReadingsOfOneSentenceAreRecognisedAsSuch(string first, string second)
     {
         Assert.True(TextSimilarity.IsSameSentence(first, second));
         Assert.True(TextSimilarity.IsSameSentence(second, first));
+    }
+
+    [Fact]
+    public void ARereadingTooFarGoneToProveIsTreatedAsNewText()
+    {
+        // Also one subtitle read twice (26% apart, fragments in a different order), and knowingly
+        // given up on: the bound is set where a wrong "same sentence" cannot cost a missed line,
+        // and the price is that a re-reading this mangled is retranslated instead of discarded.
+        Assert.False(TextSimilarity.IsSameSentence(
+            "rather dispiited Minato seem -san", "rather dispirited Minato-san. seem"));
     }
 
     [Theory]
