@@ -170,7 +170,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             if (!isCjk)
                 converted = RemoveIconIdeographNoise(converted);
 
-            var blocks = NormalizeBlocks(converted, isCjk);
+            // After normalisation, because that is where a CJK box is pulled in onto its glyphs and
+            // the shape being judged becomes the real one. Before grouping, which happens further
+            // out, so a stray box is never joined to the line beside it.
+            var blocks = RemoveMisshapenBlocks(NormalizeBlocks(converted, isCjk), normalizedLanguage);
 
             // Counts and lengths only — enough to tell "found nothing" from "found the wrong thing"
             // without the recognised text itself, which LogBlocks keeps at Debug.
@@ -378,6 +381,37 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             .OrderBy(b => b.Bounds.Y)
             .ThenBy(b => b.Bounds.X)
             .ToList();
+    }
+
+    /// <summary>
+    /// Drops boxes that cannot be holding the text read out of them — see <see cref="BoxShapeNoise"/>.
+    /// </summary>
+    /// <remarks>
+    /// Applies to every language, unlike <see cref="RemoveIconIdeographNoise"/>, which is a rule
+    /// about Latin pages. A Japanese or Korean capture had no noise filter at all before this, and
+    /// the lone □ that a detector returns for a strip of interface is not a script-specific problem.
+    /// </remarks>
+    private static List<OcrTextBlock> RemoveMisshapenBlocks(List<OcrTextBlock> blocks, string language)
+    {
+        List<OcrTextBlock>? kept = null;
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            if (!BoxShapeNoise.IsTooWideForItsText(blocks[index]))
+            {
+                kept?.Add(blocks[index]);
+                continue;
+            }
+
+            kept ??= [.. blocks.Take(index)];
+
+            if (Log.IsDebugEnabled)
+                Log.Debug(
+                    "ONNX OCR dropped a misshapen box lang={Lang} {W:0}x{H:0} text=\"{Text}\"",
+                    language, blocks[index].Bounds.Width, blocks[index].Bounds.Height, blocks[index].Text);
+        }
+
+        return kept ?? blocks;
     }
 
     // Removes lone-Han-ideograph icon misreads from a Latin page's blocks. English never contains
