@@ -159,7 +159,6 @@ public sealed class RealtimeTranslationSession
         CancellationToken token)
     {
         var state = new RealtimeRegionState();
-        var scale = new RegionTextScale();
         var pump = new RegionTranslationPump(this, region, sourceLanguage, targetLanguage, token);
 
         try
@@ -196,7 +195,7 @@ public sealed class RealtimeTranslationSession
                 {
                     SetBusy(true);
                     var reading = await ReadRegionAsync(
-                        region, frame, state, scale, Capture, sourceLanguage, pump, token);
+                        region, frame, state, Capture, sourceLanguage, pump, token);
 
                     // One line per look at the region, because every question about this feature
                     // being late or missing a line comes down to two things the outside cannot see:
@@ -293,7 +292,6 @@ public sealed class RealtimeTranslationSession
         RealtimeRegion region,
         Bitmap frame,
         RealtimeRegionState state,
-        RegionTextScale scale,
         Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture,
         string sourceLanguage,
         RegionTranslationPump pump,
@@ -330,7 +328,7 @@ public sealed class RealtimeTranslationSession
         var ocrMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         token.ThrowIfCancellationRequested();
 
-        recognized = RejectOversizedBlocks(recognized, scale, region.Id);
+        recognized = RejectCollapsedBlocks(recognized, frame.Height, region.Id);
 
         var sourceText = string.Join('\n', recognized.Select(block => block.Text));
         var textBounds = ToTextBounds(recognized);
@@ -410,18 +408,16 @@ public sealed class RealtimeTranslationSession
     /// </summary>
     /// <remarks>Lines the engine scored nothing for count as perfectly read, matching the filter,
     /// which lets a block through when it has no scores to judge it by.</remarks>
-    /// <summary>
-    /// Drops what is too tall to belong to this region's text, and learns from what is left.
-    /// </summary>
-    private static List<OcrTextBlock> RejectOversizedBlocks(
-        List<OcrTextBlock> blocks, RegionTextScale scale, int regionId)
+    /// <summary>Drops boxes the detector threw across the whole block — see CollapsedDetection.</summary>
+    private static List<OcrTextBlock> RejectCollapsedBlocks(
+        List<OcrTextBlock> blocks, double blockHeight, int regionId)
     {
         List<OcrTextBlock>? kept = null;
 
         for (var index = 0; index < blocks.Count; index++)
         {
             var block = blocks[index];
-            if (!scale.IsOversized(block.Bounds.Height))
+            if (!CollapsedDetection.IsCollapsed(block.Bounds.Height, blockHeight))
             {
                 kept?.Add(block);
                 continue;
@@ -432,18 +428,11 @@ public sealed class RealtimeTranslationSession
             kept ??= [.. blocks.Take(index)];
 
             Log.Info(
-                "Realtime region {Region} dropped a {Height:0}px block over usual {Usual:0}px: \"{Text}\"",
-                regionId, block.Bounds.Height, scale.UsualHeight ?? 0, block.Text);
+                "Realtime region {Region} dropped a collapsed {Height:0}px box in a {Block:0}px block: \"{Text}\"",
+                regionId, block.Bounds.Height, blockHeight, block.Text);
         }
 
-        var result = kept ?? blocks;
-
-        // Learned from after the filter, so a misdetection that got through cannot raise the bar
-        // for the next one.
-        foreach (var block in result)
-            scale.Observe(block.Bounds.Height, ShortTextGlyphHeight.GlyphsIn(block.Text));
-
-        return result;
+        return kept ?? blocks;
     }
 
     private static double ReadingConfidence(IReadOnlyList<OcrTextBlock> blocks)
