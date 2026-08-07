@@ -1,5 +1,7 @@
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.InteropServices;
 using NLog;
 using RapidOcrNet;
 using SkiaSharp;
@@ -495,14 +497,60 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         return overshoot == 0 ? length : length + (DetectorAlignment - overshoot);
     }
 
+    /// <summary>
+    /// Hands the captured pixels to Skia by copying them straight across.
+    /// </summary>
+    /// <remarks>
+    /// This used to encode the bitmap to PNG and decode it again, which is a lot of work to move
+    /// pixels between two in-memory buffers — compression and decompression, entirely discarded.
+    /// A screenshot pays it once and nobody notices; realtime translation pays it on every pass of
+    /// every watched region, several times a second, for as long as the session runs.
+    ///
+    /// The format is not a free choice: it is whatever the decoder used to hand back, because
+    /// everything downstream was tuned against that. Measured against the old path on four capture
+    /// sizes, Bgra8888/Premul reproduces its output pixel for pixel — Format32bppArgb is already
+    /// BGRA in memory, and a screen grab's alpha is 255, which premultiplied leaves untouched.
+    /// Declaring the surface opaque instead is the tempting simplification and a real bug: it also
+    /// changes what <see cref="AlignForDetector"/>'s transparent fill means, turning the padding
+    /// from clear to black, which moved recognised text at the edges of every size tested.
+    /// </remarks>
     private static SKBitmap ConvertToSkBitmap(Bitmap bitmap)
     {
-        using var ms = new MemoryStream();
-        bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-        ms.Position = 0;
+        var source = bitmap.LockBits(
+            new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+            ImageLockMode.ReadOnly,
+            PixelFormat.Format32bppArgb);
 
-        var skBitmap = SKBitmap.Decode(ms);
-        return skBitmap ?? throw new InvalidOperationException("無法將影像轉換為 ONNX OCR 可讀格式。");
+        try
+        {
+            // Format32bppArgb is BGRA in memory, which is Bgra8888 here — so the copy is a copy and
+            // never a per-pixel conversion.
+            var info = new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var skBitmap = new SKBitmap(info);
+
+            var destination = skBitmap.GetPixels();
+            if (destination == IntPtr.Zero)
+            {
+                skBitmap.Dispose();
+                throw new InvalidOperationException("無法將影像轉換為 ONNX OCR 可讀格式。");
+            }
+
+            // Row by row rather than one block: GDI+ and Skia pad their rows independently, so the
+            // two strides agree only by coincidence.
+            var rowBytes = bitmap.Width * 4;
+            var row = new byte[rowBytes];
+            for (int y = 0; y < bitmap.Height; y++)
+            {
+                Marshal.Copy(source.Scan0 + y * source.Stride, row, 0, rowBytes);
+                Marshal.Copy(row, 0, destination + y * skBitmap.RowBytes, rowBytes);
+            }
+
+            return skBitmap;
+        }
+        finally
+        {
+            bitmap.UnlockBits(source);
+        }
     }
 
     private static void EnsureModelFile(string path)
