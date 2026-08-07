@@ -88,13 +88,30 @@ public partial class MainWindow : Window
 
     private void ShowStartupBalloon()
     {
-        if (_notifyIcon == null) return;
-
         var hotkeyDisplay = SettingsService.Instance.Current.HotkeyDisplay;
         var shortcutText = string.IsNullOrWhiteSpace(hotkeyDisplay) ? "已設定的快捷鍵" : hotkeyDisplay;
 
-        _notifyIcon.BalloonTipTitle = "OverTranslate 已最小化";
-        _notifyIcon.BalloonTipText = $"程式已縮小至系統匣，可使用 {shortcutText} 開始進行截圖翻譯。";
+        ShowTrayNotification(
+            "OverTranslate 已最小化",
+            $"程式已縮小至系統匣，可使用 {shortcutText} 開始進行截圖翻譯。");
+    }
+
+    /// <summary>
+    /// A notification through the tray icon, which Windows presents in its own notification centre.
+    /// </summary>
+    /// <remarks>
+    /// The application's own <see cref="ToastWindow"/> is for things that belong to a capture — it
+    /// appears beside the selection it is talking about and disappears with it. Something the user
+    /// caused from outside any capture, such as a shortcut that declined to start one, has no such
+    /// anchor, and telling them through the shell they already associate with this application is
+    /// both less startling and something they can go back and read.
+    /// </remarks>
+    private void ShowTrayNotification(string title, string message)
+    {
+        if (_notifyIcon == null) return;
+
+        _notifyIcon.BalloonTipTitle = title;
+        _notifyIcon.BalloonTipText = message;
         _notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
         _notifyIcon.ShowBalloonTip(3000);
     }
@@ -129,11 +146,7 @@ public partial class MainWindow : Window
     {
         if (!Views.Realtime.RealtimeSessionController.Instance.IsActive) return false;
 
-        ShowBalloon(
-            "即時翻譯進行中",
-            "請先結束即時翻譯，再使用截圖翻譯。",
-            null,
-            ToastKind.Info);
+        ShowTrayNotification("即時翻譯進行中", "請先結束即時翻譯，再使用截圖翻譯。");
         return true;
     }
 
