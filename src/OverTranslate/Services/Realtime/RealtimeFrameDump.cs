@@ -14,9 +14,11 @@ namespace OverTranslate.Services.Realtime;
 /// for the detector, or the grab may have caught the player mid-repaint. All of them look identical
 /// from the outside — an empty result — and all of them are obvious in one glance at the frame.
 ///
-/// Off unless <c>OVERTRANSLATE_DUMPFRAMES</c> is set, and deliberately so: these are pictures of
-/// whatever the user has on screen. Kept to <see cref="MaxFrames"/> per session so leaving it on
-/// cannot quietly fill a disk.
+/// Off unless the marker file exists, and deliberately so: these are pictures of whatever the user
+/// has on screen. A file rather than an environment variable because the application is normally
+/// started from a shortcut or a debugger, neither of which inherits a variable typed into a shell —
+/// creating a file next to the log is something anyone can do, and deleting it turns this off again.
+/// Kept to <see cref="MaxFrames"/> per run so leaving it on cannot quietly fill a disk.
 /// </remarks>
 internal static class RealtimeFrameDump
 {
@@ -24,12 +26,14 @@ internal static class RealtimeFrameDump
 
     private const int MaxFrames = 60;
 
-    public static readonly bool IsEnabled =
-        !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVERTRANSLATE_DUMPFRAMES"));
-
-    private static readonly string Directory = Path.Combine(
+    private static readonly string LogDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "OverTranslate", "logs", "frames");
+        "OverTranslate", "logs");
+
+    private static readonly string Directory = Path.Combine(LogDirectory, "frames");
+
+    /// <summary>Create <c>%AppData%\OverTranslate\logs\dumpframes</c> and restart to switch on.</summary>
+    public static readonly bool IsEnabled = File.Exists(Path.Combine(LogDirectory, "dumpframes"));
 
     private static int _written;
 
