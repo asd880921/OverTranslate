@@ -146,6 +146,9 @@ public sealed class RealtimeTranslationSession
         try
         {
             using var timer = new PeriodicTimer(PollInterval);
+            var lastScan = Stopwatch.GetTimestamp();
+            var skippedPolls = 0;
+
             while (await timer.WaitForNextTickAsync(token))
             {
                 token.ThrowIfCancellationRequested();
@@ -164,18 +167,42 @@ public sealed class RealtimeTranslationSession
                 FrameFingerprint Capture(IReadOnlyList<Rectangle>? areas) =>
                     FrameFingerprint.Capture(frame, areas);
 
-                if (!state.Observe(Capture)) continue;
+                if (!state.Observe(Capture))
+                {
+                    skippedPolls++;
+                    continue;
+                }
 
                 try
                 {
                     SetBusy(true);
-                    var ran = await ReadRegionAsync(
+                    var reading = await ReadRegionAsync(
                         region, frame, state, Capture, sourceLanguage, pump, token);
+
+                    // One line per look at the region, because every question about this feature
+                    // being late or missing a line comes down to two things the outside cannot see:
+                    // how long it had been since the region was last examined, and which of the ways
+                    // out of a pass was taken. Counts and lengths only — the words themselves stay at
+                    // Debug, where LogBlocks keeps them.
+                    Log.Info(
+                        "Realtime read region={Region} skipped={Skipped} since={Since}ms ocr={Ocr}ms " +
+                        "lines={Lines} chars={Chars} shown={Shown} -> {Outcome}",
+                        region.Id,
+                        skippedPolls,
+                        (int)Stopwatch.GetElapsedTime(lastScan).TotalMilliseconds,
+                        reading.OcrMs,
+                        reading.Lines,
+                        reading.SourceLength,
+                        reading.RenderedLength,
+                        reading.Outcome);
+
+                    lastScan = Stopwatch.GetTimestamp();
+                    skippedPolls = 0;
 
                     // Skipped for want of an inference slot. Nothing has been recorded as rendered,
                     // so the same change is still pending and the next poll tries again — which is
                     // the whole point of not queueing.
-                    if (ran) pump.ClearFailure();
+                    if (reading.Outcome != PassOutcome.NoSlot) pump.ClearFailure();
                 }
                 catch (OperationCanceledException)
                 {
@@ -215,12 +242,33 @@ public sealed class RealtimeTranslationSession
         BusyChanged?.Invoke(this, count > 0);
     }
 
+    /// <summary>Which way out of a pass was taken. Recorded because they are indistinguishable from
+    /// the outside, and "the line never appeared" has a different cause in every one of them.</summary>
+    private enum PassOutcome
+    {
+        /// <summary>The recogniser was busy; nothing was read and the next poll will try again.</summary>
+        NoSlot,
+        /// <summary>Read, and no text survived recognition. The overlay keeps what it has for now.</summary>
+        Empty,
+        /// <summary>Read as empty often enough to believe it, so the overlay was emptied.</summary>
+        Cleared,
+        /// <summary>Read, and the words are the ones already on screen — see TextSimilarity.</summary>
+        Unchanged,
+        /// <summary>Read, the words are new, and they have been handed to the pump.</summary>
+        Translating,
+    }
+
+    /// <param name="SourceLength">Characters read this pass.</param>
+    /// <param name="RenderedLength">Characters the overlay was already showing, so a pass judged
+    /// Unchanged can be told apart from a genuinely new line that the tolerance swallowed.</param>
+    private readonly record struct PassReading(
+        PassOutcome Outcome, int OcrMs, int Lines, int SourceLength, int RenderedLength);
+
     /// <summary>
     /// Reads one frame and decides what the region now shows. Everything here is bounded work the
     /// loop can afford to wait for; the translation, which is not, is handed to the pump.
     /// </summary>
-    /// <returns>False when the pass was skipped because the recogniser had no free slot.</returns>
-    private async Task<bool> ReadRegionAsync(
+    private async Task<PassReading> ReadRegionAsync(
         RealtimeRegion region,
         Bitmap frame,
         RealtimeRegionState state,
@@ -237,7 +285,8 @@ public sealed class RealtimeTranslationSession
         // Try, not wait: a queued pass would be reading a frame that has already been replaced, and
         // would hold this region's loop shut while it did. Skipping costs one poll.
         var recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, token);
-        if (recognized is null) return false;
+        if (recognized is null)
+            return new PassReading(PassOutcome.NoSlot, 0, 0, 0, state.RenderedText.Length);
 
         var ocrMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         token.ThrowIfCancellationRequested();
@@ -256,9 +305,14 @@ public sealed class RealtimeTranslationSession
         {
             // Checked before the "same text" shortcut below, because both are the empty string once
             // the region has genuinely gone quiet and only this branch counts that towards clearing.
+            var shownBefore = state.RenderedText.Length;
             state.MarkRendered(textBounds, capture, sourceText);
-            if (state.ShouldClearOverlay) pump.Publish(pass, []);
-            return true;
+
+            var cleared = state.ShouldClearOverlay;
+            if (cleared) pump.Publish(pass, []);
+
+            return new PassReading(
+                cleared ? PassOutcome.Cleared : PassOutcome.Empty, ocrMs, 0, 0, shownBefore);
         }
 
         // Close enough to what is already on screen to be the same words read twice. The strips are
@@ -267,17 +321,22 @@ public sealed class RealtimeTranslationSession
         // character at a time, which comparing against the previous frame instead would allow.
         if (TextSimilarity.IsSameContent(sourceText, state.RenderedText))
         {
+            var shownBefore = state.RenderedText.Length;
             state.MarkRendered(textBounds, capture, state.RenderedText);
-            return true;
+            return new PassReading(
+                PassOutcome.Unchanged, ocrMs, recognized.Count, sourceText.Length, shownBefore);
         }
 
         // Recorded as shown before it has been translated, and deliberately: the frame has been
         // read and the words are known, so holding this region's state open until the network
         // answers would only stop the region being watched. A translation that never arrives asks
         // for this record to be undone — see RegionTranslationPump.
+        var shown = state.RenderedText.Length;
         state.MarkRendered(textBounds, capture, sourceText);
         pump.Post(pass, recognized, ocrMs);
-        return true;
+
+        return new PassReading(
+            PassOutcome.Translating, ocrMs, recognized.Count, sourceText.Length, shown);
     }
 
     private void RaiseRegionUpdated(RealtimeRegionUpdate update) => RegionUpdated?.Invoke(this, update);
