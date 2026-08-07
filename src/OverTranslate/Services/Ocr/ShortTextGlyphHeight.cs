@@ -57,4 +57,7 @@ internal static class ShortTextGlyphHeight
 
         return Math.Min(estimated, boxHeight * GlyphsToBoxHeight);
     }
+
+    /// <summary>Characters that occupy width, which is what "how short is this line" means here.</summary>
+    public static int GlyphsIn(string text) => text.Count(c => !char.IsWhiteSpace(c));
 }

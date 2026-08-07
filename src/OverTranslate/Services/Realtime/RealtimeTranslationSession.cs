@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using NLog;
+using OverTranslate.Services.Ocr;
 
 namespace OverTranslate.Services.Realtime;
 
@@ -141,6 +142,7 @@ public sealed class RealtimeTranslationSession
         CancellationToken token)
     {
         var state = new RealtimeRegionState();
+        var scale = new RegionTextScale();
         var pump = new RegionTranslationPump(this, region, sourceLanguage, targetLanguage, token);
 
         try
@@ -177,7 +179,7 @@ public sealed class RealtimeTranslationSession
                 {
                     SetBusy(true);
                     var reading = await ReadRegionAsync(
-                        region, frame, state, Capture, sourceLanguage, pump, token);
+                        region, frame, state, scale, Capture, sourceLanguage, pump, token);
 
                     // One line per look at the region, because every question about this feature
                     // being late or missing a line comes down to two things the outside cannot see:
@@ -274,6 +276,7 @@ public sealed class RealtimeTranslationSession
         RealtimeRegion region,
         Bitmap frame,
         RealtimeRegionState state,
+        RegionTextScale scale,
         Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture,
         string sourceLanguage,
         RegionTranslationPump pump,
@@ -309,6 +312,8 @@ public sealed class RealtimeTranslationSession
 
         var ocrMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         token.ThrowIfCancellationRequested();
+
+        recognized = RejectOversizedBlocks(recognized, scale, region.Id);
 
         var sourceText = string.Join('\n', recognized.Select(block => block.Text));
         var textBounds = ToTextBounds(recognized);
@@ -388,6 +393,42 @@ public sealed class RealtimeTranslationSession
     /// </summary>
     /// <remarks>Lines the engine scored nothing for count as perfectly read, matching the filter,
     /// which lets a block through when it has no scores to judge it by.</remarks>
+    /// <summary>
+    /// Drops what is too tall to belong to this region's text, and learns from what is left.
+    /// </summary>
+    private static List<OcrTextBlock> RejectOversizedBlocks(
+        List<OcrTextBlock> blocks, RegionTextScale scale, int regionId)
+    {
+        List<OcrTextBlock>? kept = null;
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            var block = blocks[index];
+            if (!scale.IsOversized(block.Bounds.Height))
+            {
+                kept?.Add(block);
+                continue;
+            }
+
+            // Copied lazily: nearly every pass keeps everything, and there is no reason to rebuild
+            // the list for those.
+            kept ??= [.. blocks.Take(index)];
+
+            Log.Info(
+                "Realtime region {Region} dropped a {Height:0}px block over usual {Usual:0}px: \"{Text}\"",
+                regionId, block.Bounds.Height, scale.UsualHeight ?? 0, block.Text);
+        }
+
+        var result = kept ?? blocks;
+
+        // Learned from after the filter, so a misdetection that got through cannot raise the bar
+        // for the next one.
+        foreach (var block in result)
+            scale.Observe(block.Bounds.Height, ShortTextGlyphHeight.GlyphsIn(block.Text));
+
+        return result;
+    }
+
     private static double ReadingConfidence(IReadOnlyList<OcrTextBlock> blocks)
     {
         double weighted = 0;
