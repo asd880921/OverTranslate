@@ -79,7 +79,7 @@ public class OcrEngineConcurrencyTests(ITestOutputHelper output)
                 using var frame = SlowFrame();
                 try
                 {
-                    await engine.TryRecognizeAsync(frame, "EN", load.Token);
+                    await engine.TryRecognizeAsync(frame, "EN", cancellationToken: load.Token);
                 }
                 catch (OperationCanceledException)
                 {

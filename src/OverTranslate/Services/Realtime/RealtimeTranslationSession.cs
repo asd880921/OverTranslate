@@ -284,9 +284,26 @@ public sealed class RealtimeTranslationSession
 
         // Try, not wait: a queued pass would be reading a frame that has already been replaced, and
         // would hold this region's loop shut while it did. Skipping costs one poll.
-        var recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, token);
+        var (primarySize, fallbackSize) = RealtimeDetectorSize.For(frame.Width, frame.Height);
+        var recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, primarySize, token);
         if (recognized is null)
             return new PassReading(PassOutcome.NoSlot, 0, 0, 0, state.RenderedText.Length);
+
+        // Nothing found can mean the text is out of the detector's range rather than absent, and
+        // the two ways of being out of it need opposite sizes — so the one not tried yet gets a go
+        // before the region is written off as empty. Only on empty: a pass that read something has
+        // no reason to pay for a second inference.
+        if (recognized.Count == 0 && fallbackSize is { } retrySize)
+        {
+            var retried = await _ocr.TryRecognizeAsync(frame, sourceLanguage, retrySize, token);
+            if (retried is { Count: > 0 })
+            {
+                Log.Info(
+                    "Realtime region {Region} found {Lines} line(s) at detect={Retry} after none at {Primary}",
+                    region.Id, retried.Count, retrySize, primarySize);
+                recognized = retried;
+            }
+        }
 
         var ocrMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         token.ThrowIfCancellationRequested();

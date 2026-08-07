@@ -16,6 +16,12 @@ internal interface IOcrEngine : IDisposable
     /// waiting for it would delay the frame that replaced it. A screenshot, which the user is
     /// waiting on and which will not come round again, uses <see cref="RecognizeAsync"/> instead.
     /// </remarks>
+    /// <param name="maxDetectSize">
+    /// Longest side to hand the text detector, or null for the default. Only ever downscales.
+    /// </param>
     Task<List<OcrTextBlock>?> TryRecognizeAsync(
-        Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default);
+        Bitmap bitmap,
+        string sourceLanguage,
+        int? maxDetectSize = null,
+        CancellationToken cancellationToken = default);
 }

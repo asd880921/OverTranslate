@@ -111,7 +111,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     }
 
     public Task<List<OcrTextBlock>?> TryRecognizeAsync(
-        Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
+        Bitmap bitmap,
+        string sourceLanguage,
+        int? maxDetectSize = null,
+        CancellationToken cancellationToken = default)
     {
         if (!OcrLanguageRouter.IsSupported(sourceLanguage))
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
@@ -126,7 +129,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return RecognizeCore(bitmap, sourceLanguage);
+                return RecognizeCore(bitmap, sourceLanguage, maxDetectSize);
             }
             finally
             {
@@ -135,7 +138,8 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         }, cancellationToken);
     }
 
-    private List<OcrTextBlock> RecognizeCore(Bitmap bitmap, string sourceLanguage)
+    private List<OcrTextBlock> RecognizeCore(
+        Bitmap bitmap, string sourceLanguage, int? maxDetectSize = null)
     {
         var normalizedLanguage = OcrLanguageRouter.Normalize(sourceLanguage);
         var isCjk = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
@@ -147,14 +151,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         try
         {
             Log.Info(
-                "Running ONNX OCR on {W}x{H} bitmap, lang={Lang}, model={Model}, threads={Threads}",
+                "Running ONNX OCR on {W}x{H} bitmap, detect={Detect}, lang={Lang}, model={Model}, threads={Threads}",
                 bitmap.Width,
                 bitmap.Height,
+                maxDetectSize?.ToString() ?? "default",
                 normalizedLanguage,
                 runtime.ModelName,
                 ThreadCount);
 
-            var options = CreateOptions();
+            var options = CreateOptions(maxDetectSize);
             using var skBitmap = ConvertToSkBitmap(bitmap);
             using var detectorInput = AlignForDetector(skBitmap, options.Padding);
             var result = runtime.Engine.Detect(detectorInput, options);
@@ -327,11 +332,18 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         return new RapidOcrRuntime(modelName, engine);
     }
 
-    private static RapidOcrOptions CreateOptions() =>
-        // Default ImgResize (1024) downscales wide UI screenshots and destroys small-text
-        // detail, causing recognition errors. Raising it keeps typical captures near native
-        // resolution; smaller images are unaffected (no upscaling).
-        RapidOcrOptions.Default with { ImgResize = 2048 };
+    // Default ImgResize (1024) downscales wide UI screenshots and destroys small-text detail,
+    // causing recognition errors. Raising it keeps typical captures near native resolution;
+    // smaller images are unaffected, because ImgResize only ever downscales.
+    private const int ScreenshotDetectSize = 2048;
+
+    /// <param name="maxDetectSize">
+    /// Longest side to give the detector, or null for the screenshot default. A caller that knows
+    /// its text is far larger than interface text passes a smaller number — see
+    /// <see cref="Realtime.RealtimeDetectorSize"/> for the measurements behind that.
+    /// </param>
+    private static RapidOcrOptions CreateOptions(int? maxDetectSize) =>
+        RapidOcrOptions.Default with { ImgResize = maxDetectSize ?? ScreenshotDetectSize };
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)
     {
@@ -538,7 +550,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // how every large capture is fed. Revisit only with a benchmark strong enough to resolve it.
     private const int DetectorAlignment = 32;
 
-    private static SKBitmap AlignForDetector(SKBitmap src, int detectPadding)
+    internal static SKBitmap AlignForDetector(SKBitmap src, int detectPadding)
     {
         var aligned = new SKBitmap(
             AlignedLength(src.Width, detectPadding),
@@ -580,7 +592,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// changes what <see cref="AlignForDetector"/>'s transparent fill means, turning the padding
     /// from clear to black, which moved recognised text at the edges of every size tested.
     /// </remarks>
-    private static SKBitmap ConvertToSkBitmap(Bitmap bitmap)
+    internal static SKBitmap ConvertToSkBitmap(Bitmap bitmap)
     {
         var source = bitmap.LockBits(
             new Rectangle(0, 0, bitmap.Width, bitmap.Height),

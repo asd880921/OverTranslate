@@ -36,13 +36,16 @@ public class OcrService : IDisposable
     /// already been replaced — see <see cref="IOcrEngine.TryRecognizeAsync"/>.
     /// </summary>
     public async Task<List<OcrTextBlock>?> TryRecognizeAsync(
-        Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
+        Bitmap bitmap,
+        string sourceLanguage,
+        int? maxDetectSize = null,
+        CancellationToken cancellationToken = default)
     {
         if (!OcrLanguageRouter.IsSupported(sourceLanguage))
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
 
         var blocks = await _engine.TryRecognizeAsync(
-            bitmap, OcrLanguageRouter.Normalize(sourceLanguage), cancellationToken);
+            bitmap, OcrLanguageRouter.Normalize(sourceLanguage), maxDetectSize, cancellationToken);
 
         return blocks is null ? null : OcrTextBlockGrouper.Group(blocks);
     }
