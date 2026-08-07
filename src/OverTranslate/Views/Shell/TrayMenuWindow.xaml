@@ -64,16 +64,17 @@
                      the shortcut. Three entry points for one action was one too many, and this menu
                      is the one that has to stay short as the app grows. -->
 
-                <!-- 開啟翻譯視窗 -->
+                <!-- 開啟翻譯視窗；即時翻譯進行中改為把浮動視窗移至最上層 -->
                 <Button x:Name="OpenWindowBtn"
                         Style="{StaticResource TrayMenuItem}"
                         Click="OpenWindowBtn_Click">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                        <TextBlock x:Name="OpenWindowIcon"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                    FontSize="14" Text="&#xE737;"
                                    Width="22" VerticalAlignment="Center"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
-                        <TextBlock Text="開啟翻譯視窗" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="OpenWindowLabel" Text="開啟翻譯視窗" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 

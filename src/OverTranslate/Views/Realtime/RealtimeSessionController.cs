@@ -109,6 +109,34 @@ internal sealed class RealtimeSessionController
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Puts every layer back at the front of the topmost band, on demand.
+    /// </summary>
+    /// <remarks>
+    /// The way out of the one case the timer cannot win on its own: another topmost window that
+    /// re-asserts itself just as persistently, leaving the control bar unreachable and the session
+    /// unstoppable — the running session deliberately has no global Esc, because it would swallow
+    /// the key from the game underneath. Reached by clicking the tray icon, which does nothing
+    /// useful during a session anyway: it opens the translation window, and that window cannot be
+    /// used while the layers own the screen.
+    /// </remarks>
+    public void BringToFront()
+    {
+        if (!IsActive) return;
+
+        foreach (var block in _blockWindows.Values) AlwaysOnTop.Reassert(block);
+        if (_edit is { } edit) AlwaysOnTop.Reassert(edit);
+        if (_control is { } control)
+        {
+            AlwaysOnTop.Reassert(control);
+            // Says the click did something even when nothing was covering the bar, which is the
+            // more common case: a user who tries this is looking for a sign of life.
+            control.ShowMessage("已將即時翻譯視窗移至最上層");
+        }
+
+        Log.Info("Realtime layers re-asserted on top by request");
+    }
+
     public void Stop()
     {
         if (!IsActive) return;

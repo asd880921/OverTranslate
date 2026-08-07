@@ -72,7 +72,7 @@ public partial class MainWindow : Window
 
         _notifyIcon.MouseClick += (_, e) =>
         {
-            if (e.Button == MouseButtons.Left)  OpenTranslationWindow();
+            if (e.Button == MouseButtons.Left)  OnTrayLeftClick();
             if (e.Button == MouseButtons.Right) ShowTrayMenu();
         };
     }
@@ -687,11 +687,34 @@ public partial class MainWindow : Window
     {
         if (_trayMenu != null) return;
         _trayMenu = new TrayMenuWindow();
-        _trayMenu.OpenTranslationRequested += (_, _) => OpenTranslationWindow();
+        _trayMenu.OpenTranslationRequested += (_, _) => OnTrayLeftClick();
+        _trayMenu.SetRealtimeRunning(Views.Realtime.RealtimeSessionController.Instance.IsActive);
         _trayMenu.OpenSettingsRequested    += (_, _) => OpenSettings();
         _trayMenu.ExitRequested            += (_, _) => ExitApp();
         _trayMenu.Closed                   += (_, _) => _trayMenu = null;
         _trayMenu.Show();
+    }
+
+    /// <summary>
+    /// Opens the translation window, or — while a realtime session owns the screen — puts its
+    /// layers back on top instead.
+    /// </summary>
+    /// <remarks>
+    /// The window is no use during a session: the layers cover the screen and the session's own
+    /// controls are the only thing to interact with. So the click is spent on the one thing the
+    /// user might actually need it for, which is reaching a control bar that something else has
+    /// covered. Without it the only way out of that would be killing the application from the
+    /// tray, which takes the block layout with it.
+    /// </remarks>
+    private static void OnTrayLeftClick()
+    {
+        if (Views.Realtime.RealtimeSessionController.Instance.IsActive)
+        {
+            Views.Realtime.RealtimeSessionController.Instance.BringToFront();
+            return;
+        }
+
+        OpenTranslationWindow();
     }
 
     private static void OpenTranslationWindow() =>
