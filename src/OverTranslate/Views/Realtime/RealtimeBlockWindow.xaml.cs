@@ -4,7 +4,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using OverTranslate.Layout;
 using OverTranslate.Services;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, and System.Drawing arrives with
@@ -47,8 +46,11 @@ public partial class RealtimeBlockWindow : Window
     /// </summary>
     private const double MaxHeightOverSource = 1.15;
 
-    private static readonly Duration FadeDuration = new(TimeSpan.FromMilliseconds(110));
-
+    // No fade on rebuild. A cross-fade was there to soften the swap, but every repaint took the
+    // whole layer to transparent and back, so a line being re-read — which happens several times
+    // while one subtitle is on screen — pulsed the text the reader was in the middle of. Swapping
+    // outright is the quieter of the two, and the repaints it makes visible are better dealt with
+    // by not making them: see RealtimeBlockWindow.SetLines and TextSimilarity.
     private static readonly SolidColorBrush ScrimBrush =
         Freeze(new SolidColorBrush(Color.FromArgb(0xB8, 0, 0, 0)));
     private static readonly SolidColorBrush TextBrush =
@@ -171,16 +173,6 @@ public partial class RealtimeBlockWindow : Window
             ScrimCanvas.Children.Add(visual.Scrim);
             TextCanvas.Children.Add(visual.Text);
         }
-
-        // A short cross-fade rather than an instant swap: at this size a hard cut reads as a flicker
-        // in the corner of the eye, which is exactly where this content lives. Applied to the host
-        // so both layers fade as one thing.
-        LayerHost.BeginAnimation(OpacityProperty, new DoubleAnimation
-        {
-            From = 0,
-            To = 1,
-            Duration = FadeDuration
-        });
     }
 
     /// <summary>One line's two halves, drawn into separate layers so text always wins over scrims.</summary>
