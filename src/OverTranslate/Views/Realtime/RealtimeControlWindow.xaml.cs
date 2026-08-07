@@ -121,7 +121,7 @@ public partial class RealtimeControlWindow : Window
     public void SetLanguages(string sourceCode, string targetCode)
     {
         _runStatus =
-            $"{Models.LanguageData.GetSourceDisplay(sourceCode)} → {Models.LanguageData.GetTargetDisplay(targetCode)}";
+            $"{Models.LanguageData.GetSourceName(sourceCode)} → {Models.LanguageData.GetTargetName(targetCode)}";
 
         if (!_messageTimer.IsEnabled) RestoreText();
     }
@@ -217,16 +217,14 @@ public partial class RealtimeControlWindow : Window
             _screenBounds.Left + _screenBounds.Width / 2,
             _screenBounds.Top + _screenBounds.Height / 2);
 
-        // Top centre. The bar started at the bottom, on the reasoning that the content is in the
-        // middle of the screen — which forgot what this feature is mostly pointed at. Subtitles sit
-        // bottom centre, and so do game HUDs, so the old default landed on the one part of the
-        // screen the user is here to read. The top edge is that position's opposite, and staying
-        // centred keeps the bar findable: a corner hides it better but a first-time user has to go
-        // looking. Dragging still overrides all of this. The 48px gap is scaled by the target
-        // monitor so it reads the same distance in from the edge on every display.
+        // Bottom centre, which does sit where subtitles do — the top edge was tried and read as
+        // out of the way to the point of being out of mind, and a control the user forgets is there
+        // is worse than one they move once. Dragging is the answer to the overlap, and the position
+        // survives switching modes so it only has to be done once a session. The 48px gap is scaled
+        // by the target monitor so it reads the same distance up on every display.
         _position = new System.Drawing.Point(
             _screenBounds.Left + (_screenBounds.Width - PhysicalWidth) / 2,
-            _screenBounds.Top + (int)Math.Round(48 * targetScale));
+            _screenBounds.Bottom - PhysicalHeight - (int)Math.Round(48 * targetScale));
 
         ClampIntoScreen();
     }
