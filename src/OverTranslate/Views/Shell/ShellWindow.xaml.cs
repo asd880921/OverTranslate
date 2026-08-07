@@ -61,6 +61,7 @@ public partial class ShellWindow : Window
 
         _instance.Navigate(page);
         _instance.RefreshHotkeyHint();
+        _instance.RefreshCaptureAvailability();
 
         var shell = _instance;
         shell.Dispatcher.BeginInvoke(shell.Activate, DispatcherPriority.ApplicationIdle);
@@ -79,6 +80,12 @@ public partial class ShellWindow : Window
         _instance = this;
         RefreshHotkeyHint();
 
+        // Subscribed rather than refreshed on show: a session ending brings this window back with
+        // Show(), not through ShowOrActivate, so nothing else would clear the disabled state and
+        // the button would stay greyed out for as long as the shell stayed open.
+        Realtime.RealtimeSessionController.Instance.StateChanged += OnRealtimeStateChanged;
+        RefreshCaptureAvailability();
+
         // Nav_Checked drives navigation, so this also renders the initial page
         TranslationNav.IsChecked = true;
     }
@@ -95,6 +102,29 @@ public partial class ShellWindow : Window
         // Blank rather than a "未設定" placeholder: the label already says what the button does,
         // and a slot that only ever holds a shortcut should be empty when there is none.
         CaptureHotkeyText.Text = string.IsNullOrWhiteSpace(hotkey) ? "" : hotkey;
+    }
+
+    /// <summary>
+    /// Greys out the rail's capture button while a realtime session is running, and says why.
+    /// </summary>
+    /// <remarks>
+    /// The two features share one OCR engine and one pool of inference slots, so they are exclusive
+    /// — see MainWindow.RefuseWhileRealtimeRuns, which is what actually enforces it. This is the
+    /// half the user sees: a button that refuses when pressed teaches nothing, while a disabled one
+    /// carrying its reason answers the question before it is asked.
+    ///
+    /// The shell is hidden for the duration of a session, so this matters in one specific way in: a
+    /// user who opens 設定 from the tray mid-session gets the rail, and its primary action with it.
+    /// </remarks>
+    private void OnRealtimeStateChanged(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(RefreshCaptureAvailability);
+
+    public void RefreshCaptureAvailability()
+    {
+        var running = Realtime.RealtimeSessionController.Instance.IsActive;
+
+        CaptureBtn.IsEnabled = !running;
+        CaptureBtn.ToolTip = running ? "即時翻譯進行中，請先結束後再使用截圖翻譯" : null;
     }
 
     private void CaptureBtn_Click(object sender, RoutedEventArgs e)
@@ -247,6 +277,7 @@ public partial class ShellWindow : Window
         // Only detaches the page from the session controller: a realtime session already running is
         // on the screen, not in this window, and closing the shell is not a request to end it.
         _realtimePage.Teardown();
+        Realtime.RealtimeSessionController.Instance.StateChanged -= OnRealtimeStateChanged;
         _instance = null;
         base.OnClosed(e);
     }

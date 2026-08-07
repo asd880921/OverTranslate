@@ -153,6 +153,16 @@ public partial class RealtimePage : UserControl
             return;
         }
 
+        // The other half of the same rule the capture side enforces: one OCR engine, one pool of
+        // inference slots, and neither feature is any use with the other competing for them. This
+        // way round is the less likely of the two — a capture covers the screen, so its selection
+        // layer is usually over this button — but the toolbar phase leaves the screen usable.
+        if (System.Windows.Application.Current.MainWindow is MainWindow { IsCapturing: true })
+        {
+            SetStatus("截圖翻譯進行中，請先結束後再啟動即時翻譯。", isError: true);
+            return;
+        }
+
         if (ScreenBox.SelectedItem is not ScreenItem screen)
         {
             SetStatus("找不到可用的螢幕，請重新開啟此頁面。", isError: true);

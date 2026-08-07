@@ -16,15 +16,16 @@ namespace OverTranslate.Tests;
 ///   - TryRecognize... blocked 1071ms, though its whole contract is to give up rather than wait.
 ///   - Recognize... threw "等待其他辨識結束以切換 OCR 模型時逾時。" after 10s under three regions
 ///     of load, because a swap-waiter has no priority over new same-model callers and so starves.
-/// They are skipped rather than fixed because the plan is to make the scenario unreachable:
-/// screenshot translation is to be disabled while a realtime session runs. Unskip these only if
-/// that exclusion is dropped — then the arbitration in AcquireRuntime has to be made fair, and
-/// the EN↔KO model reload (~1s each way) has to be dealt with too.
+/// They are skipped rather than fixed because the scenario is now unreachable by design: a
+/// screenshot capture refuses to start while a realtime session runs, and a session refuses to
+/// start over a capture — see MainWindow.RefuseWhileRealtimeRuns. Unskip these if that exclusion is
+/// ever dropped; the arbitration in AcquireRuntime would then have to be made fair, and the EN↔KO
+/// model reload (~1s each way) dealt with too.
 /// </remarks>
 public class OcrEngineConcurrencyTests(ITestOutputHelper output)
 {
     private const string SkipReason =
-        "並存情境將由「即時翻譯啟動時停用截圖翻譯」排除；若該互斥取消，解除 Skip 並修正 AcquireRuntime。";
+        "並存情境已由「即時翻譯與截圖翻譯互斥」排除；若該互斥取消，解除 Skip 並修正 AcquireRuntime。";
 
     // Large enough that detection takes long enough to overlap deliberately, blank so nothing is
     // recognised — these tests are about arbitration, not about what the models read.

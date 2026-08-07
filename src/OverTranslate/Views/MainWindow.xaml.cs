@@ -106,7 +106,36 @@ public partial class MainWindow : Window
     }
 
     private void OnHotkeyPressed(object? sender, EventArgs e) =>
-        Dispatcher.Invoke(async () => await RunCaptureSessionAsync());
+        Dispatcher.Invoke(async () =>
+        {
+            if (RefuseWhileRealtimeRuns()) return;
+            await RunCaptureSessionAsync();
+        });
+
+    /// <summary>
+    /// Turns a capture away while a realtime session owns the screen, and says why.
+    /// </summary>
+    /// <remarks>
+    /// The two features share one OCR engine and one bounded pool of inference slots, and a
+    /// realtime session uses them continuously. Running a capture alongside it would have them
+    /// competing for those slots, and — if the two were set to different source languages — swapping
+    /// the loaded model back and forth between every read. See OcrEngineConcurrencyTests for what
+    /// that measured out as before this rule existed.
+    ///
+    /// Told rather than ignored: the shortcut worked a moment ago, so silence would read as the
+    /// application having broken rather than as a deliberate rule.
+    /// </remarks>
+    private bool RefuseWhileRealtimeRuns()
+    {
+        if (!Views.Realtime.RealtimeSessionController.Instance.IsActive) return false;
+
+        ShowBalloon(
+            "即時翻譯進行中",
+            "請先結束即時翻譯，再使用截圖翻譯。",
+            null,
+            ToastKind.Info);
+        return true;
+    }
 
     /// <summary>
     /// Starts a capture from the shell window's nav rail. The shell has to leave the screen first:
@@ -117,6 +146,11 @@ public partial class MainWindow : Window
     /// </summary>
     public void StartCaptureFromShell(Window shell)
     {
+        // The rail's button is disabled while a session runs, so this is the guard rather than the
+        // notice — but it is the one that actually enforces the rule, and a disabled button is a
+        // presentation detail that a future layout change could drop.
+        if (RefuseWhileRealtimeRuns()) return;
+
         if (HasActiveSession)
         {
             CloseAll();
@@ -675,6 +709,12 @@ public partial class MainWindow : Window
     // needs tearing down even though every window is already gone.
     private bool HasActiveSession =>
         _overlayWindow != null || _toolbarWindow != null || _captureWindow != null || _escapeHook != null;
+
+    /// <summary>
+    /// Whether a screenshot capture — selection, overlay or toolbar — is on screen right now, so
+    /// the other feature can decline to start on top of it.
+    /// </summary>
+    public bool IsCapturing => HasActiveSession;
 
     private bool IsCurrentSelectionSession(int sessionId, ToolbarWindow? toolbar, ScreenCaptureWindow? captureWindow) =>
         sessionId == _selectionSessionId &&

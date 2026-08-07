@@ -66,6 +66,7 @@
                         DockPanel.Dock="Top"
                         Style="{StaticResource NavPrimaryAction}"
                         Margin="0,0,0,12"
+                        ToolTipService.ShowOnDisabled="True"
                         Click="CaptureBtn_Click">
                     <DockPanel>
                         <!-- Bare 24px glyph, identical geometry to the nav items below, so icons
