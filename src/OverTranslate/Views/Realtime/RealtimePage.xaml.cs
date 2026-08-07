@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using OverTranslate.Models;
 using OverTranslate.Services;
@@ -30,9 +31,15 @@ public partial class RealtimePage : UserControl
         SrcLangBox.ItemsSource = LanguageData.OcrSourceLanguages;
         TgtLangBox.ItemsSource = LanguageData.TargetLanguages;
 
+        ProviderBox.ItemsSource = LanguageData.Providers;
+
         var settings = SettingsService.Instance.Current;
         SrcLangBox.SelectedValue = LanguageData.GetValidOcrSourceCode(settings.SourceLanguage);
         TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(settings.TargetLanguage);
+        LoadProvider();
+
+        // Attached after the initial value is set, so initialisation does not write it straight back
+        ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
 
         RealtimeSessionController.Instance.StateChanged += OnSessionStateChanged;
     }
@@ -44,11 +51,49 @@ public partial class RealtimePage : UserControl
     public void Reload()
     {
         LoadScreens();
+        // The service is a shared preference, so 設定 may have changed it since this page was last on
+        // screen. Re-read rather than let the two disagree.
+        LoadProvider();
         RenderState();
     }
 
     /// <summary>Detaches from the controller when the shell window is destroyed.</summary>
     public void Teardown() => RealtimeSessionController.Instance.StateChanged -= OnSessionStateChanged;
+
+    private void LoadProvider()
+    {
+        ProviderBox.SelectedValue = SettingsService.Instance.Current.Provider;
+        if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+        RenderProviderHint();
+    }
+
+    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ProviderBox.SelectedValue is not TranslationProvider provider) return;
+
+        SettingsService.Instance.Current.Provider = provider;
+        SettingsService.Instance.Save();
+        RenderProviderHint();
+    }
+
+    /// <summary>
+    /// The service's own note, plus the one thing that would otherwise only surface as a failure
+    /// mid-session: a key-based service with no key saved. Said here, before the screen is handed
+    /// over, rather than as an error on a floating bar the user is no longer looking at.
+    /// </summary>
+    private void RenderProviderHint()
+    {
+        var item = ProviderBox.SelectedItem as ProviderItem;
+        var missingKey = item?.RequiresApiKey == true &&
+                         string.IsNullOrWhiteSpace(SettingsService.Instance.Current.ApiKey);
+
+        ProviderHint.Text = missingKey
+            ? "尚未設定 API Key，請先到「設定」輸入，否則即時翻譯會無法取得譯文。"
+            : item?.Hint ?? "";
+        ProviderHint.Foreground = missingKey
+            ? (System.Windows.Media.Brush)FindResource("AppError")
+            : (System.Windows.Media.Brush)FindResource("AppTextMuted");
+    }
 
     private void LoadScreens()
     {
@@ -142,6 +187,7 @@ public partial class RealtimePage : UserControl
         // with, and changing any of it would mean rebuilding every block anyway.
         SrcLangBox.IsEnabled = !active;
         TgtLangBox.IsEnabled = !active;
+        ProviderBox.IsEnabled = !active;
         ScreenBox.IsEnabled = !active;
         Limit1.IsEnabled = !active;
         Limit2.IsEnabled = !active;

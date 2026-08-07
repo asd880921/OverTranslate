@@ -22,16 +22,17 @@
                       Padding="0,0,8,0">
             <StackPanel MaxWidth="760">
 
-                <!-- ── 翻譯語言 ── -->
+                <!-- ── 翻譯設定 ── -->
                 <Border Style="{StaticResource CardBorder}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="翻譯語言" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="0" Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
 
                         <!-- OCR source languages only: this page recognises text off the screen, so
                              a language the recogniser cannot read has nothing to offer here. -->
@@ -46,7 +47,7 @@
                                        SelectedValuePath="Code"/>
                         </Grid>
 
-                        <Grid Grid.Row="2">
+                        <Grid Grid.Row="2" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="100"/>
                                 <ColumnDefinition Width="*"/>
@@ -55,6 +56,31 @@
                             <ComboBox  Grid.Column="1" x:Name="TgtLangBox"
                                        Style="{StaticResource ModernComboBox}"
                                        SelectedValuePath="Code"/>
+                        </Grid>
+
+                        <!-- The one control on this page that is a preference rather than a
+                             parameter of this sitting, so unlike the rest it is saved — and it is
+                             the same setting the other pages and the capture toolbar show, because
+                             a translation service that differed depending on where you set it would
+                             be indistinguishable from a bug. -->
+                        <Grid Grid.Row="3">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="翻譯服務"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <ComboBox  Grid.Column="1" Grid.Row="0" x:Name="ProviderBox"
+                                       Style="{StaticResource ModernComboBox}"
+                                       SelectedValuePath="Provider"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1"
+                                       x:Name="ProviderHint"
+                                       Style="{StaticResource FieldHint}"
+                                       TextWrapping="Wrap"/>
                         </Grid>
                     </Grid>
                 </Border>

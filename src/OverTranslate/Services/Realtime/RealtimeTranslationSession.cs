@@ -212,7 +212,9 @@ public sealed class RealtimeTranslationSession
         string targetLanguage,
         CancellationToken token)
     {
-        var cacheKeyPrefix = $"{sourceLanguage}|{targetLanguage}|";
+        // The service is part of the key: it cannot change mid-session today, but a cache that
+        // silently outlived a change of engine would serve the old engine's wording forever.
+        var cacheKeyPrefix = $"{SettingsService.Instance.Current.Provider}|{sourceLanguage}|{targetLanguage}|";
         var missing = blocks
             .Where(block => !_translationCache.ContainsKey(cacheKeyPrefix + block.Text))
             .ToList();
