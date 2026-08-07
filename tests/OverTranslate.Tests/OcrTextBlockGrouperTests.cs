@@ -217,4 +217,36 @@ public class OcrTextBlockGrouperTests
 
         Assert.Equal(2, grouped.Count);
     }
+
+    [Fact]
+    public void AMergedLineIsAsConfidentAsItsTextDeserves()
+    {
+        // Weighted by characters, not by fragment: a confidently-read line with a doubtful two-
+        // character fragment beside it is still a confidently-read line, and a plain average would
+        // make the score depend on where the detector happened to split it.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Marina-san, are you okay?", new Rect(10, 10, 250, 24), Confidence: 1.0),
+            new("!!", new Rect(266, 10, 20, 24), Confidence: 0.6),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.NotNull(merged.Confidence);
+        Assert.InRange(merged.Confidence!.Value, 0.96, 1.0);
+    }
+
+    [Fact]
+    public void ALineWithNoScoresCarriesNoConfidence()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("第一段文字", new Rect(10, 10, 100, 24)),
+            new("第二段文字", new Rect(112, 10, 100, 24)),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        Assert.Null(merged.Confidence);
+    }
 }

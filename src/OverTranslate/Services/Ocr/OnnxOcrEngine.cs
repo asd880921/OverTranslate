@@ -368,7 +368,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             var top = block.BoxPoints.Min(p => p.Y);
             var right = block.BoxPoints.Max(p => p.X);
             var bottom = block.BoxPoints.Max(p => p.Y);
-            blocks.Add(new OcrTextBlock(text, new System.Windows.Rect(left, top, right - left, bottom - top)));
+            blocks.Add(new OcrTextBlock(
+                text,
+                new System.Windows.Rect(left, top, right - left, bottom - top),
+                Confidence: confidence));
         }
 
         return blocks

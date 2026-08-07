@@ -86,6 +86,13 @@ internal sealed class RealtimeRegionState
     /// <summary>The source text currently on screen for this region.</summary>
     public string RenderedText { get; private set; } = "";
 
+    /// <summary>
+    /// How well <see cref="RenderedText"/> was read, so a later reading of the same sentence can be
+    /// compared against it instead of simply replacing it. Zero when nothing is shown, which lets
+    /// any reading at all win the first time.
+    /// </summary>
+    public double RenderedConfidence { get; private set; }
+
     /// <summary>True once a pass has found text and the state is watching its strips.</summary>
     public bool IsWatchingText => _watchBands.Count > 0;
 
@@ -151,7 +158,8 @@ internal sealed class RealtimeRegionState
     public void MarkRendered(
         IReadOnlyList<Rectangle> textBounds,
         Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture,
-        string sourceText)
+        string sourceText,
+        double confidence = 0)
     {
         if (textBounds.Count > 0)
         {
@@ -169,6 +177,7 @@ internal sealed class RealtimeRegionState
         _unsettledPolls = 0;
         _pollsSinceFullScan = 0;
         RenderedText = sourceText;
+        RenderedConfidence = confidence;
     }
 
     /// <summary>
@@ -188,6 +197,7 @@ internal sealed class RealtimeRegionState
         _pending = null;
         _unsettledPolls = 0;
         RenderedText = "";
+        RenderedConfidence = 0;
     }
 
     /// <summary>

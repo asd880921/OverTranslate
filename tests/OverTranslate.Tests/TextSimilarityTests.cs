@@ -89,4 +89,50 @@ public class TextSimilarityTests
         Assert.True(TextSimilarity.IsSameContent(sentence, sentence.Replace("想念", "想唸")));
         Assert.False(TextSimilarity.IsSameContent(sentence, "港務長揮手送走最後一艘船，回家吃了一頓冷掉的晚餐。"));
     }
+
+    // ── Two readings of one sentence, or two sentences? ──────────────────────────────────────────
+
+    [Theory]
+    // Consecutive reads of one unchanged subtitle, taken from a live session's log. Each pair is
+    // 10-30% apart: past what IsSameContent forgives, nowhere near a change of line.
+    [InlineData("Where haveyongone!", "Where have you gone?!")]
+    [InlineData("Where have you gonez", "Where have you gonez! E")]
+    [InlineData("rather dispiited Minato seem -san", "rather dispirited Minato-san. seem")]
+    [InlineData("Oh,no! None ot the others Can tind a Way to", "Oh no! None ot the others can find a way to")]
+    public void TwoReadingsOfOneSentenceAreRecognisedAsSuch(string first, string second)
+    {
+        Assert.True(TextSimilarity.IsSameSentence(first, second));
+        Assert.True(TextSimilarity.IsSameSentence(second, first));
+    }
+
+    [Theory]
+    // Real consecutive subtitles from the same session. Judging any of these "the same sentence"
+    // would leave the new line untranslated on screen for as long as it lasted.
+    [InlineData("It's so relaxing.", "It'd be nice if we could all go for a soak one day.")]
+    [InlineData("I wish CiRCLE could turn into a hot spring resort.", "No that's not happening.")]
+    [InlineData("That was pretty good.", "Nice session, girls.")]
+    [InlineData("You girls just keep getting better-", "Ugh was the floor always uneven here?")]
+    public void DifferentSentencesAreNotTwoReadingsOfOne(string first, string second)
+    {
+        Assert.False(TextSimilarity.IsSameSentence(first, second));
+    }
+
+    [Fact]
+    public void ShortTextIsNeverTreatedAsARereading()
+    {
+        // "What?!" against "EW What?!" is 33% apart and genuinely the same line, but at six
+        // characters one stray glyph is a third of it — the same reason IsSameContent withholds its
+        // tolerance here. Letting these through would make "Yes" and "No" one sentence.
+        Assert.False(TextSimilarity.IsSameSentence("What?!", "EW What?!"));
+        Assert.False(TextSimilarity.IsSameSentence("HP 100", "HP 190"));
+    }
+
+    [Fact]
+    public void AnythingIdenticalEnoughToSkipIsAlsoTheSameSentence()
+    {
+        // IsSameSentence is the wider of the two judgements, so it must never disagree with the
+        // narrower one — a pass may check them in either order without changing what happens.
+        Assert.True(TextSimilarity.IsSameSentence(Line, Line));
+        Assert.True(TextSimilarity.IsSameSentence(Line, Line.Replace("lighthouse", "Iighthouse")));
+    }
 }

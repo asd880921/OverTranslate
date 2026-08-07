@@ -207,6 +207,22 @@ public class RealtimeRegionStateTests
     }
 
     [Fact]
+    public void HowWellTheShownLineWasReadIsRemembered()
+    {
+        // What a later reading of the same sentence is compared against before it may replace it.
+        var state = new RealtimeRegionState();
+        var frame = new FakeFrame();
+        Assert.Equal(0, state.RenderedConfidence);
+
+        state.MarkRendered(OneLine, frame.Capture, "hello", 0.93);
+        Assert.Equal(0.93, state.RenderedConfidence);
+
+        // Nothing on screen means nothing to beat, so the next reading wins whatever it scored.
+        state.Invalidate();
+        Assert.Equal(0, state.RenderedConfidence);
+    }
+
+    [Fact]
     public void InvalidatingMakesAnUnchangedRegionWorthReadingAgain()
     {
         // A translation that failed after the pass had been recorded. Nothing on screen has changed,

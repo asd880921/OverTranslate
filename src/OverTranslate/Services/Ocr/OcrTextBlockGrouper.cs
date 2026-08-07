@@ -125,7 +125,8 @@ internal static class OcrTextBlockGrouper
         return new OcrTextBlock(
             text,
             new Rect(left, top, right - left, bottom - top),
-            SourceGlyphHeight: CombineGlyphHeight(previous.SourceGlyphHeight, current.SourceGlyphHeight));
+            SourceGlyphHeight: CombineGlyphHeight(previous.SourceGlyphHeight, current.SourceGlyphHeight),
+            Confidence: CombineConfidence([previous, current]));
     }
 
     private static string JoinInlineText(string left, string right)
@@ -233,7 +234,33 @@ internal static class OcrTextBlockGrouper
             text,
             new Rect(x, y, right - x, bottom - y),
             blocks.Select(block => block.Bounds).ToList(),
-            groupGlyphHeight);
+            groupGlyphHeight,
+            CombineConfidence(blocks));
+    }
+
+    /// <summary>
+    /// One confidence for several fragments, weighted by how much text each contributes.
+    /// </summary>
+    /// <remarks>
+    /// A plain average lets a two-character fragment beside a confidently-read line pull the whole
+    /// group down as far as the line itself pulls it up, which would make the group's score depend
+    /// on how the detector happened to split the line rather than on how well it was read.
+    /// </remarks>
+    private static double? CombineConfidence(IReadOnlyList<OcrTextBlock> blocks)
+    {
+        double weighted = 0;
+        double weight = 0;
+
+        foreach (var block in blocks)
+        {
+            if (block.Confidence is not { } confidence) continue;
+
+            var characters = Math.Max(1, block.Text.Trim().Length);
+            weighted += confidence * characters;
+            weight += characters;
+        }
+
+        return weight > 0 ? weighted / weight : null;
     }
 
     private static double? CombineGlyphHeight(double? a, double? b) =>

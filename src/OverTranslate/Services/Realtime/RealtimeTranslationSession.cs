@@ -254,6 +254,8 @@ public sealed class RealtimeTranslationSession
         Cleared,
         /// <summary>Read, and the words are the ones already on screen — see TextSimilarity.</summary>
         Unchanged,
+        /// <summary>Read as the same sentence, but less well than the reading already on screen.</summary>
+        WorseReading,
         /// <summary>Read, the words are new, and they have been handed to the pump.</summary>
         Translating,
     }
@@ -341,9 +343,31 @@ public sealed class RealtimeTranslationSession
         if (TextSimilarity.IsSameContent(sourceText, state.RenderedText))
         {
             var shownBefore = state.RenderedText.Length;
-            state.MarkRendered(textBounds, capture, state.RenderedText);
+            state.MarkRendered(textBounds, capture, state.RenderedText, state.RenderedConfidence);
             return new PassReading(
                 PassOutcome.Unchanged, ocrMs, recognized.Count, sourceText.Length, shownBefore);
+        }
+
+        var confidence = ReadingConfidence(recognized);
+
+        // The same sentence, read differently — a lost space, a run of i/l confusions. Left alone
+        // this replaces a correct translation with a worse one several times per line, which is
+        // most of what "the recognition is unreliable" looks like from the reader's seat: the
+        // overlay was showing the newest reading rather than the best one. So the newer reading has
+        // to be better read than the one on screen before it may take its place.
+        if (TextSimilarity.IsSameSentence(sourceText, state.RenderedText) &&
+            confidence <= state.RenderedConfidence)
+        {
+            var shownBefore = state.RenderedText.Length;
+            state.MarkRendered(textBounds, capture, state.RenderedText, state.RenderedConfidence);
+
+            Log.Debug(
+                "Realtime region {Region} kept the better reading: shown={Shown:0.00} \"{Old}\" " +
+                "beat {New:0.00} \"{Text}\"",
+                region.Id, state.RenderedConfidence, state.RenderedText, confidence, sourceText);
+
+            return new PassReading(
+                PassOutcome.WorseReading, ocrMs, recognized.Count, sourceText.Length, shownBefore);
         }
 
         // Recorded as shown before it has been translated, and deliberately: the frame has been
@@ -351,11 +375,32 @@ public sealed class RealtimeTranslationSession
         // answers would only stop the region being watched. A translation that never arrives asks
         // for this record to be undone — see RegionTranslationPump.
         var shown = state.RenderedText.Length;
-        state.MarkRendered(textBounds, capture, sourceText);
+        state.MarkRendered(textBounds, capture, sourceText, confidence);
         pump.Post(pass, recognized, ocrMs);
 
         return new PassReading(
             PassOutcome.Translating, ocrMs, recognized.Count, sourceText.Length, shown);
+    }
+
+    /// <summary>
+    /// One score for a whole reading, weighted by how much text each line contributes — a long line
+    /// read well should not be outvoted by a stray two-character block beside it.
+    /// </summary>
+    /// <remarks>Lines the engine scored nothing for count as perfectly read, matching the filter,
+    /// which lets a block through when it has no scores to judge it by.</remarks>
+    private static double ReadingConfidence(IReadOnlyList<OcrTextBlock> blocks)
+    {
+        double weighted = 0;
+        double weight = 0;
+
+        foreach (var block in blocks)
+        {
+            var characters = Math.Max(1, block.Text.Trim().Length);
+            weighted += (block.Confidence ?? 1.0) * characters;
+            weight += characters;
+        }
+
+        return weight > 0 ? weighted / weight : 0;
     }
 
     private void RaiseRegionUpdated(RealtimeRegionUpdate update) => RegionUpdated?.Invoke(this, update);
