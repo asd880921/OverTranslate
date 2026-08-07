@@ -194,6 +194,18 @@ public partial class RealtimeBlockWindow : Window
         double glyphHeight = GetGlyphHeight(line, sourceHeight);
         double fontSize = SourceFontScale.Calculate(glyphHeight, _latinSourceToCjkTarget);
 
+        // How tall the line being replaced actually is, which is not the same as how tall its
+        // detection box is. A Latin source arrives with the full box — deliberately, because the
+        // screenshot overlay wants it as coverage area — and that box runs about half again as tall
+        // as the glyphs in it. A CJK source arrives with its box already shrunk onto the glyphs and
+        // recentred, which is why picking Korean by mistake over English subtitles drew a visibly
+        // tighter band than picking English did: 56px against 88px over the same 46px of text.
+        //
+        // The band exists to hide one line of text, and a band twice the height of that line is
+        // exactly what this overlay's whole approach is meant to avoid — everything outside it is
+        // supposed to stay picture the user is watching.
+        double lineHeight = Math.Min(sourceHeight, glyphHeight * LineHeightRatio);
+
         // The whole block, not just the room to the right of the source's left edge: a band centred
         // on its source grows in both directions, so what bounds it is the block, and RealtimeBandPlacement
         // is what keeps it inside. Leaving the scrim's own padding out means the band fits exactly.
@@ -217,7 +229,7 @@ public partial class RealtimeBlockWindow : Window
             // translation is welcome; here the scrim it forces is a band across live content the
             // user is trying to watch, so a translation half again as tall as the line underneath
             // buys legibility with the picture.
-            fontSize = Math.Max(MinFontSize, Math.Min(fontSize, sourceHeight * MaxHeightOverSource / LineHeightRatio));
+            fontSize = Math.Max(MinFontSize, Math.Min(fontSize, lineHeight * MaxHeightOverSource / LineHeightRatio));
 
             var measured = Measure(line.TranslatedText, typeface, fontSize, null);
             if (measured.Width > maxWidth)
@@ -232,7 +244,11 @@ public partial class RealtimeBlockWindow : Window
         }
 
         double scrimWidth = textWidth + ScrimPaddingX * 2;
-        double scrimHeight = Math.Max(sourceHeight, textHeight) + ScrimPaddingY * 2;
+
+        // A grouped block's bounds are the union of its lines, which is the area that has to be
+        // covered and is not an inflated single box, so it keeps using them.
+        double coverHeight = isGrouped ? sourceHeight : lineHeight;
+        double scrimHeight = Math.Max(coverHeight, textHeight) + ScrimPaddingY * 2;
 
         // The scrim covers the source, so it grows around the source's own centre — horizontally as
         // well as vertically — rather than hanging off its top-left corner.
