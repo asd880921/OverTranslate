@@ -47,6 +47,12 @@ public class OcrService : IDisposable
         return blocks is null ? null : OcrTextBlockGrouper.Group(blocks);
     }
 
+    /// <summary>
+    /// Keeps the loaded model in memory while a continuous caller is running — see
+    /// <see cref="OnnxOcrEngine.SetKeepWarm"/>.
+    /// </summary>
+    public void SetKeepWarm(bool keepWarm) => _engine.SetKeepWarm(keepWarm);
+
     public void Dispose()
     {
         _engine.Dispose();

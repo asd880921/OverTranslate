@@ -50,9 +50,35 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // Guarded by _sync.
     private int _inUse;
     private bool _disposed;
+    // Suspends the idle release. Guarded by _sync.
+    private bool _keepWarm;
 
     public OnnxOcrEngine() =>
         _idleReleaseTimer = new System.Threading.Timer(_ => ReleaseIdleRuntime());
+
+    /// <summary>
+    /// Holds the loaded model in memory regardless of how long it sits unused.
+    /// </summary>
+    /// <remarks>
+    /// For a realtime session, where the inactivity release is measuring the wrong thing. A watched
+    /// region is idle between lines of dialogue, and a gap over <see cref="IdleReleaseDelay"/> is
+    /// ordinary — a quiet scene, a paused video, a menu nobody is touching. Releasing the model
+    /// there means the next line pays to load it again: measured at 575–1027ms against a steady
+    /// state of 234ms, all of it inside the poll loop, where it is time the region is not being
+    /// watched. Idle in a session is not idle; it is waiting.
+    /// </remarks>
+    public void SetKeepWarm(bool keepWarm)
+    {
+        lock (_sync)
+        {
+            _keepWarm = keepWarm;
+
+            // Nothing re-arms the countdown on its own once the last pass has finished, so leaving
+            // the mode has to start it — otherwise the model would sit loaded until the next use.
+            if (!keepWarm && !_disposed && _inUse == 0)
+                _idleReleaseTimer.Change(IdleReleaseDelay, System.Threading.Timeout.InfiniteTimeSpan);
+        }
+    }
 
     public Task<List<OcrTextBlock>> RecognizeAsync(
         Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
@@ -237,7 +263,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             if (_inUse == 0)
                 Monitor.PulseAll(_sync);
 
-            if (_disposed)
+            if (_disposed || _keepWarm)
                 return;
 
             if (_inUse == 0)
@@ -249,10 +275,11 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     {
         lock (_sync)
         {
-            // Skip disposal if we are gone, a Detect is still running against the runtime, or
-            // there is nothing to release. A timer callback that was queued before a later
-            // Change() still fires; the _inUse check is what makes that stale callback benign.
-            if (_disposed || _inUse > 0 || _current is null)
+            // Skip disposal if we are gone, a session is holding the model open, a Detect is still
+            // running against the runtime, or there is nothing to release. A timer callback that
+            // was queued before a later Change() still fires; these checks are what make a stale
+            // callback benign — including one queued before SetKeepWarm was turned on.
+            if (_disposed || _keepWarm || _inUse > 0 || _current is null)
                 return;
 
             try

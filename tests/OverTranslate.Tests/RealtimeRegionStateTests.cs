@@ -206,6 +206,45 @@ public class RealtimeRegionStateTests
         Assert.Equal("hello", state.RenderedText);
     }
 
+    [Fact]
+    public void InvalidatingMakesAnUnchangedRegionWorthReadingAgain()
+    {
+        // A translation that failed after the pass had been recorded. Nothing on screen has changed,
+        // so without this the region would compare itself against a record of the very frame it is
+        // looking at and never read it again — the line would simply never appear.
+        var state = new RealtimeRegionState();
+        var frame = new FakeFrame();
+        state.MarkRendered(OneLine, frame.Capture, "hello");
+
+        Assert.False(state.Observe(frame.Capture));
+
+        state.Invalidate();
+
+        int polls = 0;
+        while (!state.Observe(frame.Capture))
+        {
+            polls++;
+            Assert.True(polls <= RealtimeRegionState.MaxTextUnsettledPolls,
+                "an invalidated region was not read again");
+        }
+    }
+
+    [Fact]
+    public void InvalidatingForgetsTheRenderedTextButNotWhereItWas()
+    {
+        // The text never reached the screen, so claiming it is rendered would suppress the retry as
+        // "the same words we already show". Where the words are has not stopped being true, though,
+        // and giving up the strips would put the region back to searching its whole area.
+        var state = new RealtimeRegionState();
+        var frame = new FakeFrame();
+        state.MarkRendered(OneLine, frame.Capture, "hello");
+
+        state.Invalidate();
+
+        Assert.Equal("", state.RenderedText);
+        Assert.True(state.IsWatchingText);
+    }
+
     /// <summary>
     /// Stands in for a captured frame: one brightness for the whole region, another for the text
     /// strips, so a test can move the background and the text independently. Each step is well over

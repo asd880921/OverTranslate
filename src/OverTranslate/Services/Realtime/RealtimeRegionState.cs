@@ -56,7 +56,14 @@ internal sealed class RealtimeRegionState
     /// How often the whole region is re-examined while the watched strips sit still, to catch text
     /// that appeared somewhere the last pass found none.
     /// </summary>
-    public const int FullRescanPolls = 12;
+    /// <remarks>
+    /// Every poll spent below this number is a poll in which a line appearing outside the strips is
+    /// invisible, and a line that comes and goes inside one such window is not late — it is missed.
+    /// At 12 polls that blind spot was three seconds, which is longer than plenty of subtitles are
+    /// on screen. One second costs more recognition over still content and buys back the case the
+    /// strips cannot see by design: the second speaker's line appearing well away from the first.
+    /// </remarks>
+    public const int FullRescanPolls = 4;
 
     /// <summary>
     /// How many passes in a row must find nothing before the overlay is cleared. Recognition drops a
@@ -162,6 +169,25 @@ internal sealed class RealtimeRegionState
         _unsettledPolls = 0;
         _pollsSinceFullScan = 0;
         RenderedText = sourceText;
+    }
+
+    /// <summary>
+    /// Forgets what the region is known to show, so the next poll reads it again.
+    /// </summary>
+    /// <remarks>
+    /// For a pass that was recorded as rendered but never reached the screen — a translation that
+    /// failed or was dropped. Nothing else would retry it: the pixels have not changed, so every
+    /// later poll would compare the region against a record of the very frame it is looking at and
+    /// conclude, correctly and uselessly, that nothing has happened. The watched strips are kept:
+    /// where the text is has not stopped being true just because translating it did not work.
+    /// </remarks>
+    public void Invalidate()
+    {
+        _rendered = null;
+        _renderedFull = null;
+        _pending = null;
+        _unsettledPolls = 0;
+        RenderedText = "";
     }
 
     /// <summary>

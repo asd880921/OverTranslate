@@ -25,12 +25,13 @@ namespace OverTranslate.Services.Realtime;
 /// the user reopens) is never translated twice.</item>
 /// </list>
 ///
-/// Each region runs on its own loop, and no loop ever queues for the recogniser — a busy engine
-/// means this poll is skipped, not that this region waits. Both follow from what "realtime" costs
-/// when it is not true: a shared loop makes every region wait out the slowest one, and a queued pass
-/// answers a frame that has already been replaced while delaying the frame that replaced it. The
-/// screenshot flow makes the opposite trade, because its user is waiting for that one result and it
-/// will not come round again.
+/// Each region runs on its own loop, no loop ever queues for the recogniser — a busy engine means
+/// this poll is skipped, not that this region waits — and no loop waits for a translation it asked
+/// for (see <see cref="RegionTranslationPump"/>). All three follow from what "realtime" costs when
+/// it is not true: a shared loop makes every region wait out the slowest one, a queued pass answers
+/// a frame that has already been replaced while delaying the frame that replaced it, and a loop
+/// waiting on the network is a loop not watching the screen. The screenshot flow makes the opposite
+/// trade, because its user is waiting for that one result and it will not come round again.
 ///
 /// The OCR and translation services are handed in rather than created: they are the same instances
 /// the screenshot flow uses, so the two features share one loaded ONNX runtime and one bounded pool
@@ -48,6 +49,11 @@ public sealed class RealtimeTranslationSession
     // wholesale rather than evicted one by one: at this size the loss is one extra translation for
     // lines that are still on screen, and an LRU here would cost more to maintain than it saves.
     private const int TranslationCacheLimit = 400;
+
+    // How many of a region's translations may be in flight at once. More than one because a slow
+    // answer must not delay the line after it, and only a few because a provider that has stopped
+    // answering altogether would otherwise accumulate work for as long as the session runs.
+    private const int MaxConcurrentTranslations = 3;
 
     private readonly OcrService _ocr;
     private readonly TranslationService _translation;
@@ -98,6 +104,11 @@ public sealed class RealtimeTranslationSession
             "Realtime session started: {Count} region(s), {Src}->{Tgt}",
             regions.Count, sourceLanguage, targetLanguage);
 
+        // A watched region is idle between lines, and the recogniser cannot tell that from a tray
+        // icon nobody has touched all afternoon. Told explicitly, it stops releasing the model that
+        // the next line is about to need.
+        _ocr.SetKeepWarm(true);
+
         // One loop per region rather than one loop over the regions. Sharing a loop made every
         // region wait out the slowest one: with three regions and a half-second recognition apiece,
         // the third could not update more than about twice a second no matter how little had
@@ -115,6 +126,9 @@ public sealed class RealtimeTranslationSession
     {
         _cts?.Cancel();
         _cts = null;
+        // Back to releasing the model after a period of inactivity, which is the right rule again
+        // the moment nothing is watching the screen.
+        _ocr.SetKeepWarm(false);
         // The cache is kept across a stop/edit/start cycle on purpose: the user usually comes back
         // to the same content, and re-translating lines we already have would be a visible pause
         // for nothing.
@@ -127,7 +141,7 @@ public sealed class RealtimeTranslationSession
         CancellationToken token)
     {
         var state = new RealtimeRegionState();
-        string? lastReportedFailure = null;
+        var pump = new RegionTranslationPump(this, region, sourceLanguage, targetLanguage, token);
 
         try
         {
@@ -135,6 +149,12 @@ public sealed class RealtimeTranslationSession
             while (await timer.WaitForNextTickAsync(token))
             {
                 token.ThrowIfCancellationRequested();
+
+                // A translation that never reached the screen leaves this region recorded as showing
+                // words it does not show, and the pixels will not change again on their own — so the
+                // retry has to be asked for. Applied here, where the state is only ever touched by
+                // this one loop.
+                if (pump.TakeRetryRequest()) state.Invalidate();
 
                 using var frame = GrabRegion(region.Bounds);
                 if (frame is null) continue;
@@ -149,13 +169,13 @@ public sealed class RealtimeTranslationSession
                 try
                 {
                     SetBusy(true);
-                    var ran = await ProcessRegionAsync(
-                        region, frame, state, Capture, sourceLanguage, targetLanguage, token);
+                    var ran = await ReadRegionAsync(
+                        region, frame, state, Capture, sourceLanguage, pump, token);
 
                     // Skipped for want of an inference slot. Nothing has been recorded as rendered,
                     // so the same change is still pending and the next poll tries again — which is
                     // the whole point of not queueing.
-                    if (ran) lastReportedFailure = null;
+                    if (ran) pump.ClearFailure();
                 }
                 catch (OperationCanceledException)
                 {
@@ -166,12 +186,7 @@ public sealed class RealtimeTranslationSession
                     // One failed pass must not end the region — the engine may be briefly
                     // unavailable, and the next poll is only 250ms away.
                     Log.Warn(ex, "Realtime pass failed for region {Region}", region.Id);
-                    var message = DescribeFailure(ex);
-                    if (message != lastReportedFailure)
-                    {
-                        lastReportedFailure = message;
-                        Failed?.Invoke(this, message);
-                    }
+                    pump.Report(DescribeFailure(ex));
                 }
                 finally
                 {
@@ -200,19 +215,23 @@ public sealed class RealtimeTranslationSession
         BusyChanged?.Invoke(this, count > 0);
     }
 
+    /// <summary>
+    /// Reads one frame and decides what the region now shows. Everything here is bounded work the
+    /// loop can afford to wait for; the translation, which is not, is handed to the pump.
+    /// </summary>
     /// <returns>False when the pass was skipped because the recogniser had no free slot.</returns>
-    private async Task<bool> ProcessRegionAsync(
+    private async Task<bool> ReadRegionAsync(
         RealtimeRegion region,
         Bitmap frame,
         RealtimeRegionState state,
         Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture,
         string sourceLanguage,
-        string targetLanguage,
+        RegionTranslationPump pump,
         CancellationToken token)
     {
         // Split timings, because "the overlay feels slow" has three quite different causes —
         // recognition, the translation endpoint, and how long this loop waited before starting —
-        // and they are indistinguishable from the outside.
+        // and they are indistinguishable from the outside. The pump logs the other half.
         var started = Stopwatch.GetTimestamp();
 
         // Try, not wait: a queued pass would be reading a frame that has already been replaced, and
@@ -220,11 +239,15 @@ public sealed class RealtimeTranslationSession
         var recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, token);
         if (recognized is null) return false;
 
-        var afterOcr = Stopwatch.GetTimestamp();
+        var ocrMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         token.ThrowIfCancellationRequested();
 
         var sourceText = string.Join('\n', recognized.Select(block => block.Text));
         var textBounds = ToTextBounds(recognized);
+
+        // Claimed before anything can be drawn, so that a translation coming back out of order can
+        // be told it has been overtaken. Every route to the screen goes through the pump holding it.
+        var pass = pump.NextPass();
 
         // The pixels moved but the words did not — a cursor blinked, a background scrolled, a video
         // played on behind a caption. Record the frame so it is not examined again, and go no
@@ -234,8 +257,7 @@ public sealed class RealtimeTranslationSession
             // Checked before the "same text" shortcut below, because both are the empty string once
             // the region has genuinely gone quiet and only this branch counts that towards clearing.
             state.MarkRendered(textBounds, capture, sourceText);
-            if (state.ShouldClearOverlay)
-                RegionUpdated?.Invoke(this, new RealtimeRegionUpdate(region.Id, []));
+            if (state.ShouldClearOverlay) pump.Publish(pass, []);
             return true;
         }
 
@@ -249,22 +271,18 @@ public sealed class RealtimeTranslationSession
             return true;
         }
 
-        var translated = await TranslateAsync(recognized, sourceLanguage, targetLanguage, token);
-        var afterTranslate = Stopwatch.GetTimestamp();
-        token.ThrowIfCancellationRequested();
-
+        // Recorded as shown before it has been translated, and deliberately: the frame has been
+        // read and the words are known, so holding this region's state open until the network
+        // answers would only stop the region being watched. A translation that never arrives asks
+        // for this record to be undone — see RegionTranslationPump.
         state.MarkRendered(textBounds, capture, sourceText);
-        RegionUpdated?.Invoke(this, new RealtimeRegionUpdate(region.Id, translated));
-
-        Log.Info(
-            "Realtime pass region={Region} ocr={Ocr}ms translate={Translate}ms lines={Lines}",
-            region.Id,
-            (int)Stopwatch.GetElapsedTime(started, afterOcr).TotalMilliseconds,
-            (int)Stopwatch.GetElapsedTime(afterOcr, afterTranslate).TotalMilliseconds,
-            translated.Count);
-
+        pump.Post(pass, recognized, ocrMs);
         return true;
     }
+
+    private void RaiseRegionUpdated(RealtimeRegionUpdate update) => RegionUpdated?.Invoke(this, update);
+
+    private void RaiseFailed(string message) => Failed?.Invoke(this, message);
 
     /// <summary>
     /// The recognised lines as pixel rectangles in region coordinates, which is what the change
@@ -362,4 +380,126 @@ public sealed class RealtimeTranslationSession
         _ => $"翻譯暫時失敗，將持續重試：{ex.Message}"
     };
 
+    /// <summary>
+    /// One region's translations, run off its poll loop.
+    /// </summary>
+    /// <remarks>
+    /// Translation is the one stage whose duration this application does not control. Measured over
+    /// 639 passes it answered in 82ms at the median, 1816ms at the 99th percentile and 3125ms at
+    /// worst. Awaiting that inside the poll loop stopped the region being looked at for the whole
+    /// time — <see cref="PeriodicTimer"/> drops the ticks that pass while it is not being awaited —
+    /// so one slow answer blinded the region for a dozen polls, and a line that appeared and went in
+    /// that window was never captured at all. That is what a missing sentence was: not a line
+    /// misjudged, a line never seen.
+    ///
+    /// So a pass is posted here and the loop carries straight on to the next frame. Several may be
+    /// in flight at once, because translation is I/O and a second one costs waiting rather than CPU,
+    /// and they may finish out of order — hence the pass number every result carries, and the rule
+    /// that a result is dropped once a later pass has reached the screen.
+    /// </remarks>
+    private sealed class RegionTranslationPump(
+        RealtimeTranslationSession session,
+        RealtimeRegion region,
+        string sourceLanguage,
+        string targetLanguage,
+        CancellationToken token)
+    {
+        private readonly SemaphoreSlim _slots = new(MaxConcurrentTranslations, MaxConcurrentTranslations);
+        private readonly RealtimePublishOrder _order = new();
+        private readonly object _gate = new();
+
+        private string? _lastReportedFailure;
+        private int _retryRequested;
+
+        /// <summary>Claims the number identifying this pass in the order the region was read.</summary>
+        public long NextPass() => _order.NextPass();
+
+        /// <summary>Translates a pass's lines and draws them, both without holding up the caller.</summary>
+        public void Post(long pass, List<OcrTextBlock> blocks, int ocrMs)
+        {
+            if (!_slots.Wait(0))
+            {
+                // Every slot is held by a translation that has not answered, so the provider is
+                // stalled rather than merely slow. Nothing in flight can be recalled to make room,
+                // so this read is lost — and asking for a retry is what stops the region sitting
+                // there recorded as showing a translation that was never drawn.
+                Log.Info(
+                    "Realtime region {Region} dropped a read: {InFlight} translations already in flight",
+                    region.Id, MaxConcurrentTranslations);
+                RequestRetry();
+                return;
+            }
+
+            // Not Task.Run(_, token): a token already cancelled skips the body entirely, and the
+            // slot taken out above would never be given back.
+            _ = Task.Run(async () =>
+            {
+                var started = Stopwatch.GetTimestamp();
+                try
+                {
+                    session.SetBusy(true);
+                    var translated = await session.TranslateAsync(blocks, sourceLanguage, targetLanguage, token);
+                    var translateMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+
+                    if (Publish(pass, translated))
+                        Log.Info(
+                            "Realtime pass region={Region} ocr={Ocr}ms translate={Translate}ms lines={Lines}",
+                            region.Id, ocrMs, translateMs, translated.Count);
+                    else
+                        // Worth its own line: it means the region changed again before this answer
+                        // arrived, which is the shape of a provider too slow for the content.
+                        Log.Info(
+                            "Realtime pass region={Region} overtaken after translate={Translate}ms, not drawn",
+                            region.Id, translateMs);
+                }
+                catch (OperationCanceledException)
+                {
+                    // The session is stopping; nothing to report and nothing to retry.
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn(ex, "Realtime translation failed for region {Region}", region.Id);
+                    Report(DescribeFailure(ex));
+                    RequestRetry();
+                }
+                finally
+                {
+                    session.SetBusy(false);
+                    _slots.Release();
+                }
+            });
+        }
+
+        /// <summary>Draws a pass's lines unless a later pass has already been drawn.</summary>
+        /// <returns>False when this pass has been overtaken.</returns>
+        public bool Publish(long pass, IReadOnlyList<TranslatedBlock> lines)
+        {
+            if (!_order.TryClaim(pass)) return false;
+
+            session.RaiseRegionUpdated(new RealtimeRegionUpdate(region.Id, lines));
+            return true;
+        }
+
+        /// <summary>Reports a failure, but only if it is not the one already reported.</summary>
+        public void Report(string message)
+        {
+            lock (_gate)
+            {
+                if (message == _lastReportedFailure) return;
+                _lastReportedFailure = message;
+            }
+
+            session.RaiseFailed(message);
+        }
+
+        public void ClearFailure()
+        {
+            lock (_gate) _lastReportedFailure = null;
+        }
+
+        private void RequestRetry() => Interlocked.Exchange(ref _retryRequested, 1);
+
+        /// <summary>Whether the region should forget what it thinks is on screen and read it again.</summary>
+        public bool TakeRetryRequest() => Interlocked.Exchange(ref _retryRequested, 0) == 1;
+    }
 }
