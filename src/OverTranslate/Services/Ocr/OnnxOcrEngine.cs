@@ -447,7 +447,8 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 // ONNX/unclip can return vertically loose boxes on wide single lines.
                 // The average glyph pitch is a better proxy for the real line height than
                 // an over-tall detection rectangle.
-                if (glyphCount >= 4 && bounds.Width > bounds.Height * 2)
+                if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
+                    bounds.Width > bounds.Height * 2)
                 {
                     var estimatedGlyphPitch = bounds.Width / glyphCount;
                     var maxExpectedHeight = estimatedGlyphPitch * glyphHeightFromPitch;
@@ -467,7 +468,14 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 // Latin: the detection box is much taller than the rendered CJK font. Keep the
                 // full box as the bubble's coverage area (so it still hides the taller original
                 // Latin glyphs) and carry the reduced glyph height separately for font sizing.
-                return block with { SourceGlyphHeight = glyphHeight };
+                //
+                // Too few glyphs for the pitch clamp above to have run leaves that height at 0.82
+                // of the box, which is 1.7x the truth — a one- or two-character line rendered
+                // enormously. See ShortTextGlyphHeight for the measurements.
+                return block with
+                {
+                    SourceGlyphHeight = ShortTextGlyphHeight.For(glyphHeight, bounds.Height, glyphCount)
+                };
             })
             .ToList();
     }
