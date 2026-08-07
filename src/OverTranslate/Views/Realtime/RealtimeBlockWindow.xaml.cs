@@ -202,7 +202,10 @@ public partial class RealtimeBlockWindow : Window
         double glyphHeight = GetGlyphHeight(line, sourceHeight);
         double fontSize = SourceFontScale.Calculate(glyphHeight, _latinSourceToCjkTarget);
 
-        double maxWidth = Math.Max(20, canvasWidth - left - 2);
+        // The whole block, not just the room to the right of the source's left edge: a band centred
+        // on its source grows in both directions, so what bounds it is the block, and RealtimeBandPlacement
+        // is what keeps it inside. Leaving the scrim's own padding out means the band fits exactly.
+        double maxWidth = Math.Max(20, canvasWidth - ScrimPaddingX * 2);
         var typeface = new Typeface(TextFont, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
 
         double textWidth;
@@ -239,9 +242,9 @@ public partial class RealtimeBlockWindow : Window
         double scrimWidth = textWidth + ScrimPaddingX * 2;
         double scrimHeight = Math.Max(sourceHeight, textHeight) + ScrimPaddingY * 2;
 
-        // The scrim covers the source, so it grows around the source's own centre line rather than
-        // hanging off its top edge.
-        double scrimLeft = Math.Clamp(left - ScrimPaddingX, 0, Math.Max(0, canvasWidth - scrimWidth));
+        // The scrim covers the source, so it grows around the source's own centre — horizontally as
+        // well as vertically — rather than hanging off its top-left corner.
+        double scrimLeft = RealtimeBandPlacement.Left(left, sourceWidth, scrimWidth, canvasWidth);
         double scrimTop = Math.Clamp(
             top + sourceHeight / 2 - scrimHeight / 2, 0, Math.Max(0, canvasHeight - scrimHeight));
 
