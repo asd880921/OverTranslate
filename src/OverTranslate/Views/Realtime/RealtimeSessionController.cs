@@ -11,11 +11,16 @@ namespace OverTranslate.Views.Realtime;
 /// single-screen: every block then shares one DPI and one capture path, and the loop never has to
 /// reason about a window that straddles two monitors at different scales.
 /// </param>
+/// <param name="Provider">
+/// The engine this session translates with. Carried on the request rather than read from settings
+/// because 即時翻譯 keeps its choices to itself — see RealtimePage.
+/// </param>
 public sealed record RealtimeStartRequest(
     System.Drawing.Rectangle ScreenBounds,
     int MaxBlocks,
     string SourceLanguage,
-    string TargetLanguage);
+    string TargetLanguage,
+    Models.TranslationProvider Provider);
 
 /// <summary>
 /// Owns a realtime session end to end: the edit layer, the per-block overlays, the floating control
@@ -240,7 +245,7 @@ internal sealed class RealtimeSessionController
         control.BringToFront();
         _stayOnTop.Start();
 
-        _session.Start(regions, request.SourceLanguage, request.TargetLanguage);
+        _session.Start(regions, request.SourceLanguage, request.TargetLanguage, request.Provider);
     }
 
     // ── Session callbacks (raised on the polling thread) ─────────────────────────────────────────

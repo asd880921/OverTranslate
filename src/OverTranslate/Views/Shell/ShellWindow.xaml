@@ -131,7 +131,7 @@
                                      Checked="Nav_Checked">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                           FontSize="15" Text="&#xE890;"
+                                           FontSize="15" Text="&#xE9D9;"
                                            Width="24" VerticalAlignment="Center"/>
                                 <TextBlock Text="即時翻譯" VerticalAlignment="Center"/>
                             </StackPanel>

@@ -12,7 +12,7 @@
         <!-- ── Page header ── -->
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <TextBlock Text="即時翻譯" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="在畫面上框選區域，內容一有變化就自動辨識並翻譯"
+            <TextBlock Text="在畫面上框選區域，內容一有變化就自動辨識並翻譯。"
                        Style="{StaticResource PageSubtitle}"/>
         </StackPanel>
 
@@ -23,130 +23,85 @@
             <StackPanel MaxWidth="760">
 
                 <!-- ── 翻譯設定 ── -->
+                <!-- Labels above their fields, as on 圖片翻譯: a fixed label column makes the
+                     longest label decide the layout, and these read down the page rather than
+                     across. -->
                 <Border Style="{StaticResource CardBorder}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0" Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
+                    <StackPanel>
+                        <TextBlock Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
 
                         <!-- OCR source languages only: this page recognises text off the screen, so
-                             a language the recogniser cannot read has nothing to offer here. -->
-                        <Grid Grid.Row="1" Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="來源語言" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox  Grid.Column="1" x:Name="SrcLangBox"
-                                       Style="{StaticResource ModernComboBox}"
-                                       SelectedValuePath="Code"/>
-                        </Grid>
+                             a language the recogniser cannot read has nothing to offer here. Left
+                             unset on purpose — see RealtimePage.ApplyPageDefaults. -->
+                        <TextBlock Text="原文語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="SrcLangBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  SelectedValuePath="Code"/>
+                        <TextBlock Text="畫面上要被翻譯的文字是哪一種語言，必須指定才能開始。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="0,6,0,14" TextWrapping="Wrap" LineHeight="16"/>
 
-                        <Grid Grid.Row="2" Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="目標語言" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox  Grid.Column="1" x:Name="TgtLangBox"
-                                       Style="{StaticResource ModernComboBox}"
-                                       SelectedValuePath="Code"/>
-                        </Grid>
+                        <TextBlock Text="目標語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="TgtLangBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  SelectedValuePath="Code"
+                                  Margin="0,0,0,14"/>
 
-                        <!-- The one control on this page that is a preference rather than a
-                             parameter of this sitting, so unlike the rest it is saved — and it is
-                             the same setting the other pages and the capture toolbar show, because
-                             a translation service that differed depending on where you set it would
-                             be indistinguishable from a bug. -->
-                        <Grid Grid.Row="3">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="翻譯服務"
-                                       Style="{StaticResource FieldLabel}"/>
-                            <ComboBox  Grid.Column="1" Grid.Row="0" x:Name="ProviderBox"
-                                       Style="{StaticResource ModernComboBox}"
-                                       SelectedValuePath="Provider"/>
-                            <TextBlock Grid.Column="1" Grid.Row="1"
-                                       x:Name="ProviderHint"
+                        <!-- Grouped so the spacing below stays the same whether or not the chosen
+                             service has anything to warn about -->
+                        <TextBlock Text="翻譯服務" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <StackPanel>
+                            <ComboBox x:Name="ProviderBox"
+                                      Style="{StaticResource ModernComboBox}"
+                                      SelectedValuePath="Provider"/>
+                            <TextBlock x:Name="ProviderHint"
                                        Style="{StaticResource FieldHint}"
-                                       TextWrapping="Wrap"/>
-                        </Grid>
-                    </Grid>
+                                       Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                        </StackPanel>
+                    </StackPanel>
                 </Border>
 
                 <!-- ── 區塊設定 ── -->
                 <Border Style="{StaticResource CardBorder}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0" Text="翻譯區塊" Style="{StaticResource SectionHeader}"/>
+                    <StackPanel>
+                        <TextBlock Text="翻譯區塊" Style="{StaticResource SectionHeader}"/>
 
                         <!-- One screen per session, chosen here rather than assumed: the primary
                              monitor is not where the game or the video necessarily is. -->
-                        <Grid Grid.Row="1" Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="使用螢幕"
-                                       Style="{StaticResource FieldLabel}"/>
-                            <ComboBox  Grid.Column="1" Grid.Row="0" x:Name="ScreenBox"
-                                       Style="{StaticResource ModernComboBox}"
-                                       SelectedValuePath="DeviceName"/>
-                            <TextBlock Grid.Column="1" Grid.Row="1"
-                                       Text="區塊只能建立在這一個螢幕上"
-                                       Style="{StaticResource FieldHint}"/>
-                        </Grid>
+                        <TextBlock Text="使用螢幕" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="ScreenBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  SelectedValuePath="DeviceName"/>
+                        <TextBlock Text="區塊只能建立在這一個螢幕上。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="0,6,0,14" TextWrapping="Wrap" LineHeight="16"/>
 
-                        <Grid Grid.Row="2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="區塊數量"
-                                       Style="{StaticResource FieldLabel}"
-                                       VerticalAlignment="Center"/>
-                            <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal">
-                                <RadioButton x:Name="Limit1" Content="1"
-                                             Style="{StaticResource SegmentedRadioButton}"
-                                             GroupName="RealtimeBlockLimit"
-                                             IsChecked="True"/>
-                                <RadioButton x:Name="Limit2" Content="2"
-                                             Style="{StaticResource SegmentedRadioButton}"
-                                             GroupName="RealtimeBlockLimit"/>
-                                <RadioButton x:Name="Limit3" Content="3"
-                                             Style="{StaticResource SegmentedRadioButton}"
-                                             GroupName="RealtimeBlockLimit"/>
+                        <!-- A stepper rather than a text field: the value is one of three, and a
+                             box that accepts typing invites 0, 99 and empty, each of which then
+                             needs its own rule. The number is display-only and the two buttons are
+                             the only way in, so no input can be wrong. -->
+                        <TextBlock Text="區塊數量" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <Border Style="{StaticResource StepperBorder}" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BlockCountDown"
+                                        Style="{StaticResource StepperButton}"
+                                        Content="&#xE949;"
+                                        AutomationProperties.Name="減少區塊數量"
+                                        Click="BlockCountDown_Click"/>
+                                <TextBlock x:Name="BlockCountText"
+                                           Style="{StaticResource StepperValue}"
+                                           Text="1"/>
+                                <Button x:Name="BlockCountUp"
+                                        Style="{StaticResource StepperButton}"
+                                        Content="&#xE948;"
+                                        AutomationProperties.Name="增加區塊數量"
+                                        Click="BlockCountUp_Click"/>
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Grid.Row="1"
-                                       Text="可同時監看的區塊數上限。此頁的設定不會被記住，關閉翻譯視窗後會回到預設值"
-                                       Style="{StaticResource FieldHint}"
-                                       TextWrapping="Wrap"/>
-                        </Grid>
-                    </Grid>
+                        </Border>
+                        <TextBlock Text="可同時監看的區塊上限，最多 3 個。此頁的設定不會被記住，關閉翻譯視窗後會回到預設值。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                    </StackPanel>
                 </Border>
 
                 <!-- ── 運作方式 ── -->
@@ -156,11 +111,11 @@
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
                         <TextBlock Text="運作方式" Style="{StaticResource SectionHeader}"/>
-                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" Margin="0,0,0,6"
+                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,6"
                                    Text="1 · 按下「選取翻譯區塊」後，翻譯視窗會暫時收起，直接在螢幕上拖曳出要監看的區域。"/>
-                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" Margin="0,0,0,6"
+                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,6"
                                    Text="2 · 按浮動列上的「開始翻譯」，區塊內容一有變化就會重新辨識並翻譯，譯文直接顯示在原文位置上。"/>
-                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap"
+                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16"
                                    Text="3 · 翻譯進行中的區塊不會擋住滑鼠，底下的遊戲或影片照常操作；要調整區塊請按浮動列上的「編輯」。"/>
                     </StackPanel>
                 </Border>

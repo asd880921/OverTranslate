@@ -87,6 +87,10 @@ public sealed class RealtimeTranslationSession
     // fill the log at four lines a second.
     private int _grabFailureReported;
 
+    // The engine this session runs with, chosen on 即時翻譯 and not shared with the rest of the
+    // application. Set by Start before any region loop begins.
+    private Models.TranslationProvider _provider;
+
     public RealtimeTranslationSession(OcrService ocr, TranslationService translation)
     {
         _ocr = ocr;
@@ -106,8 +110,14 @@ public sealed class RealtimeTranslationSession
     /// <summary>True while <see cref="RunAsync"/> is doing something more than hashing pixels.</summary>
     public event EventHandler<bool>? BusyChanged;
 
-    public void Start(IReadOnlyList<RealtimeRegion> regions, string sourceLanguage, string targetLanguage)
+    public void Start(
+        IReadOnlyList<RealtimeRegion> regions,
+        string sourceLanguage,
+        string targetLanguage,
+        Models.TranslationProvider provider)
     {
+        _provider = provider;
+
         Stop();
 
         var cts = new CancellationTokenSource();
@@ -511,7 +521,7 @@ public sealed class RealtimeTranslationSession
     {
         // The service is part of the key: it cannot change mid-session today, but a cache that
         // silently outlived a change of engine would serve the old engine's wording forever.
-        var cacheKeyPrefix = $"{SettingsService.Instance.Current.Provider}|{sourceLanguage}|{targetLanguage}|";
+        var cacheKeyPrefix = $"{_provider}|{sourceLanguage}|{targetLanguage}|";
         var missing = blocks
             .Where(block => !_translationCache.ContainsKey(cacheKeyPrefix + block.Text))
             .ToList();
@@ -519,11 +529,11 @@ public sealed class RealtimeTranslationSession
         if (missing.Count > 0)
         {
             var apiKey = SettingsService.Instance.Current.ApiKey;
-            if (_translation.RequiresApiKey && string.IsNullOrWhiteSpace(apiKey))
+            if (_translation.ProviderRequiresApiKey(_provider) && string.IsNullOrWhiteSpace(apiKey))
                 throw new InvalidOperationException("缺少 API Key，請先在設定中輸入。");
 
             var (results, _) = await _translation.TranslateAsync(
-                missing, sourceLanguage, targetLanguage, apiKey, cancellationToken: token);
+                missing, sourceLanguage, targetLanguage, apiKey, cancellationToken: token, engine: _provider);
 
             if (_translationCache.Count > TranslationCacheLimit)
                 _translationCache.Clear();
