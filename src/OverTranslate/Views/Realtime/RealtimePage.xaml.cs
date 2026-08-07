@@ -132,7 +132,7 @@ public partial class RealtimePage : UserControl
         var items = screens
             .Select((screen, index) => new ScreenItem(
                 screen.DeviceName,
-                $"螢幕 {index + 1} · {screen.Bounds.Width}×{screen.Bounds.Height}{(screen.Primary ? "（主要）" : "")}",
+                $"螢幕 {index + 1} · {screen.Bounds.Width}×{screen.Bounds.Height}{(screen.Primary ? "（主螢幕）" : "")}",
                 screen.Bounds,
                 screen.Primary))
             .ToList();
@@ -263,8 +263,10 @@ public partial class RealtimePage : UserControl
         RenderBlockCount();
 
         // Nothing can start without a source language, so the button says so by being unavailable
-        // rather than by refusing after the fact.
-        PrimaryBtn.IsEnabled = active || SrcLangBox.SelectedValue is string;
+        // rather than by refusing after the fact, and the field keeps its prompt until answered.
+        var hasSource = SrcLangBox.SelectedValue is string;
+        PrimaryBtn.IsEnabled = active || hasSource;
+        SrcLangPlaceholder.Visibility = hasSource ? Visibility.Collapsed : Visibility.Visible;
 
         SetStatus(
             active ? "即時翻譯進行中，可用螢幕上的浮動列調整或結束。" : "",

@@ -12,7 +12,7 @@
         <!-- ── Page header ── -->
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <TextBlock Text="即時翻譯" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="在畫面上框選區域，內容一有變化就自動辨識並翻譯。"
+            <TextBlock Text="在畫面上選取翻譯區域，文字變更時會自動翻譯並顯示在畫面上，適用於影片或遊戲畫面等。"
                        Style="{StaticResource PageSubtitle}"/>
         </StackPanel>
 
@@ -33,13 +33,25 @@
                         <!-- OCR source languages only: this page recognises text off the screen, so
                              a language the recogniser cannot read has nothing to offer here. Left
                              unset on purpose — see RealtimePage.ApplyPageDefaults. -->
-                        <TextBlock Text="原文語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                        <ComboBox x:Name="SrcLangBox"
-                                  Style="{StaticResource ModernComboBox}"
-                                  SelectedValuePath="Code"/>
-                        <TextBlock Text="畫面上要被翻譯的文字是哪一種語言，必須指定才能開始。"
-                                   Style="{StaticResource FieldHint}"
-                                   Margin="0,6,0,14" TextWrapping="Wrap" LineHeight="16"/>
+                        <TextBlock Text="來源語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <!-- Placeholder rather than a line of help underneath: the field is empty
+                             because the user has to answer it, and saying so inside the empty space
+                             puts the instruction where they are already looking. Margin matches the
+                             selected item's own (9,0,28,0) so the prompt and the eventual answer
+                             occupy the same spot rather than shifting when one replaces the other. -->
+                        <Grid Margin="0,0,0,14">
+                            <ComboBox x:Name="SrcLangBox"
+                                      Style="{StaticResource ModernComboBox}"
+                                      SelectedValuePath="Code"/>
+                            <TextBlock x:Name="SrcLangPlaceholder"
+                                       Text="請選擇來源語言"
+                                       FontFamily="{StaticResource AppFont}"
+                                       FontSize="{StaticResource AppFontSize}"
+                                       Foreground="{DynamicResource AppTextMuted}"
+                                       Margin="9,0,28,0"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False"/>
+                        </Grid>
 
                         <TextBlock Text="目標語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <ComboBox x:Name="TgtLangBox"
@@ -72,7 +84,7 @@
                         <ComboBox x:Name="ScreenBox"
                                   Style="{StaticResource ModernComboBox}"
                                   SelectedValuePath="DeviceName"/>
-                        <TextBlock Text="區塊只能建立在這一個螢幕上。"
+                        <TextBlock Text="即時翻譯目前只支援單一螢幕畫面。"
                                    Style="{StaticResource FieldHint}"
                                    Margin="0,6,0,14" TextWrapping="Wrap" LineHeight="16"/>
 
@@ -98,7 +110,7 @@
                                         Click="BlockCountUp_Click"/>
                             </StackPanel>
                         </Border>
-                        <TextBlock Text="可同時監看的區塊上限，最多 3 個。此頁的設定不會被記住，關閉翻譯視窗後會回到預設值。"
+                        <TextBlock Text="最多可同時建立最多 3 個翻譯區塊，此設定關閉後不會保留。"
                                    Style="{StaticResource FieldHint}"
                                    Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
                     </StackPanel>
@@ -112,11 +124,11 @@
                     <StackPanel>
                         <TextBlock Text="運作方式" Style="{StaticResource SectionHeader}"/>
                         <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,6"
-                                   Text="1 · 按下「選取翻譯區塊」後，翻譯視窗會暫時收起，直接在螢幕上拖曳出要監看的區域。"/>
+                                   Text="1. 點擊「選取翻譯區塊」，在畫面上框選要翻譯的區域。"/>
                         <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,6"
-                                   Text="2 · 按浮動列上的「開始翻譯」，區塊內容一有變化就會重新辨識並翻譯，譯文直接顯示在原文位置上。"/>
+                                   Text="2. 點擊浮動工具列的「開始翻譯」，內容變更時會自動重新辨識並更新譯文。"/>
                         <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16"
-                                   Text="3 · 翻譯進行中的區塊不會擋住滑鼠，底下的遊戲或影片照常操作；要調整區塊請按浮動列上的「編輯」。"/>
+                                   Text="3. 翻譯中的區域不會影響遊戲或介面操作，如需調整翻譯區塊，請按「編輯」。"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
