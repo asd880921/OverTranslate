@@ -354,9 +354,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             if (string.IsNullOrWhiteSpace(text) || block.BoxPoints is null || block.BoxPoints.Length == 0)
                 continue;
 
-            if (block.CharScores is { Length: > 0 } &&
-                block.CharScores.Average() < MinRecognitionConfidence)
+            var confidence = block.CharScores is { Length: > 0 } scores ? scores.Average() : 1f;
+            if (confidence < MinRecognitionConfidence)
                 continue;
+
+            // Kept blocks carry their score into the log as well as the rejected ones. Reading the
+            // same subtitle several times produces several slightly different answers, and the
+            // score is the only thing that says which of them to believe.
+            if (Log.IsDebugEnabled)
+                Log.Debug("ONNX OCR kept score={Score:0.00} text=\"{Text}\"", confidence, text);
 
             var left = block.BoxPoints.Min(p => p.X);
             var top = block.BoxPoints.Min(p => p.Y);
