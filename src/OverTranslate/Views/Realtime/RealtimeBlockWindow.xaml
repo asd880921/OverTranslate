@@ -13,5 +13,12 @@
     <!-- One window per watched block rather than a single desktop-spanning layer: a translucent
          window is composed in software, so redrawing a subtitle-sized surface a few times a minute
          costs nothing, while redrawing the whole desktop for the same change would not. -->
-    <Canvas x:Name="LineCanvas"/>
+    <Grid x:Name="LayerHost">
+        <!-- Every scrim is drawn before any text, so a line whose scrim overlaps the line above can
+             never cover that line's words. Two overlapping scrims darkening each other is fine —
+             they are only there to hide what is underneath — but text disappearing behind one is
+             the feature failing at the only thing it does. -->
+        <Canvas x:Name="ScrimCanvas"/>
+        <Canvas x:Name="TextCanvas"/>
+    </Grid>
 </Window>

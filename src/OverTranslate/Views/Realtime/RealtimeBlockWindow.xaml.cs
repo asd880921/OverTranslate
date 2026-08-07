@@ -31,11 +31,21 @@ namespace OverTranslate.Views.Realtime;
 public partial class RealtimeBlockWindow : Window
 {
     // The scrim exists to hide the source line underneath, so it is sized from the text and not the
-    // block: everything outside these paddings stays untouched picture.
+    // block: everything outside these paddings stays untouched picture. The vertical padding is the
+    // tighter of the two on purpose — a band reaching above and below a subtitle sits in the middle
+    // of what the user is watching, while the same slack to its left and right lands on picture they
+    // are not reading anyway.
     private const double ScrimPaddingX = 5;
-    private const double ScrimPaddingY = 2;
+    private const double ScrimPaddingY = 1;
+
     private const double MinFontSize = 8.5;
-    private const double LineHeightRatio = 1.32;
+    private const double LineHeightRatio = 1.22;
+
+    /// <summary>
+    /// How much taller than the line it replaces a single-line translation may be drawn. The scrim
+    /// is sized to whichever is larger, so this is really a cap on the band's height.
+    /// </summary>
+    private const double MaxHeightOverSource = 1.15;
 
     private static readonly Duration FadeDuration = new(TimeSpan.FromMilliseconds(110));
 
@@ -111,13 +121,44 @@ public partial class RealtimeBlockWindow : Window
 
     public void SetLines(IReadOnlyList<TranslatedBlock> lines)
     {
+        // A rebuild cross-fades, so repainting an unchanged overlay is a visible flicker for no
+        // gain. The session already suppresses re-translation of text that has not really changed;
+        // this catches what is left — the same translation arriving with its boxes a pixel or two
+        // off, which happens whenever recognition redraws its idea of where the line sits.
+        if (_isLoaded && LooksIdentical(_lines, lines)) return;
+
         _lines = lines;
         if (_isLoaded) Rebuild();
     }
 
+    // A pixel of movement is below what anyone can see and well inside recognition's own precision.
+    private const double SamePositionTolerance = 2.0;
+
+    private static bool LooksIdentical(IReadOnlyList<TranslatedBlock> current, IReadOnlyList<TranslatedBlock> next)
+    {
+        if (current.Count != next.Count) return false;
+
+        for (int i = 0; i < current.Count; i++)
+        {
+            if (!string.Equals(current[i].TranslatedText, next[i].TranslatedText, StringComparison.Ordinal))
+                return false;
+
+            var a = current[i].Bounds;
+            var b = next[i].Bounds;
+            if (Math.Abs(a.X - b.X) > SamePositionTolerance ||
+                Math.Abs(a.Y - b.Y) > SamePositionTolerance ||
+                Math.Abs(a.Width - b.Width) > SamePositionTolerance ||
+                Math.Abs(a.Height - b.Height) > SamePositionTolerance)
+                return false;
+        }
+
+        return true;
+    }
+
     private void Rebuild()
     {
-        LineCanvas.Children.Clear();
+        ScrimCanvas.Children.Clear();
+        TextCanvas.Children.Clear();
 
         double canvasWidth = _physBounds.Width / _dpiX;
         double canvasHeight = _physBounds.Height / _dpiY;
@@ -125,13 +166,16 @@ public partial class RealtimeBlockWindow : Window
         foreach (var line in _lines)
         {
             if (string.IsNullOrWhiteSpace(line.TranslatedText)) continue;
-            var visual = BuildLine(line, canvasWidth, canvasHeight);
-            if (visual is not null) LineCanvas.Children.Add(visual);
+            if (BuildLine(line, canvasWidth, canvasHeight) is not { } visual) continue;
+
+            ScrimCanvas.Children.Add(visual.Scrim);
+            TextCanvas.Children.Add(visual.Text);
         }
 
         // A short cross-fade rather than an instant swap: at this size a hard cut reads as a flicker
-        // in the corner of the eye, which is exactly where this content lives.
-        LineCanvas.BeginAnimation(OpacityProperty, new DoubleAnimation
+        // in the corner of the eye, which is exactly where this content lives. Applied to the host
+        // so both layers fade as one thing.
+        LayerHost.BeginAnimation(OpacityProperty, new DoubleAnimation
         {
             From = 0,
             To = 1,
@@ -139,7 +183,10 @@ public partial class RealtimeBlockWindow : Window
         });
     }
 
-    private UIElement? BuildLine(TranslatedBlock line, double canvasWidth, double canvasHeight)
+    /// <summary>One line's two halves, drawn into separate layers so text always wins over scrims.</summary>
+    private readonly record struct LineVisual(UIElement Scrim, UIElement Text);
+
+    private LineVisual? BuildLine(TranslatedBlock line, double canvasWidth, double canvasHeight)
     {
         double left = line.Bounds.X / _dpiX;
         double top = line.Bounds.Y / _dpiY;
@@ -170,6 +217,13 @@ public partial class RealtimeBlockWindow : Window
         }
         else
         {
+            // Sized to the line it replaces rather than to whatever the font scale would prefer.
+            // The scale exists for the screenshot overlay, where a still is studied and a larger
+            // translation is welcome; here the scrim it forces is a band across live content the
+            // user is trying to watch, so a translation half again as tall as the line underneath
+            // buys legibility with the picture.
+            fontSize = Math.Max(MinFontSize, Math.Min(fontSize, sourceHeight * MaxHeightOverSource / LineHeightRatio));
+
             var measured = Measure(line.TranslatedText, typeface, fontSize, null);
             if (measured.Width > maxWidth)
             {
@@ -197,6 +251,14 @@ public partial class RealtimeBlockWindow : Window
             Height = scrimHeight,
             Background = ScrimBrush,
             CornerRadius = new CornerRadius(3),
+        };
+
+        // Same geometry, no background: the two are stacked in separate layers, so the text has to
+        // carry its own box to land in exactly the place the scrim covers.
+        var text = new Border
+        {
+            Width = scrimWidth,
+            Height = scrimHeight,
             Padding = new Thickness(ScrimPaddingX, ScrimPaddingY, ScrimPaddingX, ScrimPaddingY),
             ClipToBounds = true,
             Child = new TextBlock
@@ -212,9 +274,13 @@ public partial class RealtimeBlockWindow : Window
             }
         };
 
-        Canvas.SetLeft(scrim, scrimLeft);
-        Canvas.SetTop(scrim, scrimTop);
-        return scrim;
+        foreach (var element in (UIElement[])[scrim, text])
+        {
+            Canvas.SetLeft(element, scrimLeft);
+            Canvas.SetTop(element, scrimTop);
+        }
+
+        return new LineVisual(scrim, text);
     }
 
     // Largest size at which the wrapped translation still fits the height its source occupied, so a
@@ -261,6 +327,7 @@ public partial class RealtimeBlockWindow : Window
         // below the line box the TextBlock will actually lay out. Sizing the scrim from the ink
         // would clip descenders on the very first line.
         return new Size(formatted.Width, Math.Max(formatted.Height, fontSize * LineHeightRatio));
+
     }
 
     private static bool IsLatinToCjk(string sourceLanguage, string targetLanguage) =>
