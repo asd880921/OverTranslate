@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Services.Realtime;
+using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using Screen = System.Windows.Forms.Screen;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -17,15 +19,24 @@ public sealed record ScreenItem(
 /// the screen itself, driven by <see cref="RealtimeSessionController"/>.
 /// </summary>
 /// <remarks>
-/// Nothing on this page is read from or written to the settings file, deliberately: every field
-/// here is a parameter of one sitting — which screen, how many areas, which languages — not a
-/// preference. Reopening the window offers the defaults again rather than restoring a set-up whose
-/// screen may since have been unplugged and whose blocks are long gone.
+/// The page holds two kinds of value, and the line between them is the rule to keep:
 ///
+/// <para><b>Parameters of one sitting</b> — screen, block count, languages, service — are never read
+/// from or written to the settings file. Reopening the window offers the defaults again rather than
+/// restoring a set-up whose screen may since have been unplugged and whose blocks are long gone.
 /// That includes the translation service, which the rest of the application does share as one
-/// preference. Watching a game and translating a document are different jobs with different
+/// preference: watching a game and translating a document are different jobs with different
 /// tolerances — one wants an engine that answers in 80ms, the other one that reads carefully — and
-/// having this page quietly change what 設定 shows was the worse of the two surprises.
+/// having this page quietly change what 設定 shows was the worse of the two surprises.</para>
+///
+/// <para><b>Appearance preferences</b> — the subtitle's two colours, in 顯示外觀 — are stored and
+/// restored. A reader who needs yellow on dark blue needs it every session, and re-picking it each
+/// time is the same failure as forgetting a theme. They live here rather than in 設定 so the control
+/// sits beside what it changes, and the card says in so many words that its values are kept, because
+/// the card above it says the opposite about itself.</para>
+///
+/// Anything added later belongs to one of these two groups; if it is not obvious which, it is a
+/// preference only when the user would be annoyed to set it twice.
 /// </remarks>
 public partial class RealtimePage : UserControl
 {
@@ -63,6 +74,8 @@ public partial class RealtimePage : UserControl
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
         SrcLangBox.SelectionChanged += (_, _) => RenderState();
 
+        RenderColours();
+
         RealtimeSessionController.Instance.StateChanged += OnSessionStateChanged;
 
         // Not just the stepper: the start button has to begin unavailable too, because 原文語言
@@ -96,6 +109,7 @@ public partial class RealtimePage : UserControl
     public void Reload()
     {
         LoadScreens();
+        RenderColours();
         RenderState();
     }
 
@@ -204,16 +218,99 @@ public partial class RealtimePage : UserControl
             return;
         }
 
+        var settings = SettingsService.Instance.Current;
         var request = new RealtimeStartRequest(
             screen.Bounds,
             _blockCount,
             LanguageData.GetValidOcrSourceCode(sourceLanguage),
             LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string),
-            ProviderBox.SelectedValue as TranslationProvider? ?? DefaultProvider);
+            ProviderBox.SelectedValue as TranslationProvider? ?? DefaultProvider,
+            settings.RealtimeTextColor,
+            settings.RealtimeScrimColor);
 
         // The shell is handed over to be hidden: it is almost certainly sitting on the screen the
         // user is about to frame blocks on, and it comes back when the session ends.
         controller.Start(request, Window.GetWindow(this));
+    }
+
+    // ── 顯示外觀 ───────────────────────────────────────────────────────────────
+
+    private void TextColorBtn_Click(object sender, RoutedEventArgs e) =>
+        PickColour(
+            SettingsService.Instance.Current.RealtimeTextColor,
+            picked => Persist(s => s.RealtimeTextColor = picked));
+
+    private void ScrimColorBtn_Click(object sender, RoutedEventArgs e) =>
+        PickColour(
+            SettingsService.Instance.Current.RealtimeScrimColor,
+            picked => Persist(s => s.RealtimeScrimColor = picked));
+
+    private void ResetColorsBtn_Click(object sender, RoutedEventArgs e) =>
+        Persist(s =>
+        {
+            s.RealtimeTextColor = RealtimeSubtitleColors.DefaultText;
+            s.RealtimeScrimColor = RealtimeSubtitleColors.DefaultScrim;
+        });
+
+    /// <summary>
+    /// Opens the system colour picker on the current value and reports what came back.
+    /// </summary>
+    /// <remarks>
+    /// The native dialog, not one of ours: it already carries a full picker, the custom-colour slots
+    /// and every keyboard convention, and none of that is worth rebuilding for two fields. It has no
+    /// alpha channel, which suits a setting that has no alpha to offer — the scrim's is fixed, see
+    /// <see cref="RealtimeSubtitleColors"/>.
+    /// </remarks>
+    private void PickColour(string current, Action<string> onPicked)
+    {
+        var start = RealtimeSubtitleColors.Text(current);
+
+        using var dialog = new System.Windows.Forms.ColorDialog
+        {
+            // Opens on what is in effect, so a small adjustment starts from the current colour
+            // rather than from black.
+            Color = System.Drawing.Color.FromArgb(start.R, start.G, start.B),
+            FullOpen = true,
+            AnyColor = true,
+        };
+
+        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+        onPicked(RealtimeSubtitleColors.Format(
+            System.Windows.Media.Color.FromRgb(dialog.Color.R, dialog.Color.G, dialog.Color.B)));
+    }
+
+    private void Persist(Action<AppSettings> apply)
+    {
+        apply(SettingsService.Instance.Current);
+        SettingsService.Instance.Save();
+        RenderColours();
+    }
+
+    /// <summary>
+    /// Paints the two swatches, their hex labels and the preview from what is currently stored.
+    /// </summary>
+    private void RenderColours()
+    {
+        var settings = SettingsService.Instance.Current;
+        var text = RealtimeSubtitleColors.Text(settings.RealtimeTextColor);
+        var scrim = RealtimeSubtitleColors.Scrim(settings.RealtimeScrimColor);
+
+        // The swatch shows the colour the user picked, so it is drawn opaque even for the scrim —
+        // the preview below is where its translucency is on display.
+        TextColorSwatch.Background = new SolidColorBrush(text);
+        ScrimColorSwatch.Background = new SolidColorBrush(
+            System.Windows.Media.Color.FromRgb(scrim.R, scrim.G, scrim.B));
+
+        TextColorValue.Text = RealtimeSubtitleColors.Format(text);
+        ScrimColorValue.Text = RealtimeSubtitleColors.Format(scrim);
+
+        PreviewText.Foreground = new SolidColorBrush(text);
+        PreviewScrim.Background = new SolidColorBrush(scrim);
+
+        ResetColorsBtn.IsEnabled =
+            settings.RealtimeTextColor != RealtimeSubtitleColors.DefaultText ||
+            settings.RealtimeScrimColor != RealtimeSubtitleColors.DefaultScrim;
     }
 
     private void BlockCountDown_Click(object sender, RoutedEventArgs e) => StepBlockCount(-1);

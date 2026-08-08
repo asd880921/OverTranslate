@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using OverTranslate.Layout;
 using OverTranslate.Services;
+using OverTranslate.Services.Realtime;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, and System.Drawing arrives with
 // it — both carry a type of these names.
 using Brushes = System.Windows.Media.Brushes;
@@ -49,15 +50,18 @@ public partial class RealtimeBlockWindow : Window
     // while one subtitle is on screen — pulsed the text the reader was in the middle of. Swapping
     // outright is the quieter of the two, and the repaints it makes visible are better dealt with
     // by not making them: see RealtimeBlockWindow.SetLines and TextSimilarity.
-    private static readonly SolidColorBrush ScrimBrush =
-        Freeze(new SolidColorBrush(Color.FromArgb(0xB8, 0, 0, 0)));
-    private static readonly SolidColorBrush TextBrush =
-        Freeze(new SolidColorBrush(Color.FromRgb(0xFA, 0xFA, 0xFA)));
     private static readonly FontFamily TextFont =
         new("Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif");
 
     private readonly System.Drawing.Rectangle _physBounds;
     private readonly bool _latinSourceToCjkTarget;
+
+    // Per session rather than per application: the colours are read once when the session starts and
+    // cannot change while it runs, because reaching the page that sets them means the shell window,
+    // which a running session has hidden. Frozen for the same reason the fixed brushes were — they
+    // are handed to every line of every rebuild and never mutated.
+    private readonly SolidColorBrush _scrimBrush;
+    private readonly SolidColorBrush _textBrush;
 
     private double _dpiX = 1.0;
     private double _dpiY = 1.0;
@@ -69,13 +73,17 @@ public partial class RealtimeBlockWindow : Window
         int regionId,
         System.Drawing.Rectangle physBounds,
         string sourceLanguage,
-        string targetLanguage)
+        string targetLanguage,
+        string textColor,
+        string scrimColor)
     {
         InitializeComponent();
 
         RegionId = regionId;
         _physBounds = physBounds;
         _latinSourceToCjkTarget = IsLatinToCjk(sourceLanguage, targetLanguage);
+        _textBrush = Freeze(new SolidColorBrush(RealtimeSubtitleColors.Text(textColor)));
+        _scrimBrush = Freeze(new SolidColorBrush(RealtimeSubtitleColors.Scrim(scrimColor)));
 
         Loaded += (_, _) =>
         {
@@ -245,7 +253,7 @@ public partial class RealtimeBlockWindow : Window
         {
             Width = scrimWidth,
             Height = scrimHeight,
-            Background = ScrimBrush,
+            Background = _scrimBrush,
             CornerRadius = new CornerRadius(3),
         };
 
@@ -263,7 +271,7 @@ public partial class RealtimeBlockWindow : Window
                 FontFamily = TextFont,
                 FontSize = fontSize,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = TextBrush,
+                Foreground = _textBrush,
                 TextWrapping = isGrouped ? TextWrapping.Wrap : TextWrapping.NoWrap,
                 TextTrimming = isGrouped ? TextTrimming.None : TextTrimming.CharacterEllipsis,
                 VerticalAlignment = VerticalAlignment.Center,

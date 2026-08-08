@@ -15,12 +15,20 @@ namespace OverTranslate.Views.Realtime;
 /// The engine this session translates with. Carried on the request rather than read from settings
 /// because 即時翻譯 keeps its choices to itself — see RealtimePage.
 /// </param>
+/// <param name="TextColor">
+/// Subtitle colours as "#RRGGBB", carried here like everything else this sitting runs with. They are
+/// read from the settings file rather than chosen per session — see AppSettings — but they still
+/// arrive on the request, because a session cannot be asked to change them halfway: reaching the
+/// page that sets them means the shell window, and a running session has hidden it.
+/// </param>
 public sealed record RealtimeStartRequest(
     System.Drawing.Rectangle ScreenBounds,
     int MaxBlocks,
     string SourceLanguage,
     string TargetLanguage,
-    Models.TranslationProvider Provider);
+    Models.TranslationProvider Provider,
+    string TextColor,
+    string ScrimColor);
 
 /// <summary>
 /// Owns a realtime session end to end: the edit layer, the per-block overlays, the floating control
@@ -236,7 +244,8 @@ internal sealed class RealtimeSessionController
         foreach (var region in regions)
         {
             var window = new RealtimeBlockWindow(
-                region.Id, region.Bounds, request.SourceLanguage, request.TargetLanguage);
+                region.Id, region.Bounds, request.SourceLanguage, request.TargetLanguage,
+                request.TextColor, request.ScrimColor);
             _blockWindows[region.Id] = window;
             window.Show();
         }

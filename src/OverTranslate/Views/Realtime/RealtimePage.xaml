@@ -116,6 +116,101 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ── 顯示外觀 ── -->
+                <!-- The one card on this page whose values are kept. Said out loud in the hint,
+                     because the 翻譯區塊 card three rows up says the opposite about itself and a
+                     user cannot be expected to guess which is which. -->
+                <Border Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="顯示外觀" Style="{StaticResource SectionHeader}"/>
+
+                        <!-- Preview first, above the two controls that feed it. A session hides the
+                             shell window, so this is the last moment the user can see the two
+                             colours together — after 選取翻譯區塊 there is no way back to this page
+                             without ending the session. Drawn on a mid-grey so a light scrim and a
+                             dark one are both visibly translucent; the real backdrop is whatever
+                             they are watching, which this cannot know. -->
+                        <TextBlock Text="預覽" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <!-- A fixed mid-grey in both themes, not a theme brush: the real backdrop is
+                             whatever the user is watching, and a preview that turned white in the
+                             light theme would make a white scrim look invisible and a black one look
+                             far heavier than it is. Grey is the one value that lies about neither. -->
+                        <Border x:Name="PreviewBackdrop"
+                                Height="52"
+                                CornerRadius="6"
+                                Margin="0,0,0,14"
+                                Background="#6E6E6E"
+                                ClipToBounds="True">
+                            <Border x:Name="PreviewScrim"
+                                    CornerRadius="3"
+                                    Padding="10,4"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="PreviewText"
+                                           Text="譯文會像這樣顯示在畫面上"
+                                           FontFamily="Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"/>
+                            </Border>
+                        </Border>
+
+                        <TextBlock Text="譯文顏色" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <Button x:Name="TextColorBtn"
+                                Style="{StaticResource FlatButton}"
+                                Height="34"
+                                HorizontalAlignment="Left"
+                                Padding="6,0"
+                                Margin="0,0,0,14"
+                                Click="TextColorBtn_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border x:Name="TextColorSwatch"
+                                        Width="20" Height="20"
+                                        CornerRadius="3"
+                                        BorderThickness="1"
+                                        BorderBrush="{DynamicResource AppBorder}"
+                                        VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TextColorValue"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,4,0"/>
+                            </StackPanel>
+                        </Button>
+
+                        <TextBlock Text="底色" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <Button x:Name="ScrimColorBtn"
+                                Style="{StaticResource FlatButton}"
+                                Height="34"
+                                HorizontalAlignment="Left"
+                                Padding="6,0"
+                                Click="ScrimColorBtn_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border x:Name="ScrimColorSwatch"
+                                        Width="20" Height="20"
+                                        CornerRadius="3"
+                                        BorderThickness="1"
+                                        BorderBrush="{DynamicResource AppBorder}"
+                                        VerticalAlignment="Center"/>
+                                <TextBlock x:Name="ScrimColorValue"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,4,0"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="底色的透明度是固定的：太透會透出原文、太實會蓋住畫面。此區設定會自動儲存並套用到下次翻譯。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="0,6,0,10" TextWrapping="Wrap" LineHeight="16"/>
+
+                        <!-- Available only when something has actually been changed: a reset that
+                             does nothing still looks like it might, and the user has to press it to
+                             find out. -->
+                        <Button x:Name="ResetColorsBtn"
+                                Content="還原預設值"
+                                Style="{StaticResource FlatButton}"
+                                Height="32"
+                                HorizontalAlignment="Left"
+                                Padding="14,0"
+                                Click="ResetColorsBtn_Click"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- ── 運作方式 ── -->
                 <!-- Three lines, because the on-screen half of this feature is a mode the user has
                      not seen before: what the button does, what happens next, and the one property

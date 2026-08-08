@@ -21,4 +21,12 @@ public class AppSettings
     public string ScreenshotSavePath { get; set; } = "";
     /// <summary>Off by default: Debug records the recognised text, i.e. the user's screen contents.</summary>
     public bool VerboseLogging { get; set; } = false;
+    /// <summary>
+    /// Realtime subtitle colours, "#RRGGBB". Unlike everything else on 即時翻譯 these are kept: which
+    /// screen and how many blocks belong to one sitting, but a reader who needs yellow on dark blue
+    /// needs it every time. The scrim's alpha is not stored — see RealtimeSubtitleColors.
+    /// </summary>
+    public string RealtimeTextColor { get; set; } = Services.Realtime.RealtimeSubtitleColors.DefaultText;
+    /// <inheritdoc cref="RealtimeTextColor"/>
+    public string RealtimeScrimColor { get; set; } = Services.Realtime.RealtimeSubtitleColors.DefaultScrim;
 }
