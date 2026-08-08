@@ -110,7 +110,7 @@
                                         Click="BlockCountUp_Click"/>
                             </StackPanel>
                         </Border>
-                        <TextBlock Text="最多可同時建立 3 個翻譯區塊，此設定關閉後不會保留。"
+                        <TextBlock Text="最多可同時建立 3 個翻譯區塊。"
                                    Style="{StaticResource FieldHint}"
                                    Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
                     </StackPanel>
