@@ -13,7 +13,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
     private static readonly string ModelRoot =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ocrmodels", "onnx");
-    private static readonly int ThreadCount = Math.Clamp(Environment.ProcessorCount, 1, 2);
+    // Threads inside one inference and how many inferences may run at once, decided together — see
+    // OcrThreadBudget for the table and why the product rather than either number is the thing held
+    // fixed.
+    private static readonly int ThreadCount = OcrThreadBudget.For(Environment.ProcessorCount).Threads;
 
     // Blocks whose average per-character recognition confidence falls below this are
     // discarded as noise / icon misdetections. Mirrors the old Tesseract MinWordConfidence
@@ -30,11 +33,18 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // behind a wedged one gets an error instead of never returning.
     private static readonly TimeSpan ModelSwapDrainTimeout = TimeSpan.FromSeconds(10);
 
-    // How many inferences may run at once. Each already uses ThreadCount threads of its own, so the
-    // budget is cores/4 rather than cores/2. Measured on a 16-core machine against a 1200x200 screen
-    // grab: one pass 320ms; four concurrent passes 502ms in total, so 2.5x the throughput for 1.6x
-    // the latency. Five was slower than four, which is where the cap comes from.
-    private static readonly int InferenceSlots = Math.Clamp(Environment.ProcessorCount / 4, 1, 4);
+    // Measured on a 16-core machine against a 1200x200 screen grab, back when each pass took two
+    // threads: one pass 320ms; four concurrent passes 502ms in total, so 2.5x the throughput for
+    // 1.6x the latency, and five was slower than four. That is where the cap of 4 comes from.
+    //
+    // Realtime has never reached this limit: across a full day of sessions the gate turned nobody
+    // away once, because a session runs one or two blocks and each block is one loop. The batch
+    // image translation feature is the caller this number was really chosen for, and the one to
+    // re-measure for if it lands.
+    private static readonly int InferenceSlots = OcrThreadBudget.For(Environment.ProcessorCount).Slots;
+
+    /// <inheritdoc cref="InferenceSlots"/>
+    internal static int ConcurrentRecognitions => InferenceSlots;
 
     private readonly object _sync = new();
     // Admits a bounded number of concurrent inferences; see RecognizeAsync for why it is bounded.
@@ -345,8 +355,25 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// its text is far larger than interface text passes a smaller number — see
     /// <see cref="Realtime.RealtimeDetectorSize"/> for the measurements behind that.
     /// </param>
+    /// <remarks>
+    /// <c>DoAngle</c> is off, against the library's default. It runs the classifier model over every
+    /// detected box to decide whether the text is upside down, and nothing this application reads
+    /// ever is: screen text, game interfaces and subtitles are all drawn the right way up by the
+    /// application underneath. Left on it can only cost — a misfired classification flips a box and
+    /// turns a readable line into nonsense — so this is not a speed-for-accuracy trade in either
+    /// direction.
+    ///
+    /// Measured on a 1380x750 grab of a game screen with 7 text boxes: 440ms with it, 427ms without.
+    /// 3%, which is worth saying out loud — the classifier is cheap next to recognition, and anyone
+    /// arriving here looking for the big win should keep reading past this line. The box count is
+    /// where the time goes; see issue #21.
+    /// </remarks>
     private static RapidOcrOptions CreateOptions(int? maxDetectSize) =>
-        RapidOcrOptions.Default with { ImgResize = maxDetectSize ?? ScreenshotDetectSize };
+        RapidOcrOptions.Default with
+        {
+            ImgResize = maxDetectSize ?? ScreenshotDetectSize,
+            DoAngle = false,
+        };
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)
     {

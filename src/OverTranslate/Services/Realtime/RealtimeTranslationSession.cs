@@ -92,6 +92,14 @@ public sealed class RealtimeTranslationSession
     // because the slots are — one report says all there is to say about the provider.
     private int _slotExhaustionReported;
 
+    // And once more for the recognition side. This one has never fired in a measured session — the
+    // gate allows more concurrent inferences than a realtime session has regions — but "never on
+    // this machine" is not "never", and the machines this ships to are smaller: the gate is derived
+    // from the core count, so a four-core one allows a single inference at a time. Without a line in
+    // the shipped log, a user there would see one block updating far less often than the others and
+    // have no way to say why, and neither would anyone reading their report.
+    private int _noSlotReported;
+
     // The engine this session runs with, chosen on 即時翻譯 and not shared with the rest of the
     // application. Set by Start before any region loop begins.
     private Models.TranslationProvider _provider;
@@ -129,6 +137,7 @@ public sealed class RealtimeTranslationSession
         _cts = cts;
         Interlocked.Exchange(ref _grabFailureReported, 0);
         Interlocked.Exchange(ref _slotExhaustionReported, 0);
+        Interlocked.Exchange(ref _noSlotReported, 0);
         Interlocked.Exchange(ref _busyRegions, 0);
         // Otherwise a session that ended on a failure would swallow the same one on the next run,
         // which is the run where the user is checking whether they fixed it.
@@ -331,7 +340,21 @@ public sealed class RealtimeTranslationSession
         var (primarySize, fallbackSizes) = RealtimeDetectorSize.For(frame.Width, frame.Height);
         var recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, primarySize, token);
         if (recognized is null)
+        {
+            // Once per session at Warn, the rest at Debug — the same rule the grab and translation
+            // sides use. Skipping is the whole recovery and the next poll is 250ms away, so this is
+            // not an error; it is the one thing that would explain a region updating far less often
+            // than its neighbours, and it is invisible without saying so.
+            if (Interlocked.Exchange(ref _noSlotReported, 1) == 0)
+                Log.Warn(
+                    "Realtime region {Region} skipped a poll: all {Slots} recognition slots busy; " +
+                    "further skips logged at Debug",
+                    region.Id, OcrService.ConcurrentRecognitions);
+            else
+                Log.Debug("Realtime region {Region} skipped a poll: all recognition slots busy", region.Id);
+
             return new PassReading(PassOutcome.NoSlot, 0, 0, 0, state.RenderedText.Length);
+        }
 
         // Thrown-away boxes are cleared out before the pass is judged empty, because a collapse is
         // the strongest reason there is to try the other size: a detector that answered with one
