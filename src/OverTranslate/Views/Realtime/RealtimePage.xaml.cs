@@ -32,8 +32,12 @@ public sealed record ScreenItem(
 /// <para><b>Appearance preferences</b> — the subtitle's two colours, in 顯示外觀 — are stored and
 /// restored. A reader who needs yellow on dark blue needs it every session, and re-picking it each
 /// time is the same failure as forgetting a theme. They live here rather than in 設定 so the control
-/// sits beside what it changes, and the card says in so many words that its values are kept, because
-/// the card above it says the opposite about itself.</para>
+/// sits beside what it changes.</para>
+///
+/// <para>Nothing on screen currently marks which card is which; 翻譯區塊 states that its value is not
+/// kept, and 顯示外觀 says nothing either way. That is a deliberate trade for a shorter card, not an
+/// oversight — if it turns out to confuse anyone, the fix is a line in 顯示外觀 saying its values are
+/// kept, not removing the note from 翻譯區塊.</para>
 ///
 /// Anything added later belongs to one of these two groups; if it is not obvious which, it is a
 /// preference only when the user would be annoyed to set it twice.
