@@ -291,6 +291,12 @@ internal sealed class RealtimeSessionController
                 return;
             }
 
+            // Last, so it lands on top of any block it overlaps — the same order it has on screen.
+            // Included because a picture of subtitles with no visible tool looks like the application
+            // being watched simply has subtitles, which is the opposite of what this capture is for.
+            if (control.RenderForCapture() is { } bar)
+                overlays.Add(new RealtimeShowcaseCapture.Overlay(control.PhysicalBounds, bar));
+
             var image = RealtimeShowcaseCapture.Compose(request.ScreenBounds, overlays);
             if (image is null)
             {

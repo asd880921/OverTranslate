@@ -192,6 +192,36 @@ public partial class RealtimeControlWindow : Window
         _messageTimer.Start();
     }
 
+    /// <summary>Where the bar sits on screen, in physical pixels.</summary>
+    public System.Drawing.Rectangle PhysicalBounds =>
+        new(_position.X, _position.Y, PhysicalWidth, PhysicalHeight);
+
+    /// <summary>
+    /// The bar as an image at physical resolution, so a showcase capture can include it — the bar is
+    /// excluded from real screen capture and would otherwise be missing from the one picture meant to
+    /// show what this feature looks like.
+    /// </summary>
+    /// <remarks>
+    /// Renders the window rather than its content. <see cref="RootChrome"/> carries the mixed-DPI
+    /// LayoutTransform, and a visual's own layout transform is not part of what Render draws — only
+    /// its descendants' are. Taken from the window, RootChrome is a descendant and the transform
+    /// applies, which is also what makes <see cref="PhysicalWidth"/> the right size for the bitmap.
+    /// </remarks>
+    public System.Windows.Media.Imaging.BitmapSource? RenderForCapture()
+    {
+        if (!IsLoaded) return null;
+
+        var width = Math.Max(1, PhysicalWidth);
+        var height = Math.Max(1, PhysicalHeight);
+
+        var rendered = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            width, height, 96 * _windowScale, 96 * _windowScale,
+            System.Windows.Media.PixelFormats.Pbgra32);
+        rendered.Render(this);
+        rendered.Freeze();
+        return rendered;
+    }
+
     /// <summary>Re-asserts the bar above a window created after it — the edit layer, on re-entry.</summary>
     public void BringToFront()
     {
