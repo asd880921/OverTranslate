@@ -87,6 +87,11 @@ public sealed class RealtimeTranslationSession
     // fill the log at four lines a second.
     private int _grabFailureReported;
 
+    // Same shape of problem on the translation side: a provider that has stopped answering holds
+    // every slot and refuses a read per poll per region. Session-wide rather than per-region,
+    // because the slots are — one report says all there is to say about the provider.
+    private int _slotExhaustionReported;
+
     // The engine this session runs with, chosen on 即時翻譯 and not shared with the rest of the
     // application. Set by Start before any region loop begins.
     private Models.TranslationProvider _provider;
@@ -123,6 +128,7 @@ public sealed class RealtimeTranslationSession
         var cts = new CancellationTokenSource();
         _cts = cts;
         Interlocked.Exchange(ref _grabFailureReported, 0);
+        Interlocked.Exchange(ref _slotExhaustionReported, 0);
         Interlocked.Exchange(ref _busyRegions, 0);
         // Otherwise a session that ended on a failure would swallow the same one on the next run,
         // which is the run where the user is checking whether they fixed it.
@@ -212,7 +218,15 @@ public sealed class RealtimeTranslationSession
                     // how long it had been since the region was last examined, and which of the ways
                     // out of a pass was taken. Counts and lengths only — the words themselves stay at
                     // Debug, where LogBlocks keeps them.
-                    Log.Info(
+                    //
+                    // Debug rather than Info because this fires once per poll that saw the pixels
+                    // move: 4/s per region, three regions, ~6MB an hour against a 12MB archive
+                    // budget. A session over a video used to evict every other line in the log —
+                    // including the startup snapshot and whatever the user actually opened the log
+                    // for. It sat at Info because Debug needed an environment variable nobody was
+                    // going to be talked through; 設定 → 進階設定 → 記錄詳細資訊 is now a checkbox,
+                    // so the detail is still one click away when this is the thing being diagnosed.
+                    Log.Debug(
                         "Realtime read region={Region} skipped={Skipped} since={Since}ms ocr={Ocr}ms " +
                         "lines={Lines} chars={Chars} shown={Shown} -> {Outcome}",
                         region.Id,
@@ -341,7 +355,8 @@ public sealed class RealtimeTranslationSession
             retried = RejectCollapsedBlocks(retried, frame.Height, region.Id);
             if (retried.Count == 0) continue;
 
-            Log.Info(
+            // Per pass, and content that needs the fallback size tends to need it every pass.
+            Log.Debug(
                 "Realtime region {Region} found {Lines} line(s) at detect={Retry} after none at {Primary}",
                 region.Id, retried.Count, retrySize, primarySize);
             recognized = retried;
@@ -447,7 +462,9 @@ public sealed class RealtimeTranslationSession
             // the list for those.
             kept ??= [.. blocks.Take(index)];
 
-            Log.Info(
+            // Not Info at any traffic level: {Text} is recognised text, i.e. whatever was on the
+            // user's screen, and the shipped log is documented as not carrying that.
+            Log.Debug(
                 "Realtime region {Region} dropped a collapsed {Height:0}px box in a {Block:0}px block: \"{Text}\"",
                 regionId, block.Bounds.Height, blockHeight, block.Text);
         }
@@ -631,9 +648,18 @@ public sealed class RealtimeTranslationSession
                 // stalled rather than merely slow. Nothing in flight can be recalled to make room,
                 // so this read is lost — and asking for a retry is what stops the region sitting
                 // there recorded as showing a translation that was never drawn.
-                Log.Info(
-                    "Realtime region {Region} dropped a read: {InFlight} translations already in flight",
-                    region.Id, MaxConcurrentTranslations);
+                // Once per session at Warn, the rest at Debug — the same rule GrabRegion uses for the
+                // same reason: a stalled provider repeats this every poll of every region, and the
+                // first line already says everything the log needs to say about it.
+                if (Interlocked.Exchange(ref session._slotExhaustionReported, 1) == 0)
+                    Log.Warn(
+                        "Realtime region {Region} dropped a read: {InFlight} translations already in " +
+                        "flight; further drops logged at Debug",
+                        region.Id, MaxConcurrentTranslations);
+                else
+                    Log.Debug(
+                        "Realtime region {Region} dropped a read: {InFlight} translations already in flight",
+                        region.Id, MaxConcurrentTranslations);
                 RequestRetry();
                 return;
             }
@@ -649,14 +675,16 @@ public sealed class RealtimeTranslationSession
                     var translated = await session.TranslateAsync(blocks, sourceLanguage, targetLanguage, token);
                     var translateMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 
+                    // Both per pass, so both track the content's rate of change — see the read line
+                    // in RunRegionAsync for why that cannot sit at Info.
                     if (Publish(pass, translated))
-                        Log.Info(
+                        Log.Debug(
                             "Realtime pass region={Region} ocr={Ocr}ms translate={Translate}ms lines={Lines}",
                             region.Id, ocrMs, translateMs, translated.Count);
                     else
                         // Worth its own line: it means the region changed again before this answer
                         // arrived, which is the shape of a provider too slow for the content.
-                        Log.Info(
+                        Log.Debug(
                             "Realtime pass region={Region} overtaken after translate={Translate}ms, not drawn",
                             region.Id, translateMs);
                 }
