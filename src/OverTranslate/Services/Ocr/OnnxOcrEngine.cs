@@ -216,13 +216,16 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         OcrLanguageRouter.Normalize(language) switch
         {
             "KO" => "korean",
-            // EN uses the PP-OCRv5 general ("cjk") model rather than a dedicated Latin model.
-            // English UI captures very often contain embedded Chinese (chrome, labels, ratings),
-            // which a Latin-only model dropped or garbled; the general model reads Latin AND those
-            // CJK glyphs in one pass, and on real captures injected fewer stray foreign-Latin
-            // glyphs (e.g. ¡) than the Latin model. The text is still Latin, so source-language
-            // routing (UsesCjkOnnx) keeps EN on the Latin layout path. Lone-ideograph icon misreads
-            // from this broader model are stripped by RemoveIconIdeographNoise.
+            // Everything else uses the general ("cjk") model — PP-OCRv6_small_rec, one model
+            // covering 50 languages: Simplified and Traditional Chinese, English, Japanese, and 46
+            // Latin-script ones. English UI captures very often contain embedded Chinese (chrome,
+            // labels, ratings), which a Latin-only model dropped or garbled; this reads Latin AND
+            // those CJK glyphs in one pass. The text is still Latin, so source-language routing
+            // (UsesCjkOnnx) keeps EN on the Latin layout path. Lone-ideograph icon misreads are
+            // stripped by RemoveIconIdeographNoise.
+            //
+            // Korean stays on its own model above because v6 carries no Hangul at all — measured
+            // on its dictionary, 0 of 18,708 characters — so the one model cannot cover KO.
             _ => "cjk",
         };
 

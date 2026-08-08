@@ -38,8 +38,9 @@ public class OcrServiceTests
     [Fact]
     public void OnnxEngine_UsesLanguageSpecificModels()
     {
-        // EN routes to the PP-OCRv5 general ("cjk") model (handles embedded Chinese in English UI);
-        // the dedicated Latin model was removed.
+        // EN routes to the general ("cjk") model — PP-OCRv6_small_rec, which covers Chinese,
+        // English, Japanese and 46 Latin-script languages in one. KO keeps its own model because
+        // v6 holds no Hangul.
         Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("EN"));
         Assert.Equal("korean", OnnxOcrEngine.GetModelKeyForLanguage("KO"));
         Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("JA"));
@@ -94,7 +95,12 @@ public class OcrServiceTests
         var looseText = TextOf(await engine.RecognizeAsync(loose, "EN"));
 
         Assert.Equal(looseText, tightText);
-        Assert.Contains("skill(domain-modeling)", tightText);
+
+        // Capitalised, as it is in the fixture. This asserted a lowercase "skill" until the
+        // PP-OCRv6 model landed, which was never what the picture says — the old model misread the
+        // capital and the assertion was written around that, quietly making a recognition error
+        // part of the contract. Worth remembering when the next model changes it back.
+        Assert.Contains("Skill(domain-modeling)", tightText);
     }
 
     private static Bitmap LoadFixture(string name) =>
