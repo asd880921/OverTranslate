@@ -16,7 +16,8 @@ namespace OverTranslate.Services.Realtime;
 /// </list>
 ///
 /// The glyphs in those frames are around 60px tall; halving puts them near 30px, which is where the
-/// model was trained. So a region large enough to hold subtitle-sized text is read at half scale.
+/// model was trained. So a region large enough to hold subtitle-sized text was first read at half
+/// scale — see <see cref="PrimaryFraction"/> for why it no longer is.
 ///
 /// None of this reaches the screenshot flow, which asks for no downscale at all and is right to:
 /// its text is interface-sized, already inside the detector's range, and downscaling it would
@@ -30,6 +31,35 @@ internal static class RealtimeDetectorSize
     /// cannot hold 60px subtitles and much text besides.
     /// </summary>
     public const int HalfScaleMinSide = 800;
+
+    /// <summary>
+    /// Fraction of a large block's longest side to read it at first.
+    /// </summary>
+    /// <remarks>
+    /// 0.68 rather than the 0.5 this shipped with. The fallback measurements below already said so —
+    /// 0.68 read 8 of 9 frames the shipped pair had failed on, more than any other fraction — but it
+    /// was only ever reached as a fallback, and a fallback only runs when the primary reads
+    /// <em>nothing</em>. A primary that reads a little never escalates, so on any frame where 0.5
+    /// found some of the text and missed the rest, the rest was silently lost.
+    ///
+    /// That case turns out to be the normal one outside subtitles. Measured on a 1380x750 grab of a
+    /// game screen carrying a nine-box item tooltip:
+    ///
+    /// <code>
+    ///   0.5  → 704   221ms   3 of 9 boxes
+    ///   0.68 → 960   405ms   7 of 9 boxes
+    ///   1.0  → 1380  724ms   9 of 9 boxes
+    /// </code>
+    ///
+    /// 405ms is slower than a subtitle needs but far faster than a tooltip changes, and reading four
+    /// more boxes is not a refinement — it is the difference between a translated card and a card
+    /// with English still showing between the translated lines, which is what a partial read looks
+    /// like on screen (nothing detected means nothing drawn over it either).
+    ///
+    /// Regions below <see cref="HalfScaleMinSide"/> are untouched: they are read at native size and
+    /// this fraction never applies to them, so the subtitle case measured above is unchanged.
+    /// </remarks>
+    public const double PrimaryFraction = 0.68;
 
     /// <summary>
     /// Fractions of the block to fall back to, in the order to try them, when the first size reads
@@ -55,7 +85,13 @@ internal static class RealtimeDetectorSize
     /// nine lines in a single measured session, and it is the only size that can read text too
     /// small to survive any downscale at all.
     /// </remarks>
-    public static readonly double[] FallbackFractions = [0.68, 1.0];
+    /// <remarks>
+    /// 0.5 is here rather than as the primary now that <see cref="PrimaryFraction"/> has taken that
+    /// place. It stays in the list because the two are good at opposite things: 0.68 keeps small
+    /// interface text detectable, 0.5 is what stops 60px subtitle glyphs collapsing into one box.
+    /// Native last, as the only size that can read text too small to survive any downscale.
+    /// </remarks>
+    public static readonly double[] FallbackFractions = [0.5, 1.0];
 
     /// <param name="primary">Detector input size to read with first.</param>
     /// <param name="fallbacks">
@@ -72,7 +108,7 @@ internal static class RealtimeDetectorSize
         if (native < HalfScaleMinSide)
             return (native, []);
 
-        var primary = RoundToStride(native / 2);
+        var primary = RoundToStride((int)(native * PrimaryFraction));
         var fallbacks = FallbackFractions
             .Select(fraction => fraction >= 1.0 ? native : RoundToStride((int)(native * fraction)))
             .Where(size => size != primary)

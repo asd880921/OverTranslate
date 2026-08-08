@@ -9,22 +9,34 @@ namespace OverTranslate.Tests;
 public class RealtimeDetectorSizeTests(ITestOutputHelper output)
 {
     [Fact]
-    public void ARegionLargeEnoughForSubtitlesIsReadAtHalfScaleFirst()
+    public void ALargeRegionIsReadAtTheFractionThatDetectsMost()
     {
         var (primary, _) = RealtimeDetectorSize.For(1226, 196);
 
-        Assert.Equal(640, primary); // 1226/2 rounded up onto the detector's grid
+        Assert.Equal(864, primary); // 1226 * 0.68, rounded up onto the detector's grid
     }
 
     [Fact]
-    public void TheFallbacksAreTriedBestFirstAndEndAtNativeSize()
+    public void TheChosenFractionStaysInsideTheRangeSubtitlesSurvive()
     {
-        // 0.68 recovered 8 of the 9 readable frames the shipped pair had given up on, so it leads;
-        // native stays last because it is the only size that can read text too small to survive any
-        // downscale, and it recovered nine lines in a measured session.
+        // The original sweep found 0.37–0.78 of native read both subtitle frames every time, and
+        // 0.84 and above collapsed them into one unreadable box. The primary fraction was raised to
+        // 0.68 for interface text, which only holds as long as it stays inside that window — this
+        // fails the moment someone nudges it towards the collapse.
+        Assert.InRange(RealtimeDetectorSize.PrimaryFraction, 0.37, 0.78);
+    }
+
+    [Fact]
+    public void TheFallbacksCoverTheOppositeEndsAndEndAtNativeSize()
+    {
+        // 0.5 is what stops large subtitle glyphs collapsing, 0.68 (now the primary) is what keeps
+        // small interface text detectable; they fail on opposite content, so whichever is not the
+        // primary belongs in the fallbacks. Native stays last because it is the only size that can
+        // read text too small to survive any downscale, and it recovered nine lines in a measured
+        // session.
         var (_, fallbacks) = RealtimeDetectorSize.For(1415, 169);
 
-        Assert.Equal([992, 1415], fallbacks); // 1415 * 0.68, rounded onto the grid
+        Assert.Equal([736, 1415], fallbacks); // 1415 * 0.5, then native
     }
 
     [Fact]
@@ -50,7 +62,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     public void TheLongestSideDecides()
     {
         var (primary, _) = RealtimeDetectorSize.For(300, 1000);
-        Assert.Equal(512, primary); // 1000/2 rounded up onto the detector's grid
+        Assert.Equal(704, primary); // 1000 * 0.68, rounded up onto the detector's grid
     }
 
     [Theory]
