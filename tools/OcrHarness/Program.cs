@@ -1,7 +1,9 @@
 using System.Drawing;
+using System.IO;
 using GTranslate.Translators;
 using OverTranslate.Services;
 using OverTranslate.Services.Providers;
+using OverTranslate.Services.Realtime;
 
 // OCR + grouping (+ Microsoft translate) harness.
 // Usage: OcrHarness <imagePath> [imagePath...]   (PNG/JPG screenshots)
@@ -10,6 +12,8 @@ using OverTranslate.Services.Providers;
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: OcrHarness <image.png> [more.png ...]");
+    Console.Error.WriteLine("       OcrHarness --scale-sweep <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (reads each frame at every detector size, no translation)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
     return 1;
 }
@@ -75,6 +79,55 @@ if (args[0] == "--xlate-test")
             Console.WriteLine($"  EN: {t.OriginalText}\n  ZH: {t.TranslatedText}");
         Console.WriteLine();
     }
+    return 0;
+}
+
+// Scale sweep: the same frame read at every detector size, to see which sizes find the text and
+// how wide the working band is. This is the measurement #22 step 0 asks for, and it only means
+// anything on frames whose contents are known — the dumped "rescued" frames, where the primary
+// size read nothing and a fallback read the subtitle fine.
+if (args[0] == "--scale-sweep")
+{
+    using var sweepOcr = new OcrService();
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var native = Math.Max(image.Width, image.Height);
+        var aspect = image.Height > 0 ? (double)image.Width / image.Height : 0;
+
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine(
+            $"{Path.GetFileName(path)}  {image.Width}x{image.Height}  ratio={aspect:0.00}");
+
+        // What the app itself would pick for this block, so the sweep can be read against it.
+        var (primary, fallbacks) = RealtimeDetectorSize.For(image.Width, image.Height);
+        Console.WriteLine($"  app picks: primary={primary} fallbacks=[{string.Join(",", fallbacks)}]");
+
+        // Stepped in whole percent, not by adding 0.05 to a double: the accumulated error moved
+        // 0.50 to 0.4999, which rounds to a different 32-pixel stride and quietly sweeps a size the
+        // app would never ask for — right where this measurement is most sensitive.
+        for (var percent = 30; percent <= 100; percent += 5)
+        {
+            var fraction = percent / 100.0;
+            // Same rounding the app uses, so the numbers here are the ones it would really ask for.
+            var size = fraction >= 1.0 ? native : Math.Max(320, ((int)(native * fraction) + 31) / 32 * 32);
+
+            List<OcrTextBlock>? blocks = null;
+            for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
+                blocks = await sweepOcr.TryRecognizeAsync(image, "EN", size);
+
+            var mark = size == primary ? " <- primary" : fallbacks.Contains(size) ? " <- fallback" : "";
+            var text = blocks is null || blocks.Count == 0
+                ? ""
+                : "  " + string.Join(" | ", blocks.Select(b => b.Text.Replace("\n", " ")));
+
+            Console.WriteLine($"  {fraction:0.00} -> {size,5} : {blocks?.Count ?? -1} box{mark}{text}");
+        }
+    }
+
     return 0;
 }
 
