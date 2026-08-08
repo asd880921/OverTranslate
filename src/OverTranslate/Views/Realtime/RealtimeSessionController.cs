@@ -95,7 +95,18 @@ internal sealed class RealtimeSessionController
         _hiddenShell = shellToHide;
         _hiddenShell?.Hide();
 
+        // Borrowed from MainWindow, never built here — see this class's remarks. The fallback exists
+        // so a session can still start if that window is somehow not there, but it is the case this
+        // type is documented as avoiding: a second OcrService loads a second ONNX runtime, and the
+        // two features then compete for the CPU instead of queueing behind one engine. It is also
+        // invisible from the outside — everything works, just slower and heavier — so it says so in
+        // the log rather than being discovered as an unexplained regression.
         var main = System.Windows.Application.Current.MainWindow as MainWindow;
+        if (main is null)
+            Log.Warn(
+                "Realtime session could not reach MainWindow; starting on its own OCR and translation " +
+                "services, which loads a second inference runtime");
+
         _session = new RealtimeTranslationSession(
             main?.SharedOcrService ?? new OcrService(),
             main?.SharedTranslationService ?? new TranslationService());

@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Interop;
 using System.Windows.Media;
 using OverTranslate.Layout;
 using OverTranslate.Services;
@@ -58,17 +56,6 @@ public partial class RealtimeBlockWindow : Window
     private static readonly FontFamily TextFont =
         new("Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif");
 
-    [DllImport("user32.dll")]
-    private static extern int GetWindowLong(IntPtr hwnd, int index);
-
-    [DllImport("user32.dll")]
-    private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
-
-    private const int GWL_EXSTYLE = -20;
-    private const int WS_EX_TRANSPARENT = 0x20;
-    private const int WS_EX_LAYERED = 0x80000;
-    private const int WS_EX_NOACTIVATE = 0x8000000;
-
     private readonly System.Drawing.Rectangle _physBounds;
     private readonly bool _latinSourceToCjkTarget;
 
@@ -108,11 +95,9 @@ public partial class RealtimeBlockWindow : Window
     {
         base.OnSourceInitialized(e);
 
-        var hwnd = new WindowInteropHelper(this).Handle;
-        int style = GetWindowLong(hwnd, GWL_EXSTYLE);
-        // Transparent so clicks reach the application being watched, NoActivate so appearing over a
-        // game never takes its focus — the block has to be furniture, not a window.
-        SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_NOACTIVATE);
+        // Click-through so clicks reach the application being watched, NoActivate so appearing over
+        // a game never takes its focus — the block has to be furniture, not a window.
+        WindowStyles.ApplyClickThrough(this, noActivate: true);
 
         // Before the DPI is read in Loaded: pinning settles which monitor the window belongs to.
         ScreenGeometry.PinPhysicalBounds(this, _physBounds);

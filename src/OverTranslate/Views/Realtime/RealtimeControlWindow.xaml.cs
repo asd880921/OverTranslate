@@ -1,7 +1,5 @@
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -42,15 +40,6 @@ public enum RealtimeMessageKind
 public partial class RealtimeControlWindow : Window
 {
     private static readonly TimeSpan MessageDuration = TimeSpan.FromSeconds(2.6);
-
-    [DllImport("user32.dll")]
-    private static extern int GetWindowLong(IntPtr hwnd, int index);
-
-    [DllImport("user32.dll")]
-    private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
-
-    private const int GWL_EXSTYLE = -20;
-    private const int WS_EX_NOACTIVATE = 0x8000000;
 
     private readonly System.Drawing.Rectangle _screenBounds;
     private readonly DispatcherTimer _messageTimer;
@@ -114,9 +103,7 @@ public partial class RealtimeControlWindow : Window
     {
         base.OnSourceInitialized(e);
 
-        var hwnd = new WindowInteropHelper(this).Handle;
-        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
-
+        WindowStyles.ApplyNoActivate(this);
         WindowCaptureShield.Exclude(this);
     }
 

@@ -1,9 +1,7 @@
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using OverTranslate.Services;
@@ -45,15 +43,6 @@ public partial class RealtimeEditWindow : Window
     private static readonly SolidColorBrush FrameFill = Freeze(Color.FromArgb(0x1C, 0x99, 0xC8, 0xF0));
     private static readonly SolidColorBrush HandleFill = Freeze(Color.FromRgb(0xFF, 0xFF, 0xFF));
     private static readonly SolidColorBrush RemoveForeground = Freeze(Color.FromRgb(0xFF, 0xFF, 0xFF));
-
-    [DllImport("user32.dll")]
-    private static extern int GetWindowLong(IntPtr hwnd, int index);
-
-    [DllImport("user32.dll")]
-    private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
-
-    private const int GWL_EXSTYLE = -20;
-    private const int WS_EX_NOACTIVATE = 0x8000000;
 
     private readonly System.Drawing.Rectangle _physBounds;
     private readonly IReadOnlyList<System.Drawing.Rectangle> _initialBlocks;
@@ -118,8 +107,7 @@ public partial class RealtimeEditWindow : Window
     {
         base.OnSourceInitialized(e);
 
-        var hwnd = new WindowInteropHelper(this).Handle;
-        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+        WindowStyles.ApplyNoActivate(this);
 
         // Before the DPI is read in Loaded: pinning settles which monitor the window belongs to.
         ScreenGeometry.PinPhysicalBounds(this, _physBounds);
