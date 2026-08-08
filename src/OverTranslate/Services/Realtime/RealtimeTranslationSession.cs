@@ -363,6 +363,12 @@ public sealed class RealtimeTranslationSession
         // needed a second look as the one case that never got it — measured on a line that
         // collapsed on nearly every appearance and was simply lost each time.
         recognized = RejectCollapsedBlocks(recognized, frame.Height, region.Id);
+        recognized = RejectShortReadings(recognized, region.Id);
+
+        // Sampled here, before the fallbacks can run, because "the primary size was enough" is
+        // exactly the condition this is the control group for.
+        if (recognized.Count > 0)
+            RealtimeFrameDump.SamplePrimaryRead(frame, region.Id, primarySize);
 
         // Nothing found can mean the text is out of the detector's range rather than absent, and
         // the two ways of being out of it need opposite sizes — so the one not tried yet gets a go
@@ -376,12 +382,20 @@ public sealed class RealtimeTranslationSession
             if (retried is null) break;   // no free slot; the next poll can try again
 
             retried = RejectCollapsedBlocks(retried, frame.Height, region.Id);
+            retried = RejectShortReadings(retried, region.Id);
             if (retried.Count == 0) continue;
 
             // Per pass, and content that needs the fallback size tends to need it every pass.
             Log.Debug(
                 "Realtime region {Region} found {Lines} line(s) at detect={Retry} after none at {Primary}",
                 region.Id, retried.Count, retrySize, primarySize);
+
+            // The frame that proves a size was the problem: this one held text the whole time and
+            // the first size still read nothing in it. Frames that no size could read say only
+            // that something was wrong, and a session of them turned out to be mostly blank
+            // picture between subtitles — so this is the sample the scale question needs.
+            RealtimeFrameDump.SaveFallbackRescue(frame, region.Id, primarySize, retrySize);
+
             recognized = retried;
         }
 
@@ -490,6 +504,41 @@ public sealed class RealtimeTranslationSession
             Log.Debug(
                 "Realtime region {Region} dropped a collapsed {Height:0}px box in a {Block:0}px block: \"{Text}\"",
                 regionId, block.Bounds.Height, blockHeight, block.Text);
+        }
+
+        return kept ?? blocks;
+    }
+
+    /// <summary>
+    /// Drops the boxes that came back holding a character, which are scenery rather than text.
+    /// </summary>
+    /// <remarks>
+    /// Kept apart from <see cref="RejectCollapsedBlocks"/> rather than folded into it because the
+    /// two ask different questions — that one measures the box, this one reads what came out of it
+    /// — and a box can fail either test without failing the other. Both run on the primary read and
+    /// on a fallback, because a false reading does the same damage whichever size produced it.
+    /// </remarks>
+    private static List<OcrTextBlock> RejectShortReadings(List<OcrTextBlock> blocks, int regionId)
+    {
+        List<OcrTextBlock>? kept = null;
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            var block = blocks[index];
+            if (!ShortReadingDetection.IsTooShort(block.Text))
+            {
+                kept?.Add(block);
+                continue;
+            }
+
+            // Copied lazily, as above: almost every pass keeps everything.
+            kept ??= [.. blocks.Take(index)];
+
+            // Debug for the same reason as the collapse log: {Text} is whatever was on the user's
+            // screen, and the shipped log does not carry that.
+            Log.Debug(
+                "Realtime region {Region} dropped a {Length}-character box: \"{Text}\"",
+                regionId, block.Text?.Trim().Length ?? 0, block.Text);
         }
 
         return kept ?? blocks;
