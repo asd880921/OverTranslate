@@ -115,6 +115,7 @@ internal sealed class RealtimeSessionController
         control.StartRequested += (_, _) => StartTranslating();
         control.EditRequested += (_, _) => EnterEditMode();
         control.CloseRequested += (_, _) => Stop();
+        control.ShotRequested += (_, _) => CaptureShowcase();
         _control = control;
         control.Show();
 
@@ -258,6 +259,66 @@ internal sealed class RealtimeSessionController
         _stayOnTop.Start();
 
         _session.Start(regions, request.SourceLanguage, request.TargetLanguage, request.Provider);
+    }
+
+    /// <summary>
+    /// Builds a picture of the screen with this session's subtitles drawn onto it, and puts it on
+    /// the clipboard — the only way to show someone what this feature does, since the layers
+    /// themselves are excluded from every form of screen capture.
+    /// </summary>
+    /// <remarks>
+    /// Saved to disk as well when 截圖 → 截圖時自動儲存 is on, deliberately following the rule the
+    /// capture side already set rather than introducing a second one for the same kind of output.
+    /// </remarks>
+    private void CaptureShowcase()
+    {
+        if (_control is not { } control || _request is not { } request) return;
+
+        try
+        {
+            var overlays = _blockWindows.Values
+                .Select(window => (Window: window, Image: window.RenderForCapture()))
+                .Where(pair => pair.Image is not null)
+                .Select(pair => new RealtimeShowcaseCapture.Overlay(
+                    pair.Window.PhysicalBounds, pair.Image!))
+                .ToList();
+
+            if (overlays.Count == 0)
+            {
+                // Composing here would produce a plain screenshot, which is not what was asked for
+                // and gives no sign that anything was missing.
+                control.ShowMessage("目前還沒有譯文可以擷取");
+                return;
+            }
+
+            var image = RealtimeShowcaseCapture.Compose(request.ScreenBounds, overlays);
+            if (image is null)
+            {
+                control.ShowMessage("擷取畫面失敗，請再試一次", RealtimeMessageKind.Failure);
+                return;
+            }
+
+            System.Windows.Clipboard.SetImage(image);
+
+            var settings = SettingsService.Instance.Current;
+            if (!settings.SaveScreenshotToDisk)
+            {
+                control.ShowMessage("已複製畫面與譯文");
+                return;
+            }
+
+            var path = ScreenshotSaveService.Save(image, settings.ScreenshotSavePath);
+            Log.Info("Realtime showcase capture saved to {Path}", path);
+            control.ShowMessage("已複製並儲存畫面與譯文");
+        }
+        catch (Exception ex)
+        {
+            // The clipboard can be held by another process and saving can hit a full or read-only
+            // folder. Neither is worth ending a session over, and the bar is where the user is
+            // looking.
+            Log.Warn(ex, "Realtime showcase capture failed");
+            control.ShowMessage($"擷取失敗：{ex.Message}", RealtimeMessageKind.Failure);
+        }
     }
 
     // ── Session callbacks (raised on the polling thread) ─────────────────────────────────────────

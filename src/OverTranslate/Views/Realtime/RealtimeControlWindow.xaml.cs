@@ -98,6 +98,7 @@ public partial class RealtimeControlWindow : Window
     public event EventHandler? StartRequested;
     public event EventHandler? EditRequested;
     public event EventHandler? CloseRequested;
+    public event EventHandler? ShotRequested;
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -301,6 +302,8 @@ public partial class RealtimeControlWindow : Window
     private void StartBtn_Click(object sender, RoutedEventArgs e) => StartRequested?.Invoke(this, EventArgs.Empty);
 
     private void EditBtn_Click(object sender, RoutedEventArgs e) => EditRequested?.Invoke(this, EventArgs.Empty);
+
+    private void ShotBtn_Click(object sender, RoutedEventArgs e) => ShotRequested?.Invoke(this, EventArgs.Empty);
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }

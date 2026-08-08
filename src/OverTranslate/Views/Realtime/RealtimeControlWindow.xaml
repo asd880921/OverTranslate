@@ -149,6 +149,19 @@
                                    Foreground="{DynamicResource AppTextPrimary}"/>
                     </StackPanel>
 
+                    <!-- Icon rather than a word: the two buttons beside it are the session's own
+                         controls, and a third label of equal weight would read as a third thing the
+                         user has to decide about. This one is only ever wanted deliberately. -->
+                    <Button x:Name="ShotBtn"
+                            Style="{StaticResource ToolbarIconButton}"
+                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                            FontSize="15"
+                            Content="&#xE722;"
+                            Margin="0,0,4,0"
+                            ToolTip="擷取目前畫面與譯文（複製到剪貼簿）"
+                            AutomationProperties.Name="擷取畫面與譯文"
+                            Click="ShotBtn_Click"/>
+
                     <Button Content="編輯"
                             Style="{StaticResource ToolbarFlatButton}"
                             Margin="0,0,4,0"

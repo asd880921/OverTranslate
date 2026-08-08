@@ -99,6 +99,9 @@ public partial class RealtimeBlockWindow : Window
 
     public int RegionId { get; }
 
+    /// <summary>Where this block sits on the screen, in physical pixels — what it was pinned to.</summary>
+    public System.Drawing.Rectangle PhysicalBounds => _physBounds;
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -112,6 +115,35 @@ public partial class RealtimeBlockWindow : Window
 
         // Without this the next poll would read this window's own translation back off the screen.
         WindowCaptureShield.Exclude(this);
+    }
+
+    /// <summary>
+    /// This block's scrims and text as an image at physical resolution, for compositing onto a
+    /// screen grab. Null when there is nothing drawn — a block that has not been translated yet has
+    /// nothing to contribute and should leave the grabbed pixels alone.
+    /// </summary>
+    /// <remarks>
+    /// Rendering the visual tree rather than reading it back off the screen is not a workaround for
+    /// <see cref="WindowCaptureShield"/> — it is the better source. The window is composed with
+    /// per-pixel alpha, so what the compositor put on screen is this layer already blended into
+    /// whatever was behind it, while this is the layer itself, with its translucency intact for the
+    /// caller to blend deliberately.
+    /// </remarks>
+    public System.Windows.Media.Imaging.BitmapSource? RenderForCapture()
+    {
+        if (!_isLoaded) return null;
+        if (ScrimCanvas.Children.Count == 0 && TextCanvas.Children.Count == 0) return null;
+
+        var width = Math.Max(1, _physBounds.Width);
+        var height = Math.Max(1, _physBounds.Height);
+
+        // 96 * dpi so one bitmap pixel is one screen pixel: the canvases are laid out in DIP, and
+        // the block's own bounds are in physical pixels.
+        var rendered = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            width, height, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
+        rendered.Render(LayerHost);
+        rendered.Freeze();
+        return rendered;
     }
 
     public void SetLines(IReadOnlyList<TranslatedBlock> lines)
