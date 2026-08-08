@@ -60,12 +60,6 @@ public class OcrService : IDisposable
     /// </summary>
     public void SetKeepWarm(bool keepWarm) => _engine.SetKeepWarm(keepWarm);
 
-    /// <summary>
-    /// How many recognitions may run at once. Exposed so a caller that was turned away can say how
-    /// many slots there were, which is the number that makes the refusal mean anything.
-    /// </summary>
-    public static int ConcurrentRecognitions => OnnxOcrEngine.ConcurrentRecognitions;
-
     public void Dispose()
     {
         _engine.Dispose();

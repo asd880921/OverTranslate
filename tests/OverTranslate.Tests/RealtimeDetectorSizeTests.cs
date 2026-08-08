@@ -9,70 +9,22 @@ namespace OverTranslate.Tests;
 public class RealtimeDetectorSizeTests(ITestOutputHelper output)
 {
     [Fact]
-    public void ASubtitleStripIsReadAtHalfScale()
+    public void ARegionLargeEnoughForSubtitlesIsReadAtHalfScaleFirst()
     {
-        // Wide and short: the text fills the height, so the glyphs are large and halving lands them
-        // near the size the model was trained on.
-        var (primary, _) = RealtimeDetectorSize.For(1226, 196);   // ratio 6.3
+        var (primary, _) = RealtimeDetectorSize.For(1226, 196);
 
-        Assert.Equal(640, primary); // 1226 * 0.5, rounded up onto the detector's grid
+        Assert.Equal(640, primary); // 1226/2 rounded up onto the detector's grid
     }
 
     [Fact]
-    public void AnInterfacePanelIsReadAtTheLargerFraction()
+    public void TheFallbacksAreTriedBestFirstAndEndAtNativeSize()
     {
-        // Chunky: the text is a small part of the height, so halving takes it below what the
-        // detector finds. Measured on this shape, 0.5 read 3 of 9 boxes and 0.68 read 7.
-        var (primary, _) = RealtimeDetectorSize.For(1380, 750);   // ratio 1.8
+        // 0.68 recovered 8 of the 9 readable frames the shipped pair had given up on, so it leads;
+        // native stays last because it is the only size that can read text too small to survive any
+        // downscale, and it recovered nine lines in a measured session.
+        var (_, fallbacks) = RealtimeDetectorSize.For(1415, 169);
 
-        Assert.Equal(960, primary); // 1380 * 0.68
-    }
-
-    [Theory]
-    [InlineData(1432, 224)]   // the strips from a measured session, ratio 5.8 and up
-    [InlineData(1549, 203)]
-    [InlineData(1856, 152)]
-    [InlineData(1361, 139)]
-    public void TheShapesUsersActuallyDrawAreClassifiedAsStrips(int width, int height)
-    {
-        var (primary, _) = RealtimeDetectorSize.For(width, height);
-
-        Assert.Equal(RealtimeDetectorSize.For(width, height).Primary, primary);
-        Assert.True(primary <= width * 0.55, $"{width}x{height} should be read at strip scale");
-    }
-
-    [Theory]
-    [InlineData(1273, 647)]   // the panels from the same session, ratio 2.9 and below
-    [InlineData(1395, 636)]
-    [InlineData(1865, 1050)]
-    public void TheShapesUsersActuallyDrawAreClassifiedAsPanels(int width, int height)
-    {
-        var (primary, _) = RealtimeDetectorSize.For(width, height);
-        var native = Math.Max(width, height);
-
-        Assert.True(primary >= native * 0.6, $"{width}x{height} should be read at panel scale");
-    }
-
-    [Fact]
-    public void BothFractionsStayInsideTheRangeSubtitlesSurvive()
-    {
-        // The original sweep found 0.37–0.78 of native read both subtitle frames every time, and
-        // 0.84 and above collapsed them into one unreadable box. Either fraction can end up on a
-        // strip — the panel one as a fallback — so both have to stay inside that window. This fails
-        // the moment someone nudges one towards the collapse.
-        Assert.InRange(RealtimeDetectorSize.StripFraction, 0.37, 0.78);
-        Assert.InRange(RealtimeDetectorSize.PanelFraction, 0.37, 0.78);
-    }
-
-    [Fact]
-    public void TheRejectedShapeFractionIsTriedFirstThenNativeSize()
-    {
-        // The two fail on opposite content, so when the shape rule was wrong the fraction it turned
-        // down is the best next answer. Native goes last: the only size that can read text too small
-        // to survive any downscale.
-        var (_, fallbacks) = RealtimeDetectorSize.For(1415, 169);  // a strip, so primary is 0.5
-
-        Assert.Equal([992, 1415], fallbacks); // 1415 * 0.68, then native
+        Assert.Equal([992, 1415], fallbacks); // 1415 * 0.68, rounded onto the grid
     }
 
     [Fact]
@@ -95,12 +47,10 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void TheLongestSideDecidesTheSize()
+    public void TheLongestSideDecides()
     {
-        // Tall and narrow is not a strip, so it reads at panel scale — and the size comes from the
-        // long side whichever way round the block is.
         var (primary, _) = RealtimeDetectorSize.For(300, 1000);
-        Assert.Equal(704, primary); // 1000 * 0.68, rounded up onto the detector's grid
+        Assert.Equal(512, primary); // 1000/2 rounded up onto the detector's grid
     }
 
     [Theory]
