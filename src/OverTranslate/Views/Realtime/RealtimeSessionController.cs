@@ -309,13 +309,13 @@ internal sealed class RealtimeSessionController
             var settings = SettingsService.Instance.Current;
             if (!settings.SaveScreenshotToDisk)
             {
-                control.ShowMessage("已複製畫面與譯文");
+                control.ShowMessage("畫面截圖已複製到剪貼簿");
                 return;
             }
 
             var path = ScreenshotSaveService.Save(image, settings.ScreenshotSavePath);
             Log.Info("Realtime showcase capture saved to {Path}", path);
-            control.ShowMessage("已複製並儲存畫面與譯文");
+            control.ShowMessage("畫面截圖已複製到剪貼簿並儲存至本機");
         }
         catch (Exception ex)
         {

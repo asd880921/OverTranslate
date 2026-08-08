@@ -158,8 +158,8 @@
                             FontSize="15"
                             Content="&#xE722;"
                             Margin="0,0,4,0"
-                            ToolTip="擷取目前畫面與譯文（複製到剪貼簿）"
-                            AutomationProperties.Name="擷取畫面與譯文"
+                            ToolTip="擷取畫面截圖"
+                            AutomationProperties.Name="擷取畫面截圖"
                             Click="ShotBtn_Click"/>
 
                     <Button Content="編輯"
