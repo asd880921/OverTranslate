@@ -44,8 +44,16 @@ internal static class RealtimeFrameDump
     /// <summary>Create <c>%AppData%\OverTranslate\logs\dumpframes</c> and restart to switch on.</summary>
     public static readonly bool IsEnabled = File.Exists(Path.Combine(LogDirectory, "dumpframes"));
 
+    /// <summary>
+    /// One primary-read frame kept per this many. Chosen so a couple of minutes of watching yields
+    /// a sample comparable in size to the rescued set it is there to be compared against.
+    /// </summary>
+    private const int PrimarySampleEvery = 6;
+
     private static int _unreadWritten;
     private static int _rescuedWritten;
+    private static int _primaryWritten;
+    private static int _primarySeen;
 
     /// <summary>A frame no size read anything in, after the fallbacks had their turn.</summary>
     public static void SaveUnread(Bitmap frame, int regionId) =>
@@ -63,6 +71,30 @@ internal static class RealtimeFrameDump
         Save(
             frame, ref _rescuedWritten, "fallback-rescued",
             $"region{regionId}-{Stamp()}-rescued-p{primarySize}-r{rescueSize}.png");
+
+    /// <summary>
+    /// Every <see cref="PrimarySampleEvery"/>th frame the primary size read fine on its own — the
+    /// control group, without which the frames above cannot be acted on.
+    /// </summary>
+    /// <remarks>
+    /// The other two kinds are both collected on the condition that the primary size failed, so a
+    /// sweep over them can say which size to fall back to but nothing at all about which size to
+    /// start with: the frames that would be hurt by moving the primary are exactly the ones never
+    /// kept. Sampled rather than kept whole because these are the common case — the measured session
+    /// had 101 of them against 15 of the other kind — and a handful is all a comparison needs.
+    /// </remarks>
+    public static void SamplePrimaryRead(Bitmap frame, int regionId, int primarySize)
+    {
+        if (!IsEnabled) return;
+
+        // Counted before the allowance is touched, so the sampling stays evenly spread rather than
+        // taking the first ones and stopping.
+        if (Interlocked.Increment(ref _primarySeen) % PrimarySampleEvery != 0) return;
+
+        Save(
+            frame, ref _primaryWritten, "primary-read",
+            $"region{regionId}-{Stamp()}-primaryok-p{primarySize}.png");
+    }
 
     private static string Stamp() => DateTime.Now.ToString("HHmmss-fff");
 

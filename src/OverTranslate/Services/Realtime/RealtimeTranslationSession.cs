@@ -365,6 +365,11 @@ public sealed class RealtimeTranslationSession
         recognized = RejectCollapsedBlocks(recognized, frame.Height, region.Id);
         recognized = RejectShortReadings(recognized, region.Id);
 
+        // Sampled here, before the fallbacks can run, because "the primary size was enough" is
+        // exactly the condition this is the control group for.
+        if (recognized.Count > 0)
+            RealtimeFrameDump.SamplePrimaryRead(frame, region.Id, primarySize);
+
         // Nothing found can mean the text is out of the detector's range rather than absent, and
         // the two ways of being out of it need opposite sizes — so the one not tried yet gets a go
         // before the region is written off as empty. Only on empty: a pass that read something has
