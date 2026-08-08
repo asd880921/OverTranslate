@@ -289,7 +289,7 @@
                        VerticalAlignment="Center"
                        FontFamily="{StaticResource AppFont}"
                        FontSize="12"
-                       Foreground="{DynamicResource AppTextMuted}"/>
+                       Foreground="{DynamicResource AppTextSecondary}"/>
             <TextBlock x:Name="StatusText"
                        VerticalAlignment="Center"
                        FontFamily="{StaticResource AppFont}"

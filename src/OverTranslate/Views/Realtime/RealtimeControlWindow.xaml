@@ -54,13 +54,15 @@
                                Foreground="{DynamicResource AppTextPrimary}"
                                Text="在螢幕上拖曳建立要翻譯的區塊"/>
 
-                    <!-- Muted and trailing: a running count is a reference, not an instruction -->
+                    <!-- Trailing and a size down: a running count is a reference, not an instruction.
+                         Subordinate by position and size rather than by a dimmer colour — it is the
+                         only place the user is told they have hit the block limit. -->
                     <TextBlock x:Name="BlockCountText"
                                VerticalAlignment="Center"
                                Margin="8,0,0,0"
                                FontFamily="{StaticResource AppFont}"
                                FontSize="12"
-                               Foreground="{DynamicResource AppTextMuted}"/>
+                               Foreground="{DynamicResource AppTextSecondary}"/>
 
                     <Separator Style="{StaticResource VerticalSeparator}"/>
 

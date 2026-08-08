@@ -121,7 +121,7 @@ public partial class RealtimePage : UserControl
             : item?.Hint ?? "";
         ProviderHint.Foreground = missingKey
             ? (System.Windows.Media.Brush)FindResource("AppError")
-            : (System.Windows.Media.Brush)FindResource("AppTextMuted");
+            : (System.Windows.Media.Brush)FindResource("AppTextSecondary");
     }
 
     private void LoadScreens()

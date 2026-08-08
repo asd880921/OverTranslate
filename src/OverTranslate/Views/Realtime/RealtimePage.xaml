@@ -47,7 +47,7 @@
                                        Text="請選擇來源語言"
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="{StaticResource AppFontSize}"
-                                       Foreground="{DynamicResource AppTextMuted}"
+                                       Foreground="{DynamicResource AppTextSecondary}"
                                        Margin="9,0,28,0"
                                        VerticalAlignment="Center"
                                        IsHitTestVisible="False"/>

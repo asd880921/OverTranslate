@@ -37,7 +37,7 @@
                         <TextBlock x:Name="VersionText"
                                    FontFamily="{StaticResource AppFont}"
                                    FontSize="11"
-                                   Foreground="{DynamicResource AppTextMuted}"/>
+                                   Foreground="{DynamicResource AppTextSecondary}"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -87,7 +87,7 @@
                                    FontSize="11"
                                    Margin="8,0,0,0"
                                    VerticalAlignment="Center"
-                                   Foreground="{DynamicResource AppTextMuted}"/>
+                                   Foreground="{DynamicResource AppTextSecondary}"/>
 
                         <TextBlock Text="截圖翻譯"
                                    FontWeight="SemiBold"

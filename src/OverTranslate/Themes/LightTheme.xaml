@@ -9,10 +9,10 @@
     <SolidColorBrush x:Key="AppBorder"         Color="#E0E0E0"/>
     <SolidColorBrush x:Key="AppSubtleBorder"   Color="#EBEBEB"/>
 
-    <!-- Text -->
+    <!-- Text — two levels, and there is no third. See DarkTheme for why AppTextMuted was removed;
+         its light value (#999999) was 2.75:1, no better. -->
     <SolidColorBrush x:Key="AppTextPrimary"    Color="#1A1A1A"/>
     <SolidColorBrush x:Key="AppTextSecondary"  Color="#5A5A5A"/>
-    <SolidColorBrush x:Key="AppTextMuted"      Color="#999999"/>
 
     <!-- Accent -->
     <SolidColorBrush x:Key="AppAccent"         Color="#0078D4"/>
