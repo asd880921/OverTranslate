@@ -16,9 +16,7 @@ namespace OverTranslate.Services.Realtime;
 /// </list>
 ///
 /// The glyphs in those frames are around 60px tall; halving puts them near 30px, which is where the
-/// model was trained. That is why a subtitle strip is read at half scale — but only a strip: an
-/// interface panel holds much smaller text and needs the opposite correction. See
-/// <see cref="StripFraction"/>, <see cref="PanelFraction"/> and <see cref="StripAspectRatio"/>.
+/// model was trained. So a region large enough to hold subtitle-sized text is read at half scale.
 ///
 /// None of this reaches the screenshot flow, which asks for no downscale at all and is right to:
 /// its text is interface-sized, already inside the detector's range, and downscaling it would
@@ -32,64 +30,6 @@ internal static class RealtimeDetectorSize
     /// cannot hold 60px subtitles and much text besides.
     /// </summary>
     public const int HalfScaleMinSide = 800;
-
-    /// <summary>
-    /// Fraction to read a wide, short block at — a subtitle strip.
-    /// </summary>
-    /// <remarks>
-    /// Text in a strip fills most of its height, so the glyphs are large: around 60px in the frames
-    /// swept above, which halving puts near the 30px the model was trained on. Everything in this
-    /// type's remarks about collapse comes from this shape.
-    /// </remarks>
-    public const double StripFraction = 0.5;
-
-    /// <summary>
-    /// Fraction to read a chunkier block at — an interface panel, a tooltip, a dialogue box.
-    /// </summary>
-    /// <remarks>
-    /// The opposite problem. Text is a small part of a panel's height, so its glyphs are already
-    /// near interface size and halving takes them below what the detector can find. Measured on a
-    /// 1380x750 grab of a game screen carrying a nine-box item tooltip:
-    ///
-    /// <code>
-    ///   0.5  → 704   221ms   3 of 9 boxes
-    ///   0.68 → 960   405ms   7 of 9 boxes
-    ///   1.0  → 1380  724ms   9 of 9 boxes
-    /// </code>
-    ///
-    /// Reading four more boxes is not a refinement — a box that is never detected is never drawn
-    /// over either, so a partial read shows on screen as a card with the original language still
-    /// visible between the translated lines.
-    ///
-    /// 0.68 is also what the fallback sweep already favoured: it read 8 of the 9 frames the shipped
-    /// pair had given up on, more than any other fraction. It was only ever reached as a fallback,
-    /// and a fallback runs only when the primary reads <em>nothing</em> — so a primary that read a
-    /// little never escalated and the rest was silently lost.
-    /// </remarks>
-    public const double PanelFraction = 0.68;
-
-    /// <summary>
-    /// Width-to-height ratio at or above which a block is treated as a subtitle strip.
-    /// </summary>
-    /// <remarks>
-    /// One fraction cannot serve both shapes, and trying briefly made subtitles much worse: with
-    /// 0.68 applied to everything, a session over a 1432x224 subtitle read nothing on a third of its
-    /// passes and paid for two more inferences each time, while the game panels it was meant to help
-    /// succeeded on 95–98% of theirs.
-    ///
-    /// The two shapes separate cleanly in the blocks users actually draw. From one afternoon's
-    /// sessions:
-    ///
-    /// <code>
-    ///   strips  1432x224  1549x203  1361x139  1856x152  1522x166   ratio 5.8 – 12.2
-    ///   panels  1273x647  1395x636  1380x657  1295x696  1865x1050  ratio  1.8 –  2.9
-    /// </code>
-    ///
-    /// Nothing lands between 2.9 and 5.8, so the threshold sits in the gap rather than on a measured
-    /// edge. A ratio is the right test rather than an absolute height: it says the same thing about
-    /// a block on a 1080p screen and a 4K one.
-    /// </remarks>
-    public const double StripAspectRatio = 4.0;
 
     /// <summary>
     /// Fractions of the block to fall back to, in the order to try them, when the first size reads
@@ -110,16 +50,12 @@ internal static class RealtimeDetectorSize
     ///
     /// Those frames were kept precisely because the shipped pair failed on them, so the sample
     /// cannot say 0.68 is a better first choice than 0.52 — it never saw the frames 0.52 reads
-    /// happily. What it does say is that neighbouring fractions land on opposite sides of working,
-    /// which is why the shape rule above picks a starting point rather than one size trying to
-    /// serve everything.
-    ///
-    /// The first fallback is whichever shape fraction the rule did not choose: the two fail on
-    /// opposite content, so the rejected one is the best answer for the case where the rule was
-    /// wrong. Native goes last as the only size that can read text too small to survive any
-    /// downscale — it recovered nine lines in a single measured session.
+    /// happily. What it does say is that 0.68 recovers most of what is currently lost, so it goes
+    /// first among the fallbacks. Native stays behind it rather than being dropped: it recovered
+    /// nine lines in a single measured session, and it is the only size that can read text too
+    /// small to survive any downscale at all.
     /// </remarks>
-    public const double NativeFraction = 1.0;
+    public static readonly double[] FallbackFractions = [0.68, 1.0];
 
     /// <param name="primary">Detector input size to read with first.</param>
     /// <param name="fallbacks">
@@ -136,14 +72,8 @@ internal static class RealtimeDetectorSize
         if (native < HalfScaleMinSide)
             return (native, []);
 
-        // Which shape this is decides where to start; the other shape's fraction is then the first
-        // thing to try if that was wrong.
-        var isStrip = height > 0 && (double)width / height >= StripAspectRatio;
-        var chosen = isStrip ? StripFraction : PanelFraction;
-        var other = isStrip ? PanelFraction : StripFraction;
-
-        var primary = RoundToStride((int)(native * chosen));
-        var fallbacks = new[] { other, NativeFraction }
+        var primary = RoundToStride(native / 2);
+        var fallbacks = FallbackFractions
             .Select(fraction => fraction >= 1.0 ? native : RoundToStride((int)(native * fraction)))
             .Where(size => size != primary)
             .Distinct()
