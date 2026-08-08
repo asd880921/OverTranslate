@@ -382,6 +382,13 @@ public sealed class RealtimeTranslationSession
             Log.Debug(
                 "Realtime region {Region} found {Lines} line(s) at detect={Retry} after none at {Primary}",
                 region.Id, retried.Count, retrySize, primarySize);
+
+            // The frame that proves a size was the problem: this one held text the whole time and
+            // the first size still read nothing in it. Frames that no size could read say only
+            // that something was wrong, and a session of them turned out to be mostly blank
+            // picture between subtitles — so this is the sample the scale question needs.
+            RealtimeFrameDump.SaveFallbackRescue(frame, region.Id, primarySize, retrySize);
+
             recognized = retried;
         }
 
