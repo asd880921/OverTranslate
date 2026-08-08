@@ -397,27 +397,6 @@ public partial class ScreenCaptureWindow : Window
         new(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y),
             Math.Abs(b.X - a.X), Math.Abs(b.Y - a.Y));
 
-    private static BitmapSource BitmapToDisplaySource(Bitmap bmp, double dpi = 96)
-    {
-        var locked = bmp.LockBits(
-            new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height),
-            System.Drawing.Imaging.ImageLockMode.ReadOnly,
-            System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        try
-        {
-            var src = BitmapSource.Create(
-                bmp.Width, bmp.Height, dpi, dpi,
-                PixelFormats.Bgra32,
-                null,
-                locked.Scan0,
-                Math.Abs(locked.Stride) * bmp.Height,
-                locked.Stride);
-            src.Freeze();
-            return src;
-        }
-        finally
-        {
-            bmp.UnlockBits(locked);
-        }
-    }
+    private static BitmapSource BitmapToDisplaySource(Bitmap bmp, double dpi = 96) =>
+        BitmapInterop.ToBitmapSource(bmp, dpi);
 }

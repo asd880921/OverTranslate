@@ -44,8 +44,14 @@ public class TranslationService
         _yandexR    = new ResilientProvider([_yandex, _google2, _bing]);
     }
 
-    // Resilient (hedged + fallback) provider for the user's current choice.
-    private ITranslationProvider Current => SettingsService.Instance.Current.Provider switch
+    /// <summary>
+    /// The engine a caller that has not said otherwise gets: whatever the user last chose in the
+    /// places that share one preference — 設定, 文字翻譯 and the capture toolbar.
+    /// </summary>
+    private static TranslationProvider Saved => SettingsService.Instance.Current.Provider;
+
+    // Resilient (hedged + fallback) provider for a given choice.
+    private ITranslationProvider Resilient(TranslationProvider provider) => provider switch
     {
         TranslationProvider.Google    => _googleR,
         TranslationProvider.Bing      => _bingR,
@@ -56,7 +62,7 @@ public class TranslationService
     };
 
     // Single chosen engine, no hedging/fallback — a timeout/failure surfaces directly to the caller.
-    private ITranslationProvider Direct => SettingsService.Instance.Current.Provider switch
+    private ITranslationProvider Single(TranslationProvider provider) => provider switch
     {
         TranslationProvider.Google    => _google,
         TranslationProvider.Bing      => _bing,
@@ -66,7 +72,10 @@ public class TranslationService
         _                             => _google2,
     };
 
-    public bool RequiresApiKey => Current.RequiresApiKey;
+    public bool RequiresApiKey => Resilient(Saved).RequiresApiKey;
+
+    /// <summary>Whether a specific engine needs an API key, for a caller that chose its own.</summary>
+    public bool ProviderRequiresApiKey(TranslationProvider provider) => Resilient(provider).RequiresApiKey;
 
     /// <summary>
     /// Which engine(s) actually served the most recent translation. Null for providers that have
@@ -78,11 +87,18 @@ public class TranslationService
     /// true (default) uses the hedged/fallback provider; false sends to the single chosen engine only,
     /// so a timeout/failure throws straight to the caller (used by the manual translation window).
     /// </param>
+    /// <param name="engine">
+    /// Which engine to send to, or null to use the shared preference. 即時翻譯 passes its own: that
+    /// page keeps its settings to itself, so the engine it is running with is not necessarily the
+    /// one saved, and reading the saved one here would quietly translate with something the user
+    /// did not pick.
+    /// </param>
     public async Task<(List<TranslatedBlock> Blocks, string DetectedLang)> TranslateAsync(
         List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey, bool resilient = true,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, TranslationProvider? engine = null)
     {
-        var provider = resilient ? Current : Direct;
+        var chosen   = engine ?? Saved;
+        var provider = resilient ? Resilient(chosen) : Single(chosen);
         var result   = await provider.TranslateAsync(blocks, sourceLang, targetLang, apiKey, cancellationToken);
         LastEngineUsage = (provider as ResilientProvider)?.LastUsage;
         return result;

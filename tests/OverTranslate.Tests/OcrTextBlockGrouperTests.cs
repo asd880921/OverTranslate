@@ -217,4 +217,67 @@ public class OcrTextBlockGrouperTests
 
         Assert.Equal(2, grouped.Count);
     }
+
+    [Fact]
+    public void AWordWithNoDescenderIsStillPartOfItsLine()
+    {
+        // Measured: "Let's pay CiRCLE a visit on the way home." came back as these two boxes, a
+        // height ratio of 0.58, 2px apart, the shorter one entirely inside the taller one's rows.
+        // Split, "home" was translated on its own and drawn as a stray word beside a sentence with
+        // its ending missing.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Let's pay CiRCLE a visit on the way", new Rect(80, 78, 888, 88)),
+            new("home.", new Rect(970, 106, 141, 51)),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        Assert.Equal("Let's pay CiRCLE a visit on the way home.", merged.Text);
+    }
+
+    [Fact]
+    public void StackedControlsOfSimilarHeightAreStillKeptApart()
+    {
+        // What the height guard was protecting, and why loosening it is safe: these overlap
+        // vertically by about half, which the overlap test rejects on its own.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Download report", new Rect(10, 10, 200, 32)),
+            new("Create key", new Rect(215, 27, 160, 38)),
+        };
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks).Count);
+    }
+
+    [Fact]
+    public void AMergedLineIsAsConfidentAsItsTextDeserves()
+    {
+        // Weighted by characters, not by fragment: a confidently-read line with a doubtful two-
+        // character fragment beside it is still a confidently-read line, and a plain average would
+        // make the score depend on where the detector happened to split it.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Marina-san, are you okay?", new Rect(10, 10, 250, 24), Confidence: 1.0),
+            new("!!", new Rect(266, 10, 20, 24), Confidence: 0.6),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.NotNull(merged.Confidence);
+        Assert.InRange(merged.Confidence!.Value, 0.96, 1.0);
+    }
+
+    [Fact]
+    public void ALineWithNoScoresCarriesNoConfidence()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("第一段文字", new Rect(10, 10, 100, 24)),
+            new("第二段文字", new Rect(112, 10, 100, 24)),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        Assert.Null(merged.Confidence);
+    }
 }

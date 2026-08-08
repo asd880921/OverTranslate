@@ -1,0 +1,225 @@
+using System.Drawing;
+
+namespace OverTranslate.Services.Realtime;
+
+/// <summary>
+/// Decides, poll by poll, whether one watched region is worth recognising again. Holding this apart
+/// from the loop keeps the policy — the part with all the ways to be subtly wrong — testable without
+/// a screen, a model or a network.
+/// </summary>
+/// <remarks>
+/// The policy hangs on one observation: <b>a region is mostly not text.</b> Over a video or a game,
+/// comparing the whole rectangle reports a change on every single poll, because the picture behind
+/// the subtitle never stops moving. There is then nothing to wait for — no two frames are ever alike
+/// — so a rule that waits for the picture to settle waits forever, and one that gives up waiting
+/// after a fixed delay pays that delay on every line of dialogue.
+///
+/// So once a pass has found text, this stops watching the region and watches only the strips the
+/// text was found in, padded enough to catch a new line appearing beside it. Background motion
+/// outside those strips is then invisible, a subtitle changing shows up on the very next poll, and
+/// the region falls quiet in between instead of being recognised on a timer.
+///
+/// The comparison itself is <see cref="FrameFingerprint"/> rather than an exact hash, because the
+/// pixels inside those strips are not stable either — that difference alone took one measured region
+/// from recognising continuously to recognising when its words changed. Text appearing somewhere
+/// else entirely is what <see cref="FullRescanPolls"/> is for: nothing short of recognition can tell
+/// it from background motion, so it is checked occasionally rather than never.
+/// </remarks>
+internal sealed class RealtimeRegionState
+{
+    /// <summary>
+    /// How long a region with no known text may keep changing before it is scanned anyway. This is
+    /// the path a session starts on, and the one it returns to whenever the text goes away.
+    /// </summary>
+    /// <remarks>
+    /// Short, and deliberately so. There is no way to tell "a line just appeared" from "the picture
+    /// moved" without recognising, so over live content this is simply the rate at which the region
+    /// is searched for text — and a line that shows for a second and a half has to be caught inside
+    /// its own lifetime or it is missed entirely. One poll means a scan every 500ms.
+    ///
+    /// This rate is held whether or not the region has been fruitless for a while. Easing off after
+    /// a quiet spell would save real work, but it buys that saving with exactly the thing the
+    /// feature exists to provide: the moment it eases off is the moment a line can slip through
+    /// between scans, and the user cannot tell that from the feature simply not working. The regions
+    /// people draw for this are subtitle-sized, so the work being saved was small to begin with.
+    /// </remarks>
+    public const int MaxUnsettledPolls = 1;
+
+    /// <summary>
+    /// The same wait once the text strips are being watched. Far shorter, because a change here is
+    /// the text itself changing rather than the picture behind it — one poll is enough to let a line
+    /// that fades in arrive, and any longer is latency the reader pays for every subtitle.
+    /// </summary>
+    public const int MaxTextUnsettledPolls = 1;
+
+    /// <summary>
+    /// How often the whole region is re-examined while the watched strips sit still, to catch text
+    /// that appeared somewhere the last pass found none.
+    /// </summary>
+    /// <remarks>
+    /// Every poll spent below this number is a poll in which a line appearing outside the strips is
+    /// invisible, and a line that comes and goes inside one such window is not late — it is missed.
+    /// At 12 polls that blind spot was three seconds, which is longer than plenty of subtitles are
+    /// on screen. One second costs more recognition over still content and buys back the case the
+    /// strips cannot see by design: the second speaker's line appearing well away from the first.
+    /// </remarks>
+    public const int FullRescanPolls = 4;
+
+    /// <summary>
+    /// How many passes in a row must find nothing before the overlay is cleared. Recognition drops a
+    /// line it had a moment ago often enough — a frame caught mid-repaint, a compression artefact —
+    /// and acting on the first one makes the translation blink out and come straight back, which
+    /// reads far worse than a stale line lingering for one more poll.
+    /// </summary>
+    public const int EmptyPassesBeforeClearing = 2;
+
+    private static readonly IReadOnlyList<Rectangle> NoBands = [];
+
+    private IReadOnlyList<Rectangle> _watchBands = NoBands;
+    private FrameFingerprint? _rendered;
+    private FrameFingerprint? _renderedFull;
+    private FrameFingerprint? _pending;
+    private int _unsettledPolls;
+    private int _pollsSinceFullScan;
+    private int _emptyPasses;
+
+    /// <summary>The source text currently on screen for this region.</summary>
+    public string RenderedText { get; private set; } = "";
+
+    /// <summary>
+    /// How well <see cref="RenderedText"/> was read, so a later reading of the same sentence can be
+    /// compared against it instead of simply replacing it. Zero when nothing is shown, which lets
+    /// any reading at all win the first time.
+    /// </summary>
+    public double RenderedConfidence { get; private set; }
+
+    /// <summary>True once a pass has found text and the state is watching its strips.</summary>
+    public bool IsWatchingText => _watchBands.Count > 0;
+
+    /// <summary>
+    /// Whether enough passes have found nothing that the overlay really should be emptied — see
+    /// <see cref="EmptyPassesBeforeClearing"/>.
+    /// </summary>
+    public bool ShouldClearOverlay => _emptyPasses >= EmptyPassesBeforeClearing;
+
+    /// <param name="capture">
+    /// Summarises the current frame over the given sub-rectangles, or the whole region when passed
+    /// null. Taken as a delegate so this class never touches a bitmap, and so a test can drive the
+    /// policy with fingerprints it builds by hand.
+    /// </param>
+    /// <returns>Whether the frame should be recognised now.</returns>
+    public bool Observe(Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture)
+    {
+        var current = capture(IsWatchingText ? _watchBands : null);
+
+        if (current.Differs(_rendered))
+        {
+            // Changed, and not yet the same twice running. Give it a poll to settle so a line that
+            // is still fading in is read once it has arrived — but only up to the cap, or content
+            // that never holds still would never be read at all.
+            var cap = IsWatchingText ? MaxTextUnsettledPolls : MaxUnsettledPolls;
+            if (current.Differs(_pending) && _unsettledPolls < cap)
+            {
+                _pending = current;
+                _unsettledPolls++;
+                return false;
+            }
+
+            _pending = current;
+            _unsettledPolls = 0;
+            return true;
+        }
+
+        _pending = current;
+        _unsettledPolls = 0;
+
+        // Nothing known is being watched, and nothing changed — the idle path, and the one that has
+        // to stay free: an untouched region costs a grab and a fingerprint, and nothing else.
+        if (!IsWatchingText) return false;
+
+        // The text we know about is unchanged, but something may have appeared outside it, which no
+        // view of the old lines can see.
+        if (++_pollsSinceFullScan < FullRescanPolls) return false;
+
+        _pollsSinceFullScan = 0;
+        return capture(null).Differs(_renderedFull);
+    }
+
+    /// <summary>
+    /// Records what the region now shows. <paramref name="textBounds"/> are the recognised lines in
+    /// region coordinates and become the strips watched from here on.
+    /// </summary>
+    /// <remarks>
+    /// An empty <paramref name="textBounds"/> deliberately keeps the previous strips rather than
+    /// falling straight back to watching the whole region: one pass finding nothing is far more
+    /// often a bad frame than text that has really gone, and the strips are exactly where to look to
+    /// find out. They are only given up once <see cref="EmptyPassesBeforeClearing"/> passes agree.
+    /// </remarks>
+    public void MarkRendered(
+        IReadOnlyList<Rectangle> textBounds,
+        Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture,
+        string sourceText,
+        double confidence = 0)
+    {
+        if (textBounds.Count > 0)
+        {
+            _emptyPasses = 0;
+            _watchBands = BuildBands(textBounds);
+        }
+        else if (++_emptyPasses >= EmptyPassesBeforeClearing)
+        {
+            _watchBands = NoBands;
+        }
+
+        _renderedFull = capture(null);
+        _rendered = IsWatchingText ? capture(_watchBands) : _renderedFull;
+        _pending = _rendered;
+        _unsettledPolls = 0;
+        _pollsSinceFullScan = 0;
+        RenderedText = sourceText;
+        RenderedConfidence = confidence;
+    }
+
+    /// <summary>
+    /// Forgets what the region is known to show, so the next poll reads it again.
+    /// </summary>
+    /// <remarks>
+    /// For a pass that was recorded as rendered but never reached the screen — a translation that
+    /// failed or was dropped. Nothing else would retry it: the pixels have not changed, so every
+    /// later poll would compare the region against a record of the very frame it is looking at and
+    /// conclude, correctly and uselessly, that nothing has happened. The watched strips are kept:
+    /// where the text is has not stopped being true just because translating it did not work.
+    /// </remarks>
+    public void Invalidate()
+    {
+        _rendered = null;
+        _renderedFull = null;
+        _pending = null;
+        _unsettledPolls = 0;
+        RenderedText = "";
+        RenderedConfidence = 0;
+    }
+
+    /// <summary>
+    /// Grows each recognised line into the strip to watch. The vertical padding is the generous one:
+    /// the change most likely to be missed is a second line arriving directly under the first — a
+    /// dialogue box filling in, a subtitle going from one line to two — and covering the gap either
+    /// side means that shows up immediately instead of waiting for the next full rescan.
+    /// </summary>
+    private static IReadOnlyList<Rectangle> BuildBands(IReadOnlyList<Rectangle> textBounds)
+    {
+        var bands = new List<Rectangle>(textBounds.Count);
+        foreach (var bounds in textBounds)
+        {
+            if (bounds.Width <= 0 || bounds.Height <= 0) continue;
+
+            int padX = 6;
+            int padY = Math.Max(4, (int)Math.Round(bounds.Height * 0.75));
+            bands.Add(Rectangle.FromLTRB(
+                bounds.Left - padX, bounds.Top - padY, bounds.Right + padX, bounds.Bottom + padY));
+        }
+
+        // Every recognised line was degenerate — treat that as having found nothing to watch.
+        return bands.Count > 0 ? bands : NoBands;
+    }
+}

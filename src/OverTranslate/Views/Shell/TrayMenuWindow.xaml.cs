@@ -57,6 +57,28 @@ public partial class TrayMenuWindow : Window
         Close();
     }
 
+    /// <summary>
+    /// Relabels the first item for what it will actually do, which depends on whether a realtime
+    /// session owns the screen.
+    /// </summary>
+    /// <remarks>
+    /// The translation window cannot be used during a session — the layers cover the screen — so
+    /// the item is spent on the thing a user opening this menu mid-session is likely to want: a
+    /// control bar that something else has covered, put back in reach. Saying so on the item is the
+    /// point of doing it here as well as on the icon's left click, which is the same action with
+    /// nothing to explain it.
+    /// </remarks>
+    // Segoe Fluent Icons, spelled out rather than pasted: the glyphs are private-use characters
+    // that show as nothing in most editors and diffs.
+    private const string WindowIcon = "\uE737";   // window
+    private const string PinIcon = "\uE8A7";      // pin to top
+
+    public void SetRealtimeRunning(bool running)
+    {
+        OpenWindowLabel.Text = running ? "即時翻譯視窗" : "開啟翻譯視窗";
+        OpenWindowIcon.Text = running ? PinIcon : WindowIcon;
+    }
+
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
     {
         OpenTranslationRequested?.Invoke(this, EventArgs.Empty);

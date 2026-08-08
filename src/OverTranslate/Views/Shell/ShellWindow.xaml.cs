@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Services;
+using OverTranslate.Views.Realtime;
 using OverTranslate.Views.Settings;
 using OverTranslate.Views.Translation;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so this name collides
@@ -15,6 +16,7 @@ namespace OverTranslate.Views.Shell;
 public enum ShellPage
 {
     Translation,
+    Realtime,
     Settings
 }
 
@@ -34,6 +36,7 @@ public partial class ShellWindow : Window
     private object? _contentTransition;
 
     private readonly TranslationPage _translationPage = new();
+    private readonly RealtimePage    _realtimePage    = new();
     private readonly SettingsPage    _settingsPage    = new();
 
     private ShellPage? _current;
@@ -58,6 +61,7 @@ public partial class ShellWindow : Window
 
         _instance.Navigate(page);
         _instance.RefreshHotkeyHint();
+        _instance.RefreshCaptureAvailability();
 
         var shell = _instance;
         shell.Dispatcher.BeginInvoke(shell.Activate, DispatcherPriority.ApplicationIdle);
@@ -75,6 +79,12 @@ public partial class ShellWindow : Window
 
         _instance = this;
         RefreshHotkeyHint();
+
+        // Subscribed rather than refreshed on show: a session ending brings this window back with
+        // Show(), not through ShowOrActivate, so nothing else would clear the disabled state and
+        // the button would stay greyed out for as long as the shell stayed open.
+        Realtime.RealtimeSessionController.Instance.StateChanged += OnRealtimeStateChanged;
+        RefreshCaptureAvailability();
 
         // Nav_Checked drives navigation, so this also renders the initial page
         TranslationNav.IsChecked = true;
@@ -94,6 +104,29 @@ public partial class ShellWindow : Window
         CaptureHotkeyText.Text = string.IsNullOrWhiteSpace(hotkey) ? "" : hotkey;
     }
 
+    /// <summary>
+    /// Greys out the rail's capture button while a realtime session is running, and says why.
+    /// </summary>
+    /// <remarks>
+    /// The two features share one OCR engine and one pool of inference slots, so they are exclusive
+    /// — see MainWindow.RefuseWhileRealtimeRuns, which is what actually enforces it. This is the
+    /// half the user sees: a button that refuses when pressed teaches nothing, while a disabled one
+    /// carrying its reason answers the question before it is asked.
+    ///
+    /// The shell is hidden for the duration of a session, so this matters in one specific way in: a
+    /// user who opens 設定 from the tray mid-session gets the rail, and its primary action with it.
+    /// </remarks>
+    private void OnRealtimeStateChanged(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(RefreshCaptureAvailability);
+
+    public void RefreshCaptureAvailability()
+    {
+        var running = Realtime.RealtimeSessionController.Instance.IsActive;
+
+        CaptureBtn.IsEnabled = !running;
+        CaptureBtn.ToolTip = running ? "即時翻譯進行中，請先結束後再使用截圖翻譯" : null;
+    }
+
     private void CaptureBtn_Click(object sender, RoutedEventArgs e)
     {
         // MainWindow owns the whole capture session (hotkey, screenshot, overlay, teardown), so
@@ -104,7 +137,7 @@ public partial class ShellWindow : Window
 
     public void Navigate(ShellPage page)
     {
-        var target = page == ShellPage.Settings ? SettingsNav : TranslationNav;
+        var target = NavItemFor(page);
         if (target.IsChecked == true)
         {
             // Already here — still make sure the content is mounted (first call from the ctor)
@@ -116,7 +149,10 @@ public partial class ShellWindow : Window
 
     private void Nav_Checked(object sender, RoutedEventArgs e)
     {
-        var page = ReferenceEquals(sender, SettingsNav) ? ShellPage.Settings : ShellPage.Translation;
+        var page =
+            ReferenceEquals(sender, SettingsNav) ? ShellPage.Settings :
+            ReferenceEquals(sender, RealtimeNav) ? ShellPage.Realtime :
+            ShellPage.Translation;
         if (_current == page) return;
         ShowPage(page);
     }
@@ -125,12 +161,28 @@ public partial class ShellWindow : Window
     {
         _current = page;
 
+        // Both of these read state that can change while the user is on another page — the settings
+        // file, and the attached monitors plus whether a realtime session is running.
         if (page == ShellPage.Settings) _settingsPage.Reload();
-        ContentHost.Child = page == ShellPage.Settings ? _settingsPage : (UIElement)_translationPage;
+        if (page == ShellPage.Realtime) _realtimePage.Reload();
 
-        MoveIndicatorTo(page == ShellPage.Settings ? SettingsNav : TranslationNav);
+        ContentHost.Child = page switch
+        {
+            ShellPage.Settings => _settingsPage,
+            ShellPage.Realtime => _realtimePage,
+            _                  => (UIElement)_translationPage
+        };
+
+        MoveIndicatorTo(NavItemFor(page));
         AnimateContentIn();
     }
+
+    private System.Windows.Controls.RadioButton NavItemFor(ShellPage page) => page switch
+    {
+        ShellPage.Settings => SettingsNav,
+        ShellPage.Realtime => RealtimeNav,
+        _                  => TranslationNav
+    };
 
     /// <summary>
     /// Slides the accent bar to the selected item. The offset is measured from the live layout
@@ -222,6 +274,10 @@ public partial class ShellWindow : Window
         // The window is destroyed on close (not hidden), so the pages' timers, TTS playback
         // and HTTP handles have to go with it.
         _translationPage.Teardown();
+        // Only detaches the page from the session controller: a realtime session already running is
+        // on the screen, not in this window, and closing the shell is not a request to end it.
+        _realtimePage.Teardown();
+        Realtime.RealtimeSessionController.Instance.StateChanged -= OnRealtimeStateChanged;
         _instance = null;
         base.OnClosed(e);
     }

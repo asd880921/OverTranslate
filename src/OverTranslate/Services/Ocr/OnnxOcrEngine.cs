@@ -1,5 +1,7 @@
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.InteropServices;
 using NLog;
 using RapidOcrNet;
 using SkiaSharp;
@@ -24,9 +26,19 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // memory to baseline while idle. The next capture transparently reloads the needed model.
     private static readonly TimeSpan IdleReleaseDelay = TimeSpan.FromMinutes(1);
 
+    // Long enough that no real inference could still be running, short enough that a caller stuck
+    // behind a wedged one gets an error instead of never returning.
+    private static readonly TimeSpan ModelSwapDrainTimeout = TimeSpan.FromSeconds(10);
+
+    // How many inferences may run at once. Each already uses ThreadCount threads of its own, so the
+    // budget is cores/4 rather than cores/2. Measured on a 16-core machine against a 1200x200 screen
+    // grab: one pass 320ms; four concurrent passes 502ms in total, so 2.5x the throughput for 1.6x
+    // the latency. Five was slower than four, which is where the cap comes from.
+    private static readonly int InferenceSlots = Math.Clamp(Environment.ProcessorCount / 4, 1, 4);
+
     private readonly object _sync = new();
-    // Admits one inference at a time; see RecognizeAsync for why.
-    private readonly SemaphoreSlim _inferenceGate = new(1, 1);
+    // Admits a bounded number of concurrent inferences; see RecognizeAsync for why it is bounded.
+    private readonly SemaphoreSlim _inferenceGate = new(InferenceSlots, InferenceSlots);
     private readonly System.Threading.Timer _idleReleaseTimer;
     private RapidOcrRuntime? _current;
     private string? _currentModelKey;
@@ -38,9 +50,35 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // Guarded by _sync.
     private int _inUse;
     private bool _disposed;
+    // Suspends the idle release. Guarded by _sync.
+    private bool _keepWarm;
 
     public OnnxOcrEngine() =>
         _idleReleaseTimer = new System.Threading.Timer(_ => ReleaseIdleRuntime());
+
+    /// <summary>
+    /// Holds the loaded model in memory regardless of how long it sits unused.
+    /// </summary>
+    /// <remarks>
+    /// For a realtime session, where the inactivity release is measuring the wrong thing. A watched
+    /// region is idle between lines of dialogue, and a gap over <see cref="IdleReleaseDelay"/> is
+    /// ordinary — a quiet scene, a paused video, a menu nobody is touching. Releasing the model
+    /// there means the next line pays to load it again: measured at 575–1027ms against a steady
+    /// state of 234ms, all of it inside the poll loop, where it is time the region is not being
+    /// watched. Idle in a session is not idle; it is waiting.
+    /// </remarks>
+    public void SetKeepWarm(bool keepWarm)
+    {
+        lock (_sync)
+        {
+            _keepWarm = keepWarm;
+
+            // Nothing re-arms the countdown on its own once the last pass has finished, so leaving
+            // the mode has to start it — otherwise the model would sit loaded until the next use.
+            if (!keepWarm && !_disposed && _inUse == 0)
+                _idleReleaseTimer.Change(IdleReleaseDelay, System.Threading.Timeout.InfiniteTimeSpan);
+        }
+    }
 
     public Task<List<OcrTextBlock>> RecognizeAsync(
         Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
@@ -50,12 +88,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
         return Task.Run(async () =>
         {
-            // One inference at a time. Overlapping captures (frame it wrong, Esc, frame again) used
-            // to run concurrently, and since each inference already uses ThreadCount threads they
-            // split the CPU between themselves: measured on real usage, four concurrent recognitions
-            // stretched a ~2s job to ~6s — and every one of those results was discarded anyway.
-            // Serialising keeps a single capture exactly as fast as it was while stopping abandoned
-            // work from starving the one the user is actually waiting for.
+            // Bounded, not unlimited. Each inference already uses ThreadCount threads, so past the
+            // slot count concurrent passes only split the same cores between themselves: overlapping
+            // captures (frame it wrong, Esc, frame again) used to pile up that way and starve the
+            // one the user was actually waiting for.
             await _inferenceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
@@ -74,7 +110,36 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         }, cancellationToken);
     }
 
-    private List<OcrTextBlock> RecognizeCore(Bitmap bitmap, string sourceLanguage)
+    public Task<List<OcrTextBlock>?> TryRecognizeAsync(
+        Bitmap bitmap,
+        string sourceLanguage,
+        int? maxDetectSize = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!OcrLanguageRouter.IsSupported(sourceLanguage))
+            throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
+
+        return Task.Run<List<OcrTextBlock>?>(() =>
+        {
+            // Inside the lambda, not before it: Task.Run with an already-cancelled token never runs
+            // the body, so a slot taken out here would never be given back.
+            if (!_inferenceGate.Wait(0, cancellationToken))
+                return null;
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return RecognizeCore(bitmap, sourceLanguage, maxDetectSize);
+            }
+            finally
+            {
+                _inferenceGate.Release();
+            }
+        }, cancellationToken);
+    }
+
+    private List<OcrTextBlock> RecognizeCore(
+        Bitmap bitmap, string sourceLanguage, int? maxDetectSize = null)
     {
         var normalizedLanguage = OcrLanguageRouter.Normalize(sourceLanguage);
         var isCjk = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
@@ -86,14 +151,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         try
         {
             Log.Info(
-                "Running ONNX OCR on {W}x{H} bitmap, lang={Lang}, model={Model}, threads={Threads}",
+                "Running ONNX OCR on {W}x{H} bitmap, detect={Detect}, lang={Lang}, model={Model}, threads={Threads}",
                 bitmap.Width,
                 bitmap.Height,
+                maxDetectSize?.ToString() ?? "default",
                 normalizedLanguage,
                 runtime.ModelName,
                 ThreadCount);
 
-            var options = CreateOptions();
+            var options = CreateOptions(maxDetectSize);
             using var skBitmap = ConvertToSkBitmap(bitmap);
             using var detectorInput = AlignForDetector(skBitmap, options.Padding);
             var result = runtime.Engine.Detect(detectorInput, options);
@@ -104,7 +170,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             if (!isCjk)
                 converted = RemoveIconIdeographNoise(converted);
 
-            var blocks = NormalizeBlocks(converted, isCjk);
+            // After normalisation, because that is where a CJK box is pulled in onto its glyphs and
+            // the shape being judged becomes the real one. Before grouping, which happens further
+            // out, so a stray box is never joined to the line beside it.
+            var blocks = RemoveMisshapenBlocks(NormalizeBlocks(converted, isCjk), normalizedLanguage);
 
             // Counts and lengths only — enough to tell "found nothing" from "found the wrong thing"
             // without the recognised text itself, which LogBlocks keeps at Debug.
@@ -114,6 +183,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 result.TextBlocks.Length,
                 blocks.Count,
                 result.StrRes?.Length ?? 0);
+
+            // Before the filters rather than after, and only when they took everything: a region
+            // that reads as empty has nothing left to log, which is exactly the case anyone is
+            // trying to diagnose. Where the rejected boxes sit and what they scored is what tells a
+            // line framed outside the block (a box against an edge, a couple of clipped glyphs)
+            // from one the confidence floor threw away (a box over the text, plausible words, a
+            // score just under the bar).
+            if (blocks.Count == 0 && result.TextBlocks.Length > 0)
+                LogRejectedBlocks(normalizedLanguage, result.TextBlocks);
 
             LogBlocks(normalizedLanguage, blocks);
             return blocks;
@@ -153,11 +231,26 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 return _current;
             }
 
-            // A different model is requested. Swapping is only safe when no Detect is running
-            // against the current runtime; _inUse > 0 here would mean two captures on different
-            // languages overlap, which the single-capture UI never produces. Guard anyway.
-            if (_inUse > 0)
-                throw new InvalidOperationException("無法在辨識進行中切換 OCR 模型。");
+            // A different model is requested, and swapping is only safe once no Detect is running
+            // against the current runtime. With concurrent inference this is genuinely reachable —
+            // a realtime session watching English while a screenshot is translated from Korean — so
+            // wait the others out rather than failing the pass. The timeout is a backstop: it means
+            // an inference has been running far longer than any real one does, and hanging here
+            // would take the caller's whole session with it.
+            while (_inUse > 0)
+            {
+                if (!Monitor.Wait(_sync, ModelSwapDrainTimeout))
+                    throw new InvalidOperationException("等待其他辨識結束以切換 OCR 模型時逾時。");
+
+                ObjectDisposedException.ThrowIf(_disposed, this);
+
+                // Whoever we were waiting for may have loaded the model we wanted in the meantime.
+                if (_current is not null && _currentModelKey == modelKey)
+                {
+                    _inUse++;
+                    return _current;
+                }
+            }
 
             // Release the previous model's sessions/arenas before loading the next one.
             // Clear the fields first so a failed load doesn't leave a disposed runtime cached.
@@ -182,7 +275,12 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             if (_inUse > 0)
                 _inUse--;
 
-            if (_disposed)
+            // Wakes any pass waiting to swap models — see AcquireRuntime. Pulsed even when disposed,
+            // so a waiter is never left holding the door for a runtime that is going away.
+            if (_inUse == 0)
+                Monitor.PulseAll(_sync);
+
+            if (_disposed || _keepWarm)
                 return;
 
             if (_inUse == 0)
@@ -194,10 +292,11 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     {
         lock (_sync)
         {
-            // Skip disposal if we are gone, a Detect is still running against the runtime, or
-            // there is nothing to release. A timer callback that was queued before a later
-            // Change() still fires; the _inUse check is what makes that stale callback benign.
-            if (_disposed || _inUse > 0 || _current is null)
+            // Skip disposal if we are gone, a session is holding the model open, a Detect is still
+            // running against the runtime, or there is nothing to release. A timer callback that
+            // was queued before a later Change() still fires; these checks are what make a stale
+            // callback benign — including one queued before SetKeepWarm was turned on.
+            if (_disposed || _keepWarm || _inUse > 0 || _current is null)
                 return;
 
             try
@@ -236,11 +335,18 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         return new RapidOcrRuntime(modelName, engine);
     }
 
-    private static RapidOcrOptions CreateOptions() =>
-        // Default ImgResize (1024) downscales wide UI screenshots and destroys small-text
-        // detail, causing recognition errors. Raising it keeps typical captures near native
-        // resolution; smaller images are unaffected (no upscaling).
-        RapidOcrOptions.Default with { ImgResize = 2048 };
+    // Default ImgResize (1024) downscales wide UI screenshots and destroys small-text detail,
+    // causing recognition errors. Raising it keeps typical captures near native resolution;
+    // smaller images are unaffected, because ImgResize only ever downscales.
+    private const int ScreenshotDetectSize = 2048;
+
+    /// <param name="maxDetectSize">
+    /// Longest side to give the detector, or null for the screenshot default. A caller that knows
+    /// its text is far larger than interface text passes a smaller number — see
+    /// <see cref="Realtime.RealtimeDetectorSize"/> for the measurements behind that.
+    /// </param>
+    private static RapidOcrOptions CreateOptions(int? maxDetectSize) =>
+        RapidOcrOptions.Default with { ImgResize = maxDetectSize ?? ScreenshotDetectSize };
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)
     {
@@ -251,21 +357,61 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             if (string.IsNullOrWhiteSpace(text) || block.BoxPoints is null || block.BoxPoints.Length == 0)
                 continue;
 
-            if (block.CharScores is { Length: > 0 } &&
-                block.CharScores.Average() < MinRecognitionConfidence)
+            var confidence = block.CharScores is { Length: > 0 } scores ? scores.Average() : 1f;
+            if (confidence < MinRecognitionConfidence)
                 continue;
+
+            // Kept blocks carry their score into the log as well as the rejected ones. Reading the
+            // same subtitle several times produces several slightly different answers, and the
+            // score is the only thing that says which of them to believe.
+            if (Log.IsDebugEnabled)
+                Log.Debug("ONNX OCR kept score={Score:0.00} text=\"{Text}\"", confidence, text);
 
             var left = block.BoxPoints.Min(p => p.X);
             var top = block.BoxPoints.Min(p => p.Y);
             var right = block.BoxPoints.Max(p => p.X);
             var bottom = block.BoxPoints.Max(p => p.Y);
-            blocks.Add(new OcrTextBlock(text, new System.Windows.Rect(left, top, right - left, bottom - top)));
+            blocks.Add(new OcrTextBlock(
+                text,
+                new System.Windows.Rect(left, top, right - left, bottom - top),
+                Confidence: confidence));
         }
 
         return blocks
             .OrderBy(b => b.Bounds.Y)
             .ThenBy(b => b.Bounds.X)
             .ToList();
+    }
+
+    /// <summary>
+    /// Drops boxes that cannot be holding the text read out of them — see <see cref="BoxShapeNoise"/>.
+    /// </summary>
+    /// <remarks>
+    /// Applies to every language, unlike <see cref="RemoveIconIdeographNoise"/>, which is a rule
+    /// about Latin pages. A Japanese or Korean capture had no noise filter at all before this, and
+    /// the lone □ that a detector returns for a strip of interface is not a script-specific problem.
+    /// </remarks>
+    private static List<OcrTextBlock> RemoveMisshapenBlocks(List<OcrTextBlock> blocks, string language)
+    {
+        List<OcrTextBlock>? kept = null;
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            if (!BoxShapeNoise.IsTooWideForItsText(blocks[index]))
+            {
+                kept?.Add(blocks[index]);
+                continue;
+            }
+
+            kept ??= [.. blocks.Take(index)];
+
+            if (Log.IsDebugEnabled)
+                Log.Debug(
+                    "ONNX OCR dropped a misshapen box lang={Lang} {W:0}x{H:0} text=\"{Text}\"",
+                    language, blocks[index].Bounds.Width, blocks[index].Bounds.Height, blocks[index].Text);
+        }
+
+        return kept ?? blocks;
     }
 
     // Removes lone-Han-ideograph icon misreads from a Latin page's blocks. English never contains
@@ -335,7 +481,8 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 // ONNX/unclip can return vertically loose boxes on wide single lines.
                 // The average glyph pitch is a better proxy for the real line height than
                 // an over-tall detection rectangle.
-                if (glyphCount >= 4 && bounds.Width > bounds.Height * 2)
+                if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
+                    bounds.Width > bounds.Height * 2)
                 {
                     var estimatedGlyphPitch = bounds.Width / glyphCount;
                     var maxExpectedHeight = estimatedGlyphPitch * glyphHeightFromPitch;
@@ -355,13 +502,50 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 // Latin: the detection box is much taller than the rendered CJK font. Keep the
                 // full box as the bubble's coverage area (so it still hides the taller original
                 // Latin glyphs) and carry the reduced glyph height separately for font sizing.
-                return block with { SourceGlyphHeight = glyphHeight };
+                //
+                // Too few glyphs for the pitch clamp above to have run leaves that height at 0.82
+                // of the box, which is 1.7x the truth — a one- or two-character line rendered
+                // enormously. See ShortTextGlyphHeight for the measurements.
+                return block with
+                {
+                    SourceGlyphHeight = ShortTextGlyphHeight.For(glyphHeight, bounds.Height, glyphCount)
+                };
             })
             .ToList();
     }
 
     // Debug on purpose, and the shipped configuration drops that level: this is the text the user
     // just had on screen, so it must never reach a log file that gets sent to anyone.
+    /// <summary>
+    /// Everything the detector found on a pass that ended up empty, with the score that decided it.
+    /// </summary>
+    private static void LogRejectedBlocks(string language, TextBlock[] blocks)
+    {
+        if (!Log.IsDebugEnabled)
+            return;
+
+        for (var index = 0; index < blocks.Length; index++)
+        {
+            var block = blocks[index];
+            var text = string.Concat(block.Chars ?? []).Trim();
+            var score = block.CharScores is { Length: > 0 } scores ? scores.Average() : 0;
+            var points = block.BoxPoints;
+
+            Log.Debug(
+                "ONNX OCR rejected lang={Lang} index={Index} score={Score:0.00} floor={Floor:0.00} " +
+                "bounds=({L},{T},{R},{B}) text=\"{Text}\"",
+                language,
+                index,
+                score,
+                MinRecognitionConfidence,
+                points is { Length: > 0 } ? points.Min(p => p.X) : -1,
+                points is { Length: > 0 } ? points.Min(p => p.Y) : -1,
+                points is { Length: > 0 } ? points.Max(p => p.X) : -1,
+                points is { Length: > 0 } ? points.Max(p => p.Y) : -1,
+                text);
+        }
+    }
+
     private static void LogBlocks(string language, IReadOnlyList<OcrTextBlock> blocks)
     {
         if (!Log.IsDebugEnabled)
@@ -417,7 +601,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // how every large capture is fed. Revisit only with a benchmark strong enough to resolve it.
     private const int DetectorAlignment = 32;
 
-    private static SKBitmap AlignForDetector(SKBitmap src, int detectPadding)
+    internal static SKBitmap AlignForDetector(SKBitmap src, int detectPadding)
     {
         var aligned = new SKBitmap(
             AlignedLength(src.Width, detectPadding),
@@ -442,14 +626,60 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         return overshoot == 0 ? length : length + (DetectorAlignment - overshoot);
     }
 
-    private static SKBitmap ConvertToSkBitmap(Bitmap bitmap)
+    /// <summary>
+    /// Hands the captured pixels to Skia by copying them straight across.
+    /// </summary>
+    /// <remarks>
+    /// This used to encode the bitmap to PNG and decode it again, which is a lot of work to move
+    /// pixels between two in-memory buffers — compression and decompression, entirely discarded.
+    /// A screenshot pays it once and nobody notices; realtime translation pays it on every pass of
+    /// every watched region, several times a second, for as long as the session runs.
+    ///
+    /// The format is not a free choice: it is whatever the decoder used to hand back, because
+    /// everything downstream was tuned against that. Measured against the old path on four capture
+    /// sizes, Bgra8888/Premul reproduces its output pixel for pixel — Format32bppArgb is already
+    /// BGRA in memory, and a screen grab's alpha is 255, which premultiplied leaves untouched.
+    /// Declaring the surface opaque instead is the tempting simplification and a real bug: it also
+    /// changes what <see cref="AlignForDetector"/>'s transparent fill means, turning the padding
+    /// from clear to black, which moved recognised text at the edges of every size tested.
+    /// </remarks>
+    internal static SKBitmap ConvertToSkBitmap(Bitmap bitmap)
     {
-        using var ms = new MemoryStream();
-        bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-        ms.Position = 0;
+        var source = bitmap.LockBits(
+            new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+            ImageLockMode.ReadOnly,
+            PixelFormat.Format32bppArgb);
 
-        var skBitmap = SKBitmap.Decode(ms);
-        return skBitmap ?? throw new InvalidOperationException("無法將影像轉換為 ONNX OCR 可讀格式。");
+        try
+        {
+            // Format32bppArgb is BGRA in memory, which is Bgra8888 here — so the copy is a copy and
+            // never a per-pixel conversion.
+            var info = new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var skBitmap = new SKBitmap(info);
+
+            var destination = skBitmap.GetPixels();
+            if (destination == IntPtr.Zero)
+            {
+                skBitmap.Dispose();
+                throw new InvalidOperationException("無法將影像轉換為 ONNX OCR 可讀格式。");
+            }
+
+            // Row by row rather than one block: GDI+ and Skia pad their rows independently, so the
+            // two strides agree only by coincidence.
+            var rowBytes = bitmap.Width * 4;
+            var row = new byte[rowBytes];
+            for (int y = 0; y < bitmap.Height; y++)
+            {
+                Marshal.Copy(source.Scan0 + y * source.Stride, row, 0, rowBytes);
+                Marshal.Copy(row, 0, destination + y * skBitmap.RowBytes, rowBytes);
+            }
+
+            return skBitmap;
+        }
+        finally
+        {
+            bitmap.UnlockBits(source);
+        }
     }
 
     private static void EnsureModelFile(string path)

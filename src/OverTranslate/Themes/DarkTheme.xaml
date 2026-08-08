@@ -9,10 +9,13 @@
     <SolidColorBrush x:Key="AppBorder"         Color="#3C3C3C"/>
     <SolidColorBrush x:Key="AppSubtleBorder"   Color="#303030"/>
 
-    <!-- Text -->
+    <!-- Text — two levels, and there is no third. AppTextMuted (#666666) was removed: against the
+         surfaces it was used on it reached 2.4:1, under the 4.5:1 any text needs and under even the
+         3:1 for non-text, so none of its seven uses were legible — least of all the ones on the
+         realtime bar, which floats over whatever the user is watching. Anything subordinate is made
+         subordinate by size, weight and position instead; those cost no contrast. -->
     <SolidColorBrush x:Key="AppTextPrimary"    Color="#F0F0F0"/>
     <SolidColorBrush x:Key="AppTextSecondary"  Color="#AAAAAA"/>
-    <SolidColorBrush x:Key="AppTextMuted"      Color="#666666"/>
 
     <!-- Accent -->
     <SolidColorBrush x:Key="AppAccent"         Color="#60CDFF"/>

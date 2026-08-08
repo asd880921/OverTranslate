@@ -87,8 +87,11 @@ public partial class SettingsPage : UserControl
             SaveScreenshotCheckBox.IsChecked = s.SaveScreenshotToDisk;
             ScreenshotPathBox.Text = ScreenshotSaveService.ResolveDirectory(s.ScreenshotSavePath);
 
+            VerboseLoggingCheckBox.IsChecked = s.VerboseLogging;
+
             UpdateApiKeyVisibility();
             UpdateScreenshotPathVisibility();
+            UpdateVerboseLoggingAvailability();
         }
         finally
         {
@@ -177,6 +180,29 @@ public partial class SettingsPage : UserControl
         {
             ShowError($"✗ 無法設定開機啟動：{ex.Message}");
         }
+    }
+
+    // Takes effect on the next line written, not on the next launch — the level is applied before it
+    // is stored, so a user who is mid-reproduction can tick the box and keep going.
+    private void VerboseLogging_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+
+        bool verbose = VerboseLoggingCheckBox.IsChecked == true;
+        LogLevelService.Apply(verbose);
+        Persist(s => s.VerboseLogging = verbose);
+    }
+
+    /// <summary>
+    /// An environment variable outranks this setting, so when one is set the checkbox says so rather
+    /// than accepting clicks that change nothing.
+    /// </summary>
+    private void UpdateVerboseLoggingAvailability()
+    {
+        if (!LogLevelService.IsOverriddenByEnvironment) return;
+
+        VerboseLoggingCheckBox.IsEnabled = false;
+        VerboseLoggingHint.Text = "目前記錄等級由環境變數 OVERTRANSLATE_LOGLEVEL 指定，此選項暫時無效。";
     }
 
     private void ThemeRadio_Checked(object sender, RoutedEventArgs e)

@@ -23,6 +23,9 @@
 
   <ItemGroup>
     <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Wins over the copy the OverTranslate reference brings along, which writes to the user's real
+         log — see the comments in the file itself. -->
+    <None Include="NLog.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

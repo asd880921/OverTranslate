@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Interop;
 using System.Windows.Media;
 using OverTranslate.Services;
 using OverTranslate.Layout;
@@ -21,16 +19,6 @@ public partial class OverlayWindow : Window
     private const double SingleLineEmergencyMinFontSize = 7.0;
     private const double WrappedAbsoluteMinFontSize = 11.0;
     private const double GroupedEmergencyMinFontSize = 7.0;
-
-    [DllImport("user32.dll")]
-    private static extern int GetWindowLong(IntPtr hwnd, int index);
-
-    [DllImport("user32.dll")]
-    private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
-
-    private const int GWL_EXSTYLE = -20;
-    private const int WS_EX_TRANSPARENT = 0x20;
-    private const int WS_EX_LAYERED = 0x80000;
 
     private double _dpiX = 1.0;
     private double _dpiY = 1.0;
@@ -95,9 +83,7 @@ public partial class OverlayWindow : Window
     {
         base.OnSourceInitialized(e);
 
-        var hwnd = new WindowInteropHelper(this).Handle;
-        int style = GetWindowLong(hwnd, GWL_EXSTYLE);
-        SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+        WindowStyles.ApplyClickThrough(this);
 
         // Before Loaded reads the DPI: pinning settles which monitor the window belongs to.
         ScreenGeometry.PinPhysicalBounds(this, _physBounds);

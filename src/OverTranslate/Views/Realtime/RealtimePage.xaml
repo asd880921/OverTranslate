@@ -1,0 +1,270 @@
+<UserControl x:Class="OverTranslate.Views.Realtime.RealtimePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Margin="28,22,28,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Page header ── -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock Text="即時翻譯" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="在畫面上選取翻譯區域，文字變更時會自動翻譯並顯示在畫面上，適用於影片或遊戲畫面等。"
+                       Style="{StaticResource PageSubtitle}"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="0,0,8,0">
+            <StackPanel MaxWidth="760">
+
+                <!-- ── 翻譯設定 ── -->
+                <!-- Labels above their fields, as on 圖片翻譯: a fixed label column makes the
+                     longest label decide the layout, and these read down the page rather than
+                     across. -->
+                <Border Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
+
+                        <!-- OCR source languages only: this page recognises text off the screen, so
+                             a language the recogniser cannot read has nothing to offer here. Left
+                             unset on purpose — see RealtimePage.ApplyPageDefaults. -->
+                        <TextBlock Text="來源語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <!-- Placeholder rather than a line of help underneath: the field is empty
+                             because the user has to answer it, and saying so inside the empty space
+                             puts the instruction where they are already looking. Margin matches the
+                             selected item's own (9,0,28,0) so the prompt and the eventual answer
+                             occupy the same spot rather than shifting when one replaces the other. -->
+                        <Grid Margin="0,0,0,14">
+                            <ComboBox x:Name="SrcLangBox"
+                                      Style="{StaticResource ModernComboBox}"
+                                      SelectedValuePath="Code"/>
+                            <TextBlock x:Name="SrcLangPlaceholder"
+                                       Text="請選擇來源語言"
+                                       FontFamily="{StaticResource AppFont}"
+                                       FontSize="{StaticResource AppFontSize}"
+                                       Foreground="{DynamicResource AppTextSecondary}"
+                                       Margin="9,0,28,0"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False"/>
+                        </Grid>
+
+                        <TextBlock Text="目標語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="TgtLangBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  SelectedValuePath="Code"
+                                  Margin="0,0,0,14"/>
+
+                        <!-- Grouped so the spacing below stays the same whether or not the chosen
+                             service has anything to warn about -->
+                        <TextBlock Text="翻譯服務" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <StackPanel>
+                            <ComboBox x:Name="ProviderBox"
+                                      Style="{StaticResource ModernComboBox}"
+                                      SelectedValuePath="Provider"/>
+                            <TextBlock x:Name="ProviderHint"
+                                       Style="{StaticResource FieldHint}"
+                                       Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 區塊設定 ── -->
+                <Border Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="翻譯區塊" Style="{StaticResource SectionHeader}"/>
+
+                        <!-- One screen per session, chosen here rather than assumed: the primary
+                             monitor is not where the game or the video necessarily is. -->
+                        <TextBlock Text="使用螢幕" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="ScreenBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  SelectedValuePath="DeviceName"/>
+                        <TextBlock Text="即時翻譯目前只支援單一螢幕畫面。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="0,6,0,14" TextWrapping="Wrap" LineHeight="16"/>
+
+                        <!-- A stepper rather than a text field: the value is one of three, and a
+                             box that accepts typing invites 0, 99 and empty, each of which then
+                             needs its own rule. The number is display-only and the two buttons are
+                             the only way in, so no input can be wrong. -->
+                        <TextBlock Text="區塊數量" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <Border Style="{StaticResource StepperBorder}" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BlockCountDown"
+                                        Style="{StaticResource StepperButton}"
+                                        Content="&#xE949;"
+                                        AutomationProperties.Name="減少區塊數量"
+                                        Click="BlockCountDown_Click"/>
+                                <TextBlock x:Name="BlockCountText"
+                                           Style="{StaticResource StepperValue}"
+                                           Text="1"/>
+                                <Button x:Name="BlockCountUp"
+                                        Style="{StaticResource StepperButton}"
+                                        Content="&#xE948;"
+                                        AutomationProperties.Name="增加區塊數量"
+                                        Click="BlockCountUp_Click"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="最多可同時建立 3 個翻譯區塊，此設定關閉後不會保留。"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 顯示外觀 ── -->
+                <!-- The one card on this page whose values are kept — see the class remarks for the
+                     rule that separates these from the session parameters above. -->
+                <!-- The three controls share one row. They are the same kind of thing said three
+                     ways (a colour, a colour, and undo both), and stacking them made a card taller
+                     than the two settings it holds. -->
+                <!-- The two labels sit in a Grid above the row rather than inside each column, so
+                     they line up with their own control no matter how wide the hex text gets. -->
+                <Border Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="顯示外觀" Style="{StaticResource SectionHeader}"/>
+
+                        <!-- Preview first, above the two controls that feed it. A session hides the
+                             shell window, so this is the last moment the user can see the two
+                             colours together — after 選取翻譯區塊 there is no way back to this page
+                             without ending the session. Drawn on a mid-grey so a light scrim and a
+                             dark one are both visibly translucent; the real backdrop is whatever
+                             they are watching, which this cannot know. -->
+                        <TextBlock Text="預覽" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <!-- A fixed mid-grey in both themes, not a theme brush: the real backdrop is
+                             whatever the user is watching, and a preview that turned white in the
+                             light theme would make a white scrim look invisible and a black one look
+                             far heavier than it is. Grey is the one value that lies about neither. -->
+                        <Border x:Name="PreviewBackdrop"
+                                Height="52"
+                                CornerRadius="6"
+                                Margin="0,0,0,14"
+                                Background="#6E6E6E"
+                                ClipToBounds="True">
+                            <Border x:Name="PreviewScrim"
+                                    CornerRadius="3"
+                                    Padding="10,4"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="PreviewText"
+                                           Text="文字會像這樣顯示在畫面上"
+                                           FontFamily="Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"/>
+                            </Border>
+                        </Border>
+
+                        <Grid HorizontalAlignment="Left">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="文字顏色"
+                                       Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                            <Button Grid.Column="0" Grid.Row="1"
+                                    x:Name="TextColorBtn"
+                                    Style="{StaticResource FlatButton}"
+                                    Height="34"
+                                    Padding="6,0"
+                                    Margin="0,0,10,0"
+                                    Click="TextColorBtn_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border x:Name="TextColorSwatch"
+                                            Width="20" Height="20"
+                                            CornerRadius="3"
+                                            BorderThickness="1"
+                                            BorderBrush="{DynamicResource AppBorder}"
+                                            VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="TextColorValue"
+                                               VerticalAlignment="Center"
+                                               Margin="8,0,4,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock Grid.Column="1" Grid.Row="0" Text="底色"
+                                       Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                            <Button Grid.Column="1" Grid.Row="1"
+                                    x:Name="ScrimColorBtn"
+                                    Style="{StaticResource FlatButton}"
+                                    Height="34"
+                                    Padding="6,0"
+                                    Margin="0,0,4,0"
+                                    Click="ScrimColorBtn_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border x:Name="ScrimColorSwatch"
+                                            Width="20" Height="20"
+                                            CornerRadius="3"
+                                            BorderThickness="1"
+                                            BorderBrush="{DynamicResource AppBorder}"
+                                            VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="ScrimColorValue"
+                                               VerticalAlignment="Center"
+                                               Margin="8,0,4,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Icon-only, so it takes a tooltip: an unlabelled glyph has to say
+                                 what it does somewhere. Sits on the controls' row rather than under
+                                 its own label, because it acts on both of them rather than being a
+                                 third setting. Available only once something has actually been
+                                 changed — a reset that would do nothing still looks like it might,
+                                 and the user has to press it to find out. -->
+                            <Button Grid.Column="2" Grid.Row="1"
+                                    x:Name="ResetColorsBtn"
+                                    Style="{StaticResource IconButton}"
+                                    Height="34"
+                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                    Content="&#xE72C;"
+                                    ToolTip="還原預設值"
+                                    AutomationProperties.Name="還原預設顏色"
+                                    Click="ResetColorsBtn_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── 運作方式 ── -->
+                <!-- Three lines, because the on-screen half of this feature is a mode the user has
+                     not seen before: what the button does, what happens next, and the one property
+                     that is not obvious from looking at it (the blocks do not take the mouse). -->
+                <Border Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="運作方式" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,6"
+                                   Text="1. 點擊「選取翻譯區塊」，在畫面上框選要翻譯的區域。"/>
+                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,6"
+                                   Text="2. 點擊浮動工具列的「開始翻譯」，內容變更時會自動重新辨識並更新譯文。"/>
+                        <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16"
+                                   Text="3. 翻譯中的區域不會影響遊戲或介面操作，如需調整翻譯區塊，請按「編輯」。"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ── Footer ── -->
+        <DockPanel Grid.Row="2" Margin="0,14,0,0" VerticalAlignment="Center">
+            <Button x:Name="PrimaryBtn"
+                    Content="選取翻譯區塊"
+                    Style="{StaticResource AccentButton}"
+                    Height="36" MinWidth="140" Padding="16,0"
+                    DockPanel.Dock="Left"
+                    Margin="0,0,14,0"
+                    Click="PrimaryBtn_Click"/>
+            <TextBlock x:Name="StatusText"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap"
+                       FontFamily="{StaticResource AppFont}"
+                       FontSize="12"
+                       Foreground="{DynamicResource AppTextSecondary}"/>
+        </DockPanel>
+    </Grid>
+</UserControl>

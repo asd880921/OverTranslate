@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -8,6 +8,7 @@ using NLog;
 using OverTranslate.Services;
 using OverTranslate.Views.Capture;
 using OverTranslate.Views.Overlay;
+using OverTranslate.Views.Realtime;
 using OverTranslate.Views.Settings;
 using OverTranslate.Views.Shell;
 using OverTranslate.Views.Translation;
@@ -27,8 +28,9 @@ public partial class MainWindow : Window
     private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
     private CancellationTokenSource? _sessionCts; // cancelled on teardown so abandoned work stops
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
-    private readonly OcrService _ocrService = new();
-    private readonly TranslationService _translationService = new();
+    // Recognition and translation are not owned here — see AppServices. This window is one of two
+    // callers, not the holder, and the call sites below name AppServices directly so that reading
+    // any one of them shows where the engine comes from.
 
     // Kept alive so toolbar translate can re-run OCR/translation on the current selection
     private List<OcrTextBlock> _lastOcrBlocks = [];
@@ -65,7 +67,7 @@ public partial class MainWindow : Window
 
         _notifyIcon.MouseClick += (_, e) =>
         {
-            if (e.Button == MouseButtons.Left)  OpenTranslationWindow();
+            if (e.Button == MouseButtons.Left)  OnTrayLeftClick();
             if (e.Button == MouseButtons.Right) ShowTrayMenu();
         };
     }
@@ -81,13 +83,30 @@ public partial class MainWindow : Window
 
     private void ShowStartupBalloon()
     {
-        if (_notifyIcon == null) return;
-
         var hotkeyDisplay = SettingsService.Instance.Current.HotkeyDisplay;
         var shortcutText = string.IsNullOrWhiteSpace(hotkeyDisplay) ? "已設定的快捷鍵" : hotkeyDisplay;
 
-        _notifyIcon.BalloonTipTitle = "OverTranslate 已最小化";
-        _notifyIcon.BalloonTipText = $"程式已縮小至系統匣，可使用 {shortcutText} 開始進行截圖翻譯。";
+        ShowTrayNotification(
+            "OverTranslate 已最小化",
+            $"程式已縮小至系統匣，可使用 {shortcutText} 開始進行截圖翻譯。");
+    }
+
+    /// <summary>
+    /// A notification through the tray icon, which Windows presents in its own notification centre.
+    /// </summary>
+    /// <remarks>
+    /// The application's own <see cref="ToastWindow"/> is for things that belong to a capture — it
+    /// appears beside the selection it is talking about and disappears with it. Something the user
+    /// caused from outside any capture, such as a shortcut that declined to start one, has no such
+    /// anchor, and telling them through the shell they already associate with this application is
+    /// both less startling and something they can go back and read.
+    /// </remarks>
+    private void ShowTrayNotification(string title, string message)
+    {
+        if (_notifyIcon == null) return;
+
+        _notifyIcon.BalloonTipTitle = title;
+        _notifyIcon.BalloonTipText = message;
         _notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
         _notifyIcon.ShowBalloonTip(3000);
     }
@@ -99,7 +118,32 @@ public partial class MainWindow : Window
     }
 
     private void OnHotkeyPressed(object? sender, EventArgs e) =>
-        Dispatcher.Invoke(async () => await RunCaptureSessionAsync());
+        Dispatcher.Invoke(async () =>
+        {
+            if (RefuseWhileRealtimeRuns()) return;
+            await RunCaptureSessionAsync();
+        });
+
+    /// <summary>
+    /// Turns a capture away while a realtime session owns the screen, and says why.
+    /// </summary>
+    /// <remarks>
+    /// The two features share one OCR engine and one bounded pool of inference slots, and a
+    /// realtime session uses them continuously. Running a capture alongside it would have them
+    /// competing for those slots, and — if the two were set to different source languages — swapping
+    /// the loaded model back and forth between every read. See OcrEngineConcurrencyTests for what
+    /// that measured out as before this rule existed.
+    ///
+    /// Told rather than ignored: the shortcut worked a moment ago, so silence would read as the
+    /// application having broken rather than as a deliberate rule.
+    /// </remarks>
+    private bool RefuseWhileRealtimeRuns()
+    {
+        if (!Views.Realtime.RealtimeSessionController.Instance.IsActive) return false;
+
+        ShowTrayNotification("即時翻譯進行中", "請先結束即時翻譯，再使用截圖翻譯。");
+        return true;
+    }
 
     /// <summary>
     /// Starts a capture from the shell window's nav rail. The shell has to leave the screen first:
@@ -110,6 +154,11 @@ public partial class MainWindow : Window
     /// </summary>
     public void StartCaptureFromShell(Window shell)
     {
+        // The rail's button is disabled while a session runs, so this is the guard rather than the
+        // notice — but it is the one that actually enforces the rule, and a disabled button is a
+        // presentation detail that a future layout change could drop.
+        if (RefuseWhileRealtimeRuns()) return;
+
         if (HasActiveSession)
         {
             CloseAll();
@@ -351,7 +400,7 @@ public partial class MainWindow : Window
         var selRect  = requestCaptureWindow?.Selection
             ?? new System.Windows.Rect(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
 
-        if (_translationService.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
+        if (AppServices.Translation.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
         {
             ShowBalloon("缺少 API Key", "請在設定中輸入 API Key。", selRect);
             return;
@@ -388,7 +437,7 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 "辨識中");
 
-            var recognizedBlocks = await _ocrService.RecognizeAsync(workBitmap, req.SourceLang, cancellationToken);
+            var recognizedBlocks = await AppServices.Ocr.RecognizeAsync(workBitmap, req.SourceLang, cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -407,7 +456,7 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 "翻譯中");
 
-            var (translated, _) = await _translationService.TranslateAsync(
+            var (translated, _) = await AppServices.Translation.TranslateAsync(
                 _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey,
                 cancellationToken: cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
@@ -457,7 +506,7 @@ public partial class MainWindow : Window
             ShowOverlay(coloredTranslated, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(true);
             requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
-            requestToolbar?.SetEngineBadge(_translationService.LastEngineUsage);
+            requestToolbar?.SetEngineBadge(AppServices.Translation.LastEngineUsage);
         }
         // The session was torn down (Esc, re-capture, toolbar close) while this was in flight.
         // Expected and user-initiated — it must stay completely silent, with no error toast.
@@ -669,6 +718,12 @@ public partial class MainWindow : Window
     private bool HasActiveSession =>
         _overlayWindow != null || _toolbarWindow != null || _captureWindow != null || _escapeHook != null;
 
+    /// <summary>
+    /// Whether a screenshot capture — selection, overlay or toolbar — is on screen right now, so
+    /// the other feature can decline to start on top of it.
+    /// </summary>
+    public bool IsCapturing => HasActiveSession;
+
     private bool IsCurrentSelectionSession(int sessionId, ToolbarWindow? toolbar, ScreenCaptureWindow? captureWindow) =>
         sessionId == _selectionSessionId &&
         ReferenceEquals(toolbar, _toolbarWindow) &&
@@ -680,11 +735,34 @@ public partial class MainWindow : Window
     {
         if (_trayMenu != null) return;
         _trayMenu = new TrayMenuWindow();
-        _trayMenu.OpenTranslationRequested += (_, _) => OpenTranslationWindow();
+        _trayMenu.OpenTranslationRequested += (_, _) => OnTrayLeftClick();
+        _trayMenu.SetRealtimeRunning(Views.Realtime.RealtimeSessionController.Instance.IsActive);
         _trayMenu.OpenSettingsRequested    += (_, _) => OpenSettings();
         _trayMenu.ExitRequested            += (_, _) => ExitApp();
         _trayMenu.Closed                   += (_, _) => _trayMenu = null;
         _trayMenu.Show();
+    }
+
+    /// <summary>
+    /// Opens the translation window, or — while a realtime session owns the screen — puts its
+    /// layers back on top instead.
+    /// </summary>
+    /// <remarks>
+    /// The window is no use during a session: the layers cover the screen and the session's own
+    /// controls are the only thing to interact with. So the click is spent on the one thing the
+    /// user might actually need it for, which is reaching a control bar that something else has
+    /// covered. Without it the only way out of that would be killing the application from the
+    /// tray, which takes the block layout with it.
+    /// </remarks>
+    private static void OnTrayLeftClick()
+    {
+        if (Views.Realtime.RealtimeSessionController.Instance.IsActive)
+        {
+            Views.Realtime.RealtimeSessionController.Instance.BringToFront();
+            return;
+        }
+
+        OpenTranslationWindow();
     }
 
     private static void OpenTranslationWindow() =>
@@ -692,6 +770,9 @@ public partial class MainWindow : Window
 
     private void ExitApp()
     {
+        // Its overlays are Topmost and click-through; left behind by a shutdown they would be
+        // painted onto the desktop with no process left to close them.
+        RealtimeSessionController.Instance.Stop();
         DisposeEscapeHook();
         _hotkey?.Dispose();
         if (_notifyIcon != null)

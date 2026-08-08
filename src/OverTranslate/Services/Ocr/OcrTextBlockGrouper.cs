@@ -91,9 +91,17 @@ internal static class OcrTextBlockGrouper
         // overlap only ≈ 0.47. Their height ratios are inverted (0.81 < 0.84), so any single height
         // threshold either drops "to" or merges the buttons. Keep height tolerant and let the strict
         // overlap test below do the discriminating.
+        // 0.5 rather than 0.6, measured: a subtitle reading "Let's pay CiRCLE a visit on the way
+        // home." came back as an 888x88 box and a 141x51 one holding "home", a height ratio of
+        // 0.58. They sit 2px apart with the shorter box entirely inside the taller one's rows, and
+        // the guard rejected them anyway — so "home" was translated on its own and appeared as a
+        // stray word to the right of a sentence missing its ending. The word's box is short because
+        // the word has no descender, which is a property of the letters, not of whether they belong
+        // to the line. Discriminating between lines is the vertical-overlap test's job below, as the
+        // note above says; this only has to keep out boxes of wildly different size.
         var heightRatio = Math.Min(previous.Bounds.Height, current.Bounds.Height) /
                           Math.Max(previous.Bounds.Height, current.Bounds.Height);
-        if (heightRatio < 0.6)
+        if (heightRatio < 0.5)
             return false;
 
         var verticalOverlap = Math.Max(
@@ -125,7 +133,8 @@ internal static class OcrTextBlockGrouper
         return new OcrTextBlock(
             text,
             new Rect(left, top, right - left, bottom - top),
-            SourceGlyphHeight: CombineGlyphHeight(previous.SourceGlyphHeight, current.SourceGlyphHeight));
+            SourceGlyphHeight: CombineGlyphHeight(previous.SourceGlyphHeight, current.SourceGlyphHeight),
+            Confidence: CombineConfidence([previous, current]));
     }
 
     private static string JoinInlineText(string left, string right)
@@ -233,7 +242,33 @@ internal static class OcrTextBlockGrouper
             text,
             new Rect(x, y, right - x, bottom - y),
             blocks.Select(block => block.Bounds).ToList(),
-            groupGlyphHeight);
+            groupGlyphHeight,
+            CombineConfidence(blocks));
+    }
+
+    /// <summary>
+    /// One confidence for several fragments, weighted by how much text each contributes.
+    /// </summary>
+    /// <remarks>
+    /// A plain average lets a two-character fragment beside a confidently-read line pull the whole
+    /// group down as far as the line itself pulls it up, which would make the group's score depend
+    /// on how the detector happened to split the line rather than on how well it was read.
+    /// </remarks>
+    private static double? CombineConfidence(IReadOnlyList<OcrTextBlock> blocks)
+    {
+        double weighted = 0;
+        double weight = 0;
+
+        foreach (var block in blocks)
+        {
+            if (block.Confidence is not { } confidence) continue;
+
+            var characters = Math.Max(1, block.Text.Trim().Length);
+            weighted += confidence * characters;
+            weight += characters;
+        }
+
+        return weight > 0 ? weighted / weight : null;
     }
 
     private static double? CombineGlyphHeight(double? a, double? b) =>

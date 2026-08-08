@@ -80,7 +80,7 @@
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
-                                       Foreground="{DynamicResource AppTextMuted}"
+                                       Foreground="{DynamicResource AppTextSecondary}"
                                        VerticalAlignment="Center"/>
                         </DockPanel>
                     </Border>
@@ -124,7 +124,7 @@
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
-                                       Foreground="{DynamicResource AppTextMuted}"
+                                       Foreground="{DynamicResource AppTextSecondary}"
                                        VerticalAlignment="Center"/>
                         </DockPanel>
                     </Border>
