@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -28,14 +28,9 @@ public partial class MainWindow : Window
     private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
     private CancellationTokenSource? _sessionCts; // cancelled on teardown so abandoned work stops
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
-    private readonly OcrService _ocrService = new();
-    private readonly TranslationService _translationService = new();
-
-    // Lent to the realtime translation session, which runs its own loop but must not load a second
-    // ONNX runtime or open a second set of HTTP handles to do it. Sharing also means the two
-    // features queue on one inference gate instead of splitting the CPU between them.
-    internal OcrService SharedOcrService => _ocrService;
-    internal TranslationService SharedTranslationService => _translationService;
+    // Recognition and translation are not owned here — see AppServices. This window is one of two
+    // callers, not the holder, and the call sites below name AppServices directly so that reading
+    // any one of them shows where the engine comes from.
 
     // Kept alive so toolbar translate can re-run OCR/translation on the current selection
     private List<OcrTextBlock> _lastOcrBlocks = [];
@@ -405,7 +400,7 @@ public partial class MainWindow : Window
         var selRect  = requestCaptureWindow?.Selection
             ?? new System.Windows.Rect(_lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
 
-        if (_translationService.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
+        if (AppServices.Translation.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
         {
             ShowBalloon("缺少 API Key", "請在設定中輸入 API Key。", selRect);
             return;
@@ -442,7 +437,7 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 "辨識中");
 
-            var recognizedBlocks = await _ocrService.RecognizeAsync(workBitmap, req.SourceLang, cancellationToken);
+            var recognizedBlocks = await AppServices.Ocr.RecognizeAsync(workBitmap, req.SourceLang, cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -461,7 +456,7 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 "翻譯中");
 
-            var (translated, _) = await _translationService.TranslateAsync(
+            var (translated, _) = await AppServices.Translation.TranslateAsync(
                 _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey,
                 cancellationToken: cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
@@ -511,7 +506,7 @@ public partial class MainWindow : Window
             ShowOverlay(coloredTranslated, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(true);
             requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
-            requestToolbar?.SetEngineBadge(_translationService.LastEngineUsage);
+            requestToolbar?.SetEngineBadge(AppServices.Translation.LastEngineUsage);
         }
         // The session was torn down (Esc, re-capture, toolbar close) while this was in flight.
         // Expected and user-initiated — it must stay completely silent, with no error toast.

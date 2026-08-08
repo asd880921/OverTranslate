@@ -29,9 +29,9 @@ public sealed record RealtimeStartRequest(
 /// <remarks>
 /// A single instance, like the capture session in <see cref="MainWindow"/> and for the same reason:
 /// these windows are Topmost and cover the screen, so a second set would be unclosable furniture on
-/// top of the first. It borrows the OCR and translation services from <see cref="MainWindow"/>
-/// rather than creating its own — a second <see cref="OcrService"/> would load a second copy of the
-/// ONNX runtime, and the two features would then fight over the CPU instead of queueing.
+/// top of the first. It runs on the shared engines in <see cref="AppServices"/> rather than creating
+/// its own — a second <see cref="OcrService"/> would load a second copy of the ONNX runtime, and the
+/// two features would then fight over the CPU instead of queueing.
 /// </remarks>
 internal sealed class RealtimeSessionController
 {
@@ -95,21 +95,10 @@ internal sealed class RealtimeSessionController
         _hiddenShell = shellToHide;
         _hiddenShell?.Hide();
 
-        // Borrowed from MainWindow, never built here — see this class's remarks. The fallback exists
-        // so a session can still start if that window is somehow not there, but it is the case this
-        // type is documented as avoiding: a second OcrService loads a second ONNX runtime, and the
-        // two features then compete for the CPU instead of queueing behind one engine. It is also
-        // invisible from the outside — everything works, just slower and heavier — so it says so in
-        // the log rather than being discovered as an unexplained regression.
-        var main = System.Windows.Application.Current.MainWindow as MainWindow;
-        if (main is null)
-            Log.Warn(
-                "Realtime session could not reach MainWindow; starting on its own OCR and translation " +
-                "services, which loads a second inference runtime");
-
-        _session = new RealtimeTranslationSession(
-            main?.SharedOcrService ?? new OcrService(),
-            main?.SharedTranslationService ?? new TranslationService());
+        // The same two engines the capture side uses — see AppServices. There is no fallback to get
+        // wrong any more: nothing here has to find a window first, so there is no path on which a
+        // second inference runtime could be built by accident.
+        _session = new RealtimeTranslationSession(AppServices.Ocr, AppServices.Translation);
         _session.RegionUpdated += OnRegionUpdated;
         _session.Failed += OnSessionFailed;
         _session.BusyChanged += OnBusyChanged;
