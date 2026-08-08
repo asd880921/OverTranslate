@@ -71,6 +71,10 @@ public partial class App
         // Background thread listens for activation signals from future launch attempts
         new Thread(MonitorActivationRequests) { IsBackground = true }.Start();
 
+        // Before the first line worth keeping is written, and early enough that a user who ticked
+        // 記錄詳細資訊 gets the detail from startup onwards rather than from their next toggle.
+        LogLevelService.Apply(SettingsService.Instance.Current.VerboseLogging);
+
         ThemeService.Apply(SettingsService.Instance.Current.Theme);
 
         // Kept in the shipped log: the process's DPI awareness is fixed at launch, and a misreported

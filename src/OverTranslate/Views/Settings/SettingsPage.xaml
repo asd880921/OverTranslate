@@ -240,6 +240,43 @@
                         </Grid>
                     </Grid>
                 </Border>
+
+                <!-- ── 進階設定 ── -->
+                <!-- Last card on the page: nothing here is part of translating, and a user who never
+                     has a problem to report never needs to read it. -->
+                <Border Style="{StaticResource CardBorder}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="進階設定" Style="{StaticResource SectionHeader}"/>
+
+                        <!-- 詳細記錄 -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="應用紀錄"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <CheckBox  Grid.Column="1" Grid.Row="0" x:Name="VerboseLoggingCheckBox"
+                                       Content="記錄詳細資訊"
+                                       Style="{StaticResource ModernCheckBox}"
+                                       VerticalAlignment="Center"
+                                       Checked="VerboseLogging_Toggled"
+                                       Unchecked="VerboseLogging_Toggled"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1" x:Name="VerboseLoggingHint"
+                                       Text="啟用後會記錄更多應用紀錄資訊，協助排查問題。"
+                                       Style="{StaticResource FieldHint}"/>
+                        </Grid>
+                    </Grid>
+                </Border>
             </StackPanel>
         </ScrollViewer>
 

@@ -263,7 +263,7 @@ internal sealed class RealtimeSessionController
         });
 
     private void OnSessionFailed(object? sender, string message) =>
-        OnDispatcher(() => _control?.ShowMessage(message));
+        OnDispatcher(() => _control?.ShowMessage(message, RealtimeMessageKind.Failure));
 
     private void OnBusyChanged(object? sender, bool busy) =>
         OnDispatcher(() => _control?.SetBusy(busy));

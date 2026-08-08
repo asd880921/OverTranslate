@@ -89,6 +89,8 @@
                              VerticalAlignment="Center"
                              Fill="{DynamicResource AppAccent}"/>
 
+                    <!-- The language pair, and the transient messages, share this one slot: only one
+                         of the two is ever visible. -->
                     <TextBlock x:Name="RunStatusText"
                                VerticalAlignment="Center"
                                Margin="0,0,8,0"
@@ -96,6 +98,54 @@
                                FontSize="12.5"
                                Foreground="{DynamicResource AppTextPrimary}"
                                Text="即時翻譯中"/>
+
+                    <!-- Source and target are not two equal labels: the target is the thing on screen
+                         from here on, so it keeps the primary colour and the source steps back one
+                         level to secondary. Not to muted — that brush is #666 on a #2A2A2A bar,
+                         2.4:1, and this is 12.5px CJK floating over whatever the user is watching.
+                         Secondary reaches 5.9:1 dark / 6.4:1 light and still reads as subordinate. The
+                         arrow between them is drawn rather than typed — U+2192 is not in the UI font,
+                         so it used to fall back to a CJK face, which renders it full-width and
+                         centred on the em box: too much air on both sides and sitting visibly high
+                         against 12.5px text. A Path has no fallback to lose and its weight and
+                         height are ours to set. -->
+                    <StackPanel x:Name="LangPairPanel"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="0,0,8,0"
+                                Visibility="Collapsed">
+                        <TextBlock x:Name="SourceLangText"
+                                   VerticalAlignment="Center"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="12.5"
+                                   Foreground="{DynamicResource AppTextSecondary}"/>
+
+                        <!-- Half-pixel coordinates so the 1px stroke lands on a pixel row rather than
+                             straddling two. Bottom margin of 1 lifts it off the text box's centre and
+                             onto the CJK glyphs' optical centre, which sits above it. -->
+                        <!-- Secondary dimmed, rather than the muted brush it wants to be: muted is the
+                             same #666 the source label just left for being unreadable here, and an
+                             arrow nobody can see is not restraint, it is a missing arrow. 0.7 lands
+                             it at 3.7:1 dark / 3.3:1 light — over the 3:1 a 1px non-text stroke
+                             needs, still a step below the label it separates. -->
+                        <Path VerticalAlignment="Center"
+                              Margin="5.5,0,5.5,1"
+                              Width="10.6" Height="9"
+                              Stretch="None"
+                              Stroke="{DynamicResource AppTextSecondary}"
+                              Opacity="0.7"
+                              StrokeThickness="1"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round"
+                              Data="M0,4.5 H9.1 M6.8,2.6 L9.6,4.5 L6.8,6.4"/>
+
+                        <TextBlock x:Name="TargetLangText"
+                                   VerticalAlignment="Center"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="12.5"
+                                   Foreground="{DynamicResource AppTextPrimary}"/>
+                    </StackPanel>
 
                     <Button Content="編輯"
                             Style="{StaticResource ToolbarFlatButton}"

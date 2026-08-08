@@ -17,6 +17,17 @@ public enum RealtimeControlMode
 }
 
 /// <summary>
+/// Whether a bar message is answering the user or reporting that something went wrong. Only the
+/// second colours the status dot, so the distinction has to be made by the caller — a message that
+/// merely reads badly is not a failure.
+/// </summary>
+public enum RealtimeMessageKind
+{
+    Info,
+    Failure
+}
+
+/// <summary>
 /// The one piece of chrome that stays on screen for the whole realtime session: a bar while the user
 /// is framing blocks, a capsule once translation is running. Draggable, so it can always be moved
 /// off whatever it happens to be covering.
@@ -46,9 +57,10 @@ public partial class RealtimeControlWindow : Window
 
     private RealtimeControlMode _mode = RealtimeControlMode.Edit;
     private string _editHint = "在螢幕上拖曳建立要翻譯的區塊";
-    // What the capsule says when it has nothing else to say. Replaced by SetLanguages once a
-    // session starts; a transient message borrows the same slot and RestoreText brings this back.
-    private string _runStatus = "即時翻譯中";
+    // What the capsule says before SetLanguages has named the pair. A transient message borrows the
+    // same slot and RestoreText brings whichever of the two applies back.
+    private readonly string _runStatus = "即時翻譯中";
+    private bool _hasLanguages;
 
     // The scale WPF renders this window at, which is the DPI of whatever monitor it was created on —
     // not necessarily the one it is pinned to. Everything that converts between the window's DIP and
@@ -120,8 +132,9 @@ public partial class RealtimeControlWindow : Window
     /// </remarks>
     public void SetLanguages(string sourceCode, string targetCode)
     {
-        _runStatus =
-            $"{Models.LanguageData.GetSourceName(sourceCode)} → {Models.LanguageData.GetTargetName(targetCode)}";
+        SourceLangText.Text = Models.LanguageData.GetSourceName(sourceCode);
+        TargetLangText.Text = Models.LanguageData.GetTargetName(targetCode);
+        _hasLanguages = SourceLangText.Text.Length > 0 && TargetLangText.Text.Length > 0;
 
         if (!_messageTimer.IsEnabled) RestoreText();
     }
@@ -168,10 +181,24 @@ public partial class RealtimeControlWindow : Window
     /// Replaces the bar's own text for a moment. Transient by design: these are answers to something
     /// the user just did (a refused drag, an engine that failed), not state worth keeping on screen.
     /// </summary>
-    public void ShowMessage(string message)
+    public void ShowMessage(string message, RealtimeMessageKind kind = RealtimeMessageKind.Info)
     {
-        if (_mode == RealtimeControlMode.Edit) EditHintText.Text = message;
-        else RunStatusText.Text = message;
+        if (_mode == RealtimeControlMode.Edit)
+        {
+            EditHintText.Text = message;
+        }
+        else
+        {
+            // A message is a sentence, not a pair, so it takes the whole slot back for its duration.
+            LangPairPanel.Visibility = Visibility.Collapsed;
+            RunStatusText.Visibility = Visibility.Visible;
+            RunStatusText.Text = message;
+
+            // Same frame as the text it belongs to. The dot is the one thing on this bar visible at
+            // a glance from across a full-screen window, so a failure is worth spending its colour
+            // on; it goes back to accent when the message does.
+            SetDotFailed(kind == RealtimeMessageKind.Failure);
+        }
 
         _messageTimer.Stop();
         _messageTimer.Start();
@@ -188,7 +215,18 @@ public partial class RealtimeControlWindow : Window
     {
         EditHintText.Text = _editHint;
         RunStatusText.Text = _runStatus;
+
+        LangPairPanel.Visibility = _hasLanguages ? Visibility.Visible : Visibility.Collapsed;
+        RunStatusText.Visibility = _hasLanguages ? Visibility.Collapsed : Visibility.Visible;
+
+        SetDotFailed(false);
     }
+
+    // SetResourceReference rather than an assigned brush: the theme can still be switched from the
+    // shell while a session runs, and a snapshotted brush would keep the old theme's red.
+    private void SetDotFailed(bool failed) =>
+        StatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty,
+            failed ? "AppError" : "AppAccent");
 
     // ── Placement and dragging ───────────────────────────────────────────────────────────────────
 

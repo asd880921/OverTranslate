@@ -19,4 +19,6 @@ public class AppSettings
     public bool SaveScreenshotToDisk { get; set; } = false;
     /// <summary>Empty means "use ScreenshotSaveService.DefaultDirectory" (圖片\OverTranslate).</summary>
     public string ScreenshotSavePath { get; set; } = "";
+    /// <summary>Off by default: Debug records the recognised text, i.e. the user's screen contents.</summary>
+    public bool VerboseLogging { get; set; } = false;
 }
