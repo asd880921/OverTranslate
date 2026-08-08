@@ -345,8 +345,25 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// its text is far larger than interface text passes a smaller number — see
     /// <see cref="Realtime.RealtimeDetectorSize"/> for the measurements behind that.
     /// </param>
+    /// <remarks>
+    /// <c>DoAngle</c> is off, against the library's default. It runs the classifier model over every
+    /// detected box to decide whether the text is upside down, and nothing this application reads
+    /// ever is: screen text, game interfaces and subtitles are all drawn the right way up by the
+    /// application underneath. Left on it can only cost — a misfired classification flips a box and
+    /// turns a readable line into nonsense — so this is not a speed-for-accuracy trade in either
+    /// direction.
+    ///
+    /// Measured on a 1380x750 grab of a game screen with 7 text boxes: 440ms with it, 427ms without.
+    /// 3%, which is worth saying out loud — the classifier is cheap next to recognition, and anyone
+    /// arriving here looking for the big win should keep reading past this line. The box count is
+    /// where the time goes; see issue #21.
+    /// </remarks>
     private static RapidOcrOptions CreateOptions(int? maxDetectSize) =>
-        RapidOcrOptions.Default with { ImgResize = maxDetectSize ?? ScreenshotDetectSize };
+        RapidOcrOptions.Default with
+        {
+            ImgResize = maxDetectSize ?? ScreenshotDetectSize,
+            DoAngle = false,
+        };
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)
     {
