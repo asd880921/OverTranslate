@@ -39,8 +39,16 @@ public sealed record ScreenItem(
 /// oversight — if it turns out to confuse anyone, the fix is a line in 顯示外觀 saying its values are
 /// kept, not removing the note from 翻譯區塊.</para>
 ///
-/// Anything added later belongs to one of these two groups; if it is not obvious which, it is a
-/// preference only when the user would be annoyed to set it twice.
+/// <para><b>Kept for as long as this window is open</b> — the blocks the user drew, with the mode
+/// chosen for each. Not a preference and not a parameter: it is the answer to "where is the text",
+/// which is worth several minutes of dragging and is thrown away the moment the question changes.
+/// It lives in <see cref="RealtimeSessionController"/> rather than here, and this page tells it to
+/// forget in the two cases that change the question — the block count moving, and this window
+/// closing.</para>
+///
+/// Anything added later belongs to one of these three groups; if it is not obvious which, it is a
+/// preference only when the user would be annoyed to set it twice, and a parameter only when
+/// offering it back could be wrong rather than merely stale.
 /// </remarks>
 public partial class RealtimePage : UserControl
 {
@@ -118,7 +126,17 @@ public partial class RealtimePage : UserControl
     }
 
     /// <summary>Detaches from the controller when the shell window is destroyed.</summary>
-    public void Teardown() => RealtimeSessionController.Instance.StateChanged -= OnSessionStateChanged;
+    /// <remarks>
+    /// The kept block layout goes with the window, which is the whole of its scope: it exists so
+    /// that ending a session to change something on this page does not cost the user their blocks,
+    /// and closing the window is the end of that errand. A session already running is left alone —
+    /// it owns its own blocks, and closing this window has never been a request to stop it.
+    /// </remarks>
+    public void Teardown()
+    {
+        RealtimeSessionController.Instance.StateChanged -= OnSessionStateChanged;
+        RealtimeSessionController.Instance.ForgetBlocks();
+    }
 
     private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
         RenderProviderHint();
@@ -327,6 +345,12 @@ public partial class RealtimePage : UserControl
         if (next == _blockCount) return;
 
         _blockCount = next;
+
+        // The blocks kept from the last sitting were drawn to fill a different count, so they are
+        // no longer an answer to the question being asked. Dropped as the count moves rather than
+        // checked when they are offered back, so the user sees the rule they were given.
+        RealtimeSessionController.Instance.ForgetBlocks();
+
         RenderBlockCount();
     }
 
