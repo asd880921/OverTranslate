@@ -66,6 +66,33 @@ public class OcrServiceTests
     }
 
     [Theory]
+    // The measured case: PP-OCRv6 read a subtitle as "That kind of șong" (U+0219) at 0.93
+    // confidence and the line came back from the translator as nonsense.
+    [InlineData("That kind of șong", "That kind of song")]
+    [InlineData("Ｃafé", "Ｃafe")]
+    [InlineData("naïve", "naive")]
+    [InlineData("Ārigatō", "Arigato")]
+    // Nothing to fold — these must come back the same object's worth of text, untouched.
+    [InlineData("That kind of song", "That kind of song")]
+    [InlineData("翻譯這個網頁", "翻譯這個網頁")]
+    [InlineData("2026年5月8日", "2026年5月8日")]
+    public void FoldLatinDiacritics_FoldsAccentsAndLeavesEverythingElse(string input, string expected)
+    {
+        Assert.Equal(expected, OnnxOcrEngine.FoldLatinDiacritics(input));
+    }
+
+    [Fact]
+    public void FoldLatinDiacritics_LeavesJapaneseVoicedKanaAlone()
+    {
+        // The reason the fold is restricted to the Latin ranges. Voiced kana decompose the same way
+        // an accented letter does — が is か plus a combining mark — so a blanket normalisation
+        // would silently turn "がっこう" into "かっこう", a different word entirely.
+        Assert.Equal("がっこう", OnnxOcrEngine.FoldLatinDiacritics("がっこう"));
+        Assert.Equal("ポケット", OnnxOcrEngine.FoldLatinDiacritics("ポケット"));
+        Assert.Equal("月島まりな", OnnxOcrEngine.FoldLatinDiacritics("月島まりな"));
+    }
+
+    [Theory]
     [InlineData("EN")]
     [InlineData("ZH-HANT")]
     [InlineData("KO")]

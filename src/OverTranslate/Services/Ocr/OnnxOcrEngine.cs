@@ -1,7 +1,9 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using NLog;
 using RapidOcrNet;
 using SkiaSharp;
@@ -174,6 +176,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             using var detectorInput = AlignForDetector(skBitmap, options.Padding);
             var result = runtime.Engine.Detect(detectorInput, options);
             var converted = ConvertBlocks(result.TextBlocks);
+
+            // Every language, because an accented letter is a misread whichever script surrounds
+            // it, and it costs the whole line its translation rather than just one character.
+            converted = FoldBlockDiacritics(converted);
 
             // On a non-CJK (Latin) page the shared general model occasionally misreads icons
             // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
@@ -460,6 +466,77 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
         return cleaned;
     }
+
+    private static List<OcrTextBlock> FoldBlockDiacritics(List<OcrTextBlock> blocks)
+    {
+        List<OcrTextBlock>? folded = null;
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            var text = FoldLatinDiacritics(blocks[index].Text);
+            if (text == blocks[index].Text)
+            {
+                folded?.Add(blocks[index]);
+                continue;
+            }
+
+            // Copied lazily: an accented letter is rare, so nearly every pass keeps the list it
+            // was given.
+            folded ??= [.. blocks.Take(index)];
+            folded.Add(blocks[index] with { Text = text });
+
+            Log.Debug(
+                "ONNX OCR folded accented letters lang=\"{Lang}\" \"{Before}\" -> \"{After}\"",
+                "latin", blocks[index].Text, text);
+        }
+
+        return folded ?? blocks;
+    }
+
+    // Folds accented Latin letters onto their plain form: "șong" -> "song".
+    //
+    // PP-OCRv6 carries ~200 diacritical characters so one model can serve 46 Latin-script
+    // languages. None of the languages this application reads (EN, ZH, ZH-HANT, JA, KO) use them,
+    // so when one appears in a reading it is a misread of the plain letter — and it does more
+    // damage than a wrong letter usually would, because the result is a word no translator knows.
+    // Measured: "That kind of șong" (U+0219, Romanian s-with-comma) came back at 0.93 confidence,
+    // far too sure to be caught by any score floor, and the line was translated as nonsense while
+    // the very next frame read plain "song" and translated correctly.
+    //
+    // Deliberately limited to the Latin ranges. Normalising everything would decompose Japanese
+    // voiced kana as well — が is か plus a combining mark — and stripping that mark would quietly
+    // turn Japanese into a different word.
+    internal static string FoldLatinDiacritics(string text)
+    {
+        if (!text.Any(IsLatinWithDiacritic))
+            return text;
+
+        var folded = new StringBuilder(text.Length);
+        foreach (var c in text)
+        {
+            if (!IsLatinWithDiacritic(c))
+            {
+                folded.Append(c);
+                continue;
+            }
+
+            // The decomposed form is the base letter followed by its combining marks, so the first
+            // character that is not a mark is the letter wanted. Characters that do not decompose
+            // at all (ø, đ) come back unchanged, which is the right answer for them too.
+            var baseLetter = c.ToString()
+                .Normalize(NormalizationForm.FormD)
+                .FirstOrDefault(ch =>
+                    CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark);
+
+            folded.Append(baseLetter == '\0' ? c : baseLetter);
+        }
+
+        return folded.ToString();
+    }
+
+    private static bool IsLatinWithDiacritic(char c) =>
+        c is >= 'À' and <= 'ɏ'    // Latin-1 Supplement, Latin Extended-A and -B
+        or >= 'Ḁ' and <= 'ỿ';     // Latin Extended Additional
 
     // Strips a single isolated Han ideograph when it is clearly icon noise: either the block is
     // exactly one ideograph, or one is glued to the start/end of a Latin word. The letter-adjacency
