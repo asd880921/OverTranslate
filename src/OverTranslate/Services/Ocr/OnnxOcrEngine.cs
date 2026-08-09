@@ -472,11 +472,43 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// arriving here looking for the big win should keep reading past this line. The box count is
     /// where the time goes; see issue #21.
     /// </remarks>
+    /// <summary>
+    /// Border to surround the image with instead of the library default of 50, or null for it.
+    /// </summary>
+    /// <remarks>
+    /// A measurement seam for <c>OcrHarness</c>, like <see cref="DetectorOverride"/>. Nothing in the
+    /// application sets this.
+    ///
+    /// The library's 50 was inherited rather than chosen, so it was swept under the current models
+    /// (RapidOcrNet 3.0.0, PP-OCRv6_det_tiny) across 0, 8, 16, 24, 32, 50, 64 and 96, on the two
+    /// small capture fixtures, 25 subtitle strips and 6 game panels. Scored as the share of each
+    /// frame's own best reading that a border returned:
+    ///
+    /// <code>
+    ///   border      0      8     16     24     32     50     64     96
+    ///   strips   93.5%  91.2%  92.7%  96.8%  96.1%  97.5%  96.3%  94.6%
+    ///   panels   72.1%  71.5%  71.3%  81.4%  71.7%  99.1%  85.4%
+    /// </code>
+    ///
+    /// 50 is the best value in every category, with both neighbours worse — a peak rather than a
+    /// floor, so raising it is not "safer". The small values are not merely weaker: on a 264x56
+    /// capture, borders of 8 and 16 return no boxes at all where 0 returns a fragment and 50 reads
+    /// the whole thing. That is <see cref="AlignForDetector"/> showing through — the border decides
+    /// what the aligned dimensions become, and a few of them land on geometry the detector dislikes.
+    ///
+    /// The border is also not the free choice it looks like on the clock. A strip reads in 43ms
+    /// without it and 77ms with it, and almost all of that difference is recognition of text that
+    /// no border failed to find: the detector's own input is the same size either way, because
+    /// <c>ImgResize</c> caps the long side after the border is added.
+    /// </remarks>
+    internal static int? DetectorPaddingOverride { get; set; }
+
     private static RapidOcrOptions CreateOptions(int? maxDetectSize) =>
         RapidOcrOptions.Default with
         {
             ImgResize = maxDetectSize ?? ScreenshotDetectSize,
             DoAngle = false,
+            Padding = DetectorPaddingOverride ?? RapidOcrOptions.Default.Padding,
         };
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)

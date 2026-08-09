@@ -18,6 +18,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same frame and size, cjk vs korean recognition model)");
     Console.Error.WriteLine("       OcrHarness --scale-sweep [--det <det.onnx>[:imagenet|:half]] <image.png> [...]");
     Console.Error.WriteLine("                  (reads each frame at every detector size, no translation)");
+    Console.Error.WriteLine("       OcrHarness --pad-sweep <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (same frame and size, a range of borders around it)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
     return 1;
 }
@@ -166,6 +168,64 @@ if (args[0] == "--compare-models")
                 }
             }
         }
+    }
+
+    return 0;
+}
+
+// Padding sweep: the same frame at the size the application would really use, read with a range of
+// borders around it. The border exists because text touching the edge of a capture detects badly,
+// but it is not free — it counts towards the long side ImgResize caps, so a wider border shrinks
+// the text the detector sees. This says whether the shipped 50 is still the right number.
+if (args[0] == "--pad-sweep")
+{
+    using var padOcr = new OcrService();
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var (primary, _) = RealtimeDetectorSize.For(image.Width, image.Height);
+
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine($"{Path.GetFileName(path)}  {image.Width}x{image.Height}  detect={primary}");
+
+        foreach (var padding in new[] { 0, 8, 16, 24, 32, 50, 64, 96 })
+        {
+            OnnxOcrEngine.DetectorPaddingOverride = padding;
+
+            List<OcrTextBlock>? blocks = null;
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+            for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
+            {
+                elapsed.Restart();
+                blocks = await padOcr.TryRecognizeAsync(image, "EN", primary);
+            }
+
+            elapsed.Stop();
+
+            // The same two filters the realtime session applies, for the same reason as in the
+            // scale sweep: a reading it would have thrown away is not a reading.
+            var kept = blocks?
+                .Where(block =>
+                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height) &&
+                    !ShortReadingDetection.IsTooShort(block.Text) &&
+                    !ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence))
+                .ToList();
+
+            var chars = kept?.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c))) ?? 0;
+            var text = kept is null || kept.Count == 0
+                ? ""
+                : "  " + string.Join(" | ", kept.Select(b => b.Text.Replace("\n", " ")));
+            var mark = padding == 50 ? " <- shipped" : "";
+
+            Console.WriteLine(
+                $"  pad={padding,3} : {kept?.Count ?? -1} box chars={chars,3} " +
+                $"{elapsed.ElapsedMilliseconds,5}ms{mark}{text}");
+        }
+
+        OnnxOcrEngine.DetectorPaddingOverride = null;
     }
 
     return 0;

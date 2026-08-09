@@ -42,7 +42,15 @@ OcrHarness.exe --scale-sweep 圖.png [更多.png ...]
 
 # 同一張圖、同一個尺寸，只換辨識模型（cjk vs korean）
 OcrHarness.exe --compare-models 圖.png [更多.png ...]
+
+# 同一張圖、app 會用的尺寸，只換送進偵測器前加的白邊（0–96）
+OcrHarness.exe --pad-sweep 圖.png [更多.png ...]
 ```
+
+`--pad-sweep` 的白邊不是「多一圈留白」而已：它參與 `AlignForDetector` 的對齊算式，也算進
+`ImgResize` 的長邊上限，所以白邊越寬、偵測器看到的文字越小。實測 0/8/16/24/32/50/64/96，
+**50 在字幕條帶、遊戲面板、小截圖三類上都是最高分，而且兩側都比它差** —— 是峰值不是地板，
+調大不會比較保險。細節與數字記在 `OnnxOcrEngine.DetectorPaddingOverride`。
 
 `--scale-sweep` 會一併印出 `RealtimeDetectorSize` 對該尺寸區塊會挑的 primary 與 fallback，
 所以掃描結果可以直接對照 app 真正會用的尺寸來讀。它走的是主專案的 `OnnxOcrEngine`，
