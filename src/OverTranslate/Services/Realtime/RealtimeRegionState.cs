@@ -74,6 +74,7 @@ internal sealed class RealtimeRegionState
     public const int EmptyPassesBeforeClearing = 2;
 
     private static readonly IReadOnlyList<Rectangle> NoBands = [];
+    private static readonly IReadOnlyList<RenderedLine> NoLines = [];
 
     private IReadOnlyList<Rectangle> _watchBands = NoBands;
     private FrameFingerprint? _rendered;
@@ -83,14 +84,27 @@ internal sealed class RealtimeRegionState
     private int _pollsSinceFullScan;
     private int _emptyPasses;
 
+    /// <summary>
+    /// What the region shows, one entry per line, each with the score it was read at — so a later
+    /// reading of one sentence can be judged against that same sentence rather than against the
+    /// average of everything that happened to be in frame with it. See
+    /// <see cref="RealtimeReadingMerge"/> for why that distinction is the whole of issue #30.
+    /// </summary>
+    public IReadOnlyList<RenderedLine> RenderedLines { get; private set; } = NoLines;
+
     /// <summary>The source text currently on screen for this region.</summary>
     public string RenderedText { get; private set; } = "";
 
     /// <summary>
-    /// How well <see cref="RenderedText"/> was read, so a later reading of the same sentence can be
-    /// compared against it instead of simply replacing it. Zero when nothing is shown, which lets
-    /// any reading at all win the first time.
+    /// How well <see cref="RenderedText"/> was read as a whole — the per-line scores weighted by how
+    /// much text each line contributes, so a long line read well is not outvoted by a stray
+    /// two-character block beside it. Zero when nothing is shown.
     /// </summary>
+    /// <remarks>
+    /// Nothing decides anything by this any more; it is what the log reports so a session can still
+    /// be read as "this pass scored better than what was up". The decisions are per line, against
+    /// <see cref="RenderedLines"/>.
+    /// </remarks>
     public double RenderedConfidence { get; private set; }
 
     /// <summary>True once a pass has found text and the state is watching its strips.</summary>
@@ -159,7 +173,17 @@ internal sealed class RealtimeRegionState
         IReadOnlyList<Rectangle> textBounds,
         Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture,
         string sourceText,
-        double confidence = 0)
+        double confidence = 0) =>
+        MarkRendered(textBounds, capture, ToLines(sourceText, confidence));
+
+    /// <summary>
+    /// The same, told what each line says and how well each was read — which is what the pass itself
+    /// knows and what <see cref="RealtimeReadingMerge"/> needs back on the next pass.
+    /// </summary>
+    public void MarkRendered(
+        IReadOnlyList<Rectangle> textBounds,
+        Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture,
+        IReadOnlyList<RenderedLine> lines)
     {
         if (textBounds.Count > 0)
         {
@@ -176,9 +200,37 @@ internal sealed class RealtimeRegionState
         _pending = _rendered;
         _unsettledPolls = 0;
         _pollsSinceFullScan = 0;
-        RenderedText = sourceText;
-        RenderedConfidence = confidence;
+        RenderedLines = lines;
+        RenderedText = string.Join('\n', lines.Select(line => line.Text));
+        RenderedConfidence = WeightedConfidence(lines);
     }
+
+    /// <summary>
+    /// One score for a whole reading, weighted by how much text each line contributes.
+    /// </summary>
+    private static double WeightedConfidence(IReadOnlyList<RenderedLine> lines)
+    {
+        double weighted = 0;
+        double weight = 0;
+
+        foreach (var line in lines)
+        {
+            var characters = Math.Max(1, line.Text.Trim().Length);
+            weighted += line.Confidence * characters;
+            weight += characters;
+        }
+
+        return weight > 0 ? weighted / weight : 0;
+    }
+
+    /// <summary>
+    /// Splits a whole reading back into lines scored alike, for callers that only have the joined
+    /// text — the empty pass, which has no lines at all, and the tests.
+    /// </summary>
+    private static IReadOnlyList<RenderedLine> ToLines(string sourceText, double confidence) =>
+        sourceText.Length == 0
+            ? NoLines
+            : [.. sourceText.Split('\n').Select(line => new RenderedLine(line, confidence))];
 
     /// <summary>
     /// Forgets what the region is known to show, so the next poll reads it again.
@@ -196,6 +248,7 @@ internal sealed class RealtimeRegionState
         _renderedFull = null;
         _pending = null;
         _unsettledPolls = 0;
+        RenderedLines = NoLines;
         RenderedText = "";
         RenderedConfidence = 0;
     }

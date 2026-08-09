@@ -98,6 +98,21 @@ internal static class TextSimilarity
         return EditDistanceWithin(left, right, allowed);
     }
 
+    /// <summary>
+    /// Whether two readings say the very same thing, spacing aside — the one comparison here with no
+    /// tolerance in it at all.
+    /// </summary>
+    /// <remarks>
+    /// What <see cref="RealtimeReadingMerge"/> asks to decide whether a line has anything new in it.
+    /// The tolerant comparisons cannot answer that: <c>"weird guitr."</c> and <c>"weird guitar..."</c>
+    /// are three characters apart in forty, well inside what <see cref="IsSameContent"/> forgives,
+    /// and they are also the difference between the reader getting the sentence and not. Tolerance is
+    /// for deciding whether to pay for a translation and whether two readings are of one sentence;
+    /// it is not for deciding whether the better of two readings of that sentence is worth showing.
+    /// </remarks>
+    public static bool IsSameWording(string a, string b) =>
+        ReferenceEquals(a, b) || NormaliseWhitespace(a) == NormaliseWhitespace(b);
+
     public static bool IsSameContent(string a, string b)
     {
         if (ReferenceEquals(a, b)) return true;

@@ -305,7 +305,7 @@ public sealed class RealtimeTranslationSession
         Cleared,
         /// <summary>Read, and the words are the ones already on screen — see TextSimilarity.</summary>
         Unchanged,
-        /// <summary>Read as the same sentence, but less well than the reading already on screen.</summary>
+        /// <summary>Read differently, but no line of it better than the reading already on screen.</summary>
         WorseReading,
         /// <summary>Read, the words are new, and they have been handed to the pump.</summary>
         Translating,
@@ -428,68 +428,68 @@ public sealed class RealtimeTranslationSession
             // the region has genuinely gone quiet and only this branch counts that towards clearing.
             RealtimeFrameDump.SaveUnread(frame, region.Id);
 
-            var shownBefore = state.RenderedText.Length;
+            var shownWhenEmpty = state.RenderedText.Length;
             state.MarkRendered(textBounds, capture, sourceText);
 
             var cleared = state.ShouldClearOverlay;
             if (cleared) pump.Publish(pass, []);
 
             return new PassReading(
-                cleared ? PassOutcome.Cleared : PassOutcome.Empty, ocrMs, 0, 0, shownBefore);
+                cleared ? PassOutcome.Cleared : PassOutcome.Empty, ocrMs, 0, 0, shownWhenEmpty);
         }
 
-        // Close enough to what is already on screen to be the same words read twice. The strips are
-        // still updated — they may have shifted a pixel — but the anchor text deliberately is not:
-        // holding it at what was actually rendered stops a line from drifting away one tolerated
-        // character at a time, which comparing against the previous frame instead would allow.
-        if (TextSimilarity.IsSameContent(sourceText, state.RenderedText))
+        // Line by line against what is on screen: each sentence keeps the better of its own two
+        // readings, and a sentence nothing on screen answers to is simply new. Doing this per pass
+        // instead — one weighted average against another — is what let a correctly read sentence be
+        // thrown away because the line beside it had wobbled; see RealtimeReadingMerge.
+        var merged = RealtimeReadingMerge.Merge(state.RenderedLines, recognized);
+        var shownBefore = state.RenderedText.Length;
+
+        // Whether this pass read the region differently at all, as opposed to reading it the same
+        // way again. Taken before the state is written, because that is what it is a statement about.
+        var reread = !TextSimilarity.IsSameContent(sourceText, state.RenderedText);
+
+        // Nothing the reader can see is different: every line either says what it already said or
+        // was read no better than the version already up. The strips are still updated — they may
+        // have shifted a pixel — but the words and the scores they are defended with deliberately
+        // are not, which stops a line drifting away one tolerated character at a time.
+        if (!merged.Changed)
         {
-            var shownBefore = state.RenderedText.Length;
-            state.MarkRendered(textBounds, capture, state.RenderedText, state.RenderedConfidence);
-            return new PassReading(
-                PassOutcome.Unchanged, ocrMs, recognized.Count, sourceText.Length, shownBefore);
-        }
+            // Only worth a line when a reading was actually turned down; a pass that merely read the
+            // same words again is the ordinary case and says nothing.
+            if (reread)
+                Log.Debug(
+                    "Realtime region {Region} kept the better reading of {Kept} line(s): " +
+                    "shown={Shown:0.00} \"{Old}\" against \"{Text}\"",
+                    region.Id, merged.Kept, state.RenderedConfidence, state.RenderedText, sourceText);
 
-        var confidence = ReadingConfidence(recognized);
-
-        // The same sentence, read differently — a lost space, a run of i/l confusions. Left alone
-        // this replaces a correct translation with a worse one several times per line, which is
-        // most of what "the recognition is unreliable" looks like from the reader's seat: the
-        // overlay was showing the newest reading rather than the best one. So the newer reading has
-        // to be better read than the one on screen before it may take its place.
-        if (TextSimilarity.IsSameSentence(sourceText, state.RenderedText) &&
-            confidence <= state.RenderedConfidence)
-        {
-            var shownBefore = state.RenderedText.Length;
-            state.MarkRendered(textBounds, capture, state.RenderedText, state.RenderedConfidence);
-
-            Log.Debug(
-                "Realtime region {Region} kept the better reading: shown={Shown:0.00} \"{Old}\" " +
-                "beat {New:0.00} \"{Text}\"",
-                region.Id, state.RenderedConfidence, state.RenderedText, confidence, sourceText);
+            state.MarkRendered(textBounds, capture, merged.Lines);
 
             return new PassReading(
-                PassOutcome.WorseReading, ocrMs, recognized.Count, sourceText.Length, shownBefore);
+                reread ? PassOutcome.WorseReading : PassOutcome.Unchanged,
+                ocrMs, recognized.Count, sourceText.Length, shownBefore);
         }
 
         // Recorded as shown before it has been translated, and deliberately: the frame has been
         // read and the words are known, so holding this region's state open until the network
         // answers would only stop the region being watched. A translation that never arrives asks
         // for this record to be undone — see RegionTranslationPump.
-        var shown = state.RenderedText.Length;
-        state.MarkRendered(textBounds, capture, sourceText, confidence);
-        pump.Post(pass, recognized, ocrMs);
+        //
+        // The merged lines rather than the raw reading: a sentence whose re-reading lost keeps the
+        // wording already on screen, which the session has translated once and cached, so carrying
+        // it along with a corrected neighbour costs nothing on the network.
+        state.MarkRendered(textBounds, capture, merged.Lines);
+        pump.Post(pass, merged.Blocks, ocrMs);
+
+        Log.Debug(
+            "Realtime region {Region} redrew {Improved} improved, {Added} new, {Dropped} gone, " +
+            "{Kept} held",
+            region.Id, merged.Improved, merged.Added, merged.Dropped, merged.Kept);
 
         return new PassReading(
-            PassOutcome.Translating, ocrMs, recognized.Count, sourceText.Length, shown);
+            PassOutcome.Translating, ocrMs, recognized.Count, sourceText.Length, shownBefore);
     }
 
-    /// <summary>
-    /// One score for a whole reading, weighted by how much text each line contributes — a long line
-    /// read well should not be outvoted by a stray two-character block beside it.
-    /// </summary>
-    /// <remarks>Lines the engine scored nothing for count as perfectly read, matching the filter,
-    /// which lets a block through when it has no scores to judge it by.</remarks>
     /// <summary>Drops boxes the detector threw across the whole block — see CollapsedDetection.</summary>
     private static List<OcrTextBlock> RejectCollapsedBlocks(
         List<OcrTextBlock> blocks, double blockHeight, int regionId)
@@ -565,21 +565,6 @@ public sealed class RealtimeTranslationSession
         }
 
         return kept ?? blocks;
-    }
-
-    private static double ReadingConfidence(IReadOnlyList<OcrTextBlock> blocks)
-    {
-        double weighted = 0;
-        double weight = 0;
-
-        foreach (var block in blocks)
-        {
-            var characters = Math.Max(1, block.Text.Trim().Length);
-            weighted += (block.Confidence ?? 1.0) * characters;
-            weight += characters;
-        }
-
-        return weight > 0 ? weighted / weight : 0;
     }
 
     private void RaiseRegionUpdated(RealtimeRegionUpdate update) => RegionUpdated?.Invoke(this, update);
