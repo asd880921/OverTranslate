@@ -2,6 +2,7 @@ using System.Drawing;
 using System.IO;
 using GTranslate.Translators;
 using OverTranslate.Services;
+using OverTranslate.Services.Ocr;
 using OverTranslate.Services.Providers;
 using OverTranslate.Services.Realtime;
 
@@ -15,7 +16,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("       OcrHarness --xlate-line <text>   (translate one line, all engines)");
     Console.Error.WriteLine("       OcrHarness --compare-models <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same frame and size, cjk vs korean recognition model)");
-    Console.Error.WriteLine("       OcrHarness --scale-sweep <image.png> [more.png ...]");
+    Console.Error.WriteLine("       OcrHarness --scale-sweep [--det <det.onnx>[:imagenet|:half]] <image.png> [...]");
     Console.Error.WriteLine("                  (reads each frame at every detector size, no translation)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
     return 1;
@@ -176,9 +177,54 @@ if (args[0] == "--compare-models")
 // size read nothing and a fallback read the subtitle fine.
 if (args[0] == "--scale-sweep")
 {
+    var sweepArgs = args.Skip(1).ToList();
+
+    // Which detector to sweep with. Without it the sweep uses the shipped one, which is what every
+    // measurement in #22 up to now was made with — so the flag's absence reproduces those numbers
+    // and its presence is the only thing that differs.
+    if (sweepArgs.FirstOrDefault() == "--det")
+    {
+        if (sweepArgs.Count < 2)
+        {
+            Console.Error.WriteLine("usage: --scale-sweep --det <det.onnx>[:imagenet|:half] <image.png> ...");
+            return 1;
+        }
+
+        var spec = sweepArgs[1];
+        sweepArgs.RemoveRange(0, 2);
+
+        // The normalisation travels with the model, so it is named next to it rather than left to
+        // a default: a v6 detector read with v5's statistics is a different, worse detector, and
+        // the mistake is invisible in the output — it just reads less.
+        var separator = spec.LastIndexOf(':');
+        var normalization = separator > 1 ? spec[(separator + 1)..] : "imagenet";
+        var detPath = separator > 1 ? spec[..separator] : spec;
+
+        OnnxOcrEngine.DetectorOverride = normalization switch
+        {
+            "imagenet" => new OnnxOcrEngine.DetectorModel(
+                detPath, OnnxOcrEngine.ImageNetNormalization, OnnxOcrEngine.ImageNetNormalizationStd),
+            "half" => new OnnxOcrEngine.DetectorModel(
+                detPath, OnnxOcrEngine.HalfNormalization, OnnxOcrEngine.HalfNormalization),
+            _ => null,
+        };
+
+        if (OnnxOcrEngine.DetectorOverride is null)
+        {
+            Console.Error.WriteLine($"unknown normalization \"{normalization}\" (expected imagenet or half)");
+            return 1;
+        }
+
+        Console.WriteLine($"detector: {detPath}  normalization={normalization}");
+    }
+    else
+    {
+        Console.WriteLine("detector: shipped (ocrmodels/onnx/shared/det.onnx)  normalization=imagenet");
+    }
+
     using var sweepOcr = new OcrService();
 
-    foreach (var path in args.Skip(1))
+    foreach (var path in sweepArgs)
     {
         if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
 
@@ -204,15 +250,29 @@ if (args[0] == "--scale-sweep")
             var size = fraction >= 1.0 ? native : Math.Max(320, ((int)(native * fraction) + 31) / 32 * 32);
 
             List<OcrTextBlock>? blocks = null;
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
             for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
+            {
+                elapsed.Restart();
                 blocks = await sweepOcr.TryRecognizeAsync(image, "EN", size);
+            }
+
+            elapsed.Stop();
 
             var mark = size == primary ? " <- primary" : fallbacks.Contains(size) ? " <- fallback" : "";
             var text = blocks is null || blocks.Count == 0
                 ? ""
                 : "  " + string.Join(" | ", blocks.Select(b => b.Text.Replace("\n", " ")));
 
-            Console.WriteLine($"  {fraction:0.00} -> {size,5} : {blocks?.Count ?? -1} box{mark}{text}");
+            // chars and ms, because neither question this sweep exists for can be answered without
+            // both: a size is only counted as reading the subtitle past a character floor (icons and
+            // scenery misreads come back short), and the size that reads most is not the size to pick
+            // if it costs several times as much per pass.
+            var chars = blocks?.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c))) ?? 0;
+
+            Console.WriteLine(
+                $"  {fraction:0.00} -> {size,5} : {blocks?.Count ?? -1} box chars={chars,3} " +
+                $"{elapsed.ElapsedMilliseconds,5}ms{mark}{text}");
         }
     }
 

@@ -334,6 +334,47 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         }
     }
 
+    /// <summary>
+    /// A text detection model and the pixel normalisation it was exported with.
+    /// </summary>
+    /// <param name="Path">Full path to the detector's .onnx file.</param>
+    /// <param name="Mean">Per-channel mean subtracted from each pixel, in BGR order, 0–255 scale.</param>
+    /// <param name="Std">Per-channel standard deviation each pixel is divided by, same order and scale.</param>
+    /// <remarks>
+    /// The numbers are not a tuning knob: feeding a model the statistics it was not trained with
+    /// shifts every pixel it sees, so a detector measured under the wrong pair is not that detector.
+    /// PP-OCRv5 was exported with the ImageNet statistics; RapidOcrNet's own PP-OCRv6 presets use
+    /// 127.5/127.5 instead, which is why swapping the file alone is not enough to measure a v6
+    /// detector — see <see cref="ImageNetNormalization"/> and <see cref="HalfNormalization"/>.
+    /// </remarks>
+    internal sealed record DetectorModel(string Path, float[] Mean, float[] Std);
+
+    /// <summary>What PP-OCRv5 detectors — including the shipped one — were exported with.</summary>
+    internal static float[] ImageNetNormalization => [123.675f, 116.28f, 103.53f];
+
+    /// <inheritdoc cref="ImageNetNormalization"/>
+    internal static float[] ImageNetNormalizationStd => [58.395f, 57.12f, 57.375f];
+
+    /// <summary>What RapidOcrNet's PP-OCRv6 presets normalise with, for both mean and deviation.</summary>
+    internal static float[] HalfNormalization => [127.5f, 127.5f, 127.5f];
+
+    /// <summary>
+    /// Detector to load in place of the shipped one. Null — the shipped detector — everywhere but
+    /// <c>OcrHarness</c>.
+    /// </summary>
+    /// <remarks>
+    /// A measurement seam, not a setting. Issue #22 needs the same frames read by different
+    /// detectors to say whether the dead band in detector sizes is a property of the model, and
+    /// the answer only means anything if everything around the detector — recogniser, dictionary,
+    /// options, grouping — is the code the application really runs. Nothing in the application
+    /// assigns this, so the shipped path is the untouched two-argument load below.
+    ///
+    /// Set it before the first recognition of an <see cref="OnnxOcrEngine"/>: a runtime already
+    /// loaded is reused until it goes idle, so changing this mid-life leaves the previous detector
+    /// in place. One engine per detector under measurement is the way to be sure.
+    /// </remarks>
+    internal static DetectorModel? DetectorOverride { get; set; }
+
     private static RapidOcrRuntime CreateRuntime(string modelName)
     {
         var sharedPath = Path.Combine(ModelRoot, "shared");
@@ -350,6 +391,34 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         EnsureModelFile(dictPath);
 
         var engine = new RapidOcr();
+
+        if (DetectorOverride is { } detector)
+        {
+            EnsureModelFile(detector.Path);
+
+            // The model-set overload is the only one that carries the detector's normalisation, so
+            // it is the only way to load a detector from a different family than the shipped one.
+            engine.InitModels(
+                new RapidOcrModelSet
+                {
+                    DetModelPath = detector.Path,
+                    ClsModelPath = clsPath,
+                    RecModelPath = recPath,
+                    KeysPath = dictPath,
+                    DetMean = detector.Mean,
+                    DetStd = detector.Std,
+                },
+                ThreadCount);
+
+            Log.Info(
+                "ONNX OCR detector overridden: {Path} mean=[{Mean}] std=[{Std}]",
+                detector.Path,
+                string.Join(",", detector.Mean),
+                string.Join(",", detector.Std));
+
+            return new RapidOcrRuntime(modelName, engine);
+        }
+
         engine.InitModels(detPath, clsPath, recPath, dictPath, ThreadCount);
         return new RapidOcrRuntime(modelName, engine);
     }
