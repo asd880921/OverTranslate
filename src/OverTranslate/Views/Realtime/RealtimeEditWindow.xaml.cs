@@ -72,13 +72,13 @@ public partial class RealtimeEditWindow : Window
     /// different length, and a plate that resized as the selection moved would make choosing a mode
     /// look like it had rearranged the screen.
     ///
-    /// The number is the one that puts each sentence on a single line at
-    /// <see cref="BaseHintFontSize"/> — measured, not chosen: both are fifty characters and both
-    /// lay out at 640 points, so this is that plus the padding and a little slack for a machine
-    /// whose font metrics differ. One line rather than two because a sentence read in one sweep is
-    /// read; the plate is wider for it but shorter, and it hangs over content the user is trying to
-    /// see. Worth re-measuring if either sentence is ever edited — the text still wraps rather than
-    /// clips if it outgrows this, so the failure is a taller plate and not a lost half-sentence.
+    /// The number keeps every explicit line on a single visual line at
+    /// <see cref="BaseHintFontSize"/> — measured, not chosen: the longest instructions lay out at
+    /// 640 points, so this is that plus the padding and a little slack for a machine whose font
+    /// metrics differ. Each mode deliberately uses two lines: the first says when to use it and the
+    /// second says how to frame it. Worth re-measuring if either sentence is ever edited — the text
+    /// still wraps rather than clips if it outgrows this, so the failure is a taller plate and not a
+    /// lost half-sentence.
     /// </remarks>
     private const double BaseHintWidth = 680;
 
@@ -141,7 +141,7 @@ public partial class RealtimeEditWindow : Window
             ApplyScreenScale();
 
             foreach (var block in _initialBlocks)
-                AddBlock(ToCanvas(block.Bounds), block.Mode, notify: false);
+                AddBlock(ToCanvas(block.Bounds), block.Mode, block.GuidanceExpanded, notify: false);
 
             RaiseBlocksChanged();
         };
@@ -158,7 +158,10 @@ public partial class RealtimeEditWindow : Window
     /// <summary>The current blocks in physical screen pixels, ready to be watched.</summary>
     public IReadOnlyList<RealtimeBlockPlacement> GetPhysicalBlocks() =>
         [.. _blocks.Select(block =>
-            new RealtimeBlockPlacement(ToPhysical(block.Bounds), block.ModeControl.Value))];
+            new RealtimeBlockPlacement(
+                ToPhysical(block.Bounds),
+                block.ModeControl.Value,
+                block.ModeControl.GuidanceExpanded))];
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -261,7 +264,7 @@ public partial class RealtimeEditWindow : Window
         // Subtitle is the default because it is what nearly every block is, and because it is the
         // cheaper mistake: the other mode's fraction is the first fallback either way, so a panel
         // left on 字幕 costs one extra inference rather than a block that reads nothing.
-        AddBlock(box, RealtimeBlockMode.Subtitle, notify: true);
+        AddBlock(box, RealtimeBlockMode.Subtitle, guidanceExpanded: true, notify: true);
     }
 
     // Capture lost to something else entirely (an Alt+Tab, another window taking it). The drag is
@@ -293,10 +296,10 @@ public partial class RealtimeEditWindow : Window
 
     // ── Blocks ───────────────────────────────────────────────────────────────────────────────────
 
-    private void AddBlock(Rect bounds, RealtimeBlockMode mode, bool notify)
+    private void AddBlock(Rect bounds, RealtimeBlockMode mode, bool guidanceExpanded, bool notify)
     {
         var visual = new BlockVisual(
-            bounds, mode, _handleSize, _removeSize,
+            bounds, mode, guidanceExpanded, _handleSize, _removeSize,
             _modeSegmentWidth, _modeHeight, _modeInset, _hintWidth, _removeGap, _uiScale);
 
         visual.Body.DragDelta += (_, e) => Move(visual, e.HorizontalChange, e.VerticalChange);
@@ -306,6 +309,11 @@ public partial class RealtimeEditWindow : Window
             RemoveBlock(visual);
         };
         visual.ModeControl.SelectionChanged += (_, _) => RaiseBlocksChanged();
+        visual.ModeControl.ExpansionChanged += (_, _) =>
+        {
+            Apply(visual, animateMode: true);
+            RaiseBlocksChanged();
+        };
 
         for (int corner = 0; corner < visual.Corners.Length; corner++)
         {
@@ -383,7 +391,7 @@ public partial class RealtimeEditWindow : Window
         RaiseBlocksChanged();
     }
 
-    private void Apply(BlockVisual visual)
+    private void Apply(BlockVisual visual, bool animateMode = false)
     {
         var bounds = visual.Bounds;
 
@@ -432,8 +440,32 @@ public partial class RealtimeEditWindow : Window
         // wherever the pointer left it and is right to be; a plate of 13-point CJK starting half way
         // across a pixel is soft for the whole time it is on screen, and UseLayoutRounding inside the
         // control cannot correct an origin that is already on a half pixel.
-        Canvas.SetLeft(visual.ModeControl, SnapToPixels(modeLeft, _dpiX));
-        Canvas.SetTop(visual.ModeControl, SnapToPixels(Math.Max(0, modeTop), _dpiY));
+        PlaceModeControl(
+            visual.ModeControl,
+            SnapToPixels(modeLeft, _dpiX),
+            SnapToPixels(Math.Max(0, modeTop), _dpiY),
+            animateMode);
+    }
+
+    private static void PlaceModeControl(ModeSegments mode, double left, double top, bool animate)
+    {
+        if (!animate || !SystemParameters.ClientAreaAnimation)
+        {
+            mode.BeginAnimation(Canvas.LeftProperty, null);
+            mode.BeginAnimation(Canvas.TopProperty, null);
+            Canvas.SetLeft(mode, left);
+            Canvas.SetTop(mode, top);
+            return;
+        }
+
+        mode.BeginAnimation(Canvas.LeftProperty, new DoubleAnimation(Canvas.GetLeft(mode), left, ModeSegments.GuidanceDuration)
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        });
+        mode.BeginAnimation(Canvas.TopProperty, new DoubleAnimation(Canvas.GetTop(mode), top, ModeSegments.GuidanceDuration)
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        });
     }
 
     // Canvas coordinates are this window's device-independent units; a device pixel is 1/dpi of one.
@@ -482,6 +514,7 @@ public partial class RealtimeEditWindow : Window
         public BlockVisual(
             Rect bounds,
             RealtimeBlockMode mode,
+            bool guidanceExpanded,
             double handleSize,
             double removeSize,
             double modeSegmentWidth,
@@ -517,7 +550,7 @@ public partial class RealtimeEditWindow : Window
             };
 
             ModeControl = new ModeSegments(
-                mode, modeHeight, modeSegmentWidth, modeInset, hintWidth, gap, uiScale);
+                mode, guidanceExpanded, modeHeight, modeSegmentWidth, modeInset, hintWidth, gap, uiScale);
         }
 
         public Rect Bounds { get; set; }
@@ -624,6 +657,11 @@ public partial class RealtimeEditWindow : Window
         // while the user starts reading it is worse than one that was simply there.
         private static readonly Duration HintFadeDuration = new(TimeSpan.FromMilliseconds(140));
 
+        // A small disclosure should feel attached to the control, not staged like a panel reveal.
+        // Critically damped in character: one short ease-out, no overshoot, and reversible from the
+        // value currently on screen when the user changes their mind mid-transition.
+        internal static readonly Duration GuidanceDuration = new(TimeSpan.FromMilliseconds(180));
+
         // Feedback on press has to be immediate or the control feels dead, so this is short enough
         // to read as instant while still being a movement rather than a jump.
         private static readonly Duration PressDuration = new(TimeSpan.FromMilliseconds(100));
@@ -666,10 +704,12 @@ public partial class RealtimeEditWindow : Window
         /// <see cref="CollapsedDetection"/>, and neither is something to explain over a paused game.
         /// </summary>
         private const string SubtitleHint =
+            "適合影音字幕、遊戲對話等文字集中且位置較固定的畫面。\n" +
             "框選時，上下約留半個至一個字的空間，避免貼齊文字；" +
             "左右可適度放寬，但不要框入過多空白範圍，避免雜訊。";
 
         private const string PanelHint =
+            "適合文字分散於不同位置，或內容位置經常變動的遊戲畫面。\n" +
             "框選時，需翻譯的區域請保留一些空間，避免貼齊內容；" +
             "若畫面有多個區域則建議分開框選，避免辨識速度過慢。";
 
@@ -678,15 +718,29 @@ public partial class RealtimeEditWindow : Window
         private readonly Border[] _highlights;
         private readonly TextBlock[] _labels;
         private readonly TextBlock[] _hints;
+        private readonly Grid _hintHost;
+        private readonly Border _hintPlate;
+        private readonly Border _guidanceToggle;
+        private readonly Border _guidanceToggleHighlight;
+        private readonly RotateTransform _guidanceChevronRotation = new();
         private readonly double _segmentWidth;
+        private readonly double _expandedWidth;
+        private readonly double _expandedHeight;
+        private readonly double _collapsedWidth;
+        private readonly double _collapsedHeight;
+        private readonly double _expandedHintHeight;
 
         // Which segment the pointer went down on, or -1. The click is committed on release and only
         // if the pointer is still over that segment, so a press the user thought better of can be
         // taken back by sliding off it — the same forgiveness every other button on the desktop has.
         private int _pressedSegment = -1;
+        private bool _guidanceTogglePressed;
+        private bool _guidanceExpanded;
+        private int _guidanceTransition;
 
         public ModeSegments(
             RealtimeBlockMode mode,
+            bool guidanceExpanded,
             double height,
             double segmentWidth,
             double inset,
@@ -695,6 +749,7 @@ public partial class RealtimeEditWindow : Window
             double uiScale)
         {
             Value = mode;
+            _guidanceExpanded = guidanceExpanded;
             _segmentWidth = segmentWidth;
 
             Orientation = System.Windows.Controls.Orientation.Vertical;
@@ -751,6 +806,53 @@ public partial class RealtimeEditWindow : Window
             track.HorizontalAlignment = HorizontalAlignment.Left;
             track.Height = height;
 
+            var chevron = new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse("M 1,7 L 6,2 L 11,7"),
+                Width = 12 * uiScale,
+                Height = 9 * uiScale,
+                Stretch = Stretch.Fill,
+                Stroke = RemoveForeground,
+                StrokeThickness = 1.5 * uiScale,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                StrokeLineJoin = PenLineJoin.Round,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                RenderTransformOrigin = new Point(0.5, 0.5),
+                RenderTransform = _guidanceChevronRotation,
+                IsHitTestVisible = false,
+            };
+
+            _guidanceToggleHighlight = new Border
+            {
+                Background = PressHighlight,
+                CornerRadius = new CornerRadius(radius),
+                Margin = new Thickness(inset),
+                Opacity = 0,
+                IsHitTestVisible = false,
+            };
+
+            var toggleContent = new Grid();
+            toggleContent.Children.Add(_guidanceToggleHighlight);
+            toggleContent.Children.Add(chevron);
+
+            _guidanceToggle = Plate(height, new CornerRadius(radius), toggleContent, uiScale);
+            _guidanceToggle.Width = height;
+            _guidanceToggle.Height = height;
+            _guidanceToggle.Margin = new Thickness(gap, 0, 0, 0);
+            _guidanceToggle.Background = System.Windows.Media.Brushes.Transparent;
+            _guidanceToggle.Cursor = Cursors.Hand;
+            UpdateGuidanceToggleLabel();
+
+            var header = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            };
+            header.Children.Add(track);
+            header.Children.Add(_guidanceToggle);
+
             _hints = [BuildHint(SubtitleHint, uiScale), BuildHint(PanelHint, uiScale)];
 
             // Both sentences are laid out at once and only one is opaque, so the plate is as tall as
@@ -761,15 +863,18 @@ public partial class RealtimeEditWindow : Window
             };
             foreach (var hint in _hints) hintContent.Children.Add(hint);
 
-            var hintPlate = Plate(hintWidth, new CornerRadius(8 * uiScale), hintContent, uiScale);
-            hintPlate.Margin = new Thickness(0, gap, 0, 0);
+            _hintPlate = Plate(hintWidth, new CornerRadius(8 * uiScale), hintContent, uiScale);
+            _hintPlate.Margin = new Thickness(0, gap, 0, 0);
 
             // Reads, never clicked. Left hit-testable it would swallow the drag that starts a new
             // block on the picture behind it, for no gain.
-            hintPlate.IsHitTestVisible = false;
+            _hintPlate.IsHitTestVisible = false;
 
-            Children.Add(track);
-            Children.Add(hintPlate);
+            _hintHost = new Grid { ClipToBounds = true };
+            _hintHost.Children.Add(_hintPlate);
+
+            Children.Add(header);
+            Children.Add(_hintHost);
 
             for (var index = 0; index < _segments.Length; index++)
             {
@@ -801,25 +906,60 @@ public partial class RealtimeEditWindow : Window
                 segment.MouseLeave += (_, _) => { if (_pressedSegment == picked) SetPressed(picked, false); };
             }
 
+            _guidanceToggle.MouseLeftButtonDown += (_, e) =>
+            {
+                e.Handled = true;
+                _guidanceTogglePressed = true;
+                _guidanceToggle.CaptureMouse();
+                SetGuidanceTogglePressed(true);
+            };
+            _guidanceToggle.MouseLeftButtonUp += (_, e) =>
+            {
+                e.Handled = true;
+                var commit = _guidanceTogglePressed && _guidanceToggle.IsMouseOver;
+                _guidanceTogglePressed = false;
+                _guidanceToggle.ReleaseMouseCapture();
+                SetGuidanceTogglePressed(false);
+                if (commit) ToggleGuidance();
+            };
+            _guidanceToggle.MouseEnter += (_, _) =>
+            {
+                if (_guidanceTogglePressed) SetGuidanceTogglePressed(true);
+            };
+            _guidanceToggle.MouseLeave += (_, _) =>
+            {
+                if (_guidanceTogglePressed) SetGuidanceTogglePressed(false);
+            };
+
             ApplySelection(animate: false);
 
-            // Measured up front because the canvas positions this by hand and needs its size before
-            // layout has run — and it is a fixed size for the life of the block: the plate's width
-            // is given and both sentences are already laid out inside it.
+            // Both resting sizes are measured up front because the canvas positions this by hand
+            // before layout has run. Toggling then only chooses between known expanded and collapsed
+            // targets, so neither state depends on a half-finished animation's DesiredSize.
             Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-            TotalWidth = DesiredSize.Width;
-            TotalHeight = DesiredSize.Height;
+            _expandedWidth = DesiredSize.Width;
+            _expandedHeight = DesiredSize.Height;
+            _collapsedWidth = header.DesiredSize.Width;
+            _collapsedHeight = header.DesiredSize.Height;
+            _expandedHintHeight = _hintHost.DesiredSize.Height;
+            _hintHost.Height = _expandedHintHeight;
+            ApplyGuidanceState(animate: false);
         }
 
         /// <summary>Raised when the user picks the mode this block is not already on.</summary>
         public event EventHandler? SelectionChanged;
 
+        /// <summary>Raised when the guidance changes size so the canvas can keep it beside its block.</summary>
+        public event EventHandler? ExpansionChanged;
+
         public RealtimeBlockMode Value { get; private set; }
 
-        /// <summary>Size of the control and its guidance, so the caller can keep all of it on screen.</summary>
-        public double TotalWidth { get; }
+        public bool GuidanceExpanded => _guidanceExpanded;
 
-        public double TotalHeight { get; }
+        /// <summary>Current size, so the caller can keep the visible surface on screen.</summary>
+        public double TotalWidth => _guidanceExpanded ? _expandedWidth : _collapsedWidth;
+
+        public double TotalHeight => _guidanceExpanded ? _expandedHeight : _collapsedHeight;
 
         private void Select(RealtimeBlockMode mode)
         {
@@ -845,6 +985,67 @@ public partial class RealtimeEditWindow : Window
 
         private void SetPressed(int segment, bool pressed) =>
             Fade(_highlights[segment], pressed ? 1.0 : 0.0, PressDuration, animate: true);
+
+        private void SetGuidanceTogglePressed(bool pressed) =>
+            Fade(_guidanceToggleHighlight, pressed ? 1.0 : 0.0, PressDuration, animate: true);
+
+        private void ToggleGuidance()
+        {
+            _guidanceExpanded = !_guidanceExpanded;
+            UpdateGuidanceToggleLabel();
+            ApplyGuidanceState(animate: true);
+            ExpansionChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void UpdateGuidanceToggleLabel()
+        {
+            var label = _guidanceExpanded ? "收合模式說明" : "展開模式說明";
+            _guidanceToggle.ToolTip = label;
+            System.Windows.Automation.AutomationProperties.SetName(_guidanceToggle, label);
+        }
+
+        private void ApplyGuidanceState(bool animate)
+        {
+            var expanded = _guidanceExpanded;
+            var targetHeight = expanded ? _expandedHintHeight : 0;
+            var targetOpacity = expanded ? 1.0 : 0.0;
+            var targetAngle = expanded ? 0.0 : 180.0;
+            var transition = ++_guidanceTransition;
+
+            if (!animate || !SystemParameters.ClientAreaAnimation)
+            {
+                _hintHost.BeginAnimation(HeightProperty, null);
+                _hintPlate.BeginAnimation(OpacityProperty, null);
+                _guidanceChevronRotation.BeginAnimation(RotateTransform.AngleProperty, null);
+                _hintHost.Height = targetHeight;
+                _hintPlate.Opacity = targetOpacity;
+                _guidanceChevronRotation.Angle = targetAngle;
+                _hintHost.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+                return;
+            }
+
+            if (expanded) _hintHost.Visibility = Visibility.Visible;
+
+            var heightAnimation = new DoubleAnimation(_hintHost.ActualHeight, targetHeight, GuidanceDuration)
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            };
+            heightAnimation.Completed += (_, _) =>
+            {
+                if (transition != _guidanceTransition) return;
+                _hintHost.BeginAnimation(HeightProperty, null);
+                _hintHost.Height = targetHeight;
+                if (!expanded) _hintHost.Visibility = Visibility.Collapsed;
+            };
+            _hintHost.BeginAnimation(HeightProperty, heightAnimation);
+
+            _hintPlate.BeginAnimation(
+                OpacityProperty,
+                Transition(_hintPlate.Opacity, targetOpacity, GuidanceDuration));
+            _guidanceChevronRotation.BeginAnimation(
+                RotateTransform.AngleProperty,
+                Transition(_guidanceChevronRotation.Angle, targetAngle, GuidanceDuration));
+        }
 
         /// <summary>
         /// A surface with its shadow on one layer and its contents on another.
@@ -909,6 +1110,11 @@ public partial class RealtimeEditWindow : Window
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
             });
         }
+
+        private static DoubleAnimation Transition(double from, double to, Duration duration) => new(from, to, duration)
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
 
         /// <summary>Cross-fades a layer, from its current opacity — see <see cref="Move"/>.</summary>
         private static void Fade(UIElement element, double to, Duration duration, bool animate)
