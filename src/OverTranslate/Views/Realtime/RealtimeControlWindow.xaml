@@ -37,8 +37,8 @@
 
             <Grid>
                 <!-- ══════════ Edit mode ══════════ -->
-                <!-- Everything the user needs while framing sits on one line: what to do, how many
-                     blocks they have left, and the one way forward. -->
+                <!-- Everything the user needs while framing sits on one line. Refresh is deliberately
+                     absent here: it cannot do anything until translation has started. -->
                 <StackPanel x:Name="EditPanel" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                FontSize="14"
@@ -148,6 +148,17 @@
                                    FontSize="12.5"
                                    Foreground="{DynamicResource AppTextPrimary}"/>
                     </StackPanel>
+
+                    <!-- Icon-only keeps the running capsule compact. Its tooltip names both the
+                         action and the user's configured keyboard equivalent. -->
+                    <Button x:Name="RefreshBtn"
+                            Style="{StaticResource ToolbarIconButton}"
+                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                            FontSize="13"
+                            Content="&#xE72C;"
+                            Margin="0,0,4,0"
+                            AutomationProperties.Name="刷新當前畫面翻譯內容"
+                            Click="RefreshBtn_Click"/>
 
                     <!-- Icon rather than a word: the two buttons beside it are the session's own
                          controls, and a third label of equal weight would read as a third thing the

@@ -87,6 +87,7 @@ public partial class RealtimePage : UserControl
         SrcLangBox.SelectionChanged += (_, _) => RenderState();
 
         RenderColours();
+        RenderRefreshHint();
 
         RealtimeSessionController.Instance.StateChanged += OnSessionStateChanged;
 
@@ -122,7 +123,22 @@ public partial class RealtimePage : UserControl
     {
         LoadScreens();
         RenderColours();
+        RenderRefreshHint();
         RenderState();
+    }
+
+    /// <summary>
+    /// Names the capture shortcut in 運作方式, or drops the line when there is none to name.
+    /// </summary>
+    /// <remarks>
+    /// Re-read on every <see cref="Reload"/> rather than only at construction: 設定 is where that
+    /// shortcut is changed, and the user reaches this page again through the same nav rail — so the
+    /// line would otherwise go on naming the key they just replaced.
+    /// </remarks>
+    private void RenderRefreshHint()
+    {
+        RefreshHint.Text = RealtimeRefreshHint.ForSettingsPage(RealtimeRefreshHint.CurrentHotkey);
+        RefreshHint.Visibility = RefreshHint.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>Detaches from the controller when the shell window is destroyed.</summary>

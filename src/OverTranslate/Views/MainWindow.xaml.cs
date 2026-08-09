@@ -138,10 +138,32 @@ public partial class MainWindow : Window
         RegisterHotkey();
     }
 
+    /// <summary>
+    /// Starts a capture, or — during a realtime session — refreshes that session instead.
+    /// </summary>
+    /// <remarks>
+    /// A session still rules a capture out, for the reasons on <see cref="RefuseWhileRealtimeRuns"/>,
+    /// which left this shortcut inert for the whole of a session that may run for hours. It is now
+    /// the fastest thing on screen to reach, so it is spent on the one thing a user watching a still
+    /// frame keeps needing: forcing the translation to be done again. See
+    /// <see cref="Views.Realtime.RealtimeSessionController.Refresh"/> for why a still frame gets
+    /// stuck in the first place.
+    ///
+    /// Silent while blocks are being framed, where there is nothing to refresh and no capture to run.
+    /// The notification this used to raise was right when the shortcut had only one meaning and the
+    /// user had to be told why it had stopped working; now it does something in the mode they will
+    /// be in a second later, and interrupting the framing to say "not yet" is noise.
+    /// </remarks>
     private void OnHotkeyPressed(object? sender, EventArgs e) =>
         Dispatcher.Invoke(async () =>
         {
-            if (RefuseWhileRealtimeRuns()) return;
+            var realtime = Views.Realtime.RealtimeSessionController.Instance;
+            if (realtime.IsActive)
+            {
+                realtime.Refresh();
+                return;
+            }
+
             await RunCaptureSessionAsync();
         });
 
@@ -185,8 +207,9 @@ public partial class MainWindow : Window
     /// the loaded model back and forth between every read. See OcrEngineConcurrencyTests for what
     /// that measured out as before this rule existed.
     ///
-    /// Told rather than ignored: the shortcut worked a moment ago, so silence would read as the
-    /// application having broken rather than as a deliberate rule.
+    /// Told rather than ignored, because the ways in that still come here are deliberate presses on
+    /// a control that looks available — the shell's own button. The capture shortcut no longer goes
+    /// through this at all: it has its own answer during a session, see <see cref="OnHotkeyPressed"/>.
     /// </remarks>
     private bool RefuseWhileRealtimeRuns()
     {

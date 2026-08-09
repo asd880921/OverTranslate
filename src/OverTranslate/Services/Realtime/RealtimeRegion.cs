@@ -32,4 +32,7 @@ public sealed record RealtimeBlockPlacement(
 /// the region no longer holds any readable text — and clears the overlay rather than leaving the
 /// previous subtitle stranded on screen.
 /// </summary>
-public sealed record RealtimeRegionUpdate(int RegionId, IReadOnlyList<TranslatedBlock> Lines);
+public sealed record RealtimeRegionUpdate(
+    int RegionId,
+    IReadOnlyList<TranslatedBlock> Lines,
+    int RefreshGeneration);
