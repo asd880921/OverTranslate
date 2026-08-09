@@ -259,19 +259,33 @@ if (args[0] == "--scale-sweep")
 
             elapsed.Stop();
 
+            // A watched region does not use everything the engine hands back: a box as tall as the
+            // block is the detector having collapsed, and a one-character reading is scenery. Both
+            // are dropped in RealtimeTranslationSession, after OcrService, so a sweep that skips
+            // them reports sizes as working that the application would have called empty — measured
+            // on the shipped detector, five of these frames read their subtitle at the very size the
+            // application had recorded as reading nothing.
+            var kept = blocks?
+                .Where(block =>
+                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height) &&
+                    !ShortReadingDetection.IsTooShort(block.Text) &&
+                    !ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence))
+                .ToList();
+
             var mark = size == primary ? " <- primary" : fallbacks.Contains(size) ? " <- fallback" : "";
-            var text = blocks is null || blocks.Count == 0
+            var text = kept is null || kept.Count == 0
                 ? ""
-                : "  " + string.Join(" | ", blocks.Select(b => b.Text.Replace("\n", " ")));
+                : "  " + string.Join(" | ", kept.Select(b => b.Text.Replace("\n", " ")));
 
             // chars and ms, because neither question this sweep exists for can be answered without
             // both: a size is only counted as reading the subtitle past a character floor (icons and
             // scenery misreads come back short), and the size that reads most is not the size to pick
             // if it costs several times as much per pass.
-            var chars = blocks?.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c))) ?? 0;
+            var chars = kept?.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c))) ?? 0;
+            var dropped = (blocks?.Count ?? 0) - (kept?.Count ?? 0);
 
             Console.WriteLine(
-                $"  {fraction:0.00} -> {size,5} : {blocks?.Count ?? -1} box chars={chars,3} " +
+                $"  {fraction:0.00} -> {size,5} : {kept?.Count ?? -1} box dropped={dropped} chars={chars,3} " +
                 $"{elapsed.ElapsedMilliseconds,5}ms{mark}{text}");
         }
     }
