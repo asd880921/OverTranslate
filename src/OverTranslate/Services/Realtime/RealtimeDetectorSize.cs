@@ -17,8 +17,9 @@ namespace OverTranslate.Services.Realtime;
 ///
 /// The glyphs in those frames are around 60px tall; halving puts them near 30px, which is where the
 /// model was trained. That is why a subtitle strip is read at half scale — but only a strip: an
-/// interface panel holds much smaller text and needs the opposite correction. See
-/// <see cref="StripFraction"/>, <see cref="PanelFraction"/> and <see cref="StripAspectRatio"/>.
+/// interface panel holds much smaller text and needs the opposite correction. Which of the two a
+/// block is comes from <see cref="RealtimeBlockMode"/>, i.e. from the user; see
+/// <see cref="StripFraction"/> and <see cref="PanelFraction"/>.
 ///
 /// None of this reaches the screenshot flow, which asks for no downscale at all and is right to:
 /// its text is interface-sized, already inside the detector's range, and downscaling it would
@@ -83,29 +84,6 @@ internal static class RealtimeDetectorSize
     public const double PanelFraction = 0.68;
 
     /// <summary>
-    /// Width-to-height ratio at or above which a block is treated as a subtitle strip.
-    /// </summary>
-    /// <remarks>
-    /// One fraction cannot serve both shapes, and trying briefly made subtitles much worse: with
-    /// 0.68 applied to everything, a session over a 1432x224 subtitle read nothing on a third of its
-    /// passes and paid for two more inferences each time, while the game panels it was meant to help
-    /// succeeded on 95–98% of theirs.
-    ///
-    /// The two shapes separate cleanly in the blocks users actually draw. From one afternoon's
-    /// sessions:
-    ///
-    /// <code>
-    ///   strips  1432x224  1549x203  1361x139  1856x152  1522x166   ratio 5.8 – 12.2
-    ///   panels  1273x647  1395x636  1380x657  1295x696  1865x1050  ratio  1.8 –  2.9
-    /// </code>
-    ///
-    /// Nothing lands between 2.9 and 5.8, so the threshold sits in the gap rather than on a measured
-    /// edge. A ratio is the right test rather than an absolute height: it says the same thing about
-    /// a block on a 1080p screen and a 4K one.
-    /// </remarks>
-    public const double StripAspectRatio = 4.0;
-
-    /// <summary>
     /// Fractions of the block to fall back to, in the order to try them, when the first size reads
     /// nothing at all.
     /// </summary>
@@ -125,8 +103,8 @@ internal static class RealtimeDetectorSize
     /// Those frames were kept precisely because the shipped pair failed on them, so the sample
     /// cannot say 0.68 is a better first choice than 0.52 — it never saw the frames 0.52 reads
     /// happily. What it does say is that neighbouring fractions land on opposite sides of working,
-    /// which is why the shape rule above picks a starting point rather than one size trying to
-    /// serve everything.
+    /// which is why the mode above picks a starting point rather than one size trying to serve
+    /// everything.
     ///
     /// The fallbacks are still earning their place under PP-OCRv6_det_tiny, on a smaller margin
     /// and for a different reason. Of 84 control frames the old detector read at the primary size,
@@ -136,13 +114,20 @@ internal static class RealtimeDetectorSize
     /// now reads 9 of 15 rather than 4, which is the trigger rate coming down. Rarely used is what
     /// a fallback is supposed to be.
     ///
-    /// The first fallback is whichever shape fraction the rule did not choose: the two fail on
-    /// opposite content, so the rejected one is the best answer for the case where the rule was
-    /// wrong. Native goes last as the only size that can read text too small to survive any
-    /// downscale — it recovered nine lines in a single measured session.
+    /// The first fallback is whichever mode's fraction was not chosen: the two fail on opposite
+    /// content, so the one the mode turned down is the best answer for the case where the mode was
+    /// not the whole story — a subtitle block that also caught a line of interface text, say. Native
+    /// goes last as the only size that can read text too small to survive any downscale — it
+    /// recovered nine lines in a single measured session.
     /// </remarks>
     public const double NativeFraction = 1.0;
 
+    /// <param name="mode">
+    /// What the user says the block holds. This used to be guessed from the block's width-to-height
+    /// ratio, which is a fact about how the user dragged rather than about what they are reading —
+    /// see <see cref="RealtimeBlockMode"/> for what that cost. Issue #35 replaced the guess with
+    /// the question.
+    /// </param>
     /// <param name="primary">Detector input size to read with first.</param>
     /// <param name="fallbacks">
     /// Sizes to try, in order, when a read finds nothing at all — stopping at the first that reads
@@ -150,7 +135,8 @@ internal static class RealtimeDetectorSize
     /// produces it: text too large collapses into one unreadable box, text too small is never
     /// detected, and a scale the model simply dislikes returns nothing.
     /// </param>
-    public static (int Primary, IReadOnlyList<int> Fallbacks) For(int width, int height)
+    public static (int Primary, IReadOnlyList<int> Fallbacks) For(
+        int width, int height, RealtimeBlockMode mode)
     {
         var native = Math.Max(width, height);
 
@@ -158,9 +144,9 @@ internal static class RealtimeDetectorSize
         if (native < HalfScaleMinSide)
             return (native, []);
 
-        // Which shape this is decides where to start; the other shape's fraction is then the first
-        // thing to try if that was wrong.
-        var isStrip = height > 0 && (double)width / height >= StripAspectRatio;
+        // The mode decides where to start; the other mode's fraction is then the first thing to try
+        // if that start read nothing.
+        var isStrip = mode == RealtimeBlockMode.Subtitle;
         var chosen = isStrip ? StripFraction : PanelFraction;
         var other = isStrip ? PanelFraction : StripFraction;
 
@@ -188,8 +174,8 @@ internal static class RealtimeDetectorSize
     /// </code>
     ///
     /// That last 14% is a new line arriving after a quiet stretch — the one nobody can afford to
-    /// miss — so the fallbacks are not dropped there. But within it, the shape rule's other
-    /// fraction rescued 17 of the 23 and native only 6, while native costs 190–220ms against the
+    /// miss — so the fallbacks are not dropped there. But within it, the other mode's fraction
+    /// rescued 17 of the 23 and native only 6, while native costs 190–220ms against the
     /// primary's ~90ms. Dropping it while the region is blank saves about a sixth of a subtitle
     /// session's whole recognition time for about 3.7% of its rescues.
     ///

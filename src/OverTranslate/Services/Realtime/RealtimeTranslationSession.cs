@@ -337,7 +337,8 @@ public sealed class RealtimeTranslationSession
 
         // Try, not wait: a queued pass would be reading a frame that has already been replaced, and
         // would hold this region's loop shut while it did. Skipping costs one poll.
-        var (primarySize, fallbackSizes) = RealtimeDetectorSize.For(frame.Width, frame.Height);
+        var (primarySize, fallbackSizes) =
+            RealtimeDetectorSize.For(frame.Width, frame.Height, region.Mode);
         var recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, primarySize, token);
         if (recognized is null)
         {

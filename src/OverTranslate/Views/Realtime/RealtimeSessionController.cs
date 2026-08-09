@@ -55,7 +55,7 @@ internal sealed class RealtimeSessionController
     private Window? _hiddenShell;
 
     private readonly Dictionary<int, RealtimeBlockWindow> _blockWindows = [];
-    private List<System.Drawing.Rectangle> _blocks = [];
+    private List<RealtimeBlockPlacement> _blocks = [];
 
     /// <summary>
     /// Keeps the layers at the front of the topmost band — see <see cref="AlwaysOnTop"/> for why
@@ -239,7 +239,7 @@ internal sealed class RealtimeSessionController
         CloseEditWindow();
 
         var regions = _blocks
-            .Select((bounds, index) => new RealtimeRegion(index, bounds))
+            .Select((block, index) => new RealtimeRegion(index, block.Bounds, block.Mode))
             .ToList();
 
         foreach (var region in regions)

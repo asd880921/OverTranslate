@@ -23,8 +23,16 @@ if (args.Length == 0)
     Console.Error.WriteLine("       OcrHarness --margin-sweep <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
+    Console.Error.WriteLine("       (add --panel to any sweep to read as a game panel rather than a subtitle)");
     return 1;
 }
+
+// Which mode to read as. The application asks the user this (see RealtimeBlockMode) because the
+// answer is about what is on screen and not about the picture's shape; offline there is nobody to
+// ask, so it is a flag. Subtitle by default: every dump kept so far is one, and reading a subtitle
+// dump as a panel would report the wrong half of RealtimeDetectorSize.
+var harnessMode = args.Contains("--panel") ? RealtimeBlockMode.Panel : RealtimeBlockMode.Subtitle;
+args = [.. args.Where(argument => argument != "--panel")];
 
 // Forced-fallback check: the primary engine gets a 1ms-timeout HttpClient so it always fails,
 // proving the hedge falls back to a backup engine and that the badge data (FallbackUsed/Dominant)
@@ -140,7 +148,7 @@ if (args[0] == "--compare-models")
 
         using var image = new Bitmap(path);
         var native = Math.Max(image.Width, image.Height);
-        var (primary, _) = RealtimeDetectorSize.For(image.Width, image.Height);
+        var (primary, _) = RealtimeDetectorSize.For(image.Width, image.Height, harnessMode);
 
         Console.WriteLine(new string('=', 78));
         Console.WriteLine($"{Path.GetFileName(path)}  {image.Width}x{image.Height}");
@@ -188,7 +196,7 @@ if (args[0] == "--pad-sweep")
         if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
 
         using var image = new Bitmap(path);
-        var (primary, _) = RealtimeDetectorSize.For(image.Width, image.Height);
+        var (primary, _) = RealtimeDetectorSize.For(image.Width, image.Height, harnessMode);
 
         Console.WriteLine(new string('=', 78));
         Console.WriteLine($"{Path.GetFileName(path)}  {image.Width}x{image.Height}  detect={primary}");
@@ -256,7 +264,7 @@ if (args[0] == "--margin-sweep")
 
     async Task<List<OcrTextBlock>> ReadAsync(Bitmap image)
     {
-        var (primary, fallbacks) = RealtimeDetectorSize.For(image.Width, image.Height);
+        var (primary, fallbacks) = RealtimeDetectorSize.For(image.Width, image.Height, harnessMode);
 
         foreach (var size in new[] { primary }.Concat(fallbacks))
         {
@@ -314,7 +322,7 @@ if (args[0] == "--margin-sweep")
                 Math.Min(image.Height, (int)Math.Ceiling(bottom + pad)));
 
             using var cropped = image.Clone(crop, image.PixelFormat);
-            var (primary, _) = RealtimeDetectorSize.For(cropped.Width, cropped.Height);
+            var (primary, _) = RealtimeDetectorSize.For(cropped.Width, cropped.Height, harnessMode);
 
             var elapsed = System.Diagnostics.Stopwatch.StartNew();
             var kept = await ReadAsync(cropped);
@@ -425,7 +433,7 @@ if (args[0] == "--scale-sweep")
             $"{Path.GetFileName(path)}  {image.Width}x{image.Height}  ratio={aspect:0.00}");
 
         // What the app itself would pick for this block, so the sweep can be read against it.
-        var (primary, fallbacks) = RealtimeDetectorSize.For(image.Width, image.Height);
+        var (primary, fallbacks) = RealtimeDetectorSize.For(image.Width, image.Height, harnessMode);
         Console.WriteLine($"  app picks: primary={primary} fallbacks=[{string.Join(",", fallbacks)}]");
 
         // Stepped in whole percent, not by adding 0.05 to a double: the accumulated error moved
