@@ -27,7 +27,20 @@ internal static class CollapsedDetection
     /// than a line. A real line leaves room above and below it — the measured subtitle took 48% of
     /// its block — while a collapse spans the block or overruns it.
     /// </summary>
-    public const double MaxShareOfBlockHeight = 0.9;
+    /// <remarks>
+    /// Was 0.9, and 0.9 started throwing real subtitles away when the detector changed. PP-OCRv6
+    /// returns looser boxes than the PP-OCRv5 model this was measured against: in one session it
+    /// put a 171px box around "Let's pay CiRcLE visit on the way home." in a 190px block — 90.0%,
+    /// a complete and correct sentence, discarded.
+    ///
+    /// The two populations still separate, just not with the old margin. Every collapse ever
+    /// measured overruns or all but fills the block — 194, 253, 303 and 343 pixels in a 196px
+    /// block (99%, 129%, 155%, 175%), and a 214px box holding "Yay!" in a 191px block (112%) under
+    /// the new detector. The real line sits at 90%. 0.95 is the gap between them, and it is a gap
+    /// rather than a safety margin, so a detector that returns looser boxes still is the thing to
+    /// re-measure this against rather than to nudge this for.
+    /// </remarks>
+    public const double MaxShareOfBlockHeight = 0.95;
 
     public static bool IsCollapsed(double boxHeight, double blockHeight) =>
         blockHeight > 0 && boxHeight >= blockHeight * MaxShareOfBlockHeight;
