@@ -20,6 +20,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (reads each frame at every detector size, no translation)");
     Console.Error.WriteLine("       OcrHarness --pad-sweep <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same frame and size, a range of borders around it)");
+    Console.Error.WriteLine("       OcrHarness --margin-sweep <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
     return 1;
 }
@@ -227,6 +229,132 @@ if (args[0] == "--pad-sweep")
 
         OnnxOcrEngine.DetectorPaddingOverride = null;
     }
+
+    return 0;
+}
+
+// Margin sweep: the same text read inside blocks drawn tight around it and drawn loosely around it.
+//
+// Every other sweep here holds the block still and changes what is done to it. This one changes the
+// block, because that is the one input the user chooses and the only one nobody has measured: a
+// dumped frame is cropped back to the text plus a margin of so many line heights, and each crop is
+// read exactly as the app would read a block of that shape — RealtimeDetectorSize picks the size
+// from the cropped dimensions, and the realtime filters throw away what the session would throw
+// away.
+//
+// It can only ever take margin away, never add it, since the pixels outside the dumped block were
+// never captured. So the loosest row is the block as the user actually drew it, and the rows below
+// it are that same content framed tighter.
+if (args[0] == "--margin-sweep")
+{
+    using var marginOcr = new OcrService();
+
+    // Fractions of a line's height to leave around the text on all four sides.
+    double[] margins = [0, 0.15, 0.3, 0.5, 0.75, 1.0, 1.5];
+    var totals = new double[margins.Length];
+    var counted = new int[margins.Length];
+
+    async Task<List<OcrTextBlock>> ReadAsync(Bitmap image)
+    {
+        var (primary, fallbacks) = RealtimeDetectorSize.For(image.Width, image.Height);
+
+        foreach (var size in new[] { primary }.Concat(fallbacks))
+        {
+            var blocks = await marginOcr.TryRecognizeAsync(image, "EN", size);
+
+            // The two filters the realtime session applies. A reading it would have thrown away is
+            // not a reading, and the collapse filter is measured against the block's own height —
+            // which is exactly what this sweep is changing.
+            var kept = blocks?
+                .Where(block =>
+                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height) &&
+                    !ShortReadingDetection.IsTooShort(block.Text) &&
+                    !ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence))
+                .ToList() ?? [];
+
+            if (kept.Count > 0) return kept;
+        }
+
+        return [];
+    }
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+
+        // Where the text is, read from the block as drawn. A frame nothing can be read out of has
+        // no text to centre a crop on, and counting it would score cropping against a frame that
+        // was never readable in the first place.
+        var located = await ReadAsync(image);
+        if (located.Count == 0) continue;
+
+        var lineHeight = located.Select(block => block.Bounds.Height).OrderBy(h => h).ToList()
+            [located.Count / 2];
+        var left = located.Min(block => block.Bounds.Left);
+        var top = located.Min(block => block.Bounds.Top);
+        var right = located.Max(block => block.Bounds.Right);
+        var bottom = located.Max(block => block.Bounds.Bottom);
+
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine(
+            $"{Path.GetFileName(path)}  {image.Width}x{image.Height}  " +
+            $"line={lineHeight:0}px  text={right - left:0}x{bottom - top:0}");
+
+        var readings = new (double Margin, string Size, int Boxes, int Chars, long Ms, string Text)[margins.Length];
+
+        for (var i = 0; i < margins.Length; i++)
+        {
+            var pad = margins[i] * lineHeight;
+            var crop = Rectangle.FromLTRB(
+                Math.Max(0, (int)Math.Floor(left - pad)),
+                Math.Max(0, (int)Math.Floor(top - pad)),
+                Math.Min(image.Width, (int)Math.Ceiling(right + pad)),
+                Math.Min(image.Height, (int)Math.Ceiling(bottom + pad)));
+
+            using var cropped = image.Clone(crop, image.PixelFormat);
+            var (primary, _) = RealtimeDetectorSize.For(cropped.Width, cropped.Height);
+
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+            var kept = await ReadAsync(cropped);
+            elapsed.Stop();
+
+            var chars = kept.Sum(block => block.Text.Count(c => !char.IsWhiteSpace(c)));
+            readings[i] = (
+                margins[i],
+                $"{cropped.Width}x{cropped.Height} d={primary}",
+                kept.Count,
+                chars,
+                elapsed.ElapsedMilliseconds,
+                string.Join(" | ", kept.Select(block => block.Text.Replace("\n", " "))));
+        }
+
+        // Scored against the frame's own best reading rather than against ground truth, the same way
+        // the pad sweep is: what is being compared is one framing of one frame against another.
+        var best = readings.Max(reading => reading.Chars);
+        if (best == 0) continue;
+
+        for (var i = 0; i < readings.Length; i++)
+        {
+            var reading = readings[i];
+            var share = (double)reading.Chars / best;
+            totals[i] += share;
+            counted[i]++;
+
+            Console.WriteLine(
+                $"  margin={reading.Margin:0.00}line {reading.Size,-18} {reading.Boxes} box " +
+                $"chars={reading.Chars,3} {share,5:0%} {reading.Ms,4}ms  {reading.Text}");
+        }
+    }
+
+    Console.WriteLine(new string('=', 78));
+    Console.WriteLine("share of each frame's own best reading, by how much margin the block left:");
+    for (var i = 0; i < margins.Length; i++)
+        if (counted[i] > 0)
+            Console.WriteLine(
+                $"  margin={margins[i]:0.00} line heights : {totals[i] / counted[i],6:0.0%}  " +
+                $"({counted[i]} frames)");
 
     return 0;
 }
