@@ -124,6 +124,29 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
         Assert.Contains(expected, text);
     }
 
+    [Fact]
+    public void ABlankRegionStopsPayingForTheNativeRetry()
+    {
+        // The expensive one goes; the shape rule's other fraction, which rescued 17 of the 23
+        // blank-state rescues on record against native's 6, stays.
+        var (_, fallbacks) = RealtimeDetectorSize.For(1699, 242);
+        var whileBlank = RealtimeDetectorSize.WhileNothingIsShown(fallbacks, 1699, 242);
+
+        Assert.Contains(1699, fallbacks);
+        Assert.DoesNotContain(1699, whileBlank);
+        Assert.Equal(fallbacks.Count - 1, whileBlank.Count);
+    }
+
+    [Fact]
+    public void ARegionTooSmallToDownscaleHasNothingToDrop()
+    {
+        // Below HalfScaleMinSide there are no fallbacks at all, so there is nothing here to save
+        // and nothing to lose either.
+        var (_, fallbacks) = RealtimeDetectorSize.For(400, 120);
+
+        Assert.Empty(RealtimeDetectorSize.WhileNothingIsShown(fallbacks, 400, 120));
+    }
+
     [Theory]
     [InlineData("subtitle-over-light-floor-1226x196.png", "okay")]
     [InlineData("subtitle-lost-entirely-1226x196.png", "minato-san")]

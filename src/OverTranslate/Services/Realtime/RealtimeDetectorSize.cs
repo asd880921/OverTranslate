@@ -174,6 +174,36 @@ internal static class RealtimeDetectorSize
         return (primary, fallbacks);
     }
 
+    /// <summary>
+    /// The fallbacks worth paying for while the region is known to be showing nothing at all.
+    /// </summary>
+    /// <remarks>
+    /// Native size is the most expensive inference of the three and the least productive one here.
+    /// Sorted by the state the region was in, the 163 rescues across four days of logs fall out as:
+    ///
+    /// <code>
+    ///   the pass before had text     121   74%
+    ///   the overlay still showed one  19   12%
+    ///   the region had been cleared   23   14%
+    /// </code>
+    ///
+    /// That last 14% is a new line arriving after a quiet stretch — the one nobody can afford to
+    /// miss — so the fallbacks are not dropped there. But within it, the shape rule's other
+    /// fraction rescued 17 of the 23 and native only 6, while native costs 190–220ms against the
+    /// primary's ~90ms. Dropping it while the region is blank saves about a sixth of a subtitle
+    /// session's whole recognition time for about 3.7% of its rescues.
+    ///
+    /// Only while blank. A region that has text on it, or had text a moment ago, keeps every size:
+    /// that is where 86% of the rescues happen and where a missed line is a line the reader was in
+    /// the middle of following.
+    /// </remarks>
+    public static IReadOnlyList<int> WhileNothingIsShown(
+        IReadOnlyList<int> fallbacks, int width, int height)
+    {
+        var native = Math.Max(width, height);
+        return [.. fallbacks.Where(size => size != native)];
+    }
+
     // The detector works on a grid; sizes off it are rounded up internally anyway, and rounding
     // here keeps the number in the log the same as the one the model actually used.
     private static int RoundToStride(int size) => Math.Max(320, (size + 31) / 32 * 32);
