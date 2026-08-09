@@ -22,10 +22,17 @@ public sealed record RealtimeRegion(
 /// <summary>
 /// One block as the user has it arranged, before a session gives it an id — what edit mode hands
 /// back and what the controller keeps between edits, so re-entering edit mode restores the modes
-/// along with the rectangles.
+/// and guidance state along with the rectangles.
 /// </summary>
+/// <param name="GuidanceExpanded">
+/// Whether the per-block framing guidance is visible. Defaults to expanded for a newly drawn block;
+/// once the user folds it away, the choice travels with this placement for exactly as long as the
+/// controller remembers the rectangle and mode.
+/// </param>
 public sealed record RealtimeBlockPlacement(
-    Rectangle Bounds, RealtimeBlockMode Mode = RealtimeBlockMode.Subtitle);
+    Rectangle Bounds,
+    RealtimeBlockMode Mode = RealtimeBlockMode.Subtitle,
+    bool GuidanceExpanded = true);
 
 /// <summary>
 /// The translated lines currently showing for one region. An empty list is a real result — it means
