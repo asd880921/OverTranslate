@@ -500,6 +500,16 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// without it and 77ms with it, and almost all of that difference is recognition of text that
     /// no border failed to find: the detector's own input is the same size either way, because
     /// <c>ImgResize</c> caps the long side after the border is added.
+    ///
+    /// ITS COLOUR IS NOT A KNOB, AND THE QUESTION IS OPEN. The library fills the border itself and
+    /// exposes no colour, so the only way to try another one is to draw the border here and ask for
+    /// none — and that turned out not to be the same experiment. Reproducing the shipped
+    /// composition by hand (align with transparent pixels, then a white border, then
+    /// <c>Padding = 0</c>) still read less than the shipped path does, so something in how the
+    /// library builds its own border is not accounted for, and every colour measured that way is
+    /// measuring that difference as much as the colour. Worth knowing because subtitles are white
+    /// text and a white border is the one combination nobody chose — but it needs the library's
+    /// source, not another harness mode.
     /// </remarks>
     internal static int? DetectorPaddingOverride { get; set; }
 
