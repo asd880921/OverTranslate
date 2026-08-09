@@ -10,6 +10,21 @@ public class AppSettings
     public uint HotkeyModifiers { get; set; } = 3;
     public uint HotkeyVirtualKey { get; set; } = 0x41;
     public string HotkeyDisplay { get; set; } = "Ctrl+Alt+A";
+
+    /// <summary>
+    /// The shortcut that opens the translation window. Ctrl+Alt+S by default.
+    /// </summary>
+    /// <remarks>
+    /// A convenience, not a headline: unlike the capture shortcut above it is not announced at
+    /// startup and nothing in the interface advertises it, because the window it opens is already
+    /// one click away in the tray. It opens and only opens — pressing it again brings the window
+    /// forward rather than closing it, which is what every other way into this window does.
+    /// </remarks>
+    public uint TranslationWindowHotkeyModifiers { get; set; } = 3;
+
+    public uint TranslationWindowHotkeyVirtualKey { get; set; } = 0x53;
+
+    public string TranslationWindowHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
     public string SourceLanguage { get; set; } = "EN";
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;
