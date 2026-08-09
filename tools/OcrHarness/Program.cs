@@ -12,6 +12,7 @@ using OverTranslate.Services.Realtime;
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: OcrHarness <image.png> [more.png ...]");
+    Console.Error.WriteLine("       OcrHarness --xlate-line <text>   (translate one line, all engines)");
     Console.Error.WriteLine("       OcrHarness --compare-models <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same frame and size, cjk vs korean recognition model)");
     Console.Error.WriteLine("       OcrHarness --scale-sweep <image.png> [more.png ...]");
@@ -49,6 +50,40 @@ if (args[0] == "--fallback-test")
     Console.WriteLine($"Badge would show: ⚡備援 {u.BackupEngine}");
     foreach (var t in translated)
         Console.WriteLine($"  ZH: {t.TranslatedText}");
+    return 0;
+}
+
+// Translate one line given on the command line. For telling an OCR problem from a translation
+// one: when a word goes missing on screen, this says whether the recogniser dropped it or the
+// translator did.
+if (args[0] == "--xlate-line")
+{
+    var line = string.Join(' ', args.Skip(1));
+    if (line.Length == 0)
+    {
+        Console.Error.WriteLine("usage: OcrHarness --xlate-line <text to translate>");
+        return 1;
+    }
+
+    var block = new List<OcrTextBlock> { new(line, new System.Windows.Rect(0, 0, 100, 20)) };
+    foreach (var (name, provider) in new (string, GTranslateProvider)[]
+             {
+                 ("Microsoft", new GTranslateProvider(new MicrosoftTranslator())),
+                 ("Google   ", new GTranslateProvider(new GoogleTranslator2())),
+                 ("Bing     ", new GTranslateProvider(new BingTranslator())),
+             })
+    {
+        try
+        {
+            var (result, _) = await provider.TranslateAsync(block, "EN", "ZH-HANT", "");
+            Console.WriteLine($"  [{name}] {result[0].TranslatedText}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  [{name}] FAILED: {ex.Message}");
+        }
+    }
+
     return 0;
 }
 
