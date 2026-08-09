@@ -233,9 +233,10 @@
                 </Border>
 
                 <!-- ── 運作方式 ── -->
-                <!-- Three lines, because the on-screen half of this feature is a mode the user has
-                     not seen before: what the button does, what happens next, and the one property
-                     that is not obvious from looking at it (the blocks do not take the mouse). -->
+                <!-- Four lines, because the on-screen half of this feature is a mode the user has
+                     not seen before: what the button does, what happens next, the one property that
+                     is not obvious from looking at it (the blocks do not take the mouse), and the
+                     way out when the picture has stopped changing but the translation is wrong. -->
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
                         <TextBlock Text="運作方式" Style="{StaticResource SectionHeader}"/>
@@ -245,6 +246,14 @@
                                    Text="2. 點擊浮動工具列的「開始翻譯」，內容變更時會自動重新辨識並更新譯文。"/>
                         <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16"
                                    Text="3. 翻譯中的區域不會影響遊戲或介面操作，如需調整翻譯區塊，請按「編輯」。"/>
+                        <!-- Filled in by RenderRefreshHint, which names the user's own shortcut and
+                             drops the line entirely when they have cleared it. Its top margin sits
+                             on this line rather than under the one above, so a hidden hint does not
+                             leave a gap at the bottom of the card. -->
+                        <TextBlock x:Name="RefreshHint"
+                                   Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16"
+                                   Margin="0,6,0,0"
+                                   Visibility="Collapsed"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

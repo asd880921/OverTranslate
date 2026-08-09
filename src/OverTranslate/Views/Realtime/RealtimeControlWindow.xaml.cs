@@ -4,6 +4,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Services;
+using OverTranslate.Services.Realtime;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace OverTranslate.Views.Realtime;
@@ -45,7 +46,7 @@ public partial class RealtimeControlWindow : Window
     private readonly DispatcherTimer _messageTimer;
 
     private RealtimeControlMode _mode = RealtimeControlMode.Edit;
-    private string _editHint = "在螢幕上拖曳建立要翻譯的區塊";
+    private readonly string _editHint = "在螢幕上拖曳建立要翻譯的區塊";
     // What the capsule says before SetLanguages has named the pair. A transient message borrows the
     // same slot and RestoreText brings whichever of the two applies back.
     private readonly string _runStatus = "即時翻譯中";
@@ -66,6 +67,9 @@ public partial class RealtimeControlWindow : Window
         InitializeComponent();
 
         _screenBounds = screenBounds;
+        RefreshBtn.ToolTip = RealtimeRefreshHint.ForControlTooltip(RealtimeRefreshHint.CurrentHotkey);
+        RestoreText();
+
         _messageTimer = new DispatcherTimer { Interval = MessageDuration };
         _messageTimer.Tick += (_, _) => { _messageTimer.Stop(); RestoreText(); };
 
@@ -99,6 +103,7 @@ public partial class RealtimeControlWindow : Window
     public event EventHandler? EditRequested;
     public event EventHandler? CloseRequested;
     public event EventHandler? ShotRequested;
+    public event EventHandler? RefreshRequested;
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -334,6 +339,8 @@ public partial class RealtimeControlWindow : Window
     private void EditBtn_Click(object sender, RoutedEventArgs e) => EditRequested?.Invoke(this, EventArgs.Empty);
 
     private void ShotBtn_Click(object sender, RoutedEventArgs e) => ShotRequested?.Invoke(this, EventArgs.Empty);
+
+    private void RefreshBtn_Click(object sender, RoutedEventArgs e) => RefreshRequested?.Invoke(this, EventArgs.Empty);
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }

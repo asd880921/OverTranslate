@@ -56,6 +56,9 @@ internal sealed class RealtimeSessionController
 
     private readonly Dictionary<int, RealtimeBlockWindow> _blockWindows = [];
     private List<RealtimeBlockPlacement> _blocks = [];
+    // UI updates are dispatched asynchronously. Carrying the session's refresh generation here
+    // prevents an update queued before a manual refresh from restoring text after it was cleared.
+    private int _visibleRefreshGeneration;
 
     /// <summary>
     /// The layout the last sitting ended with, offered back to the next one.
@@ -107,6 +110,13 @@ internal sealed class RealtimeSessionController
     public bool IsActive => _control != null;
 
     /// <summary>
+    /// True while the polling loop is running, as opposed to the user framing blocks. The edit layer
+    /// is the whole difference: <see cref="EnterEditMode"/> creates it and <see cref="StartTranslating"/>
+    /// closes it, so its absence during a session is what "translating" means here.
+    /// </summary>
+    public bool IsTranslating => IsActive && _edit is null;
+
+    /// <summary>
     /// Starts a session and drops straight into edit mode. <paramref name="shellToHide"/> is put
     /// away for the duration and brought back by <see cref="Stop"/> — the user is about to frame
     /// something on the screen the shell is sitting on.
@@ -130,6 +140,7 @@ internal sealed class RealtimeSessionController
         // wrong any more: nothing here has to find a window first, so there is no path on which a
         // second inference runtime could be built by accident.
         _session = new RealtimeTranslationSession(AppServices.Ocr, AppServices.Translation);
+        Volatile.Write(ref _visibleRefreshGeneration, 0);
         _session.RegionUpdated += OnRegionUpdated;
         _session.Failed += OnSessionFailed;
         _session.BusyChanged += OnBusyChanged;
@@ -139,6 +150,7 @@ internal sealed class RealtimeSessionController
         control.EditRequested += (_, _) => EnterEditMode();
         control.CloseRequested += (_, _) => Stop();
         control.ShotRequested += (_, _) => CaptureShowcase();
+        control.RefreshRequested += (_, _) => Refresh();
         _control = control;
         control.Show();
 
@@ -172,6 +184,33 @@ internal sealed class RealtimeSessionController
         }
 
         Log.Info("Realtime layers re-asserted on top by request");
+    }
+
+    /// <summary>
+    /// Throws away everything the session believes about the screen and reads it again — see
+    /// <see cref="RealtimeTranslationSession.RequestRefresh"/> for what is being cut through.
+    /// </summary>
+    /// <remarks>
+    /// Does nothing while the user is framing blocks: there is no reading to refresh yet, and the
+    /// caller (the capture shortcut) is deliberately silent in that mode rather than explaining a
+    /// rule about a feature the user has not started.
+    /// </remarks>
+    /// <returns>Whether there was a running session to refresh.</returns>
+    public bool Refresh()
+    {
+        if (!IsTranslating || _session is null || _control is not { } control) return false;
+
+        var generation = _session.RequestRefresh();
+        Volatile.Write(ref _visibleRefreshGeneration, generation);
+
+        // Immediate, causal feedback: remove both the translated words and their scrims before the
+        // next OCR/provider pass begins. Updates queued before this refresh carry an older generation
+        // and OnRegionUpdated refuses to put them back.
+        foreach (var window in _blockWindows.Values)
+            window.SetLines([]);
+
+        control.ShowMessage("重新翻譯中…");
+        return true;
     }
 
     public void Stop()
@@ -377,6 +416,8 @@ internal sealed class RealtimeSessionController
     private void OnRegionUpdated(object? sender, RealtimeRegionUpdate update) =>
         OnDispatcher(() =>
         {
+            if (update.RefreshGeneration != Volatile.Read(ref _visibleRefreshGeneration)) return;
+
             // The user may have gone back to edit mode while this pass was in flight; its window is
             // gone and the result belongs to a layout that no longer exists.
             if (_blockWindows.TryGetValue(update.RegionId, out var window))
