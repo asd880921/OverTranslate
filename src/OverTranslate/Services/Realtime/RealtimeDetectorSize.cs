@@ -23,6 +23,20 @@ namespace OverTranslate.Services.Realtime;
 /// None of this reaches the screenshot flow, which asks for no downscale at all and is right to:
 /// its text is interface-sized, already inside the detector's range, and downscaling it would
 /// destroy the detail that <c>ImgResize = 2048</c> exists to keep.
+///
+/// EVERYTHING ABOVE WAS MEASURED ON PP-OCRv5_mobile_det, WHICH IS NO LONGER THE DETECTOR. The
+/// collapse it describes was real, and the reason for it — a size the model dislikes returns one
+/// box across the whole strip — was the diagnosis issue #22 spent three rounds confirming. What
+/// changed is the model: swept over 15 frames a live session had failed to read, PP-OCRv5 read 8
+/// at 0.40, 4 at 0.50, 6 at 0.55 and 8 at 0.60, while PP-OCRv6_det_tiny reads 9 across that whole
+/// band and 9 at native. There is no dead band left to steer around.
+///
+/// The fractions below did not change with it, and the reason they are still here changed
+/// completely: they are now a cost decision, not an avoidance. A strip read at 0.50 and at native
+/// reads the same 9 of those 15 frames, for 89ms against 186ms — so halving buys the same answer
+/// for half the work. That is why the numbers stayed put; it is not evidence that they are still
+/// optimal, and a sweep on the control group (frames the primary size already read) is what would
+/// move them.
 /// </remarks>
 internal static class RealtimeDetectorSize
 {
@@ -113,6 +127,14 @@ internal static class RealtimeDetectorSize
     /// happily. What it does say is that neighbouring fractions land on opposite sides of working,
     /// which is why the shape rule above picks a starting point rather than one size trying to
     /// serve everything.
+    ///
+    /// The fallbacks are still earning their place under PP-OCRv6_det_tiny, on a smaller margin
+    /// and for a different reason. Of 84 control frames the old detector read at the primary size,
+    /// the new one reads 82 there and the other two only from 0.70 up — so those two are read by
+    /// the first fallback rather than lost, at the price of one extra inference. What changed is
+    /// how often that happens: on the frames a live session had to fall back for, the primary size
+    /// now reads 9 of 15 rather than 4, which is the trigger rate coming down. Rarely used is what
+    /// a fallback is supposed to be.
     ///
     /// The first fallback is whichever shape fraction the rule did not choose: the two fail on
     /// opposite content, so the rejected one is the best answer for the case where the rule was

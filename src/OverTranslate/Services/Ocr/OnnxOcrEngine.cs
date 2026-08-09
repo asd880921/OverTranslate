@@ -349,13 +349,23 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// </remarks>
     internal sealed record DetectorModel(string Path, float[] Mean, float[] Std);
 
-    /// <summary>What PP-OCRv5 detectors — including the shipped one — were exported with.</summary>
+    /// <summary>What PP-OCRv5 detectors were exported with.</summary>
     internal static float[] ImageNetNormalization => [123.675f, 116.28f, 103.53f];
 
     /// <inheritdoc cref="ImageNetNormalization"/>
     internal static float[] ImageNetNormalizationStd => [58.395f, 57.12f, 57.375f];
 
-    /// <summary>What RapidOcrNet's PP-OCRv6 presets normalise with, for both mean and deviation.</summary>
+    /// <summary>
+    /// What PP-OCRv6 detectors — including the shipped one — are read with, for both mean and
+    /// deviation.
+    /// </summary>
+    /// <remarks>
+    /// This contradicts PaddlePaddle's own <c>inference.yml</c> for the v6 detectors, which lists
+    /// the ImageNet statistics, and the contradiction is not academic: swept over the same 15
+    /// frames at the same sizes, PP-OCRv6_small read 8 of them at the application's primary size
+    /// under 127.5 and 1 of them under ImageNet. RapidOcrNet's own v6 presets use 127.5, and the
+    /// measurement agrees with the library rather than the export config.
+    /// </remarks>
     internal static float[] HalfNormalization => [127.5f, 127.5f, 127.5f];
 
     /// <summary>
@@ -375,6 +385,23 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// </remarks>
     internal static DetectorModel? DetectorOverride { get; set; }
 
+    /// <summary>
+    /// Loads the detector, classifier, recogniser and dictionary for one recognition model.
+    /// </summary>
+    /// <remarks>
+    /// The detector is PP-OCRv6_det_tiny. The one before it, PP-OCRv5_mobile_det, did not respond
+    /// to scale smoothly: swept over 15 frames a watched region had failed to read, it read 8 of
+    /// them at 0.40 of native, 4 at 0.50, 6 at 0.55 and 8 again at 0.60 — a dead band with the
+    /// subtitle primary size sitting in it, which is why a subtitle session spent 13% of its passes
+    /// paying for fallback sizes. The same sweep with v6_det_tiny reads 9 of 15 across the whole
+    /// band, and 84 of the 84 control frames the old detector already read (2 of them only from
+    /// 0.70 up, where the existing fallback catches them). It is also cheaper: 89ms against 104ms
+    /// at the primary size, and 1.8MB against 4.8MB on disk. See issue #22.
+    ///
+    /// Only the detector changed. The recogniser stayed on PP-OCRv6_small from #23, deliberately:
+    /// the two models answer different questions — whether text was found at all, and whether it
+    /// was read correctly — and moving both at once makes neither answer attributable.
+    /// </remarks>
     private static RapidOcrRuntime CreateRuntime(string modelName)
     {
         var sharedPath = Path.Combine(ModelRoot, "shared");
@@ -390,36 +417,35 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         EnsureModelFile(recPath);
         EnsureModelFile(dictPath);
 
-        var engine = new RapidOcr();
-
-        if (DetectorOverride is { } detector)
+        var detector = DetectorOverride ?? new DetectorModel(detPath, HalfNormalization, HalfNormalization);
+        if (DetectorOverride is not null)
         {
             EnsureModelFile(detector.Path);
-
-            // The model-set overload is the only one that carries the detector's normalisation, so
-            // it is the only way to load a detector from a different family than the shipped one.
-            engine.InitModels(
-                new RapidOcrModelSet
-                {
-                    DetModelPath = detector.Path,
-                    ClsModelPath = clsPath,
-                    RecModelPath = recPath,
-                    KeysPath = dictPath,
-                    DetMean = detector.Mean,
-                    DetStd = detector.Std,
-                },
-                ThreadCount);
-
             Log.Info(
-                "ONNX OCR detector overridden: {Path} mean=[{Mean}] std=[{Std}]",
+                "ONNX OCR detector overridden: {Path} mean=[{Mean}]",
                 detector.Path,
-                string.Join(",", detector.Mean),
-                string.Join(",", detector.Std));
-
-            return new RapidOcrRuntime(modelName, engine);
+                string.Join(",", detector.Mean));
         }
 
-        engine.InitModels(detPath, clsPath, recPath, dictPath, ThreadCount);
+        var engine = new RapidOcr();
+
+        // The model-set overload rather than the four-path one, because it is the only one that
+        // carries the detector's normalisation — and the shipped detector is no longer from the
+        // same family as the library's default. Verified equivalent before the swap: loaded this
+        // way with the old detector and the ImageNet statistics, a sweep of two frames across all
+        // fifteen sizes reproduced the four-path result line for line.
+        engine.InitModels(
+            new RapidOcrModelSet
+            {
+                DetModelPath = detector.Path,
+                ClsModelPath = clsPath,
+                RecModelPath = recPath,
+                KeysPath = dictPath,
+                DetMean = detector.Mean,
+                DetStd = detector.Std,
+            },
+            ThreadCount);
+
         return new RapidOcrRuntime(modelName, engine);
     }
 
