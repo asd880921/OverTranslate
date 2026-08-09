@@ -6,8 +6,26 @@ namespace OverTranslate.Services;
 
 public class GlobalHotkey : IDisposable
 {
-    private const int HOTKEY_ID = 9001;
     private const int WM_HOTKEY = 0x0312;
+
+    /// <summary>
+    /// Identifies this registration to Windows, which keys them per window handle.
+    /// </summary>
+    /// <remarks>
+    /// Every instance needs its own: the application registers more than one combination against
+    /// the same hidden window, and a shared id would have the second registration refused and the
+    /// first one's messages answered by both hooks. The number itself means nothing beyond being
+    /// distinct — see the constants below for the ones in use.
+    /// </remarks>
+    private readonly int _id;
+
+    /// <summary>The screenshot capture shortcut, the application's original and main one.</summary>
+    public const int CaptureId = 9001;
+
+    /// <summary>The shortcut that opens the translation window.</summary>
+    public const int TranslationWindowId = 9002;
+
+    public GlobalHotkey(int id) => _id = id;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -29,14 +47,14 @@ public class GlobalHotkey : IDisposable
         _source = HwndSource.FromHwnd(hwnd);
         _source?.AddHook(WndProc);
 
-        _registered = RegisterHotKey(hwnd, HOTKEY_ID, modifiers, virtualKey);
+        _registered = RegisterHotKey(hwnd, _id, modifiers, virtualKey);
     }
 
     public void Unregister()
     {
         if (_registered)
         {
-            UnregisterHotKey(_hwnd, HOTKEY_ID);
+            UnregisterHotKey(_hwnd, _id);
             _registered = false;
         }
         _source?.RemoveHook(WndProc);
@@ -44,7 +62,7 @@ public class GlobalHotkey : IDisposable
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
+        if (msg == WM_HOTKEY && wParam.ToInt32() == _id)
         {
             HotkeyPressed?.Invoke(this, EventArgs.Empty);
             handled = true;

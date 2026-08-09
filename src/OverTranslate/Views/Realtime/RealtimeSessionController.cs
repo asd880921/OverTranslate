@@ -55,7 +55,28 @@ internal sealed class RealtimeSessionController
     private Window? _hiddenShell;
 
     private readonly Dictionary<int, RealtimeBlockWindow> _blockWindows = [];
-    private List<System.Drawing.Rectangle> _blocks = [];
+    private List<RealtimeBlockPlacement> _blocks = [];
+
+    /// <summary>
+    /// The layout the last sitting ended with, offered back to the next one.
+    /// </summary>
+    /// <remarks>
+    /// Ending a session is not usually the user finishing — it is them going back to change the
+    /// language, the engine or a colour, all of which live on a page a running session has hidden.
+    /// Redrawing three blocks by hand every time they touch one of those is the tax that made this
+    /// worth keeping, and the modes go with the rectangles because re-answering 字幕/遊戲介面 for
+    /// each block is the same tax again.
+    ///
+    /// Held here and not written to the settings file, which is the line RealtimePage draws for
+    /// everything else about a sitting: this survives 結束即時翻譯 and nothing more. The screen it
+    /// was drawn on is kept alongside it because these are physical pixels on one monitor — offered
+    /// back for a different screen, or the same one at a different resolution, they would be blocks
+    /// the user never drew, in places nothing is.
+    /// </remarks>
+    private RememberedBlocks? _remembered;
+
+    private sealed record RememberedBlocks(
+        System.Drawing.Rectangle Screen, IReadOnlyList<RealtimeBlockPlacement> Blocks);
 
     /// <summary>
     /// Keeps the layers at the front of the topmost band — see <see cref="AlwaysOnTop"/> for why
@@ -99,7 +120,9 @@ internal sealed class RealtimeSessionController
             request.ScreenBounds, request.MaxBlocks, request.SourceLanguage, request.TargetLanguage);
 
         _request = request;
-        _blocks = [];
+        _blocks = _remembered is { } kept && kept.Screen == request.ScreenBounds
+            ? [.. kept.Blocks]
+            : [];
         _hiddenShell = shellToHide;
         _hiddenShell?.Hide();
 
@@ -175,12 +198,34 @@ internal sealed class RealtimeSessionController
         CloseWindow(_control, nameof(RealtimeControlWindow));
         _control = null;
 
+        // Kept before the working copy is dropped — see RememberedBlocks for why this one thing
+        // outlives the session while everything else here is torn down.
+        _remembered = _request is { } ended && _blocks.Count > 0
+            ? new RememberedBlocks(ended.ScreenBounds, _blocks)
+            : null;
+
         _blocks = [];
         _request = null;
 
         RestoreShell();
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Drops the layout kept from the last sitting, so the next one starts on an empty screen.
+    /// </summary>
+    /// <remarks>
+    /// Called when the block count changes, and when the translation window closes. Both are the
+    /// same statement: what was drawn was drawn for a set-up that no longer exists. The count is
+    /// not checked when the blocks are offered back, deliberately — the user asked for them to go
+    /// the moment the count moved, and 2 → 3 → 2 leaving old blocks behind would be a set-up they
+    /// had told the program to forget reappearing because they changed their mind twice.
+    ///
+    /// Only the memory. A session that happens to be running keeps its own blocks and carries on:
+    /// closing the shell window has never been a request to end a session, and this does not make
+    /// it one.
+    /// </remarks>
+    public void ForgetBlocks() => _remembered = null;
 
     // ── Modes ────────────────────────────────────────────────────────────────────────────────────
 
@@ -239,7 +284,7 @@ internal sealed class RealtimeSessionController
         CloseEditWindow();
 
         var regions = _blocks
-            .Select((bounds, index) => new RealtimeRegion(index, bounds))
+            .Select((block, index) => new RealtimeRegion(index, block.Bounds, block.Mode))
             .ToList();
 
         foreach (var region in regions)

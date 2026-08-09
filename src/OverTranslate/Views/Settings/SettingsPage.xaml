@@ -34,6 +34,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Text="一般設定" Style="{StaticResource SectionHeader}"/>
@@ -49,7 +50,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="截圖快捷鍵"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="截圖翻譯"
                                        Style="{StaticResource FieldLabel}"/>
                             <TextBox   Grid.Column="1" Grid.Row="0" x:Name="HotkeyBox"
                                        Style="{StaticResource ModernTextBox}"
@@ -63,12 +64,44 @@
                                        Height="34"
                                        Click="RecordBtn_Click"/>
                             <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2"
-                                       Text="按下這組快捷鍵即可框選畫面進行翻譯"
+                                       Text="按下快捷鍵即可使用截圖翻譯功能"
+                                       Style="{StaticResource FieldHint}"/>
+                        </Grid>
+
+                        <!-- Translation-window hotkey row. Same editing controls as the capture
+                             shortcut above and deliberately nothing else: this one is a shortcut to
+                             a window that is already one tray click away, so it is not announced at
+                             startup and nothing in the interface names it. -->
+                        <Grid Grid.Row="2" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="70"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="開啟翻譯視窗"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="WindowHotkeyBox"
+                                       Style="{StaticResource ModernTextBox}"
+                                       IsReadOnly="True"
+                                       Margin="0,0,8,0"
+                                       PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                       GotFocus="HotkeyBox_GotFocus"
+                                       LostFocus="HotkeyBox_LostFocus"/>
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="WindowRecordBtn" Content="錄製"
+                                       Style="{StaticResource FlatButton}"
+                                       Height="34"
+                                       Click="RecordBtn_Click"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2"
+                                       Text="即時翻譯進行中時，改為將浮動視窗移至最上層"
                                        Style="{StaticResource FieldHint}"/>
                         </Grid>
 
                         <!-- Source language row -->
-                        <Grid Grid.Row="2" Margin="0,0,0,10">
+                        <Grid Grid.Row="3" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="100"/>
                                 <ColumnDefinition Width="*"/>
@@ -81,7 +114,7 @@
                         </Grid>
 
                         <!-- 框選完成自動翻譯 -->
-                        <Grid Grid.Row="3" Margin="0,10,0,0">
+                        <Grid Grid.Row="4" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="100"/>
                                 <ColumnDefinition Width="*"/>
@@ -96,7 +129,7 @@
                         </Grid>
 
                         <!-- 開機自動啟動 -->
-                        <Grid Grid.Row="4" Margin="0,10,0,0">
+                        <Grid Grid.Row="5" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="100"/>
                                 <ColumnDefinition Width="*"/>

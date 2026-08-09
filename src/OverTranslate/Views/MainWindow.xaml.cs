@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private NotifyIcon? _notifyIcon;
     private TrayMenuWindow? _trayMenu;
     private GlobalHotkey? _hotkey;
+    private GlobalHotkey? _windowHotkey;
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
@@ -76,9 +77,20 @@ public partial class MainWindow : Window
     {
         var settings = SettingsService.Instance.Current;
         var hwnd = new WindowInteropHelper(this).Handle;
-        _hotkey = new GlobalHotkey();
+
+        _hotkey = new GlobalHotkey(GlobalHotkey.CaptureId);
         _hotkey.HotkeyPressed += OnHotkeyPressed;
         _hotkey.Register(hwnd, settings.HotkeyModifiers, settings.HotkeyVirtualKey);
+
+        // Deliberately quiet, unlike the one above: no startup notification and nothing in the
+        // interface naming it. It saves a trip to the tray for a user who already knows it is
+        // there, and a user who does not loses nothing by never finding it.
+        _windowHotkey = new GlobalHotkey(GlobalHotkey.TranslationWindowId);
+        _windowHotkey.HotkeyPressed += OnTranslationWindowHotkeyPressed;
+        _windowHotkey.Register(
+            hwnd,
+            settings.TranslationWindowHotkeyModifiers,
+            settings.TranslationWindowHotkeyVirtualKey);
     }
 
     private void ShowStartupBalloon()
@@ -111,9 +123,18 @@ public partial class MainWindow : Window
         _notifyIcon.ShowBalloonTip(3000);
     }
 
+    /// <summary>
+    /// Rebinds every shortcut, after any one of them has been changed.
+    /// </summary>
+    /// <remarks>
+    /// All of them rather than the one that changed, because the cost is two Win32 calls and the
+    /// alternative is a second entry point that has to be kept in step with which setting the
+    /// settings page happened to write.
+    /// </remarks>
     public void ReRegisterHotkey()
     {
         _hotkey?.Unregister();
+        _windowHotkey?.Unregister();
         RegisterHotkey();
     }
 
@@ -122,6 +143,36 @@ public partial class MainWindow : Window
         {
             if (RefuseWhileRealtimeRuns()) return;
             await RunCaptureSessionAsync();
+        });
+
+    /// <summary>
+    /// Opens the translation window, and during a realtime session brings its layers to the front
+    /// instead — the same two answers the tray icon gives, for the same reasons.
+    /// </summary>
+    /// <remarks>
+    /// It never closes the window: every other way in opens or activates, and a shortcut that also
+    /// dismissed would be the one thing in the application whose meaning depends on what is already
+    /// on screen.
+    ///
+    /// Two states it does nothing in, for opposite reasons.
+    ///
+    /// A realtime session is not one of them. The window is no use during a session, but the
+    /// shortcut is the fastest way to a control bar that something else has covered, so it does
+    /// what the tray icon does and lifts the layers instead.
+    ///
+    /// A capture in progress is. The selection layer, the overlay and the toolbar are a single
+    /// piece of work with its own controls, and dropping a window into the middle of it takes the
+    /// foreground away from a screen the user is in the act of framing or reading. The toolbar has
+    /// a button for everything reachable from there, so nothing is lost by staying out. Silently,
+    /// unlike the capture shortcut's own refusal: that one announces itself because it is the
+    /// feature's main entry point and its silence would read as breakage, while this is a
+    /// convenience nothing advertises and a notification would be more intrusive than the miss.
+    /// </remarks>
+    private void OnTranslationWindowHotkeyPressed(object? sender, EventArgs e) =>
+        Dispatcher.Invoke(() =>
+        {
+            if (HasActiveSession) return;
+            OnTrayLeftClick();
         });
 
     /// <summary>
@@ -775,6 +826,7 @@ public partial class MainWindow : Window
         RealtimeSessionController.Instance.Stop();
         DisposeEscapeHook();
         _hotkey?.Dispose();
+        _windowHotkey?.Dispose();
         if (_notifyIcon != null)
         {
             _notifyIcon.Visible = false;

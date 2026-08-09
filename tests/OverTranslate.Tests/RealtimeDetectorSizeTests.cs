@@ -11,9 +11,9 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     [Fact]
     public void ASubtitleStripIsReadAtHalfScale()
     {
-        // Wide and short: the text fills the height, so the glyphs are large and halving lands them
-        // near the size the model was trained on.
-        var (primary, _) = RealtimeDetectorSize.For(1226, 196);   // ratio 6.3
+        // The text fills a strip's height, so the glyphs are large and halving lands them near the
+        // size the model was trained on.
+        var (primary, _) = RealtimeDetectorSize.For(1226, 196, RealtimeBlockMode.Subtitle);
 
         Assert.Equal(640, primary); // 1226 * 0.5, rounded up onto the detector's grid
     }
@@ -21,36 +21,40 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     [Fact]
     public void AnInterfacePanelIsReadAtTheLargerFraction()
     {
-        // Chunky: the text is a small part of the height, so halving takes it below what the
-        // detector finds. Measured on this shape, 0.5 read 3 of 9 boxes and 0.68 read 7.
-        var (primary, _) = RealtimeDetectorSize.For(1380, 750);   // ratio 1.8
+        // The text is a small part of a panel's height, so halving takes it below what the detector
+        // finds. Measured on this shape, 0.5 read 3 of 9 boxes and 0.68 read 7.
+        var (primary, _) = RealtimeDetectorSize.For(1380, 750, RealtimeBlockMode.Panel);
 
         Assert.Equal(960, primary); // 1380 * 0.68
     }
 
     [Theory]
-    [InlineData(1432, 224)]   // the strips from a measured session, ratio 5.8 and up
-    [InlineData(1549, 203)]
-    [InlineData(1856, 152)]
-    [InlineData(1361, 139)]
-    public void TheShapesUsersActuallyDrawAreClassifiedAsStrips(int width, int height)
+    // The same rectangle, read both ways. These are the shapes the removed StripAspectRatio rule
+    // classified — a strip at 6.4 and a panel at 2.1 — and the point of issue #35 is that the shape
+    // no longer decides anything: the user does, and either answer is available for either shape.
+    [InlineData(1432, 224)]
+    [InlineData(1380, 657)]
+    public void TheModeDecidesTheScaleAndTheShapeNoLongerDoes(int width, int height)
     {
-        var (primary, _) = RealtimeDetectorSize.For(width, height);
-
-        Assert.Equal(RealtimeDetectorSize.For(width, height).Primary, primary);
-        Assert.True(primary <= width * 0.55, $"{width}x{height} should be read at strip scale");
-    }
-
-    [Theory]
-    [InlineData(1273, 647)]   // the panels from the same session, ratio 2.9 and below
-    [InlineData(1395, 636)]
-    [InlineData(1865, 1050)]
-    public void TheShapesUsersActuallyDrawAreClassifiedAsPanels(int width, int height)
-    {
-        var (primary, _) = RealtimeDetectorSize.For(width, height);
         var native = Math.Max(width, height);
 
-        Assert.True(primary >= native * 0.6, $"{width}x{height} should be read at panel scale");
+        var strip = RealtimeDetectorSize.For(width, height, RealtimeBlockMode.Subtitle).Primary;
+        var panel = RealtimeDetectorSize.For(width, height, RealtimeBlockMode.Panel).Primary;
+
+        Assert.True(strip <= native * 0.55, $"{width}x{height} as 字幕 should read at strip scale");
+        Assert.True(panel >= native * 0.6, $"{width}x{height} as 面板 should read at panel scale");
+    }
+
+    [Fact]
+    public void TheUsersDraggingCannotChangeTheScaleAnyMore()
+    {
+        // What the user actually varies: the same subtitle framed tightly and framed loosely. Under
+        // the aspect-ratio guess these landed on opposite sides of 4.0 and got two different scales
+        // from the same content — the complaint issue #35 opens with.
+        var tight = RealtimeDetectorSize.For(1432, 180, RealtimeBlockMode.Subtitle);   // ratio 8.0
+        var loose = RealtimeDetectorSize.For(1432, 480, RealtimeBlockMode.Subtitle);   // ratio 3.0
+
+        Assert.Equal(tight.Primary, loose.Primary);
     }
 
     [Fact]
@@ -65,12 +69,12 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void TheRejectedShapeFractionIsTriedFirstThenNativeSize()
+    public void TheOtherModesFractionIsTriedFirstThenNativeSize()
     {
-        // The two fail on opposite content, so when the shape rule was wrong the fraction it turned
-        // down is the best next answer. Native goes last: the only size that can read text too small
-        // to survive any downscale.
-        var (_, fallbacks) = RealtimeDetectorSize.For(1415, 169);  // a strip, so primary is 0.5
+        // The two fail on opposite content, so the fraction the mode turned down is the best next
+        // answer when the mode was not the whole story. Native goes last: the only size that can
+        // read text too small to survive any downscale.
+        var (_, fallbacks) = RealtimeDetectorSize.For(1415, 169, RealtimeBlockMode.Subtitle);
 
         Assert.Equal([992, 1415], fallbacks); // 1415 * 0.68, then native
     }
@@ -78,7 +82,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     [Fact]
     public void ASizeThatWouldRepeatTheFirstAttemptIsNotTriedAgain()
     {
-        var (primary, fallbacks) = RealtimeDetectorSize.For(1226, 196);
+        var (primary, fallbacks) = RealtimeDetectorSize.For(1226, 196, RealtimeBlockMode.Subtitle);
 
         Assert.DoesNotContain(primary, fallbacks);
     }
@@ -88,7 +92,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     {
         // 60px subtitles do not fit in a region this size, so halving could only take small text
         // further out of range.
-        var (primary, fallbacks) = RealtimeDetectorSize.For(400, 120);
+        var (primary, fallbacks) = RealtimeDetectorSize.For(400, 120, RealtimeBlockMode.Subtitle);
 
         Assert.Equal(400, primary);
         Assert.Empty(fallbacks);
@@ -97,9 +101,9 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     [Fact]
     public void TheLongestSideDecidesTheSize()
     {
-        // Tall and narrow is not a strip, so it reads at panel scale — and the size comes from the
-        // long side whichever way round the block is.
-        var (primary, _) = RealtimeDetectorSize.For(300, 1000);
+        // The size comes from the long side whichever way round the block is — a tall, narrow panel
+        // is measured on its height.
+        var (primary, _) = RealtimeDetectorSize.For(300, 1000, RealtimeBlockMode.Panel);
         Assert.Equal(704, primary); // 1000 * 0.68, rounded up onto the detector's grid
     }
 
@@ -115,7 +119,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
         using var engine = new OcrService();
         using var frame = new Bitmap(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture));
 
-        var (primary, _) = RealtimeDetectorSize.For(frame.Width, frame.Height);
+        var (primary, _) = RealtimeDetectorSize.For(frame.Width, frame.Height, RealtimeBlockMode.Subtitle);
         var blocks = await engine.TryRecognizeAsync(frame, "EN", primary);
 
         var text = string.Join(" ", blocks?.Select(b => b.Text) ?? []).ToLowerInvariant();
@@ -127,9 +131,9 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     [Fact]
     public void ABlankRegionStopsPayingForTheNativeRetry()
     {
-        // The expensive one goes; the shape rule's other fraction, which rescued 17 of the 23
+        // The expensive one goes; the other mode's fraction, which rescued 17 of the 23
         // blank-state rescues on record against native's 6, stays.
-        var (_, fallbacks) = RealtimeDetectorSize.For(1699, 242);
+        var (_, fallbacks) = RealtimeDetectorSize.For(1699, 242, RealtimeBlockMode.Subtitle);
         var whileBlank = RealtimeDetectorSize.WhileNothingIsShown(fallbacks, 1699, 242);
 
         Assert.Contains(1699, fallbacks);
@@ -142,7 +146,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     {
         // Below HalfScaleMinSide there are no fallbacks at all, so there is nothing here to save
         // and nothing to lose either.
-        var (_, fallbacks) = RealtimeDetectorSize.For(400, 120);
+        var (_, fallbacks) = RealtimeDetectorSize.For(400, 120, RealtimeBlockMode.Subtitle);
 
         Assert.Empty(RealtimeDetectorSize.WhileNothingIsShown(fallbacks, 400, 120));
     }

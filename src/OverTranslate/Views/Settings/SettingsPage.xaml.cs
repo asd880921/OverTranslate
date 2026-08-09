@@ -10,6 +10,8 @@ using Microsoft.Win32;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using TextBox = System.Windows.Controls.TextBox;
+using Button = System.Windows.Controls.Button;
 
 namespace OverTranslate.Views.Settings;
 
@@ -25,9 +27,27 @@ public partial class SettingsPage : UserControl
     private readonly DispatcherTimer _apiKeyDebounce;
     private readonly DispatcherTimer _statusHold;
 
-    private bool _isRecording;
-    private uint _pendingModifiers;
-    private uint _pendingVKey;
+    /// <summary>
+    /// One editable shortcut: the two controls that edit it and the settings it reads and writes.
+    /// </summary>
+    /// <param name="AdvertisedInShell">
+    /// Whether the shell's nav rail prints this combination beside a button, and so has to be told
+    /// when it changes. True for the capture shortcut, which the interface names in three places;
+    /// false for the window one, which it names nowhere.
+    /// </param>
+    private sealed record HotkeyField(
+        string Name,
+        TextBox Box,
+        Button Record,
+        Func<AppSettings, string> Display,
+        Func<AppSettings, (uint Modifiers, uint Key)> Combination,
+        Action<AppSettings, uint, uint, string> Apply,
+        bool AdvertisedInShell);
+
+    private HotkeyField[] _hotkeyFields = [];
+
+    /// <summary>The field waiting for a key, or null. At most one at a time.</summary>
+    private HotkeyField? _recording;
 
     /// <summary>True while the controls are being populated, so initialization never writes back.</summary>
     private bool _loading;
@@ -35,6 +55,34 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
+
+        _hotkeyFields =
+        [
+            new HotkeyField(
+                "截圖翻譯",
+                HotkeyBox, RecordBtn,
+                s => s.HotkeyDisplay,
+                s => (s.HotkeyModifiers, s.HotkeyVirtualKey),
+                (s, mods, vk, display) =>
+                {
+                    s.HotkeyModifiers = mods;
+                    s.HotkeyVirtualKey = vk;
+                    s.HotkeyDisplay = display;
+                },
+                AdvertisedInShell: true),
+            new HotkeyField(
+                "開啟翻譯視窗",
+                WindowHotkeyBox, WindowRecordBtn,
+                s => s.TranslationWindowHotkeyDisplay,
+                s => (s.TranslationWindowHotkeyModifiers, s.TranslationWindowHotkeyVirtualKey),
+                (s, mods, vk, display) =>
+                {
+                    s.TranslationWindowHotkeyModifiers = mods;
+                    s.TranslationWindowHotkeyVirtualKey = vk;
+                    s.TranslationWindowHotkeyDisplay = display;
+                },
+                AdvertisedInShell: false),
+        ];
 
         _apiKeyDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
         _apiKeyDebounce.Tick += (_, _) =>
@@ -71,11 +119,8 @@ public partial class SettingsPage : UserControl
             if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
             ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
 
-            HotkeyBox.Text = s.HotkeyDisplay;
+            foreach (var field in _hotkeyFields) field.Box.Text = field.Display(s);
             ApiKeyBox.Text = s.ApiKey;
-
-            _pendingModifiers = s.HotkeyModifiers;
-            _pendingVKey      = s.HotkeyVirtualKey;
 
             LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
             DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
@@ -270,46 +315,65 @@ public partial class SettingsPage : UserControl
 
     // ── Hotkey recording ─────────────────────────────────────────────────────
 
+    /// <summary>The field these two controls edit, or null for anything else.</summary>
+    private HotkeyField? FieldOf(object sender) =>
+        _hotkeyFields.FirstOrDefault(
+            field => ReferenceEquals(field.Box, sender) || ReferenceEquals(field.Record, sender));
+
+    private void StartRecording(HotkeyField field)
+    {
+        // Only one at a time: two boxes both saying 請按下快捷鍵 would leave the next key press
+        // ambiguous to the user long before it was ambiguous to the code.
+        StopRecording();
+
+        _recording = field;
+        field.Box.Text = "請按下快捷鍵...";
+        field.Record.Content = "取消";
+        field.Box.Focus();
+    }
+
+    /// <summary>Ends recording and puts the stored combination back in the box.</summary>
+    /// <remarks>
+    /// Reads the setting rather than remembering what was there, so this also serves as the way
+    /// back after a successful capture: the new value has been persisted by then, and restoring
+    /// from the settings shows it.
+    /// </remarks>
+    private void StopRecording()
+    {
+        if (_recording is not { } field) return;
+
+        field.Box.Text = field.Display(SettingsService.Instance.Current);
+        field.Record.Content = "錄製";
+        _recording = null;
+    }
+
     private void RecordBtn_Click(object sender, RoutedEventArgs e)
     {
-        _isRecording = !_isRecording;
-        if (_isRecording)
-        {
-            HotkeyBox.Text = "請按下快捷鍵...";
-            RecordBtn.Content = "取消";
-            HotkeyBox.Focus();
-        }
-        else
-        {
-            HotkeyBox.Text = SettingsService.Instance.Current.HotkeyDisplay;
-            RecordBtn.Content = "錄製";
-        }
+        if (FieldOf(sender) is not { } field) return;
+
+        if (ReferenceEquals(_recording, field)) StopRecording();
+        else StartRecording(field);
     }
 
     private void HotkeyBox_GotFocus(object sender, RoutedEventArgs e)
     {
-        if (!_isRecording)
-        {
-            _isRecording = true;
-            HotkeyBox.Text = "請按下快捷鍵...";
-            RecordBtn.Content = "取消";
-        }
+        if (FieldOf(sender) is { } field && !ReferenceEquals(_recording, field))
+            StartRecording(field);
     }
 
     private void HotkeyBox_LostFocus(object sender, RoutedEventArgs e)
     {
-        if (!_isRecording) return;
-        // 焦點移到 RecordBtn 時由 Click 事件處理，這裡不介入
-        if (Keyboard.FocusedElement == RecordBtn) return;
+        if (FieldOf(sender) is not { } field || !ReferenceEquals(_recording, field)) return;
 
-        _isRecording = false;
-        HotkeyBox.Text = SettingsService.Instance.Current.HotkeyDisplay;
-        RecordBtn.Content = "錄製";
+        // 焦點移到該欄位的錄製鈕時由 Click 事件處理，這裡不介入
+        if (Keyboard.FocusedElement == field.Record) return;
+
+        StopRecording();
     }
 
     private void HotkeyBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (!_isRecording) return;
+        if (_recording is not { } recording || !ReferenceEquals(recording.Box, sender)) return;
         e.Handled = true;
 
         bool isSystemKey = e.Key == Key.System;
@@ -329,28 +393,36 @@ public partial class SettingsPage : UserControl
         if (mods == 0) return;
 
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
-        _pendingModifiers = mods;
-        _pendingVKey      = vk;
-
         var display = $"{GlobalHotkey.ModifiersToString(mods)}+{key}";
-        HotkeyBox.Text    = display;
-        _isRecording      = false;
-        RecordBtn.Content = "錄製";
 
-        Persist(s =>
+        // Windows keys a registration by window and combination, so the second shortcut to claim
+        // one is simply refused — RegisterHotKey returns false and nothing else happens. Left to
+        // itself that reads as a shortcut that stopped working for no reason, so the clash is
+        // refused here, where there is something to say about it.
+        var settings = SettingsService.Instance.Current;
+        var taken = _hotkeyFields.FirstOrDefault(
+            field => !ReferenceEquals(field, recording) && field.Combination(settings) == (mods, vk));
+
+        if (taken is not null)
         {
-            s.HotkeyModifiers  = _pendingModifiers;
-            s.HotkeyVirtualKey = _pendingVKey;
-            s.HotkeyDisplay    = display;
-        });
+            ShowError($"✗ {display} 已指派給「{taken.Name}」");
+            StopRecording();
+            return;
+        }
+
+        Persist(s => recording.Apply(s, mods, vk, display));
+
+        // After the write, so the box picks the new combination up out of the settings.
+        StopRecording();
 
         // The global hook holds the old combination until it is rebound
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();
 
-        // The nav rail advertises this shortcut beside 截圖翻譯 and is on screen right now, so it
-        // has to be told; nothing else re-reads it until the shell is next shown or activated.
-        if (Window.GetWindow(this) is Shell.ShellWindow shell)
+        // The nav rail advertises the capture shortcut beside 截圖翻譯 and is on screen right now,
+        // so it has to be told; nothing else re-reads it until the shell is next shown or
+        // activated. The window shortcut is advertised nowhere, so there is nothing to refresh.
+        if (recording.AdvertisedInShell && Window.GetWindow(this) is Shell.ShellWindow shell)
             shell.RefreshHotkeyHint();
     }
 }
