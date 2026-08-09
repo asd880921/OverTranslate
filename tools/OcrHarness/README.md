@@ -42,11 +42,38 @@ OcrHarness.exe --scale-sweep 圖.png [更多.png ...]
 
 # 同一張圖、同一個尺寸，只換辨識模型（cjk vs korean）
 OcrHarness.exe --compare-models 圖.png [更多.png ...]
+
+# 同一張圖、app 會用的尺寸，只換送進偵測器前加的白邊（0–96）
+OcrHarness.exe --pad-sweep 圖.png [更多.png ...]
 ```
+
+`--pad-sweep` 的白邊不是「多一圈留白」而已：它參與 `AlignForDetector` 的對齊算式，也算進
+`ImgResize` 的長邊上限，所以白邊越寬、偵測器看到的文字越小。實測 0/8/16/24/32/50/64/96，
+**50 在字幕條帶、遊戲面板、小截圖三類上都是最高分，而且兩側都比它差** —— 是峰值不是地板，
+調大不會比較保險。細節與數字記在 `OnnxOcrEngine.DetectorPaddingOverride`。
 
 `--scale-sweep` 會一併印出 `RealtimeDetectorSize` 對該尺寸區塊會挑的 primary 與 fallback，
 所以掃描結果可以直接對照 app 真正會用的尺寸來讀。它走的是主專案的 `OnnxOcrEngine`，
-量到的就是 app 實際在跑的東西。
+量到的就是 app 實際在跑的東西。每一列都帶 `chars=` 與耗時：命中率與成本要一起看，
+只挑命中率最高的尺寸會付出不成比例的代價（#22 量到 0.95 的成本是 0.5 的四倍）。
+
+列上的框數是**即時翻譯真的會採用的**：塌陷框（高度達區塊 90%）與過短讀取在
+`RealtimeTranslationSession` 被丟掉，掃描一併套用，丟掉幾個記在 `dropped=`。
+不套用的話，掃描會把 app 其實判定為「讀不到」的尺寸算成成功 —— 實測 v5 有 5 張幀
+正好落在這個差別上。
+
+### 換偵測模型來掃
+
+```bash
+# 用別的偵測模型跑同一份掃描（省略 --det 就是出貨的那顆）
+OcrHarness.exe --scale-sweep --det 別的det.onnx:half 圖.png [更多.png ...]
+```
+
+`:imagenet`（PP-OCRv5 的匯出設定，省略時的預設）與 `:half`（RapidOcrNet 的 PP-OCRv6 預設，
+127.5/127.5）指的是模型訓練時的像素正規化。**這不是可調參數**：用錯的統計量餵模型，量到的
+就不是那顆模型，而且失敗方式是安靜的 —— 它只是讀得比較少。換模型時務必連正規化一起換。
+
+只換偵測模型、辨識模型維持不動，是 #22 訂下的規矩：兩顆一起換，效果就分不開了。
 
 判讀時務必先把「畫面上根本沒有文字」的圖挑掉 —— 在那些圖上讀不到是正確行為，計入會把
 誤報算成成功。實務做法是只採計讀到 10 個字元以上的結果。

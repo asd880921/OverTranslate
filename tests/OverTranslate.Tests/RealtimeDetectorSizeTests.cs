@@ -124,21 +124,52 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
         Assert.Contains(expected, text);
     }
 
-    [Theory]
-    [InlineData("subtitle-over-light-floor-1226x196.png")]
-    [InlineData("subtitle-lost-entirely-1226x196.png")]
-    public async Task TheSameFramesReadAtTheOldSizeStillFail(string fixture)
+    [Fact]
+    public void ABlankRegionStopsPayingForTheNativeRetry()
     {
-        // Pins the bug itself rather than only the fix: if a future model or setting makes native
-        // size work again, this fails and the halving can be reconsidered on evidence.
+        // The expensive one goes; the shape rule's other fraction, which rescued 17 of the 23
+        // blank-state rescues on record against native's 6, stays.
+        var (_, fallbacks) = RealtimeDetectorSize.For(1699, 242);
+        var whileBlank = RealtimeDetectorSize.WhileNothingIsShown(fallbacks, 1699, 242);
+
+        Assert.Contains(1699, fallbacks);
+        Assert.DoesNotContain(1699, whileBlank);
+        Assert.Equal(fallbacks.Count - 1, whileBlank.Count);
+    }
+
+    [Fact]
+    public void ARegionTooSmallToDownscaleHasNothingToDrop()
+    {
+        // Below HalfScaleMinSide there are no fallbacks at all, so there is nothing here to save
+        // and nothing to lose either.
+        var (_, fallbacks) = RealtimeDetectorSize.For(400, 120);
+
+        Assert.Empty(RealtimeDetectorSize.WhileNothingIsShown(fallbacks, 400, 120));
+    }
+
+    [Theory]
+    [InlineData("subtitle-over-light-floor-1226x196.png", "okay")]
+    [InlineData("subtitle-lost-entirely-1226x196.png", "minato-san")]
+    public async Task TheSameFramesAlsoReadAtTheScreenshotSizeNow(string fixture, string expected)
+    {
+        // These two frames used to come back empty here, and the test that came before this one
+        // pinned that failure on purpose — so that swapping the detector would trip it rather than
+        // let the halving outlive its reason. PP-OCRv6_det_tiny tripped it: both frames now read
+        // correctly at the size the screenshot flow uses, which closes the hole issue #22 recorded
+        // in that flow (it has no fallback size to fall back to, so a subtitle framed there was
+        // simply lost).
+        //
+        // Halving is still what a strip is read at, and now for a plain reason rather than a
+        // detector quirk: swept over the same 15 frames, the new detector reads 9 at 0.50 and 9 at
+        // native, for 89ms against 186ms. Same result, half the cost. If a later measurement shows
+        // native reading materially more, this test is where the evidence for changing that starts.
         using var engine = new OcrService();
         using var frame = new Bitmap(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture));
 
         var blocks = await engine.TryRecognizeAsync(frame, "EN", 2048);
-        var text = string.Join(" ", blocks?.Select(b => b.Text) ?? []);
+        var text = string.Join(" ", blocks?.Select(b => b.Text) ?? []).ToLowerInvariant();
         output.WriteLine($"{fixture} @ detect=2048 -> \"{text}\"");
 
-        Assert.DoesNotContain("okay", text, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Minato-san", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(expected, text);
     }
 }

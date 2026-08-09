@@ -32,6 +32,23 @@ public class CollapsedDetectionTests
         Assert.False(CollapsedDetection.IsCollapsed(height, Block));
     }
 
+    [Fact]
+    public void ALooseBoxAroundARealSentenceIsNotACollapse()
+    {
+        // Measured under PP-OCRv6_det_tiny: a 171px box holding "Let's pay CiRcLE visit on the way
+        // home." in a 190px block, thrown away by the old 0.9 threshold. The new detector draws
+        // looser boxes than the one this rule was calibrated on, and a sentence lost this way never
+        // reaches the screen at all.
+        Assert.False(CollapsedDetection.IsCollapsed(171, 190));
+    }
+
+    [Fact]
+    public void ABoxOverrunningTheBlockIsStillACollapse()
+    {
+        // From the same session: 214px in a 191px block, out of which the recogniser read "Yay!".
+        Assert.True(CollapsedDetection.IsCollapsed(214, 191));
+    }
+
     [Theory]
     // The case that broke the version this replaced: one block holding a game's 13px chat log and
     // its 55-78px subtitles. Every size in it has to survive, because the block is what decides now

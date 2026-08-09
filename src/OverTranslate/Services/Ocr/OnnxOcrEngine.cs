@@ -334,6 +334,74 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         }
     }
 
+    /// <summary>
+    /// A text detection model and the pixel normalisation it was exported with.
+    /// </summary>
+    /// <param name="Path">Full path to the detector's .onnx file.</param>
+    /// <param name="Mean">Per-channel mean subtracted from each pixel, in BGR order, 0–255 scale.</param>
+    /// <param name="Std">Per-channel standard deviation each pixel is divided by, same order and scale.</param>
+    /// <remarks>
+    /// The numbers are not a tuning knob: feeding a model the statistics it was not trained with
+    /// shifts every pixel it sees, so a detector measured under the wrong pair is not that detector.
+    /// PP-OCRv5 was exported with the ImageNet statistics; RapidOcrNet's own PP-OCRv6 presets use
+    /// 127.5/127.5 instead, which is why swapping the file alone is not enough to measure a v6
+    /// detector — see <see cref="ImageNetNormalization"/> and <see cref="HalfNormalization"/>.
+    /// </remarks>
+    internal sealed record DetectorModel(string Path, float[] Mean, float[] Std);
+
+    /// <summary>What PP-OCRv5 detectors were exported with.</summary>
+    internal static float[] ImageNetNormalization => [123.675f, 116.28f, 103.53f];
+
+    /// <inheritdoc cref="ImageNetNormalization"/>
+    internal static float[] ImageNetNormalizationStd => [58.395f, 57.12f, 57.375f];
+
+    /// <summary>
+    /// What PP-OCRv6 detectors — including the shipped one — are read with, for both mean and
+    /// deviation.
+    /// </summary>
+    /// <remarks>
+    /// This contradicts PaddlePaddle's own <c>inference.yml</c> for the v6 detectors, which lists
+    /// the ImageNet statistics, and the contradiction is not academic: swept over the same 15
+    /// frames at the same sizes, PP-OCRv6_small read 8 of them at the application's primary size
+    /// under 127.5 and 1 of them under ImageNet. RapidOcrNet's own v6 presets use 127.5, and the
+    /// measurement agrees with the library rather than the export config.
+    /// </remarks>
+    internal static float[] HalfNormalization => [127.5f, 127.5f, 127.5f];
+
+    /// <summary>
+    /// Detector to load in place of the shipped one. Null — the shipped detector — everywhere but
+    /// <c>OcrHarness</c>.
+    /// </summary>
+    /// <remarks>
+    /// A measurement seam, not a setting. Issue #22 needs the same frames read by different
+    /// detectors to say whether the dead band in detector sizes is a property of the model, and
+    /// the answer only means anything if everything around the detector — recogniser, dictionary,
+    /// options, grouping — is the code the application really runs. Nothing in the application
+    /// assigns this, so the shipped path is the untouched two-argument load below.
+    ///
+    /// Set it before the first recognition of an <see cref="OnnxOcrEngine"/>: a runtime already
+    /// loaded is reused until it goes idle, so changing this mid-life leaves the previous detector
+    /// in place. One engine per detector under measurement is the way to be sure.
+    /// </remarks>
+    internal static DetectorModel? DetectorOverride { get; set; }
+
+    /// <summary>
+    /// Loads the detector, classifier, recogniser and dictionary for one recognition model.
+    /// </summary>
+    /// <remarks>
+    /// The detector is PP-OCRv6_det_tiny. The one before it, PP-OCRv5_mobile_det, did not respond
+    /// to scale smoothly: swept over 15 frames a watched region had failed to read, it read 8 of
+    /// them at 0.40 of native, 4 at 0.50, 6 at 0.55 and 8 again at 0.60 — a dead band with the
+    /// subtitle primary size sitting in it, which is why a subtitle session spent 13% of its passes
+    /// paying for fallback sizes. The same sweep with v6_det_tiny reads 9 of 15 across the whole
+    /// band, and 84 of the 84 control frames the old detector already read (2 of them only from
+    /// 0.70 up, where the existing fallback catches them). It is also cheaper: 89ms against 104ms
+    /// at the primary size, and 1.8MB against 4.8MB on disk. See issue #22.
+    ///
+    /// Only the detector changed. The recogniser stayed on PP-OCRv6_small from #23, deliberately:
+    /// the two models answer different questions — whether text was found at all, and whether it
+    /// was read correctly — and moving both at once makes neither answer attributable.
+    /// </remarks>
     private static RapidOcrRuntime CreateRuntime(string modelName)
     {
         var sharedPath = Path.Combine(ModelRoot, "shared");
@@ -349,8 +417,35 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         EnsureModelFile(recPath);
         EnsureModelFile(dictPath);
 
+        var detector = DetectorOverride ?? new DetectorModel(detPath, HalfNormalization, HalfNormalization);
+        if (DetectorOverride is not null)
+        {
+            EnsureModelFile(detector.Path);
+            Log.Info(
+                "ONNX OCR detector overridden: {Path} mean=[{Mean}]",
+                detector.Path,
+                string.Join(",", detector.Mean));
+        }
+
         var engine = new RapidOcr();
-        engine.InitModels(detPath, clsPath, recPath, dictPath, ThreadCount);
+
+        // The model-set overload rather than the four-path one, because it is the only one that
+        // carries the detector's normalisation — and the shipped detector is no longer from the
+        // same family as the library's default. Verified equivalent before the swap: loaded this
+        // way with the old detector and the ImageNet statistics, a sweep of two frames across all
+        // fifteen sizes reproduced the four-path result line for line.
+        engine.InitModels(
+            new RapidOcrModelSet
+            {
+                DetModelPath = detector.Path,
+                ClsModelPath = clsPath,
+                RecModelPath = recPath,
+                KeysPath = dictPath,
+                DetMean = detector.Mean,
+                DetStd = detector.Std,
+            },
+            ThreadCount);
+
         return new RapidOcrRuntime(modelName, engine);
     }
 
@@ -377,11 +472,53 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// arriving here looking for the big win should keep reading past this line. The box count is
     /// where the time goes; see issue #21.
     /// </remarks>
+    /// <summary>
+    /// Border to surround the image with instead of the library default of 50, or null for it.
+    /// </summary>
+    /// <remarks>
+    /// A measurement seam for <c>OcrHarness</c>, like <see cref="DetectorOverride"/>. Nothing in the
+    /// application sets this.
+    ///
+    /// The library's 50 was inherited rather than chosen, so it was swept under the current models
+    /// (RapidOcrNet 3.0.0, PP-OCRv6_det_tiny) across 0, 8, 16, 24, 32, 50, 64 and 96, on the two
+    /// small capture fixtures, 25 subtitle strips and 6 game panels. Scored as the share of each
+    /// frame's own best reading that a border returned:
+    ///
+    /// <code>
+    ///   border      0      8     16     24     32     50     64     96
+    ///   strips   93.5%  91.2%  92.7%  96.8%  96.1%  97.5%  96.3%  94.6%
+    ///   panels   72.1%  71.5%  71.3%  81.4%  71.7%  99.1%  85.4%
+    /// </code>
+    ///
+    /// 50 is the best value in every category, with both neighbours worse — a peak rather than a
+    /// floor, so raising it is not "safer". The small values are not merely weaker: on a 264x56
+    /// capture, borders of 8 and 16 return no boxes at all where 0 returns a fragment and 50 reads
+    /// the whole thing. That is <see cref="AlignForDetector"/> showing through — the border decides
+    /// what the aligned dimensions become, and a few of them land on geometry the detector dislikes.
+    ///
+    /// The border is also not the free choice it looks like on the clock. A strip reads in 43ms
+    /// without it and 77ms with it, and almost all of that difference is recognition of text that
+    /// no border failed to find: the detector's own input is the same size either way, because
+    /// <c>ImgResize</c> caps the long side after the border is added.
+    ///
+    /// ITS COLOUR IS NOT A KNOB, AND THE QUESTION IS OPEN. The library fills the border itself and
+    /// exposes no colour, so the only way to try another one is to draw the border here and ask for
+    /// none — and that turned out not to be the same experiment. Reproducing the shipped
+    /// composition by hand (align with transparent pixels, then a white border, then
+    /// <c>Padding = 0</c>) still read less than the shipped path does, so something in how the
+    /// library builds its own border is not accounted for, and every colour measured that way is
+    /// measuring that difference as much as the colour. Worth knowing because subtitles are white
+    /// text and a white border is the one combination nobody chose — but it needs the library's
+    /// source, not another harness mode.
+    /// </remarks>
+    internal static int? DetectorPaddingOverride { get; set; }
+
     private static RapidOcrOptions CreateOptions(int? maxDetectSize) =>
         RapidOcrOptions.Default with
         {
             ImgResize = maxDetectSize ?? ScreenshotDetectSize,
             DoAngle = false,
+            Padding = DetectorPaddingOverride ?? RapidOcrOptions.Default.Padding,
         };
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)

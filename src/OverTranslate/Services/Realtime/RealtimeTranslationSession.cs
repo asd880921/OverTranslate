@@ -370,6 +370,16 @@ public sealed class RealtimeTranslationSession
         if (recognized.Count > 0)
             RealtimeFrameDump.SamplePrimaryRead(frame, region.Id, primarySize);
 
+        // A region sitting on blank picture pays for the retries below over and over: between two
+        // lines of dialogue the frame keeps moving, so the fingerprint never settles and every
+        // other poll is a full pass that finds nothing. Measured over two subtitle sessions, 20–31%
+        // of passes were blank and they took 44–58% of all the recognition time. The scan rate
+        // itself is not the thing to cut — see MaxUnsettledPolls — but the most expensive of the
+        // retries is; see RealtimeDetectorSize.WhileNothingIsShown for what that costs in rescues.
+        if (!state.IsWatchingText)
+            fallbackSizes = RealtimeDetectorSize.WhileNothingIsShown(
+                fallbackSizes, frame.Width, frame.Height);
+
         // Nothing found can mean the text is out of the detector's range rather than absent, and
         // the two ways of being out of it need opposite sizes — so the one not tried yet gets a go
         // before the region is written off as empty. Only on empty: a pass that read something has
