@@ -51,7 +51,39 @@ public class OcrService : IDisposable
         var blocks = await _engine.TryRecognizeAsync(
             bitmap, OcrLanguageRouter.Normalize(sourceLanguage), maxDetectSize, cancellationToken);
 
-        return blocks is null ? null : OcrTextBlockGrouper.Group(blocks);
+        if (blocks is null)
+            return null;
+
+        // Before grouping, and that is the whole point of doing it here rather than in the caller.
+        // Grouping merges boxes that overlap, and a scenery box sitting across a subtitle is merged
+        // into it: measured on a 1623x206 region, a 220px box reading "EIN" was joined to the real
+        // 136px line "Arisa's a big meanie.", and the merged box — 220px in a 206px block — was
+        // then thrown out as a collapse, taking the subtitle with it. Filtered afterwards the
+        // subtitle is already tied to the noise and cannot be recovered.
+        return OcrTextBlockGrouper.Group(RejectUnconvincingBlocks(blocks));
+    }
+
+    // Scenery the recogniser was not sure about. Only on this path: it is the realtime one, where
+    // the floor was measured, and where a frame arrives every 250ms so losing a doubtful reading
+    // costs nothing. The screenshot path keeps everything — its user framed that capture once and
+    // is waiting for it.
+    private static List<OcrTextBlock> RejectUnconvincingBlocks(List<OcrTextBlock> blocks)
+    {
+        List<OcrTextBlock>? kept = null;
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            if (!Realtime.ShortReadingDetection.IsUnconvincingShortText(
+                    blocks[index].Text, blocks[index].Confidence))
+            {
+                kept?.Add(blocks[index]);
+                continue;
+            }
+
+            kept ??= [.. blocks.Take(index)];
+        }
+
+        return kept ?? blocks;
     }
 
     /// <summary>

@@ -510,13 +510,18 @@ public sealed class RealtimeTranslationSession
     }
 
     /// <summary>
-    /// Drops the boxes that came back holding a character, which are scenery rather than text.
+    /// Drops the boxes holding a single character, and the short ones the recogniser was not sure
+    /// about — both are scenery read as text rather than text.
     /// </summary>
     /// <remarks>
     /// Kept apart from <see cref="RejectCollapsedBlocks"/> rather than folded into it because the
     /// two ask different questions — that one measures the box, this one reads what came out of it
     /// — and a box can fail either test without failing the other. Both run on the primary read and
     /// on a fallback, because a false reading does the same damage whichever size produced it.
+    ///
+    /// The confidence half only catches what the shape test cannot: the box that reported "DM" over
+    /// a subtitle was 158px tall in a 220px block — well clear of a real line at 86px, but short of
+    /// the 90% that makes a collapse, so no measure of the box was ever going to reject it.
     /// </remarks>
     private static List<OcrTextBlock> RejectShortReadings(List<OcrTextBlock> blocks, int regionId)
     {
@@ -525,7 +530,11 @@ public sealed class RealtimeTranslationSession
         for (var index = 0; index < blocks.Count; index++)
         {
             var block = blocks[index];
-            if (!ShortReadingDetection.IsTooShort(block.Text))
+            var tooShort = ShortReadingDetection.IsTooShort(block.Text);
+            var unconvincing =
+                ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence);
+
+            if (!tooShort && !unconvincing)
             {
                 kept?.Add(block);
                 continue;
@@ -537,8 +546,12 @@ public sealed class RealtimeTranslationSession
             // Debug for the same reason as the collapse log: {Text} is whatever was on the user's
             // screen, and the shipped log does not carry that.
             Log.Debug(
-                "Realtime region {Region} dropped a {Length}-character box: \"{Text}\"",
-                regionId, block.Text?.Trim().Length ?? 0, block.Text);
+                "Realtime region {Region} dropped a {Length}-character box ({Why}, score={Score}): \"{Text}\"",
+                regionId,
+                block.Text?.Trim().Length ?? 0,
+                tooShort ? "too short" : "short and unconvincing",
+                block.Confidence is { } c ? c.ToString("0.00") : "none",
+                block.Text);
         }
 
         return kept ?? blocks;

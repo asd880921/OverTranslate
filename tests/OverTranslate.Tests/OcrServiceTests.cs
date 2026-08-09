@@ -38,8 +38,9 @@ public class OcrServiceTests
     [Fact]
     public void OnnxEngine_UsesLanguageSpecificModels()
     {
-        // EN routes to the PP-OCRv5 general ("cjk") model (handles embedded Chinese in English UI);
-        // the dedicated Latin model was removed.
+        // EN routes to the general ("cjk") model — PP-OCRv6_small_rec, which covers Chinese,
+        // English, Japanese and 46 Latin-script languages in one. KO keeps its own model because
+        // v6 holds no Hangul.
         Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("EN"));
         Assert.Equal("korean", OnnxOcrEngine.GetModelKeyForLanguage("KO"));
         Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("JA"));
@@ -62,6 +63,33 @@ public class OcrServiceTests
     public void StripLoneIdeographs_RemovesIconNoiseButKeepsRealText(string input, string expected)
     {
         Assert.Equal(expected, OnnxOcrEngine.StripLoneIdeographs(input));
+    }
+
+    [Theory]
+    // The measured case: PP-OCRv6 read a subtitle as "That kind of șong" (U+0219) at 0.93
+    // confidence and the line came back from the translator as nonsense.
+    [InlineData("That kind of șong", "That kind of song")]
+    [InlineData("Ｃafé", "Ｃafe")]
+    [InlineData("naïve", "naive")]
+    [InlineData("Ārigatō", "Arigato")]
+    // Nothing to fold — these must come back the same object's worth of text, untouched.
+    [InlineData("That kind of song", "That kind of song")]
+    [InlineData("翻譯這個網頁", "翻譯這個網頁")]
+    [InlineData("2026年5月8日", "2026年5月8日")]
+    public void FoldLatinDiacritics_FoldsAccentsAndLeavesEverythingElse(string input, string expected)
+    {
+        Assert.Equal(expected, OnnxOcrEngine.FoldLatinDiacritics(input));
+    }
+
+    [Fact]
+    public void FoldLatinDiacritics_LeavesJapaneseVoicedKanaAlone()
+    {
+        // The reason the fold is restricted to the Latin ranges. Voiced kana decompose the same way
+        // an accented letter does — が is か plus a combining mark — so a blanket normalisation
+        // would silently turn "がっこう" into "かっこう", a different word entirely.
+        Assert.Equal("がっこう", OnnxOcrEngine.FoldLatinDiacritics("がっこう"));
+        Assert.Equal("ポケット", OnnxOcrEngine.FoldLatinDiacritics("ポケット"));
+        Assert.Equal("月島まりな", OnnxOcrEngine.FoldLatinDiacritics("月島まりな"));
     }
 
     [Theory]
@@ -94,7 +122,12 @@ public class OcrServiceTests
         var looseText = TextOf(await engine.RecognizeAsync(loose, "EN"));
 
         Assert.Equal(looseText, tightText);
-        Assert.Contains("skill(domain-modeling)", tightText);
+
+        // Capitalised, as it is in the fixture. This asserted a lowercase "skill" until the
+        // PP-OCRv6 model landed, which was never what the picture says — the old model misread the
+        // capital and the assertion was written around that, quietly making a recognition error
+        // part of the contract. Worth remembering when the next model changes it back.
+        Assert.Contains("Skill(domain-modeling)", tightText);
     }
 
     private static Bitmap LoadFixture(string name) =>

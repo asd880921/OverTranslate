@@ -12,6 +12,9 @@ using OverTranslate.Services.Realtime;
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: OcrHarness <image.png> [more.png ...]");
+    Console.Error.WriteLine("       OcrHarness --xlate-line <text>   (translate one line, all engines)");
+    Console.Error.WriteLine("       OcrHarness --compare-models <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (same frame and size, cjk vs korean recognition model)");
     Console.Error.WriteLine("       OcrHarness --scale-sweep <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (reads each frame at every detector size, no translation)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
@@ -50,6 +53,40 @@ if (args[0] == "--fallback-test")
     return 0;
 }
 
+// Translate one line given on the command line. For telling an OCR problem from a translation
+// one: when a word goes missing on screen, this says whether the recogniser dropped it or the
+// translator did.
+if (args[0] == "--xlate-line")
+{
+    var line = string.Join(' ', args.Skip(1));
+    if (line.Length == 0)
+    {
+        Console.Error.WriteLine("usage: OcrHarness --xlate-line <text to translate>");
+        return 1;
+    }
+
+    var block = new List<OcrTextBlock> { new(line, new System.Windows.Rect(0, 0, 100, 20)) };
+    foreach (var (name, provider) in new (string, GTranslateProvider)[]
+             {
+                 ("Microsoft", new GTranslateProvider(new MicrosoftTranslator())),
+                 ("Google   ", new GTranslateProvider(new GoogleTranslator2())),
+                 ("Bing     ", new GTranslateProvider(new BingTranslator())),
+             })
+    {
+        try
+        {
+            var (result, _) = await provider.TranslateAsync(block, "EN", "ZH-HANT", "");
+            Console.WriteLine($"  [{name}] {result[0].TranslatedText}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  [{name}] FAILED: {ex.Message}");
+        }
+    }
+
+    return 0;
+}
+
 // Translation-only resilience check: exercises ResilientProvider over the live free endpoints
 // and reports per-run latency. No OCR / screenshot needed.
 if (args[0] == "--xlate-test")
@@ -79,6 +116,57 @@ if (args[0] == "--xlate-test")
             Console.WriteLine($"  EN: {t.OriginalText}\n  ZH: {t.TranslatedText}");
         Console.WriteLine();
     }
+    return 0;
+}
+
+// Model comparison: the same frame, the same detector size, only the recognition model changed.
+// "EN" routes to the general cjk model and "KO" to the korean one (see GetModelKeyForLanguage),
+// which makes korean a natural control: both are large-dictionary models, and the only structural
+// difference is that korean holds no Han characters at all. If Latin reads better under it, the
+// 15,702 Han characters competing for every glyph are the problem, and a Latin-only dictionary
+// would help more still.
+if (args[0] == "--compare-models")
+{
+    using var cmpOcr = new OcrService();
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var native = Math.Max(image.Width, image.Height);
+        var (primary, _) = RealtimeDetectorSize.For(image.Width, image.Height);
+
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine($"{Path.GetFileName(path)}  {image.Width}x{image.Height}");
+
+        // Both sizes, because the model is not the only thing that decides whether a line is read:
+        // comparing at one size risks reporting a detector result as a recognition difference.
+        foreach (var size in new[] { primary, native }.Distinct())
+        {
+            Console.WriteLine($"  --- detect={size}{(size == primary ? " (realtime primary)" : " (native)")} ---");
+
+            foreach (var (label, lang) in new[] { ("cjk   ", "EN"), ("korean", "KO") })
+            {
+                List<OcrTextBlock>? blocks = null;
+                for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
+                    blocks = await cmpOcr.TryRecognizeAsync(image, lang, size);
+
+                if (blocks is null || blocks.Count == 0)
+                {
+                    Console.WriteLine($"    [{label}] (nothing read)");
+                    continue;
+                }
+
+                foreach (var b in blocks)
+                {
+                    var confidence = b.Confidence is { } c ? $"{c:0.00}" : "  - ";
+                    Console.WriteLine($"    [{label}] score={confidence}  \"{b.Text.Replace("\n", " ")}\"");
+                }
+            }
+        }
+    }
+
     return 0;
 }
 

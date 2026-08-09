@@ -54,4 +54,47 @@ public class ShortReadingDetectionTests
         Assert.False(ShortReadingDetection.IsTooShort("はい"));
         Assert.False(ShortReadingDetection.IsTooShort("好的"));
     }
+
+    [Theory]
+    // Scenery read as text, with the scores PP-OCRv6 actually gave them over one subtitle session.
+    // "DM" is the one the user saw on screen; it slipped past every test of the box's shape.
+    [InlineData("DM", 0.71)]
+    [InlineData("'N", 0.64)]
+    [InlineData("605G0", 0.60)]
+    [InlineData("NA", 0.61)]
+    [InlineData("{02", 0.79)]
+    [InlineData("米", 0.79)]
+    public void ShortAndUnsureIsScenery(string text, double confidence)
+    {
+        Assert.True(ShortReadingDetection.IsUnconvincingShortText(text, confidence));
+    }
+
+    [Theory]
+    // Real short subtitles from that same session. These are why the floor is 0.80 and not higher.
+    [InlineData("Yay!", 1.00)]
+    [InlineData("What?!", 1.00)]
+    [InlineData("Why me?", 0.97)]
+    [InlineData("0-0h, no!", 0.98)]
+    [InlineData("月島まりな", 1.00)]
+    public void ShortAndConfidentIsKept(string text, double confidence)
+    {
+        Assert.False(ShortReadingDetection.IsUnconvincingShortText(text, confidence));
+    }
+
+    [Fact]
+    public void LongReadingsAreNeverJudgedOnConfidence()
+    {
+        // The same session had real lines down at 0.68. Length is what separates them from the
+        // scenery above, so the confidence floor must not reach them.
+        Assert.False(ShortReadingDetection.IsUnconvincingShortText(
+            "You seem rather dispirited, Minato-san.", 0.68));
+        Assert.False(ShortReadingDetection.IsUnconvincingShortText("Kasumi'd better", 0.61));
+    }
+
+    [Fact]
+    public void NoConfidenceMeansNoJudgement()
+    {
+        // The engine reports no score for some readings, and a missing score is not a low one.
+        Assert.False(ShortReadingDetection.IsUnconvincingShortText("DM", null));
+    }
 }

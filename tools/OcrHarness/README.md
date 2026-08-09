@@ -32,6 +32,28 @@ tools/OcrHarness/bin/Debug/net8.0-windows10.0.17763.0/win-x64/OcrHarness.exe 圖
 
 目前固定以來源語言 `EN`、目標 `ZH-HANT`、Microsoft provider 執行（測英翻中用）。要換語言/provider 直接改 `Program.cs`。
 
+### 量測模式（不翻譯、不連網）
+
+改動 OCR 前後要有數字才知道有沒有變好，這兩個模式就是拿來產生那些數字的：
+
+```bash
+# 同一張圖掃過每個偵測尺寸（0.30–1.00，步進 0.05），看哪些尺寸讀得到、讀成什麼
+OcrHarness.exe --scale-sweep 圖.png [更多.png ...]
+
+# 同一張圖、同一個尺寸，只換辨識模型（cjk vs korean）
+OcrHarness.exe --compare-models 圖.png [更多.png ...]
+```
+
+`--scale-sweep` 會一併印出 `RealtimeDetectorSize` 對該尺寸區塊會挑的 primary 與 fallback，
+所以掃描結果可以直接對照 app 真正會用的尺寸來讀。它走的是主專案的 `OnnxOcrEngine`，
+量到的就是 app 實際在跑的東西。
+
+判讀時務必先把「畫面上根本沒有文字」的圖挑掉 —— 在那些圖上讀不到是正確行為，計入會把
+誤報算成成功。實務做法是只採計讀到 10 個字元以上的結果。
+
+升級模型或函式庫時，先用同一批圖跑一次存起來當基準，改完再跑一次比對；
+PP-OCRv6 那次就是靠這個確認 `RapidOcrNet 1.0.1 → 3.0.0` 的輸出逐字元相同。
+
 ## 產生測試截圖
 
 `capture.ps1` — 用 .NET `CopyFromScreen` 把螢幕區域存成 PNG（模擬使用者框選）：
