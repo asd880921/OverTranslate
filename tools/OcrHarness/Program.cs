@@ -219,7 +219,7 @@ if (args[0] == "--pad-sweep")
             // scale sweep: a reading it would have thrown away is not a reading.
             var kept = blocks?
                 .Where(block =>
-                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height) &&
+                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height, block.Text) &&
                     !ShortReadingDetection.IsTooShort(block.Text) &&
                     !ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence))
                 .ToList();
@@ -275,7 +275,7 @@ if (args[0] == "--margin-sweep")
             // which is exactly what this sweep is changing.
             var kept = blocks?
                 .Where(block =>
-                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height) &&
+                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height, block.Text) &&
                     !ShortReadingDetection.IsTooShort(block.Text) &&
                     !ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence))
                 .ToList() ?? [];
@@ -463,7 +463,7 @@ if (args[0] == "--scale-sweep")
             // application had recorded as reading nothing.
             var kept = blocks?
                 .Where(block =>
-                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height) &&
+                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, image.Height, block.Text) &&
                     !ShortReadingDetection.IsTooShort(block.Text) &&
                     !ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence))
                 .ToList();

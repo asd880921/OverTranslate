@@ -500,7 +500,7 @@ public sealed class RealtimeTranslationSession
         for (var index = 0; index < blocks.Count; index++)
         {
             var block = blocks[index];
-            if (!CollapsedDetection.IsCollapsed(block.Bounds.Height, blockHeight))
+            if (!CollapsedDetection.IsCollapsed(block.Bounds.Height, blockHeight, block.Text))
             {
                 kept?.Add(block);
                 continue;
