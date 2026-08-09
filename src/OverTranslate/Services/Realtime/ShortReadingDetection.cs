@@ -44,4 +44,44 @@ internal static class ShortReadingDetection
 
     public static bool IsTooShort(string? text) =>
         (text?.Trim().Length ?? 0) < MinimumCharacters;
+
+    /// <summary>Length under which a reading has to be confident to be believed.</summary>
+    /// <remarks>
+    /// Ten, because that is where the measured samples separate: every reading of ten characters or
+    /// more was a real line, and everything the model invented out of scenery was shorter.
+    /// </remarks>
+    public const int ShortTextLength = 10;
+
+    /// <summary>Confidence a short reading needs before it is believed.</summary>
+    /// <remarks>
+    /// Measured over one subtitle session under PP-OCRv6 (2026-08-09, 11:12–11:14). Every short
+    /// reading scoring below 0.80 was scenery, and every real short line scored well above it:
+    ///
+    /// <code>
+    ///   0.60–0.79 (45 readings)  605G0  DE  ①  M'  NA  DM  'N  回  {02  316016  a06  米 …
+    ///                            all noise, no exceptions
+    ///   0.92–1.00                "Yay!" x5  "What?!"  "Why me?"  "0-0h, no!"  "月島まりな"
+    ///                            all real subtitles
+    /// </code>
+    ///
+    /// The gap between them is empty, so the floor sits in it rather than on a measured edge.
+    /// Readings of <see cref="ShortTextLength"/> characters or more are never judged this way —
+    /// the same session had real lines scoring as low as 0.68, and length is what tells them apart.
+    /// </remarks>
+    public const double ShortTextConfidenceFloor = 0.80;
+
+    /// <summary>
+    /// A short reading the recogniser was not sure about: what it returns when handed a picture.
+    /// </summary>
+    /// <remarks>
+    /// Only possible to test for since PP-OCRv6. The model this replaced was every bit as confident
+    /// about the single characters it read off scenery as about real text, which is why confidence
+    /// was explicitly rejected as a signal earlier in this work — the change is in the model, not
+    /// in the reasoning. <c>null</c> confidence means the engine reported no scores, and then this
+    /// says nothing rather than guessing.
+    /// </remarks>
+    public static bool IsUnconvincingShortText(string? text, double? confidence) =>
+        confidence is { } score
+        && score < ShortTextConfidenceFloor
+        && (text?.Trim().Length ?? 0) < ShortTextLength;
 }
