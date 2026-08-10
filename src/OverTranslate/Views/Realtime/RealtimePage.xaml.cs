@@ -100,11 +100,9 @@ public partial class RealtimePage : UserControl
     /// This page's own starting point, independent of what is saved.
     /// </summary>
     /// <remarks>
-    /// 原文語言 is left unset on purpose. Recognition needs to be told which script to read — it
-    /// cannot be inferred from the pixels the way a translator infers a language from words — and a
-    /// wrong one does not fail loudly, it returns plausible nonsense. An empty field asks the one
-    /// question the feature cannot answer for itself; a pre-filled one invites the user straight
-    /// past it.
+    /// 原文語言 is left unset on purpose so each realtime sitting explicitly chooses automatic
+    /// detection or a fixed language. This page does not inherit the saved capture preference;
+    /// its session-only parameters are intentionally independent from the rest of the application.
     /// </remarks>
     private void ApplyPageDefaults()
     {

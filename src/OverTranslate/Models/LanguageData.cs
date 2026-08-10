@@ -9,12 +9,13 @@ namespace OverTranslate.Models;
 /// </param>
 public record LangItem(string Code, string Name, string English)
 {
-    public string Display => $"{Name} {English}";
+    public string Display => string.IsNullOrEmpty(English) ? Name : $"{Name} {English}";
 }
 public record ProviderItem(TranslationProvider Provider, string Display, bool RequiresApiKey, string? Hint = null);
 
 public static class LanguageData
 {
+    public const string AutomaticSourceLanguage = "AUTO";
     public const string DefaultSourceLanguage = "EN";
     public const string DefaultTargetLanguage = "ZH-HANT";
 
@@ -54,6 +55,7 @@ public static class LanguageData
 
     public static readonly List<LangItem> OcrSourceLanguages =
     [
+        new(AutomaticSourceLanguage, "自動（中英日）", ""),
         new("ZH-HANT", "繁體中文", "Traditional Chinese"),
         new("ZH",      "簡體中文", "Simplified Chinese"),
         new("EN",      "英語", "English"),
@@ -148,6 +150,9 @@ public static class LanguageData
             l.Code.StartsWith(mapped + "-", StringComparison.OrdinalIgnoreCase));
         return prefix?.Code;
     }
+
+    public static bool IsAutomaticSource(string? sourceCode) =>
+        AutomaticSourceLanguage.Equals(sourceCode, StringComparison.OrdinalIgnoreCase);
 
     public static string GetValidSourceCode(string? sourceCode)
     {

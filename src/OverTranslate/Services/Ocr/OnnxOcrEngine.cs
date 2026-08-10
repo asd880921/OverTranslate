@@ -25,6 +25,11 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // (60/100) that the previous English engine relied on to drop non-text regions.
     private const double MinRecognitionConfidence = 0.6;
 
+    // Automatic mode classifies each block independently, but the overlay should not render two
+    // font scales in one frame or jump between them when a borderline OCR reading changes. A
+    // shared midpoint keeps the effective glyph height independent from the chosen layout path.
+    private const double AutomaticGlyphHeightFromPitch = 1.24;
+
     // A runtime holds det + cls + rec ONNX sessions plus their CPU memory arenas (hundreds of
     // MB with the larger ImgResize). This is a tray-resident, occasional-use tool, so we keep
     // only the active model loaded AND release it after a period of inactivity, returning that
@@ -155,6 +160,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     {
         var normalizedLanguage = OcrLanguageRouter.Normalize(sourceLanguage);
         var isCjk = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
+        var usesAutomaticLayout = OcrLanguageRouter.UsesAutomaticLayout(normalizedLanguage);
 
         // Select the runtime and register an in-use reference atomically under _sync, so the
         // idle timer cannot dispose it between selection and Detect. The matching release
@@ -183,13 +189,16 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
             // On a non-CJK (Latin) page the shared general model occasionally misreads icons
             // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
-            if (!isCjk)
+            if (!isCjk && !usesAutomaticLayout)
                 converted = RemoveIconIdeographNoise(converted);
 
             // After normalisation, because that is where a CJK box is pulled in onto its glyphs and
             // the shape being judged becomes the real one. Before grouping, which happens further
             // out, so a stray box is never joined to the line beside it.
-            var blocks = RemoveMisshapenBlocks(NormalizeBlocks(converted, isCjk), normalizedLanguage);
+            var normalized = usesAutomaticLayout
+                ? NormalizeAutomaticBlocks(converted)
+                : NormalizeBlocks(converted, isCjk);
+            var blocks = RemoveMisshapenBlocks(normalized, normalizedLanguage);
 
             // Counts and lengths only — enough to tell "found nothing" from "found the wrong thing"
             // without the recognised text itself, which LogBlocks keeps at Debug.
@@ -702,7 +711,51 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         c is >= '㐀' and <= '䶿' || // Extension A
         c is >= '豈' and <= '﫿';   // Compatibility Ideographs
 
+    private static bool IsKana(char c) =>
+        c is >= 'ぁ' and <= 'ヿ' || // Hiragana + Katakana
+        c is >= 'ㇰ' and <= 'ㇿ';   // Katakana Phonetic Extensions
+
+    /// <summary>
+    /// Chooses the layout path from one recognized block when the source language is automatic.
+    /// Kana is unambiguously Japanese. Two Han characters are enough to identify real CJK text,
+    /// while a lone Han character stays on the Latin path so the existing icon-noise filter can
+    /// remove the common one-character misreads found in English interfaces.
+    /// </summary>
+    internal static bool UsesCjkLayoutForText(string text) =>
+        text.Any(IsKana) || text.Count(IsHanIdeograph) >= 2;
+
+    internal static List<OcrTextBlock> NormalizeAutomaticBlocks(List<OcrTextBlock> blocks)
+    {
+        var normalized = new List<OcrTextBlock>(blocks.Count);
+
+        foreach (var block in blocks)
+        {
+            var isCjk = UsesCjkLayoutForText(block.Text);
+            var candidate = block;
+
+            if (!isCjk)
+            {
+                var cleanedText = StripLoneIdeographs(block.Text);
+                if (cleanedText.Length == 0)
+                    continue;
+
+                if (cleanedText != block.Text)
+                    candidate = block with { Text = cleanedText };
+            }
+
+            normalized.Add(NormalizeBlock(candidate, isCjk, AutomaticGlyphHeightFromPitch));
+        }
+
+        return normalized;
+    }
+
     private static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool isCjk)
+        => blocks.Select(block => NormalizeBlock(block, isCjk)).ToList();
+
+    private static OcrTextBlock NormalizeBlock(
+        OcrTextBlock block,
+        bool isCjk,
+        double? glyphHeightFromPitchOverride = null)
     {
         const double verticalScale = 0.82;
 
@@ -713,49 +766,44 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // not a Latin one. Measured EN-vs-KO box heights on the same screenshot showed the old
         // Latin value (2.0) rendered English ~1.7x larger than the Korean (CJK) path; 1.3 brings
         // it in line, leaving English just slightly larger than CJK.
-        var glyphHeightFromPitch = isCjk ? 1.18 : 1.3;
+        var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (isCjk ? 1.18 : 1.3);
 
-        return blocks
-            .Select(block =>
-            {
-                var bounds = block.Bounds;
-                var glyphHeight = bounds.Height * verticalScale;
-                var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
+        var bounds = block.Bounds;
+        var glyphHeight = bounds.Height * verticalScale;
+        var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
 
-                // ONNX/unclip can return vertically loose boxes on wide single lines.
-                // The average glyph pitch is a better proxy for the real line height than
-                // an over-tall detection rectangle.
-                if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
-                    bounds.Width > bounds.Height * 2)
-                {
-                    var estimatedGlyphPitch = bounds.Width / glyphCount;
-                    var maxExpectedHeight = estimatedGlyphPitch * glyphHeightFromPitch;
-                    glyphHeight = Math.Min(glyphHeight, maxExpectedHeight);
-                }
+        // ONNX/unclip can return vertically loose boxes on wide single lines.
+        // The average glyph pitch is a better proxy for the real line height than
+        // an over-tall detection rectangle.
+        if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
+            bounds.Width > bounds.Height * 2)
+        {
+            var estimatedGlyphPitch = bounds.Width / glyphCount;
+            var maxExpectedHeight = estimatedGlyphPitch * glyphHeightFromPitch;
+            glyphHeight = Math.Min(glyphHeight, maxExpectedHeight);
+        }
 
-                glyphHeight = Math.Max(1, glyphHeight);
+        glyphHeight = Math.Max(1, glyphHeight);
 
-                if (isCjk)
-                {
-                    // CJK glyphs ≈ the detection box height, so shrinking + recentering the box
-                    // drives both the overlay font and its background coverage correctly.
-                    var adjustedY = bounds.Y + (bounds.Height - glyphHeight) / 2.0;
-                    return block with { Bounds = new System.Windows.Rect(bounds.X, adjustedY, bounds.Width, glyphHeight) };
-                }
+        if (isCjk)
+        {
+            // CJK glyphs ≈ the detection box height, so shrinking + recentering the box
+            // drives both the overlay font and its background coverage correctly.
+            var adjustedY = bounds.Y + (bounds.Height - glyphHeight) / 2.0;
+            return block with { Bounds = new System.Windows.Rect(bounds.X, adjustedY, bounds.Width, glyphHeight) };
+        }
 
-                // Latin: the detection box is much taller than the rendered CJK font. Keep the
-                // full box as the bubble's coverage area (so it still hides the taller original
-                // Latin glyphs) and carry the reduced glyph height separately for font sizing.
-                //
-                // Too few glyphs for the pitch clamp above to have run leaves that height at 0.82
-                // of the box, which is 1.7x the truth — a one- or two-character line rendered
-                // enormously. See ShortTextGlyphHeight for the measurements.
-                return block with
-                {
-                    SourceGlyphHeight = ShortTextGlyphHeight.For(glyphHeight, bounds.Height, glyphCount)
-                };
-            })
-            .ToList();
+        // Latin: the detection box is much taller than the rendered CJK font. Keep the
+        // full box as the bubble's coverage area (so it still hides the taller original
+        // Latin glyphs) and carry the reduced glyph height separately for font sizing.
+        //
+        // Too few glyphs for the pitch clamp above to have run leaves that height at 0.82
+        // of the box, which is 1.7x the truth — a one- or two-character line rendered
+        // enormously. See ShortTextGlyphHeight for the measurements.
+        return block with
+        {
+            SourceGlyphHeight = ShortTextGlyphHeight.For(glyphHeight, bounds.Height, glyphCount)
+        };
     }
 
     // Debug on purpose, and the shipped configuration drops that level: this is the text the user

@@ -23,6 +23,12 @@
 
   <ItemGroup>
     <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\images\設定預覽.png"
+          Link="Fixtures\設定預覽.png"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\images\翻譯比對圖.png"
+          Link="Fixtures\翻譯比對圖.png"
+          CopyToOutputDirectory="PreserveNewest" />
     <!-- Wins over the copy the OverTranslate reference brings along, which writes to the user's real
          log — see the comments in the file itself. -->
     <None Include="NLog.config" CopyToOutputDirectory="PreserveNewest" />
