@@ -96,6 +96,20 @@ public class MixedOrientationOcrTests
     }
 
     [Fact]
+    public async Task RecognizeAsync_CreatesRotatedCopyBeforeOriginalPassLocksBitmap()
+    {
+        using var engine = new BitmapLockingOcrEngine(originalWidth: 300);
+        using var bitmap = new Bitmap(300, 200);
+
+        var blocks = await MixedOrientationOcr.RecognizeAsync(
+            engine, bitmap, "JA", CancellationToken.None);
+
+        Assert.Contains(blocks, block => block.Text == "横書");
+        Assert.Contains(blocks, block => block.Text == "日本語");
+        Assert.Equal(2, engine.CallCount);
+    }
+
+    [Fact]
     public async Task RecognizeAsync_WhenVerticalPassFails_ReturnsHorizontalResult()
     {
         using var engine = new FakeOcrEngine(bitmap =>
@@ -198,5 +212,50 @@ public class MixedOrientationOcrTests
         public void Dispose()
         {
         }
+    }
+
+    private sealed class BitmapLockingOcrEngine(int originalWidth) : IOcrEngine
+    {
+        private readonly TaskCompletionSource<bool> _verticalStarted =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _callCount;
+
+        public int CallCount => _callCount;
+
+        public async Task<List<OcrTextBlock>> RecognizeAsync(
+            Bitmap bitmap,
+            string sourceLanguage,
+            CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _callCount);
+            if (bitmap.Width != originalWidth)
+            {
+                _verticalStarted.TrySetResult(true);
+                return [new OcrTextBlock("日本語", new Rect(30, 30, 100, 20))];
+            }
+
+            var data = bitmap.LockBits(
+                new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                bitmap.PixelFormat);
+            try
+            {
+                await _verticalStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+                return [new OcrTextBlock("横書", new Rect(20, 20, 80, 20))];
+            }
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
+        }
+
+        public Task<List<OcrTextBlock>?> TryRecognizeAsync(
+            Bitmap bitmap,
+            string sourceLanguage,
+            int? maxDetectSize = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<List<OcrTextBlock>?>([]);
+
+        public void Dispose() => _verticalStarted.TrySetResult(true);
     }
 }

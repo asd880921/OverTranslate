@@ -21,16 +21,21 @@ internal static class MixedOrientationOcr
         string sourceLanguage,
         CancellationToken cancellationToken)
     {
-        var horizontalTask = RecognizeAndGroupAsync(
-            engine, bitmap, sourceLanguage, cancellationToken);
         if (!UsesVerticalPass(sourceLanguage))
-            return await horizontalTask.ConfigureAwait(false);
+            return await RecognizeAndGroupAsync(
+                engine, bitmap, sourceLanguage, cancellationToken).ConfigureAwait(false);
 
         // This is the proven path from the retired batch-image feature: turning the whole image
         // makes vertical columns horizontal before detection. Candidate-based retry cannot help
-        // when the detector returned no upright blocks in the first place.
+        // when the detector returned no upright blocks in the first place. Finish the copy before
+        // starting either OCR pass: inference locks the source pixels while reading them, and
+        // cloning a bitmap during that lock makes GDI+ throw "Object is currently in use elsewhere".
+        var originalWidth = bitmap.Width;
         using var rotated = new Bitmap(bitmap);
         rotated.RotateFlip(RotateFlipType.Rotate270FlipNone);
+
+        var horizontalTask = RecognizeAndGroupAsync(
+            engine, bitmap, sourceLanguage, cancellationToken);
         var verticalTask = RecognizeAndGroupAsync(
             engine, rotated, sourceLanguage, cancellationToken);
 
@@ -64,7 +69,7 @@ internal static class MixedOrientationOcr
         }
 
         var vertical = rotatedBlocks
-            .Select(block => MapBack(block, bitmap.Width))
+            .Select(block => MapBack(block, originalWidth))
             .Where(IsVerticalResult)
             .ToList();
         var merged = Merge(horizontal, vertical);
