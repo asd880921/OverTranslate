@@ -28,7 +28,7 @@ public class OcrService : IDisposable
         Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
     {
         if (OcrLanguageRouter.IsSupported(sourceLanguage))
-            return RecognizeAndGroupAsync(
+            return MixedOrientationOcr.RecognizeAsync(
                 _engine, bitmap, OcrLanguageRouter.Normalize(sourceLanguage), cancellationToken);
 
         throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
@@ -103,13 +103,4 @@ public class OcrService : IDisposable
         _engine.Dispose();
     }
 
-    private static async Task<List<OcrTextBlock>> RecognizeAndGroupAsync(
-        IOcrEngine engine,
-        Bitmap bitmap,
-        string sourceLanguage,
-        CancellationToken cancellationToken)
-    {
-        var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage, cancellationToken);
-        return OcrTextBlockGrouper.Group(blocks);
-    }
 }
