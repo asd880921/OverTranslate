@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Text.Json;
+using OverTranslate.Models;
 
 namespace OverTranslate.Services.Providers;
 
@@ -14,6 +15,9 @@ public class DeepLProvider : ITranslationProvider
             ? "https://api-free.deepl.com/v2/translate"
             : "https://api.deepl.com/v2/translate";
 
+    internal static bool ShouldSendSourceLanguage(string sourceLang) =>
+        !LanguageData.IsAutomaticSource(sourceLang);
+
     public async Task<(List<TranslatedBlock> Blocks, string DetectedLang)> TranslateAsync(
         List<OcrTextBlock> blocks, string sourceLang, string targetLang, string apiKey,
         CancellationToken cancellationToken = default)
@@ -25,7 +29,7 @@ public class DeepLProvider : ITranslationProvider
         foreach (var b in blocks)
             content.Add(new("text", b.Text));
 
-        if (sourceLang != "auto")
+        if (ShouldSendSourceLanguage(sourceLang))
             content.Add(new("source_lang", sourceLang.ToUpper()));
 
         content.Add(new("target_lang", targetLang.ToUpper()));

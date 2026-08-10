@@ -1,5 +1,6 @@
 using GTranslate;
 using GTranslate.Translators;
+using OverTranslate.Models;
 
 namespace OverTranslate.Services.Providers;
 
@@ -38,6 +39,9 @@ public class GTranslateProvider : ITranslationProvider
 
     private static string MapToGTranslate(string deepLCode) =>
         ToGTranslate.TryGetValue(deepLCode, out var code) ? code : deepLCode.ToLowerInvariant().Split('-')[0];
+
+    internal static string? MapSourceToGTranslate(string sourceLang) =>
+        LanguageData.IsAutomaticSource(sourceLang) ? null : MapToGTranslate(sourceLang);
 
     private static string MapDetectedToDeepL(string iso6391) => iso6391.ToUpperInvariant() switch
     {
@@ -85,7 +89,7 @@ public class GTranslateProvider : ITranslationProvider
             targetLang = overrideLang;
 
         var toCode   = MapToGTranslate(targetLang);
-        var fromCode = sourceLang == "auto" ? null : MapToGTranslate(sourceLang);
+        var fromCode = MapSourceToGTranslate(sourceLang);
 
         var r       = await _translator.TranslateAsync(text, toCode, fromCode);
         var detLang = r.SourceLanguage?.ISO6391 ?? "";

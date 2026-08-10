@@ -1,6 +1,7 @@
 using OverTranslate.Services;
 using OverTranslate.Services.Ocr;
 using System.Drawing;
+using System.Drawing.Text;
 using Xunit;
 
 namespace OverTranslate.Tests;
@@ -14,6 +15,8 @@ public class OcrServiceTests
     [InlineData("ZH-HANT")]
     [InlineData("JA")]
     [InlineData("KO")]
+    [InlineData("AUTO")]
+    [InlineData("auto")]
     public void SupportedLanguages_AreRecognizedByRouter(string code)
     {
         Assert.True(OcrLanguageRouter.IsSupported(code));
@@ -22,7 +25,6 @@ public class OcrServiceTests
     [Theory]
     [InlineData("DE")]
     [InlineData("FR")]
-    [InlineData("AUTO")]
     public void UnsupportedLanguages_AreRejectedByRouter(string code)
     {
         Assert.False(OcrLanguageRouter.IsSupported(code));
@@ -45,6 +47,59 @@ public class OcrServiceTests
         Assert.Equal("korean", OnnxOcrEngine.GetModelKeyForLanguage("KO"));
         Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("JA"));
         Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("ZH-HANT"));
+        Assert.Equal("cjk", OnnxOcrEngine.GetModelKeyForLanguage("AUTO"));
+    }
+
+    [Theory]
+    [InlineData("Hello world", false)]
+    [InlineData("甲Glossaries", false)]
+    [InlineData("翻譯", true)]
+    [InlineData("2026年5月8日", true)]
+    [InlineData("日本語", true)]
+    [InlineData("カタカナ", true)]
+    [InlineData("English 中文", true)]
+    public void AutomaticLayout_IsChosenPerRecognizedBlock(string text, bool expectedCjk)
+    {
+        Assert.Equal(expectedCjk, OnnxOcrEngine.UsesCjkLayoutForText(text));
+    }
+
+    [Fact]
+    public void AutomaticLayout_NormalizesEachBlockAndKeepsLatinIconFiltering()
+    {
+        var bounds = new System.Windows.Rect(0, 0, 120, 20);
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Settings", bounds),
+            new("設定", bounds),
+            new("白", bounds),
+        };
+
+        var normalized = OnnxOcrEngine.NormalizeAutomaticBlocks(blocks);
+
+        Assert.Equal(2, normalized.Count);
+        Assert.Equal("Settings", normalized[0].Text);
+        Assert.NotNull(normalized[0].SourceGlyphHeight);
+        Assert.Equal(bounds.Height, normalized[0].Bounds.Height);
+        Assert.Equal("設定", normalized[1].Text);
+        Assert.Null(normalized[1].SourceGlyphHeight);
+        Assert.True(normalized[1].Bounds.Height < bounds.Height);
+    }
+
+    [Fact]
+    public void AutomaticLayout_UsesOneEffectiveGlyphScaleAcrossScripts()
+    {
+        var bounds = new System.Windows.Rect(0, 0, 120, 40);
+        var normalized = OnnxOcrEngine.NormalizeAutomaticBlocks(
+        [
+            new("Settings", bounds),
+            new("設定設定設定設定", bounds),
+        ]);
+
+        var latinGlyphHeight = normalized[0].SourceGlyphHeight;
+        var cjkGlyphHeight = normalized[1].Bounds.Height;
+
+        Assert.NotNull(latinGlyphHeight);
+        Assert.Equal(cjkGlyphHeight, latinGlyphHeight.Value, precision: 6);
     }
 
     [Theory]
@@ -128,6 +183,61 @@ public class OcrServiceTests
         // capital and the assertion was written around that, quietly making a recognition error
         // part of the contract. Worth remembering when the next model changes it back.
         Assert.Contains("Skill(domain-modeling)", tightText);
+    }
+
+    [Fact]
+    public async Task OnnxEngine_AutomaticModeRecognizesLatinTextWithGeneralModel()
+    {
+        using var engine = new OnnxOcrEngine();
+        using var bitmap = LoadFixture("capture-264x56.png");
+
+        var text = TextOf(await engine.RecognizeAsync(bitmap, "AUTO"));
+
+        Assert.Contains("Skill(domain-modeling)", text);
+    }
+
+    [Fact]
+    public async Task OnnxEngine_AutomaticModeRecognizesChineseInterface()
+    {
+        using var engine = new OnnxOcrEngine();
+        using var bitmap = LoadFixture("設定預覽.png");
+
+        var blocks = await engine.RecognizeAsync(bitmap, "AUTO");
+
+        Assert.NotEmpty(blocks);
+        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkLayoutForText(block.Text));
+    }
+
+    [Fact]
+    public async Task OnnxEngine_AutomaticModeRecognizesJapaneseText()
+    {
+        using var bitmap = new Bitmap(420, 90);
+        using (var graphics = Graphics.FromImage(bitmap))
+        using (var font = new Font("Yu Gothic UI", 38, FontStyle.Regular, GraphicsUnit.Pixel))
+        {
+            graphics.Clear(Color.White);
+            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            graphics.DrawString("日本語テスト", font, Brushes.Black, new PointF(12, 12));
+        }
+
+        using var engine = new OnnxOcrEngine();
+        var blocks = await engine.RecognizeAsync(bitmap, "AUTO");
+        var text = TextOf(blocks);
+
+        Assert.Contains("日本語", text);
+        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkLayoutForText(block.Text));
+    }
+
+    [Fact]
+    public async Task OnnxEngine_AutomaticModeMatchesManualEnglishOnMixedInterface()
+    {
+        using var engine = new OnnxOcrEngine();
+        using var bitmap = LoadFixture("翻譯比對圖.png");
+
+        var manual = TextOf(await engine.RecognizeAsync(bitmap, "EN"));
+        var automatic = TextOf(await engine.RecognizeAsync(bitmap, "AUTO"));
+
+        Assert.Equal(manual, automatic);
     }
 
     private static Bitmap LoadFixture(string name) =>

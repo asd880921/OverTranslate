@@ -25,7 +25,7 @@ public class AppSettings
     public uint TranslationWindowHotkeyVirtualKey { get; set; } = 0x53;
 
     public string TranslationWindowHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
-    public string SourceLanguage { get; set; } = "EN";
+    public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;
     public string ApiKey { get; set; } = "";

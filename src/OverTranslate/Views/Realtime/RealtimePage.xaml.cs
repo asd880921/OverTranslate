@@ -75,7 +75,8 @@ public partial class RealtimePage : UserControl
     {
         InitializeComponent();
 
-        SrcLangBox.ItemsSource = LanguageData.OcrSourceLanguages;
+        SrcLangBox.ItemsSource = LanguageData.OcrSourceLanguages
+            .Where(language => !LanguageData.IsAutomaticSource(language.Code));
         TgtLangBox.ItemsSource = LanguageData.TargetLanguages;
 
         ProviderBox.ItemsSource = LanguageData.Providers;
@@ -100,11 +101,9 @@ public partial class RealtimePage : UserControl
     /// This page's own starting point, independent of what is saved.
     /// </summary>
     /// <remarks>
-    /// 原文語言 is left unset on purpose. Recognition needs to be told which script to read — it
-    /// cannot be inferred from the pixels the way a translator infers a language from words — and a
-    /// wrong one does not fail loudly, it returns plausible nonsense. An empty field asks the one
-    /// question the feature cannot answer for itself; a pre-filled one invites the user straight
-    /// past it.
+    /// 原文語言 is left unset on purpose. Realtime recognition offers no retry once the frame has
+    /// passed, so the user has to make the source language explicit before starting a session. An
+    /// empty field asks that question instead of silently choosing an unreliable automatic mode.
     /// </remarks>
     private void ApplyPageDefaults()
     {

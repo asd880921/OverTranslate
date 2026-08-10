@@ -22,6 +22,9 @@ public partial class TranslationPage : UserControl
 
     // True while we set the text/selectors programmatically, so those changes don't auto-translate.
     private bool _suppressAuto;
+    // True while shared settings are being reflected into the selectors, so their change events do
+    // not write the same values back to disk one field at a time.
+    private bool _reloadingPreferences;
     // Monotonic id so a slow in-flight translation can't overwrite the result of a newer one.
     private int _seq;
     // Last input that translated successfully — lets us skip redundant identical re-translations.
@@ -52,25 +55,58 @@ public partial class TranslationPage : UserControl
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
     }
 
+    /// <summary>
+    /// Re-reads the shared translation preferences after another page changes them.
+    /// </summary>
+    public void Reload()
+    {
+        var settings = SettingsService.Instance.Current;
+        var sourceLanguage = LanguageData.GetValidSourceCode(settings.SourceLanguage);
+        var targetLanguage = LanguageData.GetValidTargetCode(settings.TargetLanguage);
+        var provider = settings.Provider;
+        var selectionChanged =
+            !Equals(SrcLangBox.SelectedValue, sourceLanguage) ||
+            !Equals(TgtLangBox.SelectedValue, targetLanguage) ||
+            !Equals(ProviderBox.SelectedValue, provider);
+
+        _suppressAuto = true;
+        _reloadingPreferences = true;
+        try
+        {
+            SrcLangBox.SelectedValue = sourceLanguage;
+            TgtLangBox.SelectedValue = targetLanguage;
+            ProviderBox.SelectedValue = provider;
+            if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+        }
+        finally
+        {
+            _reloadingPreferences = false;
+            _suppressAuto = false;
+        }
+
+        if (selectionChanged)
+            RequestTranslate();
+    }
+
     private void SourceTextBox_TextChanged(object sender, TextChangedEventArgs e)
         => RequestTranslate();
 
     private void SrcLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        SaveCurrentLanguageSelection();
+        if (!_reloadingPreferences) SaveCurrentLanguageSelection();
         RequestTranslate();
     }
 
     private void TgtLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        SaveCurrentLanguageSelection();
+        if (!_reloadingPreferences) SaveCurrentLanguageSelection();
         RequestTranslate();
     }
 
     private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ProviderBox.SelectedValue is not TranslationProvider provider) return;
-        SaveProviderSelection(provider);
+        if (!_reloadingPreferences) SaveProviderSelection(provider);
         RequestTranslate();
     }
 

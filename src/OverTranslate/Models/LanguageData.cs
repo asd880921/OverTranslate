@@ -9,22 +9,25 @@ namespace OverTranslate.Models;
 /// </param>
 public record LangItem(string Code, string Name, string English)
 {
-    public string Display => $"{Name} {English}";
+    public string Display => string.IsNullOrEmpty(English) ? Name : $"{Name} {English}";
 }
 public record ProviderItem(TranslationProvider Provider, string Display, bool RequiresApiKey, string? Hint = null);
 
 public static class LanguageData
 {
-    public const string DefaultSourceLanguage = "EN";
+    public const string AutomaticSourceLanguage = "AUTO";
+    public const string DefaultSourceLanguage = AutomaticSourceLanguage;
+    public const string DefaultOcrSourceLanguage = AutomaticSourceLanguage;
     public const string DefaultTargetLanguage = "ZH-HANT";
 
     public static readonly List<LangItem> SourceLanguages =
     [
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new(AutomaticSourceLanguage, "自動", "Automatic"),
         new("EN",      "英語", "English"),
         new("JA",      "日語", "Japanese"),
         new("KO",      "韓語", "Korean"),
+        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
         new("BG",      "保加利亞語", "Bulgarian"),
         new("CS",      "捷克語", "Czech"),
         new("DA",      "丹麥語", "Danish"),
@@ -54,11 +57,12 @@ public static class LanguageData
 
     public static readonly List<LangItem> OcrSourceLanguages =
     [
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new(AutomaticSourceLanguage, "自動（中英日）", ""),
         new("EN",      "英語", "English"),
         new("JA",      "日語", "Japanese"),
         new("KO",      "韓語", "Korean"),
+        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
     ];
 
     public static readonly List<ProviderItem> Providers =
@@ -80,11 +84,11 @@ public static class LanguageData
 
     public static readonly List<LangItem> TargetLanguages =
     [
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH-HANS", "簡體中文", "Simplified Chinese"),
         new("EN-US",   "英語", "English"),
         new("JA",      "日語", "Japanese"),
         new("KO",      "韓語", "Korean"),
+        new("ZH-HANS", "簡體中文", "Simplified Chinese"),
+        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
         new("BG",      "保加利亞語", "Bulgarian"),
         new("CS",      "捷克語", "Czech"),
         new("DA",      "丹麥語", "Danish"),
@@ -149,6 +153,9 @@ public static class LanguageData
         return prefix?.Code;
     }
 
+    public static bool IsAutomaticSource(string? sourceCode) =>
+        AutomaticSourceLanguage.Equals(sourceCode, StringComparison.OrdinalIgnoreCase);
+
     public static string GetValidSourceCode(string? sourceCode)
     {
         if (string.IsNullOrWhiteSpace(sourceCode))
@@ -162,11 +169,11 @@ public static class LanguageData
     public static string GetValidOcrSourceCode(string? sourceCode)
     {
         if (string.IsNullOrWhiteSpace(sourceCode))
-            return DefaultSourceLanguage;
+            return DefaultOcrSourceLanguage;
 
         var match = OcrSourceLanguages.FirstOrDefault(l =>
             l.Code.Equals(sourceCode, StringComparison.OrdinalIgnoreCase));
-        return match?.Code ?? DefaultSourceLanguage;
+        return match?.Code ?? DefaultOcrSourceLanguage;
     }
 
     public static string GetValidTargetCode(string? targetCode)
