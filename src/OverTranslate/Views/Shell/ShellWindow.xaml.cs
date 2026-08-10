@@ -161,8 +161,9 @@ public partial class ShellWindow : Window
     {
         _current = page;
 
-        // Both of these read state that can change while the user is on another page — the settings
-        // file, and the attached monitors plus whether a realtime session is running.
+        // These pages read state that can change while the user is elsewhere: shared translation
+        // preferences, the settings file, and attached monitors plus realtime session state.
+        if (page == ShellPage.Translation) _translationPage.Reload();
         if (page == ShellPage.Settings) _settingsPage.Reload();
         if (page == ShellPage.Realtime) _realtimePage.Reload();
 
