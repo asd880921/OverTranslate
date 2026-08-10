@@ -246,6 +246,22 @@ public partial class OverlayWindow : Window
                 textBrush = lum > 0.5 ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.White;
             }
 
+            if (VerticalOverlayLayout.IsVerticalSource(block))
+            {
+                AddVerticalOverlay(
+                    block,
+                    canvasX,
+                    canvasY,
+                    wpfW,
+                    wpfH,
+                    sourceFontReferenceHeight,
+                    canvasWidth,
+                    canvasHeight,
+                    bg,
+                    textBrush);
+                continue;
+            }
+
             bool isSingleLineSource = IsSingleLineSource(block.OriginalText, sourceFontReferenceHeight);
             bool isGroupedMultiLineSource = block.SourceLineBounds is { Count: > 1 };
             double minFontSize = SourceFontScale.MinFontSize(sourceFontReferenceHeight);
@@ -448,6 +464,66 @@ public partial class OverlayWindow : Window
             Canvas.SetTop(textContainer, top);
             BubbleBackgroundCanvas.Children.Add(backgroundBorder);
             BubbleTextCanvas.Children.Add(textContainer);
+        }
+    }
+
+    private void AddVerticalOverlay(
+        TranslatedBlock block,
+        double canvasX,
+        double canvasY,
+        double sourceWidth,
+        double sourceHeight,
+        double sourceGlyphSize,
+        double canvasWidth,
+        double canvasHeight,
+        System.Windows.Media.Color backgroundColor,
+        System.Windows.Media.Brush textBrush)
+    {
+        var layout = VerticalOverlayLayout.Calculate(new(
+            block.TranslatedText,
+            canvasX,
+            canvasY,
+            sourceWidth,
+            sourceHeight,
+            sourceGlyphSize,
+            canvasWidth,
+            canvasHeight));
+
+        var background = new Border
+        {
+            Background = new SolidColorBrush(backgroundColor),
+            Padding = new Thickness(3, 2, 3, 2),
+            Width = layout.Width,
+            Height = layout.Height,
+            ClipToBounds = true,
+        };
+        Canvas.SetLeft(background, layout.Left);
+        Canvas.SetTop(background, layout.Top);
+        BubbleBackgroundCanvas.Children.Add(background);
+
+        foreach (var (glyph, cellRect) in VerticalOverlayLayout.Cells(layout))
+        {
+            var cell = new TextBlock
+            {
+                Text = glyph.ToString(),
+                FontSize = layout.FontSize,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = textBrush,
+                Width = cellRect.Width,
+                Height = cellRect.Height,
+                TextAlignment = TextAlignment.Center,
+                FontFamily = new System.Windows.Media.FontFamily(
+                    "Microsoft JhengHei, Segoe UI, Sans-Serif"),
+            };
+            if (VerticalOverlayLayout.RotatesInVerticalText(glyph))
+            {
+                cell.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+                cell.RenderTransform = new RotateTransform(90);
+            }
+
+            Canvas.SetLeft(cell, cellRect.X);
+            Canvas.SetTop(cell, cellRect.Y + (cellRect.Height - layout.FontSize * 1.2) / 2);
+            BubbleTextCanvas.Children.Add(cell);
         }
     }
 
