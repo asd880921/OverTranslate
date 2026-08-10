@@ -7,6 +7,20 @@ namespace OverTranslate.Tests;
 public class LanguageDataTests
 {
     [Fact]
+    public void PrimaryLanguages_UseConsistentOrder()
+    {
+        Assert.Equal(
+            ["AUTO", "EN", "JA", "KO", "ZH", "ZH-HANT"],
+            LanguageData.SourceLanguages.Take(6).Select(language => language.Code));
+        Assert.Equal(
+            ["AUTO", "EN", "JA", "KO", "ZH", "ZH-HANT"],
+            LanguageData.OcrSourceLanguages.Take(6).Select(language => language.Code));
+        Assert.Equal(
+            ["EN-US", "JA", "KO", "ZH-HANS", "ZH-HANT"],
+            LanguageData.TargetLanguages.Take(5).Select(language => language.Code));
+    }
+
+    [Fact]
     public void AutomaticSource_IsAvailableWithSupportedLanguagesInLabel()
     {
         var ocr = LanguageData.OcrSourceLanguages.Single(language =>

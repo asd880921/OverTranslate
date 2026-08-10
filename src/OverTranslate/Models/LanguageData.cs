@@ -23,11 +23,11 @@ public static class LanguageData
     public static readonly List<LangItem> SourceLanguages =
     [
         new(AutomaticSourceLanguage, "自動", "Automatic"),
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH",      "簡體中文", "Simplified Chinese"),
         new("EN",      "英語", "English"),
         new("JA",      "日語", "Japanese"),
         new("KO",      "韓語", "Korean"),
+        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
         new("BG",      "保加利亞語", "Bulgarian"),
         new("CS",      "捷克語", "Czech"),
         new("DA",      "丹麥語", "Danish"),
@@ -58,11 +58,11 @@ public static class LanguageData
     public static readonly List<LangItem> OcrSourceLanguages =
     [
         new(AutomaticSourceLanguage, "自動（中英日）", ""),
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH",      "簡體中文", "Simplified Chinese"),
         new("EN",      "英語", "English"),
         new("JA",      "日語", "Japanese"),
         new("KO",      "韓語", "Korean"),
+        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
     ];
 
     public static readonly List<ProviderItem> Providers =
@@ -84,11 +84,11 @@ public static class LanguageData
 
     public static readonly List<LangItem> TargetLanguages =
     [
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH-HANS", "簡體中文", "Simplified Chinese"),
         new("EN-US",   "英語", "English"),
         new("JA",      "日語", "Japanese"),
         new("KO",      "韓語", "Korean"),
+        new("ZH-HANS", "簡體中文", "Simplified Chinese"),
+        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
         new("BG",      "保加利亞語", "Bulgarian"),
         new("CS",      "捷克語", "Czech"),
         new("DA",      "丹麥語", "Danish"),
