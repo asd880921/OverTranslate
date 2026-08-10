@@ -31,14 +31,10 @@
                         <TextBlock Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
 
                         <!-- OCR source languages only: this page recognises text off the screen, so
-                             a language the recogniser cannot read has nothing to offer here. Left
-                             unset on purpose — see RealtimePage.ApplyPageDefaults. -->
+                             a language the recogniser cannot read has nothing to offer here. It
+                             starts in automatic mode without reading or writing the saved setting. -->
                         <TextBlock Text="來源語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                        <!-- Placeholder rather than a line of help underneath: the field is empty
-                             because the user has to answer it, and saying so inside the empty space
-                             puts the instruction where they are already looking. Margin matches the
-                             selected item's own (9,0,28,0) so the prompt and the eventual answer
-                             occupy the same spot rather than shifting when one replaces the other. -->
+                        <!-- Kept as a defensive fallback if no valid source item can be selected. -->
                         <Grid Margin="0,0,0,14">
                             <ComboBox x:Name="SrcLangBox"
                                       Style="{StaticResource ModernComboBox}"

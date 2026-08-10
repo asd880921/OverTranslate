@@ -91,8 +91,7 @@ public partial class RealtimePage : UserControl
 
         RealtimeSessionController.Instance.StateChanged += OnSessionStateChanged;
 
-        // Not just the stepper: the start button has to begin unavailable too, because 原文語言
-        // starts unset and RenderState is what ties the two together.
+        // Render the initial automatic source selection and the rest of the page defaults.
         RenderState();
     }
 
@@ -100,13 +99,13 @@ public partial class RealtimePage : UserControl
     /// This page's own starting point, independent of what is saved.
     /// </summary>
     /// <remarks>
-    /// 原文語言 is left unset on purpose so each realtime sitting explicitly chooses automatic
-    /// detection or a fixed language. This page does not inherit the saved capture preference;
-    /// its session-only parameters are intentionally independent from the rest of the application.
+    /// 原文語言 starts in automatic mode for a friendlier first run. This page still does not
+    /// inherit or update the saved capture preference; its session-only parameters are intentionally
+    /// independent from the rest of the application.
     /// </remarks>
     private void ApplyPageDefaults()
     {
-        SrcLangBox.SelectedIndex = -1;
+        SrcLangBox.SelectedValue = LanguageData.DefaultOcrSourceLanguage;
         TgtLangBox.SelectedValue = DefaultTargetLanguage;
         ProviderBox.SelectedValue = DefaultProvider;
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;

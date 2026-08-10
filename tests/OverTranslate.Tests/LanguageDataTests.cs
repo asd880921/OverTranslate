@@ -13,9 +13,28 @@ public class LanguageDataTests
             language.Code == LanguageData.AutomaticSourceLanguage);
 
         Assert.Equal("自動（中英日）", ocr.Name);
-        Assert.DoesNotContain(LanguageData.SourceLanguages, language =>
+        Assert.Contains(LanguageData.SourceLanguages, language =>
             language.Code == LanguageData.AutomaticSourceLanguage);
         Assert.Equal("AUTO", LanguageData.GetValidOcrSourceCode("auto"));
+        Assert.Equal("AUTO", LanguageData.GetValidSourceCode("auto"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("unsupported")]
+    public void TextSourceDefaultsToAutomatic(string? code)
+    {
+        Assert.Equal(LanguageData.AutomaticSourceLanguage, LanguageData.GetValidSourceCode(code));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("unsupported")]
+    public void OcrSourceDefaultsToAutomatic(string? code)
+    {
+        Assert.Equal(LanguageData.AutomaticSourceLanguage, LanguageData.GetValidOcrSourceCode(code));
     }
 
     [Theory]

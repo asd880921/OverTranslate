@@ -16,11 +16,13 @@ public record ProviderItem(TranslationProvider Provider, string Display, bool Re
 public static class LanguageData
 {
     public const string AutomaticSourceLanguage = "AUTO";
-    public const string DefaultSourceLanguage = "EN";
+    public const string DefaultSourceLanguage = AutomaticSourceLanguage;
+    public const string DefaultOcrSourceLanguage = AutomaticSourceLanguage;
     public const string DefaultTargetLanguage = "ZH-HANT";
 
     public static readonly List<LangItem> SourceLanguages =
     [
+        new(AutomaticSourceLanguage, "自動", "Automatic"),
         new("ZH-HANT", "繁體中文", "Traditional Chinese"),
         new("ZH",      "簡體中文", "Simplified Chinese"),
         new("EN",      "英語", "English"),
@@ -167,11 +169,11 @@ public static class LanguageData
     public static string GetValidOcrSourceCode(string? sourceCode)
     {
         if (string.IsNullOrWhiteSpace(sourceCode))
-            return DefaultSourceLanguage;
+            return DefaultOcrSourceLanguage;
 
         var match = OcrSourceLanguages.FirstOrDefault(l =>
             l.Code.Equals(sourceCode, StringComparison.OrdinalIgnoreCase));
-        return match?.Code ?? DefaultSourceLanguage;
+        return match?.Code ?? DefaultOcrSourceLanguage;
     }
 
     public static string GetValidTargetCode(string? targetCode)

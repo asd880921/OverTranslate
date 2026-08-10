@@ -69,7 +69,7 @@ public class SettingsParsingTests
 
         Assert.Equal("Dark", settings.Theme);
         Assert.Equal("", settings.ApiKey);
-        Assert.Equal("EN", settings.SourceLanguage);
+        Assert.Equal(LanguageData.AutomaticSourceLanguage, settings.SourceLanguage);
     }
 
     [Theory]
@@ -92,6 +92,7 @@ public class SettingsParsingTests
 
         Assert.Equal("Dark", settings.Theme);
         Assert.Equal("Ctrl+Alt+A", settings.HotkeyDisplay);
+        Assert.Equal(LanguageData.AutomaticSourceLanguage, settings.SourceLanguage);
     }
 
     // A round trip has to survive, or the tolerant read would quietly drop values on every save.
