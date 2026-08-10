@@ -75,7 +75,8 @@ public partial class RealtimePage : UserControl
     {
         InitializeComponent();
 
-        SrcLangBox.ItemsSource = LanguageData.OcrSourceLanguages;
+        SrcLangBox.ItemsSource = LanguageData.OcrSourceLanguages
+            .Where(language => !LanguageData.IsAutomaticSource(language.Code));
         TgtLangBox.ItemsSource = LanguageData.TargetLanguages;
 
         ProviderBox.ItemsSource = LanguageData.Providers;
@@ -91,7 +92,8 @@ public partial class RealtimePage : UserControl
 
         RealtimeSessionController.Instance.StateChanged += OnSessionStateChanged;
 
-        // Render the initial automatic source selection and the rest of the page defaults.
+        // Not just the stepper: the start button has to begin unavailable too, because 原文語言
+        // starts unset and RenderState is what ties the two together.
         RenderState();
     }
 
@@ -99,13 +101,13 @@ public partial class RealtimePage : UserControl
     /// This page's own starting point, independent of what is saved.
     /// </summary>
     /// <remarks>
-    /// 原文語言 starts in automatic mode for a friendlier first run. This page still does not
-    /// inherit or update the saved capture preference; its session-only parameters are intentionally
-    /// independent from the rest of the application.
+    /// 原文語言 is left unset on purpose. Realtime recognition offers no retry once the frame has
+    /// passed, so the user has to make the source language explicit before starting a session. An
+    /// empty field asks that question instead of silently choosing an unreliable automatic mode.
     /// </remarks>
     private void ApplyPageDefaults()
     {
-        SrcLangBox.SelectedValue = LanguageData.DefaultOcrSourceLanguage;
+        SrcLangBox.SelectedIndex = -1;
         TgtLangBox.SelectedValue = DefaultTargetLanguage;
         ProviderBox.SelectedValue = DefaultProvider;
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
