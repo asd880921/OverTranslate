@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "issue-47-zh-hant-en",
+  "corpusVersion": "1.0.0",
+  "deidentified": true,
+  "notes": "Issue #47 fixed Traditional Chinese to English Phase 0 corpus.",
+  "cases": [
+    { "id": "subtitle-001", "category": "subtitle", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "湊小姐，妳看起來相當消沉。", "referenceTranslation": "You seem rather dispirited, Minato-san." },
+    { "id": "subtitle-002", "category": "subtitle", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "瑪莉娜小姐，妳還好嗎？", "referenceTranslation": "Marina-san, are you okay?" },
+    { "id": "subtitle-003", "category": "subtitle", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "我們不能再在這裡待太久。", "referenceTranslation": "We can't stay here much longer." },
+    { "id": "subtitle-004", "category": "subtitle", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "如果現在回頭，一切就都白費了。", "referenceTranslation": "If we turn back now, everything was for nothing." },
+    { "id": "dialogue-001", "category": "game-dialogue", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "別打開那扇門——", "referenceTranslation": "Don't open that door—" },
+    { "id": "dialogue-002", "category": "game-dialogue", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "北門……它已經——", "referenceTranslation": "The northern gate... it's already—" },
+    { "id": "dialogue-003", "category": "game-dialogue", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "不，我不是那個意思。", "referenceTranslation": "No, that's not what I meant." },
+    { "id": "dialogue-004", "category": "game-dialogue", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "我從沒說過是他偷了鑰匙。", "referenceTranslation": "I never said he stole the key." },
+    { "id": "ui-001", "category": "ui", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "按 E 互動。", "referenceTranslation": "Press E to interact." },
+    { "id": "ui-002", "category": "ui", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "重試連線", "referenceTranslation": "Retry connection" },
+    { "id": "ui-003", "category": "ui", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "載入中……請勿關閉應用程式。", "referenceTranslation": "Loading... Do not close the application." },
+    { "id": "ui-004", "category": "ui", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "確定要覆寫存檔 03 嗎？", "referenceTranslation": "Are you sure you want to overwrite Save 03?" },
+    { "id": "tooltip-001", "category": "tooltip", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "拖曳時按住 Shift，即可對齊格線。", "referenceTranslation": "Hold Shift while dragging to snap to grid." },
+    { "id": "tooltip-002", "category": "tooltip", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "戰鬥期間無法使用此物品。", "referenceTranslation": "Item cannot be used during combat." },
+    { "id": "system-001", "category": "system", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "任務已更新：尋找舊天文台。", "referenceTranslation": "Quest updated: Find the old observatory." },
+    { "id": "system-002", "category": "system", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "伺服器將在 5 分鐘後重新啟動。", "referenceTranslation": "The server will restart in 5 minutes." },
+    { "id": "proper-name-001", "category": "proper-name", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "維爾博士說 Aster 核心不穩定。", "referenceTranslation": "Dr. Vale said the Aster core is unstable." },
+    { "id": "mixed-001", "category": "mixed-language", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "生命值 +20／冷卻時間 -10%", "referenceTranslation": "HP +20 / Cooldown -10%" },
+    { "id": "mixed-002", "category": "mixed-language", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "來自 Yuna 的新訊息（2）", "referenceTranslation": "New message from Yuna (2)" },
+    { "id": "ocr-noise-001", "category": "ocr-noise", "sourceLanguage": "ZH-HANT", "targetLanguage": "EN", "sourceText": "連線中斷。正茌重試……", "referenceTranslation": "Connection lost. Retrying..." }
+  ]
+}

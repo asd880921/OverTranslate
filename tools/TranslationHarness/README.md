@@ -48,6 +48,8 @@ corpus 版本、runs、warmup 與 batch sizes，並為硬體使用穩定名稱�
 `BergamotTranslationProvider` 會載入指定 DLL 與 model config 一次，後續 batch 沿用同一模型，並將
 provider 初始化時間獨立寫入 report。原生推論開始後目前無法硬中止；取消可阻止尚未開始的工作，
 過時結果仍由呼叫端丟棄。若後續需要可靠硬 timeout／native crash 隔離，應比較獨立 worker process。
+`bergamot-pivot` 會在同一 native service 載入兩個 model，完整呼叫 Bergamot `pivotMultiple`；初始化、
+CPU、working set 與延遲均包含兩段，不可和 direct 結果混合平均。
 
 wrapper 的 CMake 專案需要另外提供 Bergamot checkout：
 
@@ -73,6 +75,18 @@ dotnet run --project C:/path/to/OverTranslate/tools/TranslationHarness/Translati
   --runs 10 `
   --warmup-runs 1 `
   --batch-sizes 1,2,4,8
+```
+
+英文 pivot：
+
+```powershell
+dotnet run --project C:/path/to/OverTranslate/tools/TranslationHarness/TranslationHarness.csproj -- `
+  --corpus C:/path/to/corpus.json `
+  --hardware-profile dev-machine `
+  --provider bergamot-pivot `
+  --native-library C:/path/to/overtranslate_bergamot.dll `
+  --model-config C:/path/to/source-to-en.yml `
+  --pivot-model-config C:/path/to/en-to-target.yml
 ```
 
 這個 harness 量到 provider 呼叫的延遲與自身程序資源，還沒有同時執行 OCR，因此不能單獨證明

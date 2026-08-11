@@ -14,6 +14,11 @@ extern "C" {
 
 OT_BERGAMOT_API void *ot_bergamot_create(const char *config_path, char **error_utf8);
 
+OT_BERGAMOT_API void *ot_bergamot_create_pivot(
+    const char *source_to_pivot_config_path,
+    const char *pivot_to_target_config_path,
+    char **error_utf8);
+
 OT_BERGAMOT_API int ot_bergamot_translate(
     void *handle,
     const char *const *inputs_utf8,

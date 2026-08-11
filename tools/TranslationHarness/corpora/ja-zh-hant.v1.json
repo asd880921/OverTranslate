@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "issue-47-ja-zh-hant",
+  "corpusVersion": "1.0.0",
+  "deidentified": true,
+  "notes": "Issue #47 fixed Japanese to Traditional Chinese Phase 0 corpus.",
+  "cases": [
+    { "id": "subtitle-001", "category": "subtitle", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "元気がないみたいね、湊さん。", "referenceTranslation": "湊小姐，妳看起來沒什麼精神。" },
+    { "id": "subtitle-002", "category": "subtitle", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "マリナさん、大丈夫ですか？", "referenceTranslation": "瑪莉娜小姐，妳還好嗎？" },
+    { "id": "subtitle-003", "category": "subtitle", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "ここにはもう長くいられない。", "referenceTranslation": "我們不能再在這裡待太久。" },
+    { "id": "subtitle-004", "category": "subtitle", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "今引き返したら、すべてが無駄になる。", "referenceTranslation": "如果現在回頭，一切就都白費了。" },
+    { "id": "dialogue-001", "category": "game-dialogue", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "その扉を開けるな——", "referenceTranslation": "別打開那扇門——" },
+    { "id": "dialogue-002", "category": "game-dialogue", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "北の門は……もう——", "referenceTranslation": "北門……已經——" },
+    { "id": "dialogue-003", "category": "game-dialogue", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "いや、そういう意味じゃない。", "referenceTranslation": "不，我不是那個意思。" },
+    { "id": "dialogue-004", "category": "game-dialogue", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "彼が鍵を盗んだなんて一度も言っていない。", "referenceTranslation": "我從沒說過是他偷了鑰匙。" },
+    { "id": "ui-001", "category": "ui", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "Eキーを押して調べる", "referenceTranslation": "按 E 互動。" },
+    { "id": "ui-002", "category": "ui", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "接続を再試行", "referenceTranslation": "重試連線" },
+    { "id": "ui-003", "category": "ui", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "読み込み中…アプリケーションを終了しないでください。", "referenceTranslation": "載入中……請勿關閉應用程式。" },
+    { "id": "ui-004", "category": "ui", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "セーブ03を上書きしますか？", "referenceTranslation": "確定要覆寫存檔 03 嗎？" },
+    { "id": "tooltip-001", "category": "tooltip", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "Shiftを押しながらドラッグするとグリッドに合わせられます。", "referenceTranslation": "拖曳時按住 Shift，即可對齊格線。" },
+    { "id": "tooltip-002", "category": "tooltip", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "戦闘中はこのアイテムを使用できません。", "referenceTranslation": "戰鬥期間無法使用此物品。" },
+    { "id": "system-001", "category": "system", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "クエスト更新：古い天文台を探す", "referenceTranslation": "任務已更新：尋找舊天文台。" },
+    { "id": "system-002", "category": "system", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "サーバーは5分後に再起動します。", "referenceTranslation": "伺服器將在 5 分鐘後重新啟動。" },
+    { "id": "proper-name-001", "category": "proper-name", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "ヴェイル博士によると、Asterコアは不安定だ。", "referenceTranslation": "維爾博士說 Aster 核心不穩定。" },
+    { "id": "mixed-001", "category": "mixed-language", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "HP +20 / クールダウン -10%", "referenceTranslation": "生命值 +20／冷卻時間 -10%" },
+    { "id": "mixed-002", "category": "mixed-language", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "Yunaからの新着メッセージ（2）", "referenceTranslation": "來自 Yuna 的新訊息（2）" },
+    { "id": "ocr-noise-001", "category": "ocr-noise", "sourceLanguage": "JA", "targetLanguage": "ZH-HANT", "sourceText": "接続が切れましt。再試行中…", "referenceTranslation": "連線中斷。正在重試……" }
+  ]
+}

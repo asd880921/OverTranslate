@@ -8,33 +8,47 @@ public sealed class BergamotTranslationProvider : ITranslationProvider, IDisposa
 {
     private readonly nint _library;
     private readonly CreateDelegate _create;
+    private readonly CreatePivotDelegate _createPivot;
     private readonly TranslateDelegate _translate;
     private readonly FreeDelegate _free;
     private readonly DestroyDelegate _destroy;
     private nint _handle;
     private bool _disposed;
 
-    public BergamotTranslationProvider(string nativeLibraryPath, string modelConfigPath)
+    public BergamotTranslationProvider(
+        string nativeLibraryPath,
+        string modelConfigPath,
+        string? pivotModelConfigPath = null)
     {
         var fullLibraryPath = Path.GetFullPath(nativeLibraryPath);
         var fullConfigPath = Path.GetFullPath(modelConfigPath);
+        var fullPivotConfigPath = pivotModelConfigPath is null
+            ? null
+            : Path.GetFullPath(pivotModelConfigPath);
         if (!File.Exists(fullLibraryPath))
             throw new FileNotFoundException("The Bergamot native library was not found.", fullLibraryPath);
         if (!File.Exists(fullConfigPath))
             throw new FileNotFoundException("The Bergamot model config was not found.", fullConfigPath);
+        if (fullPivotConfigPath is not null && !File.Exists(fullPivotConfigPath))
+            throw new FileNotFoundException("The Bergamot pivot model config was not found.", fullPivotConfigPath);
 
         _library = NativeLibrary.Load(fullLibraryPath);
         try
         {
             _create = LoadDelegate<CreateDelegate>("ot_bergamot_create");
+            _createPivot = LoadDelegate<CreatePivotDelegate>("ot_bergamot_create_pivot");
             _translate = LoadDelegate<TranslateDelegate>("ot_bergamot_translate");
             _free = LoadDelegate<FreeDelegate>("ot_bergamot_free");
             _destroy = LoadDelegate<DestroyDelegate>("ot_bergamot_destroy");
 
             var config = StringToUtf8(fullConfigPath);
+            var pivotConfig = fullPivotConfigPath is null ? nint.Zero : StringToUtf8(fullPivotConfigPath);
             try
             {
-                _handle = _create(config, out var error);
+                nint error;
+                _handle = pivotConfig == nint.Zero
+                    ? _create(config, out error)
+                    : _createPivot(config, pivotConfig, out error);
                 if (_handle == nint.Zero)
                     throw new InvalidOperationException(ReadAndFree(error, "Bergamot model loading failed."));
                 FreeIfPresent(error);
@@ -42,6 +56,7 @@ public sealed class BergamotTranslationProvider : ITranslationProvider, IDisposa
             finally
             {
                 Marshal.FreeCoTaskMem(config);
+                if (pivotConfig != nint.Zero) Marshal.FreeCoTaskMem(pivotConfig);
             }
         }
         catch
@@ -137,6 +152,9 @@ public sealed class BergamotTranslationProvider : ITranslationProvider, IDisposa
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate nint CreateDelegate(nint configPath, out nint error);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate nint CreatePivotDelegate(nint firstConfigPath, nint secondConfigPath, out nint error);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate int TranslateDelegate(

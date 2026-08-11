@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "issue-47-ko-zh-hant",
+  "corpusVersion": "1.0.0",
+  "deidentified": true,
+  "notes": "Issue #47 fixed Korean to Traditional Chinese Phase 0 corpus.",
+  "cases": [
+    { "id": "subtitle-001", "category": "subtitle", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "기운이 없어 보이네요, 미나토 씨.", "referenceTranslation": "湊小姐，妳看起來沒什麼精神。" },
+    { "id": "subtitle-002", "category": "subtitle", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "마리나 씨, 괜찮아요?", "referenceTranslation": "瑪莉娜小姐，妳還好嗎？" },
+    { "id": "subtitle-003", "category": "subtitle", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "여기에 더 오래 머물 수는 없어.", "referenceTranslation": "我們不能再在這裡待太久。" },
+    { "id": "subtitle-004", "category": "subtitle", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "지금 돌아가면 모든 게 헛수고가 돼.", "referenceTranslation": "如果現在回頭，一切就都白費了。" },
+    { "id": "dialogue-001", "category": "game-dialogue", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "그 문을 열지 마——", "referenceTranslation": "別打開那扇門——" },
+    { "id": "dialogue-002", "category": "game-dialogue", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "북쪽 문은… 이미——", "referenceTranslation": "北門……已經——" },
+    { "id": "dialogue-003", "category": "game-dialogue", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "아니, 그런 뜻이 아니었어.", "referenceTranslation": "不，我不是那個意思。" },
+    { "id": "dialogue-004", "category": "game-dialogue", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "그가 열쇠를 훔쳤다고 말한 적 없어.", "referenceTranslation": "我從沒說過是他偷了鑰匙。" },
+    { "id": "ui-001", "category": "ui", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "E를 눌러 상호작용", "referenceTranslation": "按 E 互動。" },
+    { "id": "ui-002", "category": "ui", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "연결 다시 시도", "referenceTranslation": "重試連線" },
+    { "id": "ui-003", "category": "ui", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "불러오는 중… 애플리케이션을 종료하지 마세요.", "referenceTranslation": "載入中……請勿關閉應用程式。" },
+    { "id": "ui-004", "category": "ui", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "저장 03을 덮어쓰시겠습니까?", "referenceTranslation": "確定要覆寫存檔 03 嗎？" },
+    { "id": "tooltip-001", "category": "tooltip", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "Shift를 누른 채 드래그하면 격자에 맞춰집니다.", "referenceTranslation": "拖曳時按住 Shift，即可對齊格線。" },
+    { "id": "tooltip-002", "category": "tooltip", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "전투 중에는 이 아이템을 사용할 수 없습니다.", "referenceTranslation": "戰鬥期間無法使用此物品。" },
+    { "id": "system-001", "category": "system", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "퀘스트 갱신: 오래된 천문대 찾기", "referenceTranslation": "任務已更新：尋找舊天文台。" },
+    { "id": "system-002", "category": "system", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "서버가 5분 후에 다시 시작됩니다.", "referenceTranslation": "伺服器將在 5 分鐘後重新啟動。" },
+    { "id": "proper-name-001", "category": "proper-name", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "베일 박사는 Aster 코어가 불안정하다고 말했다.", "referenceTranslation": "維爾博士說 Aster 核心不穩定。" },
+    { "id": "mixed-001", "category": "mixed-language", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "HP +20 / 재사용 대기시간 -10%", "referenceTranslation": "生命值 +20／冷卻時間 -10%" },
+    { "id": "mixed-002", "category": "mixed-language", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "Yuna에게서 온 새 메시지 (2)", "referenceTranslation": "來自 Yuna 的新訊息（2）" },
+    { "id": "ocr-noise-001", "category": "ocr-noise", "sourceLanguage": "KO", "targetLanguage": "ZH-HANT", "sourceText": "연결이 끊겼습니ㄷ. 다시 시도 중…", "referenceTranslation": "連線中斷。正在重試……" }
+  ]
+}

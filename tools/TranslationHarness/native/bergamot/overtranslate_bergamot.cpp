@@ -24,6 +24,7 @@ struct BergamotHandle {
 
   BlockingService service;
   std::shared_ptr<TranslationModel> model;
+  std::shared_ptr<TranslationModel> pivot_model;
   std::mutex mutex;
 };
 
@@ -75,6 +76,35 @@ void *ot_bergamot_create(const char *config_path, char **error_utf8) {
   return nullptr;
 }
 
+void *ot_bergamot_create_pivot(
+    const char *source_to_pivot_config_path,
+    const char *pivot_to_target_config_path,
+    char **error_utf8) {
+  if (error_utf8 != nullptr) {
+    *error_utf8 = nullptr;
+  }
+
+  try {
+    if (source_to_pivot_config_path == nullptr || source_to_pivot_config_path[0] == '\0' ||
+        pivot_to_target_config_path == nullptr || pivot_to_target_config_path[0] == '\0') {
+      throw std::invalid_argument("Two Bergamot model config paths are required for pivot translation.");
+    }
+
+    auto handle = std::make_unique<BergamotHandle>();
+    auto first_options = marian::bergamot::parseOptionsFromFilePath(source_to_pivot_config_path);
+    handle->model = std::make_shared<TranslationModel>(first_options, 1);
+    auto second_options = marian::bergamot::parseOptionsFromFilePath(pivot_to_target_config_path);
+    handle->pivot_model = std::make_shared<TranslationModel>(second_options, 1);
+    return handle.release();
+  } catch (const std::exception &exception) {
+    setError(error_utf8, exception.what());
+  } catch (...) {
+    setError(error_utf8, "Unknown native exception while loading Bergamot pivot models.");
+  }
+
+  return nullptr;
+}
+
 int ot_bergamot_translate(
     void *handle_value,
     const char *const *inputs_utf8,
@@ -111,8 +141,11 @@ int ot_bergamot_translate(
     std::vector<marian::bergamot::Response> responses;
     {
       std::lock_guard<std::mutex> lock(handle->mutex);
-      responses = handle->service.translateMultiple(
-          handle->model, std::move(sources), response_options);
+      responses = handle->pivot_model
+          ? handle->service.pivotMultiple(
+                handle->model, handle->pivot_model, std::move(sources), response_options)
+          : handle->service.translateMultiple(
+                handle->model, std::move(sources), response_options);
     }
 
     if (responses.size() != count) {
