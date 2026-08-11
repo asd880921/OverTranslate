@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "issue-47-en-zh-hant",
+  "corpusVersion": "1.0.0",
+  "deidentified": true,
+  "notes": "EN to Traditional Chinese L0 corpus. Includes committed screenshot text plus deidentified scenario lines covering subtitles, game dialogue, UI, incomplete text, terminology, OCR noise, negation, and mixed-language content.",
+  "cases": [
+    {
+      "id": "subtitle-001",
+      "category": "subtitle",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "You seem rather dispirited, Minato-san.",
+      "referenceTranslation": "湊小姐，妳看起來相當消沉。",
+      "tags": ["committed-screenshot", "proper-name", "honorific"]
+    },
+    {
+      "id": "subtitle-002",
+      "category": "subtitle",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Marina-san, are you okay?",
+      "referenceTranslation": "瑪莉娜小姐，妳還好嗎？",
+      "tags": ["committed-screenshot", "proper-name", "question"]
+    },
+    {
+      "id": "subtitle-003",
+      "category": "subtitle",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "We can't stay here much longer.",
+      "referenceTranslation": "我們不能再在這裡待太久。",
+      "tags": ["negation", "short-sentence"]
+    },
+    {
+      "id": "subtitle-004",
+      "category": "subtitle",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "If we turn back now, everything was for nothing.",
+      "referenceTranslation": "如果現在回頭，一切就都白費了。",
+      "tags": ["conditional", "spoken-language"]
+    },
+    {
+      "id": "dialogue-001",
+      "category": "game-dialogue",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Don't open that door—",
+      "referenceTranslation": "別打開那扇門——",
+      "tags": ["incomplete", "negation"]
+    },
+    {
+      "id": "dialogue-002",
+      "category": "game-dialogue",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "The northern gate... it's already—",
+      "referenceTranslation": "北門……它已經——",
+      "tags": ["incomplete", "ellipsis"]
+    },
+    {
+      "id": "dialogue-003",
+      "category": "game-dialogue",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "No, that's not what I meant.",
+      "referenceTranslation": "不，我不是那個意思。",
+      "tags": ["negation", "short-sentence"]
+    },
+    {
+      "id": "dialogue-004",
+      "category": "game-dialogue",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "I never said he stole the key.",
+      "referenceTranslation": "我從沒說過是他偷了鑰匙。",
+      "tags": ["negation", "semantic-ambiguity"]
+    },
+    {
+      "id": "ui-001",
+      "category": "ui",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Press E to interact.",
+      "referenceTranslation": "按 E 互動。",
+      "tags": ["short-ui", "mixed-language"]
+    },
+    {
+      "id": "ui-002",
+      "category": "ui",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Retry connection",
+      "referenceTranslation": "重試連線",
+      "tags": ["short-ui"]
+    },
+    {
+      "id": "ui-003",
+      "category": "ui",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Loading... Do not close the application.",
+      "referenceTranslation": "載入中……請勿關閉應用程式。",
+      "tags": ["status", "negation"]
+    },
+    {
+      "id": "ui-004",
+      "category": "ui",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Are you sure you want to overwrite Save 03?",
+      "referenceTranslation": "確定要覆寫存檔 03 嗎？",
+      "tags": ["confirmation", "mixed-language"]
+    },
+    {
+      "id": "tooltip-001",
+      "category": "tooltip",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Hold Shift while dragging to snap to grid.",
+      "referenceTranslation": "拖曳時按住 Shift，即可對齊格線。",
+      "tags": ["instruction", "mixed-language"]
+    },
+    {
+      "id": "tooltip-002",
+      "category": "tooltip",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Item cannot be used during combat.",
+      "referenceTranslation": "戰鬥期間無法使用此物品。",
+      "tags": ["restriction", "short-ui"]
+    },
+    {
+      "id": "system-001",
+      "category": "system-message",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Quest updated: Find the old observatory.",
+      "referenceTranslation": "任務已更新：尋找舊天文台。",
+      "tags": ["game-term", "instruction"]
+    },
+    {
+      "id": "system-002",
+      "category": "system-message",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "The server will restart in 5 minutes.",
+      "referenceTranslation": "伺服器將在 5 分鐘後重新啟動。",
+      "tags": ["number", "time"]
+    },
+    {
+      "id": "proper-name-001",
+      "category": "game-dialogue",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Dr. Vale said the Aster core is unstable.",
+      "referenceTranslation": "維爾博士說 Aster 核心不穩定。",
+      "tags": ["proper-name", "mixed-language", "terminology"]
+    },
+    {
+      "id": "mixed-001",
+      "category": "status-card",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "HP +20 / Cooldown -10%",
+      "referenceTranslation": "生命值 +20／冷卻時間 -10%",
+      "tags": ["mixed-language", "number", "game-term"]
+    },
+    {
+      "id": "mixed-002",
+      "category": "notification",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "New message from Yuna (2)",
+      "referenceTranslation": "來自 Yuna 的新訊息（2）",
+      "tags": ["proper-name", "number", "short-ui"]
+    },
+    {
+      "id": "ocr-noise-001",
+      "category": "ocr-noise",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "C0nnection lost. Retrying...",
+      "referenceTranslation": "連線中斷。正在重試……",
+      "tags": ["ocr-error", "status"]
+    }
+  ]
+}
