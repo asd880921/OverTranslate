@@ -67,7 +67,8 @@ public static class TranslationHarnessCli
                 arguments.WarmupRuns,
                 arguments.BatchSizes,
                 arguments.Timeout,
-                arguments.HardwareProfile);
+                arguments.HardwareProfile,
+                arguments.DurationSeconds);
             var report = await BenchmarkRunner.RunAsync(
                 corpus, arguments.CorpusPath, arguments.Provider, provider, options,
                 initialization.Elapsed.TotalMilliseconds, cancellation.Token);
@@ -78,7 +79,10 @@ public static class TranslationHarnessCli
                     $"{result.SourceLanguage}->{result.TargetLanguage} batch={result.BatchSize} " +
                     $"first={result.FirstTranslationMs:F0}ms p50={result.P50Ms:F0}ms " +
                     $"p90={result.P90Ms:F0}ms p95={result.P95Ms:F0}ms max={result.MaxMs:F0}ms " +
-                    $"cpu={result.MeanCpuPercent:F1}% wsPeak={result.PeakWorkingSetBytes / 1048576.0:F1}MiB " +
+                    $"cpu={result.MeanCpuPercent:F1}% elapsed={result.ElapsedSeconds:F1}s " +
+                    $"ws={result.WorkingSetBeforeBytes / 1048576.0:F1}->" +
+                    $"{result.WorkingSetAfterBytes / 1048576.0:F1}MiB " +
+                    $"wsPeak={result.PeakWorkingSetBytes / 1048576.0:F1}MiB " +
                     $"requests={result.SuccessfulRequests}/{result.RequestCount} " +
                     $"firstOk={result.FirstTranslationSucceeded}");
             }
@@ -115,6 +119,7 @@ public static class TranslationHarnessCli
         Console.WriteLine("  --model-config <yaml>      Direct or first pivot model configuration");
         Console.WriteLine("  --pivot-model-config <yml> Second pivot model configuration");
         Console.WriteLine("  --runs 10                  Measured corpus passes per batch size");
+        Console.WriteLine("  --duration-seconds <n>     Run each direction/batch for at least this duration");
         Console.WriteLine("  --warmup-runs 1            Unmeasured warmup passes");
         Console.WriteLine("  --batch-sizes 1,2,4,8      Block counts per provider call");
         Console.WriteLine("  --timeout-seconds 20       Per-request timeout");
@@ -134,6 +139,7 @@ public static class TranslationHarnessCli
         string? NativeLibraryPath,
         string? ModelConfigPath,
         string? PivotModelConfigPath,
+        double? DurationSeconds,
         bool ValidateOnly)
     {
         public static Arguments Parse(string[] args)
@@ -149,6 +155,7 @@ public static class TranslationHarnessCli
             var warmupRuns = 1;
             IReadOnlyList<int> batchSizes = [1, 2, 4, 8];
             var timeout = TimeSpan.FromSeconds(20);
+            double? durationSeconds = null;
             var validateOnly = false;
 
             for (var index = 0; index < args.Length; index++)
@@ -167,6 +174,7 @@ public static class TranslationHarnessCli
                         batchSizes = Value().Split(',').Select(int.Parse).Distinct().ToArray();
                         break;
                     case "--timeout-seconds": timeout = TimeSpan.FromSeconds(double.Parse(Value())); break;
+                    case "--duration-seconds": durationSeconds = double.Parse(Value()); break;
                     case "--hardware-profile": hardwareProfile = Value(); break;
                     case "--output": output = Value(); break;
                     case "--native-library": nativeLibrary = Value(); break;
@@ -187,7 +195,7 @@ public static class TranslationHarnessCli
             return new Arguments(
                 corpus, provider, runs, warmupRuns, batchSizes, timeout,
                 hardwareProfile ?? "validation-only", output, nativeLibrary, modelConfig,
-                pivotModelConfig, validateOnly);
+                pivotModelConfig, durationSeconds, validateOnly);
         }
     }
 }

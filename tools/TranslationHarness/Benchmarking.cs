@@ -14,7 +14,8 @@ public sealed record BenchmarkOptions(
     int WarmupRuns,
     IReadOnlyList<int> BatchSizes,
     TimeSpan Timeout,
-    string HardwareProfile);
+    string HardwareProfile,
+    double? DurationSeconds = null);
 
 public sealed record EnvironmentSnapshot(
     string HardwareProfile,
@@ -49,7 +50,9 @@ public sealed record BenchmarkResult(
     double P95Ms,
     double MaxMs,
     double MeanCpuPercent,
+    double ElapsedSeconds,
     long WorkingSetBeforeBytes,
+    long WorkingSetAfterBytes,
     long PeakWorkingSetBytes,
     IReadOnlyList<TranslationOutput> Outputs,
     IReadOnlyList<string> Errors);
@@ -95,7 +98,7 @@ public static class BenchmarkRunner
         var corpusHash = Convert.ToHexString(await SHA256.HashDataAsync(corpusStream, cancellationToken));
 
         return new BenchmarkReport(
-            2,
+            3,
             DateTimeOffset.UtcNow,
             providerName,
             providerInitializationMs,
@@ -155,7 +158,8 @@ public static class BenchmarkRunner
 
         try
         {
-            for (var run = 0; run < options.Runs; run++)
+            var run = 0;
+            do
             {
                 var captured = new List<TranslationOutput>();
                 foreach (var batch in batches)
@@ -180,7 +184,10 @@ public static class BenchmarkRunner
                 }
 
                 if (run == 0) outputs = captured;
-            }
+                run++;
+            } while (options.DurationSeconds is { } durationSeconds
+                         ? wallClock.Elapsed.TotalSeconds < durationSeconds
+                         : run < options.Runs);
         }
         finally
         {
@@ -190,7 +197,8 @@ public static class BenchmarkRunner
         }
 
         process.Refresh();
-        peakWorkingSet = Math.Max(peakWorkingSet, process.WorkingSet64);
+        var workingSetAfter = process.WorkingSet64;
+        peakWorkingSet = Math.Max(peakWorkingSet, workingSetAfter);
         var cpuDelta = process.TotalProcessorTime - cpuBefore;
         var cpuPercent = wallClock.Elapsed.TotalMilliseconds <= 0
             ? 0
@@ -212,7 +220,9 @@ public static class BenchmarkRunner
             Percentile(latencies, 0.95),
             latencies.Max(),
             cpuPercent,
+            wallClock.Elapsed.TotalSeconds,
             workingSetBefore,
+            workingSetAfter,
             peakWorkingSet,
             outputs,
             errors);
@@ -305,6 +315,8 @@ public static class BenchmarkRunner
             throw new ArgumentException("Batch sizes must all be positive.", nameof(options.BatchSizes));
         if (options.Timeout <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(options.Timeout));
+        if (options.DurationSeconds is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options.DurationSeconds));
         if (string.IsNullOrWhiteSpace(options.HardwareProfile))
             throw new ArgumentException("A hardware profile name is required.", nameof(options.HardwareProfile));
     }

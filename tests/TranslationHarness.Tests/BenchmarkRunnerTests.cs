@@ -57,6 +57,40 @@ public sealed class BenchmarkRunnerTests
         }
     }
 
+    [Fact]
+    public async Task RunAsync_DurationContinuesPastConfiguredRunCount()
+    {
+        var corpus = new TranslationCorpus(
+            1,
+            "duration-test",
+            "1.0.0",
+            true,
+            null,
+            [new TranslationCase("case-1", "subtitle", "EN", "ZH-HANT", "source", "reference")]);
+        var path = Path.GetTempFileName();
+        await File.WriteAllTextAsync(path, "duration corpus hash input");
+
+        try
+        {
+            var report = await BenchmarkRunner.RunAsync(
+                corpus,
+                path,
+                "echo",
+                new EchoProvider(),
+                new BenchmarkOptions(
+                    1, 0, [1], TimeSpan.FromSeconds(1), "test-machine", DurationSeconds: 0.02));
+
+            var result = Assert.Single(report.Results);
+            Assert.True(result.RequestCount > 1);
+            Assert.True(result.ElapsedSeconds >= 0.02);
+            Assert.True(result.WorkingSetAfterBytes > 0);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private sealed class EchoProvider : ITranslationProvider
     {
         public int CallCount { get; private set; }
