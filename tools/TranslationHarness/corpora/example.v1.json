@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "issue-47-synthetic-example",
+  "corpusVersion": "1.0.0",
+  "deidentified": true,
+  "notes": "Synthetic format example only. Do not use this file to make the Phase 0 decision.",
+  "cases": [
+    {
+      "id": "subtitle-001",
+      "category": "subtitle",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "We need to leave before sunrise.",
+      "referenceTranslation": "我們得在日出前離開。",
+      "tags": ["short-sentence"]
+    },
+    {
+      "id": "dialogue-001",
+      "category": "game-dialogue",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Don't open that door—",
+      "referenceTranslation": "別打開那扇門——",
+      "tags": ["incomplete", "negation"]
+    },
+    {
+      "id": "ui-001",
+      "category": "ui",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Retry connection",
+      "referenceTranslation": "重試連線",
+      "tags": ["short-ui"]
+    },
+    {
+      "id": "ocr-noise-001",
+      "category": "ocr-noise",
+      "sourceLanguage": "EN",
+      "targetLanguage": "ZH-HANT",
+      "sourceText": "Your invent0ry is full.",
+      "referenceTranslation": "你的物品欄已滿。",
+      "tags": ["ocr-error"]
+    }
+  ]
+}
