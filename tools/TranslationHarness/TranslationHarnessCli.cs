@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http;
 using System.Text.Json;
 using GTranslate.Translators;
@@ -30,12 +31,21 @@ public static class TranslationHarnessCli
             }
 
             using var http = new HttpClient { Timeout = arguments.Timeout };
+            var initialization = Stopwatch.StartNew();
             ITranslationProvider provider = arguments.Provider.ToLowerInvariant() switch
             {
                 "microsoft" => new GTranslateProvider(new MicrosoftTranslator(http)),
+                "bergamot" => new BergamotTranslationProvider(
+                    arguments.NativeLibraryPath ?? throw new ArgumentException(
+                        "--native-library is required for the Bergamot provider."),
+                    arguments.ModelConfigPath ?? throw new ArgumentException(
+                        "--model-config is required for the Bergamot provider.")),
                 _ => throw new ArgumentException(
-                    $"Unknown provider '{arguments.Provider}'. Phase 0 currently supports: microsoft."),
+                    $"Unknown provider '{arguments.Provider}'. Supported providers: microsoft, bergamot."),
             };
+            initialization.Stop();
+            using var providerLifetime = provider as IDisposable;
+            Console.WriteLine($"providerInitialization={initialization.Elapsed.TotalMilliseconds:F0}ms");
 
             using var cancellation = new CancellationTokenSource();
             Console.CancelKeyPress += (_, eventArgs) =>
@@ -51,7 +61,8 @@ public static class TranslationHarnessCli
                 arguments.Timeout,
                 arguments.HardwareProfile);
             var report = await BenchmarkRunner.RunAsync(
-                corpus, arguments.CorpusPath, arguments.Provider, provider, options, cancellation.Token);
+                corpus, arguments.CorpusPath, arguments.Provider, provider, options,
+                initialization.Elapsed.TotalMilliseconds, cancellation.Token);
 
             foreach (var result in report.Results)
             {
@@ -91,7 +102,9 @@ public static class TranslationHarnessCli
     private static void PrintUsage()
     {
         Console.WriteLine("TranslationHarness --corpus <file.json> --hardware-profile <name> [options]");
-        Console.WriteLine("  --provider microsoft       Direct provider under test (default: microsoft)");
+        Console.WriteLine("  --provider <name>          microsoft (default) or bergamot");
+        Console.WriteLine("  --native-library <dll>     Bergamot C ABI library path");
+        Console.WriteLine("  --model-config <yaml>      Bergamot model configuration path");
         Console.WriteLine("  --runs 10                  Measured corpus passes per batch size");
         Console.WriteLine("  --warmup-runs 1            Unmeasured warmup passes");
         Console.WriteLine("  --batch-sizes 1,2,4,8      Block counts per provider call");
@@ -109,6 +122,8 @@ public static class TranslationHarnessCli
         TimeSpan Timeout,
         string HardwareProfile,
         string? OutputPath,
+        string? NativeLibraryPath,
+        string? ModelConfigPath,
         bool ValidateOnly)
     {
         public static Arguments Parse(string[] args)
@@ -116,6 +131,8 @@ public static class TranslationHarnessCli
             string? corpus = null;
             string? output = null;
             string? hardwareProfile = null;
+            string? nativeLibrary = null;
+            string? modelConfig = null;
             var provider = "microsoft";
             var runs = 10;
             var warmupRuns = 1;
@@ -141,6 +158,8 @@ public static class TranslationHarnessCli
                     case "--timeout-seconds": timeout = TimeSpan.FromSeconds(double.Parse(Value())); break;
                     case "--hardware-profile": hardwareProfile = Value(); break;
                     case "--output": output = Value(); break;
+                    case "--native-library": nativeLibrary = Value(); break;
+                    case "--model-config": modelConfig = Value(); break;
                     case "--validate-only": validateOnly = true; break;
                     default: throw new ArgumentException($"Unknown argument: {args[index]}.");
                 }
@@ -155,7 +174,7 @@ public static class TranslationHarnessCli
 
             return new Arguments(
                 corpus, provider, runs, warmupRuns, batchSizes, timeout,
-                hardwareProfile ?? "validation-only", output, validateOnly);
+                hardwareProfile ?? "validation-only", output, nativeLibrary, modelConfig, validateOnly);
         }
     }
 }

@@ -58,6 +58,7 @@ public sealed record BenchmarkReport(
     int SchemaVersion,
     DateTimeOffset CreatedAtUtc,
     string Provider,
+    double ProviderInitializationMs,
     string CorpusId,
     string CorpusVersion,
     string CorpusSha256,
@@ -73,6 +74,7 @@ public static class BenchmarkRunner
         string providerName,
         ITranslationProvider provider,
         BenchmarkOptions options,
+        double providerInitializationMs = 0,
         CancellationToken cancellationToken = default)
     {
         ValidateOptions(options);
@@ -93,9 +95,10 @@ public static class BenchmarkRunner
         var corpusHash = Convert.ToHexString(await SHA256.HashDataAsync(corpusStream, cancellationToken));
 
         return new BenchmarkReport(
-            1,
+            2,
             DateTimeOffset.UtcNow,
             providerName,
+            providerInitializationMs,
             corpus.CorpusId,
             corpus.CorpusVersion,
             corpusHash,
