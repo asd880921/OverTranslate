@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Windows;
 using OverTranslate.Services;
 using OverTranslate.Services.Providers;
@@ -53,6 +52,18 @@ public class OpenAiCompatibleProviderTests
         Assert.DoesNotContain("台灣繁體中文", prompt);
     }
 
+    [Fact]
+    public void BuildSinglePrompt_IsShortAndDoesNotRequireBatchFormatting()
+    {
+        var prompt = OpenAiCompatibleProvider.BuildSinglePrompt("AUTO", "ZH-HANT");
+
+        Assert.Contains("從(自動偵測的語言)翻譯成(台灣繁體中文)", prompt);
+        Assert.Contains("只回傳自然譯文", prompt);
+        Assert.DoesNotContain("__OT", prompt);
+        Assert.DoesNotContain("JSON", prompt);
+        Assert.True(prompt.Length <= 80);
+    }
+
     [Theory]
     [InlineData("<think>internal reasoning</think>\n正確譯文", "正確譯文")]
     [InlineData("<THINK mode=\"deep\">hidden</THINK>Visible", "Visible")]
@@ -63,7 +74,7 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
-    public async Task TranslateAsync_SendsOneBatchForUpToTenBlocksAndPreservesOrderAndBounds()
+    public async Task TranslateAsync_SendsOneRequestPerBlockAndPreservesOrderAndBounds()
     {
         var handler = new RecordingHandler();
         using var http = new HttpClient(handler);
@@ -79,18 +90,28 @@ public class OpenAiCompatibleProviderTests
         var (translated, detected) = await provider.TranslateAsync(
             blocks, "EN", "ZH-HANT", "secret-key");
 
-        var request = Assert.Single(handler.Requests);
-        Assert.Equal("http://localhost:1234/v1/chat/completions", request.Url);
-        Assert.Equal("Bearer secret-key", request.Authorization);
-        using var payload = JsonDocument.Parse(request.Body);
-        Assert.Equal("test-model", payload.RootElement.GetProperty("model").GetString());
-        Assert.Equal(0, payload.RootElement.GetProperty("temperature").GetInt32());
-        Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
-        var message = Assert.Single(payload.RootElement.GetProperty("messages").EnumerateArray());
-        Assert.Equal("user", message.GetProperty("role").GetString());
-        var batchText = message.GetProperty("content").GetString();
-        Assert.Contains("[__OT_0000__] first", batchText);
-        Assert.Contains("[__OT_0001__] second", batchText);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal(2, handler.MaxConcurrentRequests);
+        Assert.All(handler.Requests, request =>
+        {
+            Assert.Equal("http://localhost:1234/v1/chat/completions", request.Url);
+            Assert.Equal("Bearer secret-key", request.Authorization);
+            using var payload = JsonDocument.Parse(request.Body);
+            Assert.Equal("test-model", payload.RootElement.GetProperty("model").GetString());
+            Assert.Equal(0, payload.RootElement.GetProperty("temperature").GetInt32());
+            Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
+            var messages = payload.RootElement.GetProperty("messages").EnumerateArray().ToArray();
+            Assert.Equal(2, messages.Length);
+            Assert.Equal("system", messages[0].GetProperty("role").GetString());
+            Assert.Equal("user", messages[1].GetProperty("role").GetString());
+            Assert.DoesNotContain("__OT", messages[0].GetProperty("content").GetString());
+        });
+        Assert.Equal(["first", "second"], handler.Requests.Select(request =>
+        {
+            using var payload = JsonDocument.Parse(request.Body);
+            return payload.RootElement.GetProperty("messages")[1]
+                .GetProperty("content").GetString();
+        }).OrderBy(text => text));
         Assert.Equal(["translated:first", "translated:second"],
             translated.Select(block => block.TranslatedText));
         Assert.Equal(blocks[0].Bounds, translated[0].Bounds);
@@ -99,7 +120,7 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
-    public async Task TranslateAsync_SplitsMoreThanTenBlocksIntoConcurrentBatchesAndRestoresOrder()
+    public async Task TranslateAsync_LimitsIndependentRequestsToEightAtATime()
     {
         var handler = new RecordingHandler();
         using var http = new HttpClient(handler);
@@ -113,16 +134,8 @@ public class OpenAiCompatibleProviderTests
         var (translated, _) = await provider.TranslateAsync(
             blocks, "EN", "ZH-HANT", "");
 
-        Assert.Equal(3, handler.Requests.Count);
-        Assert.Equal([3, 10, 10], handler.Requests
-            .Select(request =>
-            {
-                using var payload = JsonDocument.Parse(request.Body);
-                var content = payload.RootElement.GetProperty("messages")[0]
-                    .GetProperty("content").GetString()!;
-                return Regex.Matches(content, @"(?m)^\[__OT_\d{4}__\]").Count;
-            })
-            .OrderBy(count => count));
+        Assert.Equal(23, handler.Requests.Count);
+        Assert.Equal(8, handler.MaxConcurrentRequests);
         Assert.Equal(blocks.Select(block => $"translated:{block.Text}"),
             translated.Select(block => block.TranslatedText));
         Assert.Equal(blocks.Select(block => block.Bounds),
@@ -165,7 +178,7 @@ public class OpenAiCompatibleProviderTests
     public async Task TranslateAsync_ReadsTextContentPartsFromCompatibleServers()
     {
         const string response =
-            """{"choices":[{"message":{"content":[{"type":"text","text":"[__OT_0000__] 陣列格式譯文"}]}}]}""";
+            """{"choices":[{"message":{"content":[{"type":"text","text":"陣列格式譯文"}]}}]}""";
         using var http = new HttpClient(new StaticResponseHandler(HttpStatusCode.OK, response));
         var provider = new OpenAiCompatibleProvider(
             http,
@@ -274,10 +287,10 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
-    public async Task TranslateAsync_OnlyReturnsBlocksForIdsTheModelProvided()
+    public async Task TranslateAsync_ReturnsEveryBlockFromIndependentResponses()
     {
         const string response =
-            """{"choices":[{"message":{"content":"[__OT_0001__] 第二段"}}]}""";
+            """{"choices":[{"message":{"content":"單筆譯文"}}]}""";
         using var http = new HttpClient(new StaticResponseHandler(HttpStatusCode.OK, response));
         var provider = new OpenAiCompatibleProvider(
             http,
@@ -290,10 +303,12 @@ public class OpenAiCompatibleProviderTests
 
         var (translated, _) = await provider.TranslateAsync(blocks, "EN", "ZH-HANT", "key");
 
-        var result = Assert.Single(translated);
-        Assert.Equal("second", result.OriginalText);
-        Assert.Equal("第二段", result.TranslatedText);
-        Assert.Equal(blocks[1].Bounds, result.Bounds);
+        Assert.Equal(2, translated.Count);
+        Assert.Equal(blocks.Select(block => block.Text),
+            translated.Select(block => block.OriginalText));
+        Assert.All(translated, block => Assert.Equal("單筆譯文", block.TranslatedText));
+        Assert.Equal(blocks.Select(block => block.Bounds),
+            translated.Select(block => block.Bounds));
     }
 
     [Fact]
@@ -307,45 +322,67 @@ public class OpenAiCompatibleProviderTests
 
     private sealed class RecordingHandler : HttpMessageHandler
     {
-        public ConcurrentBag<RecordedRequest> Requests { get; } = [];
+        private int _activeRequests;
+        private int _maxConcurrentRequests;
+
+        public ConcurrentQueue<RecordedRequest> Requests { get; } = [];
+        public int MaxConcurrentRequests => Volatile.Read(ref _maxConcurrentRequests);
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            var body = await request.Content!.ReadAsStringAsync(cancellationToken);
-            Requests.Add(new RecordedRequest(
-                request.RequestUri!.AbsoluteUri,
-                request.Headers.Authorization?.ToString(),
-                body));
-
-            using var payload = JsonDocument.Parse(body);
-            var batchText = payload.RootElement.GetProperty("messages")[0]
-                .GetProperty("content").GetString()!;
-            var translations = string.Join("\n", Regex.Matches(
-                    batchText,
-                    @"(?m)^\[__OT_(\d{4})__\] (.*)$")
-                .Select(match =>
-                    $"[__OT_{match.Groups[1].Value}__] translated:{match.Groups[2].Value}"));
-            var response = JsonSerializer.Serialize(new
+            var activeRequests = Interlocked.Increment(ref _activeRequests);
+            UpdateMaximum(activeRequests);
+            try
             {
-                choices = new[]
+                await Task.Delay(10, cancellationToken);
+                var body = await request.Content!.ReadAsStringAsync(cancellationToken);
+                Requests.Enqueue(new RecordedRequest(
+                    request.RequestUri!.AbsoluteUri,
+                    request.Headers.Authorization?.ToString(),
+                    body));
+
+                using var payload = JsonDocument.Parse(body);
+                var text = payload.RootElement.GetProperty("messages")[1]
+                    .GetProperty("content").GetString()!;
+                var response = JsonSerializer.Serialize(new
                 {
-                    new
+                    choices = new[]
                     {
-                        message = new
+                        new
                         {
-                            role = "assistant",
-                            content = $"<think>hidden</think>{translations}",
+                            message = new
+                            {
+                                role = "assistant",
+                                content = $"<think>hidden</think>translated:{text}",
+                            },
                         },
                     },
-                },
-            });
+                });
 
-            return new HttpResponseMessage(HttpStatusCode.OK)
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(response),
+                };
+            }
+            finally
             {
-                Content = new StringContent(response),
-            };
+                Interlocked.Decrement(ref _activeRequests);
+            }
+        }
+
+        private void UpdateMaximum(int value)
+        {
+            var current = Volatile.Read(ref _maxConcurrentRequests);
+            while (value > current)
+            {
+                var observed = Interlocked.CompareExchange(
+                    ref _maxConcurrentRequests, value, current);
+                if (observed == current)
+                    return;
+                current = observed;
+            }
         }
     }
 

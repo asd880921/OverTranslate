@@ -22,6 +22,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
     private static readonly HttpClient DefaultHttp = new() { Timeout = TimeSpan.FromSeconds(60) };
     private const int MaxBlocksPerBatch = 10;
+    private const int MaxConcurrentRequests = 8;
     private const int MaxDebugContentLength = 2000;
     private static readonly Regex ThinkingBlock = new(
         @"<think(?:\s[^>]*)?>.*?</think\s*>",
@@ -63,29 +64,87 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         if (model.Length == 0)
             throw new InvalidOperationException("尚未設定 OpenAI Compatible 的模型名稱。");
 
-        var batches = blocks.Chunk(MaxBlocksPerBatch).ToArray();
-        var batchTasks = batches.Select(batch => TranslateBatchAsync(
-            batch, sourceLang, targetLang, apiKey, endpoint, model, cancellationToken));
-        var batchTranslations = await Task.WhenAll(batchTasks);
-        var results = new List<TranslatedBlock>(blocks.Count);
-        for (var batchIndex = 0; batchIndex < batchTranslations.Length; batchIndex++)
-        {
-            var blockOffset = batchIndex * MaxBlocksPerBatch;
-            foreach (var (localId, translation) in batchTranslations[batchIndex]
-                .OrderBy(item => item.Key))
+        var results = new TranslatedBlock[blocks.Count];
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, blocks.Count),
+            new ParallelOptions
             {
-                var block = blocks[blockOffset + localId];
-                results.Add(new TranslatedBlock(
-                    block.Text,
-                    translation,
-                    block.Bounds,
-                    block.Lines,
-                    block.SourceGlyphHeight));
-            }
-        }
+                MaxDegreeOfParallelism = MaxConcurrentRequests,
+                CancellationToken = cancellationToken,
+            },
+            async (index, token) =>
+        {
+            var block = blocks[index];
+            var translation = await TranslateOneAsync(
+                block.Text, sourceLang, targetLang, apiKey, endpoint, model, token);
+            results[index] = new TranslatedBlock(
+                block.Text,
+                translation,
+                block.Bounds,
+                block.Lines,
+                block.SourceGlyphHeight);
+        });
 
         var detected = LanguageData.IsAutomaticSource(sourceLang) ? "" : sourceLang.ToUpperInvariant();
-        return (results, detected);
+        return (results.ToList(), detected);
+    }
+
+    private async Task<string> TranslateOneAsync(
+        string text,
+        string sourceLang,
+        string targetLang,
+        string apiKey,
+        Uri endpoint,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        var payload = new
+        {
+            model,
+            messages = new object[]
+            {
+                new { role = "system", content = BuildSinglePrompt(sourceLang, targetLang) },
+                new { role = "user", content = text },
+            },
+            temperature = 0,
+            stream = false,
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var trimmedKey = apiKey.Trim();
+        if (trimmedKey.Length > 0)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", trimmedKey);
+
+        using var response = await _http.SendAsync(request, cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException(
+                $"OpenAI Compatible API 回傳 {(int)response.StatusCode}：{ReadError(json)}",
+                null,
+                response.StatusCode);
+
+        string content;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var message = document.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message");
+            content = ReadContent(message);
+        }
+        catch (Exception ex) when (
+            ex is JsonException or KeyNotFoundException or IndexOutOfRangeException or InvalidOperationException)
+        {
+            throw new InvalidOperationException("OpenAI Compatible API 回應格式無法解析。", ex);
+        }
+
+        var translated = StripThinking(content);
+        if (translated.Length == 0)
+            throw new InvalidOperationException("OpenAI Compatible API 未回傳譯文。");
+        return translated;
     }
 
     private async Task<IReadOnlyDictionary<int, string>> TranslateBatchAsync(
@@ -184,6 +243,18 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         return $"逐項直譯每個標記後的片段，從({source})翻譯成({target})。" +
                "各項互不相關，不可參考其他項目；只翻譯原文實際出現的字詞，即使不自然也不得補寫省略內容。" +
                "保留所有標記與順序，只輸出標記和譯文。";
+    }
+
+    internal static string BuildSinglePrompt(string sourceLang, string targetLang)
+    {
+        var source = LanguageData.IsAutomaticSource(sourceLang)
+            ? "自動偵測的語言"
+            : LanguageData.GetSourceName(sourceLang);
+        var target = targetLang.Equals("ZH-HANT", StringComparison.OrdinalIgnoreCase)
+            ? "台灣繁體中文"
+            : LanguageData.GetTargetName(targetLang);
+
+        return $"從({source})翻譯成({target})。只回傳自然譯文，不要思考、解釋或補寫。";
     }
 
     internal static string StripThinking(string value) => ThinkingBlock.Replace(value, "").Trim();
