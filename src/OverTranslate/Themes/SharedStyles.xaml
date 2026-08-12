@@ -59,8 +59,8 @@
 
     <!-- ═══════════════════════════════════════════ -->
     <!--  TEXTBOX (single-line)                      -->
-    <!--  Key fix: Margin on ScrollViewer (not       -->
-    <!--  Padding on Border) → correct v-centering   -->
+    <!--  TextBox applies Padding to its content;    -->
+    <!--  don't repeat it on the ScrollViewer.       -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="ModernTextBox" TargetType="TextBox">
         <Setter Property="FontFamily"              Value="{StaticResource AppFont}"/>
@@ -82,10 +82,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="6">
-                        <!-- Margin (not Border.Padding) lets the ScrollViewer
-                             use VerticalAlignment="Center" to actually center -->
                         <ScrollViewer x:Name="PART_ContentHost"
-                                      Margin="{TemplateBinding Padding}"
                                       VerticalAlignment="Center"
                                       HorizontalScrollBarVisibility="Hidden"
                                       VerticalScrollBarVisibility="Hidden"

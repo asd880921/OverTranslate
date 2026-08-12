@@ -12,9 +12,9 @@ public class LanguageDataTests
         var provider = LanguageData.Providers.Single(item =>
             item.Provider == TranslationProvider.OpenAI);
 
-        Assert.Equal("OpenAI Compatible", provider.Display);
+        Assert.Equal("OpenAI", provider.Display);
         Assert.False(provider.RequiresApiKey);
-        Assert.Contains("設定", provider.Hint);
+        Assert.Contains("Ollama", provider.Hint);
     }
 
     [Fact]
