@@ -28,6 +28,8 @@ public class AppSettings
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;
+    public string RealtimeTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
+    public TranslationProvider RealtimeProvider { get; set; } = TranslationProvider.Microsoft;
     public string ApiKey { get; set; } = "";
     public string OpenAiBaseUrl { get; set; } = "https://api.openai.com/v1";
     public string OpenAiApiKey { get; set; } = "";

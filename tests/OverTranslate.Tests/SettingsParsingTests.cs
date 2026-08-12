@@ -22,6 +22,30 @@ public class SettingsParsingTests
     }
 
     [Fact]
+    public void MissingRealtimeTranslationSettings_UseIndependentDefaults()
+    {
+        var settings = SettingsService.Parse(
+            """{"TargetLanguage":"JA","Provider":"DeepL"}""");
+
+        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.RealtimeTargetLanguage);
+        Assert.Equal(TranslationProvider.Microsoft, settings.RealtimeProvider);
+        Assert.Equal("JA", settings.TargetLanguage);
+        Assert.Equal(TranslationProvider.DeepL, settings.Provider);
+    }
+
+    [Fact]
+    public void RealtimeTranslationSettings_DoNotChangeGeneralTranslationSettings()
+    {
+        var settings = SettingsService.Parse(
+            """{"RealtimeTargetLanguage":"KO","RealtimeProvider":"OpenAI"}""");
+
+        Assert.Equal("KO", settings.RealtimeTargetLanguage);
+        Assert.Equal(TranslationProvider.OpenAI, settings.RealtimeProvider);
+        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.TargetLanguage);
+        Assert.Equal(TranslationProvider.Microsoft, settings.Provider);
+    }
+
+    [Fact]
     public void MissingKeys_KeepTheirDefaults_AndLeaveTheRestIntact()
     {
         var settings = SettingsService.Parse(
@@ -117,6 +141,8 @@ public class SettingsParsingTests
             SourceLanguage = "KO",
             TargetLanguage = "EN",
             Provider = TranslationProvider.DeepL,
+            RealtimeTargetLanguage = "JA",
+            RealtimeProvider = TranslationProvider.OpenAI,
             ApiKey = "round-trip",
             OpenAiBaseUrl = "http://localhost:1234/v1",
             OpenAiApiKey = "local-key",
@@ -135,6 +161,8 @@ public class SettingsParsingTests
         Assert.Equal("KO", settings.SourceLanguage);
         Assert.Equal("EN", settings.TargetLanguage);
         Assert.Equal(TranslationProvider.DeepL, settings.Provider);
+        Assert.Equal("JA", settings.RealtimeTargetLanguage);
+        Assert.Equal(TranslationProvider.OpenAI, settings.RealtimeProvider);
         Assert.Equal("round-trip", settings.ApiKey);
         Assert.Equal("http://localhost:1234/v1", settings.OpenAiBaseUrl);
         Assert.Equal("local-key", settings.OpenAiApiKey);

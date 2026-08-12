@@ -35,8 +35,8 @@ public class OpenAiCompatibleProviderTests
     {
         var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "ZH-HANT");
 
-        Assert.Contains("從(自動偵測的語言)翻譯成(台灣繁體中文)", prompt);
-        Assert.Contains("只回傳自然譯文", prompt);
+        Assert.Contains("將輸入中各種語言的文字翻譯成(繁體中文)", prompt);
+        Assert.Contains("只回傳自然、人性化的翻譯結果", prompt);
         Assert.DoesNotContain("JSON", prompt);
         Assert.True(prompt.Length <= 80);
     }
