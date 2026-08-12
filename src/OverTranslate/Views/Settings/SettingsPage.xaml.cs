@@ -91,7 +91,7 @@ public partial class SettingsPage : UserControl
         _apiKeyDebounce.Tick += (_, _) =>
         {
             _apiKeyDebounce.Stop();
-            Persist(s => s.ApiKey = ApiKeyBox.Text.Trim());
+            Persist(s => s.ApiKey = ApiKeyBox.Secret.Trim());
         };
 
         _openAiSettingsDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
@@ -101,7 +101,7 @@ public partial class SettingsPage : UserControl
             Persist(s =>
             {
                 s.OpenAiBaseUrl = OpenAiBaseUrlBox.Text.Trim();
-                s.OpenAiApiKey = OpenAiApiKeyBox.Text.Trim();
+                s.OpenAiApiKey = OpenAiApiKeyBox.Secret.Trim();
                 s.OpenAiModel = OpenAiModelBox.Text.Trim();
             });
         };
@@ -135,9 +135,9 @@ public partial class SettingsPage : UserControl
             ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
 
             foreach (var field in _hotkeyFields) field.Box.Text = field.Display(s);
-            ApiKeyBox.Text = s.ApiKey;
+            ApiKeyBox.Secret = s.ApiKey;
             OpenAiBaseUrlBox.Text = s.OpenAiBaseUrl;
-            OpenAiApiKeyBox.Text = s.OpenAiApiKey;
+            OpenAiApiKeyBox.Secret = s.OpenAiApiKey;
             OpenAiModelBox.Text = s.OpenAiModel;
 
             LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
@@ -220,7 +220,7 @@ public partial class SettingsPage : UserControl
             : TranslationProvider.Microsoft);
     }
 
-    private void ApiKeyBox_TextChanged(object sender, TextChangedEventArgs e)
+    private void ApiKeyBox_SecretChanged(object? sender, EventArgs e)
     {
         if (_loading) return;
         _apiKeyDebounce.Stop();
@@ -228,6 +228,13 @@ public partial class SettingsPage : UserControl
     }
 
     private void OpenAiSetting_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        _openAiSettingsDebounce.Stop();
+        _openAiSettingsDebounce.Start();
+    }
+
+    private void OpenAiSecret_SecretChanged(object? sender, EventArgs e)
     {
         if (_loading) return;
         _openAiSettingsDebounce.Stop();

@@ -1,6 +1,7 @@
 <UserControl x:Class="OverTranslate.Views.Settings.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:OverTranslate.Views.Controls">
 
     <Grid Margin="28,22,28,20">
         <Grid.RowDefinitions>
@@ -184,9 +185,8 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" x:Name="ApiKeyLabel"
                                        Text="API Key" Style="{StaticResource FieldLabel}"/>
-                            <TextBox   Grid.Column="1" x:Name="ApiKeyBox"
-                                       Style="{StaticResource ModernTextBox}"
-                                       TextChanged="ApiKeyBox_TextChanged"/>
+                            <controls:SecretBox Grid.Column="1" x:Name="ApiKeyBox"
+                                                SecretChanged="ApiKeyBox_SecretChanged"/>
                         </Grid>
 
                         <!-- OpenAI Compatible settings (conditionally visible) -->
@@ -211,10 +211,9 @@
                             <TextBlock Grid.Column="0" Grid.Row="1" Text="API Key"
                                        Margin="0,10,0,0"
                                        Style="{StaticResource FieldLabel}"/>
-                            <TextBox Grid.Column="1" Grid.Row="1" x:Name="OpenAiApiKeyBox"
-                                     Margin="0,10,0,0"
-                                     Style="{StaticResource ModernTextBox}"
-                                     TextChanged="OpenAiSetting_TextChanged"/>
+                            <controls:SecretBox Grid.Column="1" Grid.Row="1" x:Name="OpenAiApiKeyBox"
+                                                Margin="0,10,0,0"
+                                                SecretChanged="OpenAiSecret_SecretChanged"/>
 
                             <TextBlock Grid.Column="0" Grid.Row="2" Text="模型名稱"
                                        Margin="0,10,0,0"
