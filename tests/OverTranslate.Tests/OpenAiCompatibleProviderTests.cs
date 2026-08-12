@@ -179,6 +179,35 @@ public class OpenAiCompatibleProviderTests
         Assert.Equal(["第一段", "第二段"], translations);
     }
 
+    [Fact]
+    public void ParseBatchTranslations_ExtractsTheCompleteJsonArrayFromSurroundingModelText()
+    {
+        const string response =
+            "以下是格式範例：[{\"id\":0,\"translation\":\"範例\"}]\n" +
+            "實際結果如下：\n" +
+            "[{\"id\":0,\"translation\":\"含有 ] 與 \\\"引號\\\" 的第一段\"}," +
+            "{\"id\":1,\"translation\":\"第二段\"}]\n" +
+            "以上。";
+
+        var translations = OpenAiCompatibleProvider.ParseBatchTranslations(response, 2);
+
+        Assert.Equal(["含有 ] 與 \"引號\" 的第一段", "第二段"], translations);
+    }
+
+    [Fact]
+    public void ParseBatchTranslations_RecoversCompleteObjectsFromAMalformedArray()
+    {
+        const string response =
+            "[\n" +
+            "{\"id\":0,\"translation\":\"第一段\"}\n" +
+            "{\"id\":1,\"translation\":\"含有 } 的第二段\"}\n" +
+            "]";
+
+        var translations = OpenAiCompatibleProvider.ParseBatchTranslations(response, 2);
+
+        Assert.Equal(["第一段", "含有 } 的第二段"], translations);
+    }
+
     [Theory]
     [InlineData("[{\"id\":0,\"translation\":\"only\"}]", 2)]
     [InlineData("[{\"id\":0,\"translation\":\"a\"},{\"id\":0,\"translation\":\"b\"}]", 2)]

@@ -173,15 +173,151 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
 
     internal static IReadOnlyList<string> ParseBatchTranslations(string content, int expectedCount)
     {
-        var json = StripThinking(content);
-        if (json.StartsWith("```", StringComparison.Ordinal))
+        var cleaned = StripThinking(content);
+        Exception? lastError = null;
+        foreach (var json in ExtractJsonArrays(cleaned))
         {
-            var firstLineEnd = json.IndexOf('\n');
-            var closingFence = json.LastIndexOf("```", StringComparison.Ordinal);
-            if (firstLineEnd >= 0 && closingFence > firstLineEnd)
-                json = json[(firstLineEnd + 1)..closingFence].Trim();
+            try
+            {
+                return ParseCompleteBatch(json, expectedCount);
+            }
+            catch (Exception ex) when (
+                ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+            {
+                // A model may print an example before the real result. Keep scanning until one
+                // candidate passes the strict ID/count checks rather than accepting the first '['.
+                lastError = ex;
+            }
         }
 
+        try
+        {
+            return ParseExtractedObjects(cleaned, expectedCount);
+        }
+        catch (Exception ex) when (
+            ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            lastError = ex;
+        }
+
+        throw new InvalidOperationException(
+            "OpenAI Compatible API 批次譯文格式無法解析。",
+            lastError ?? new JsonException("回應中找不到完整的 JSON 陣列。"));
+    }
+
+    /// <summary>
+    /// Finds balanced JSON-array candidates inside arbitrary model text. Unlike a regular
+    /// expression, this understands quoted strings and escapes, so brackets inside translations
+    /// do not terminate an array early.
+    /// </summary>
+    internal static IEnumerable<string> ExtractJsonArrays(string content) =>
+        ExtractBalancedJsonValues(content, '[', ']');
+
+    private static IEnumerable<string> ExtractJsonObjects(string content) =>
+        ExtractBalancedJsonValues(content, '{', '}');
+
+    private static IEnumerable<string> ExtractBalancedJsonValues(
+        string content,
+        char opening,
+        char closing)
+    {
+        for (int start = 0; start < content.Length; start++)
+        {
+            if (content[start] != opening) continue;
+
+            int depth = 0;
+            bool inString = false;
+            bool escaped = false;
+
+            for (int index = start; index < content.Length; index++)
+            {
+                var character = content[index];
+                if (inString)
+                {
+                    if (escaped)
+                    {
+                        escaped = false;
+                    }
+                    else if (character == '\\')
+                    {
+                        escaped = true;
+                    }
+                    else if (character == '"')
+                    {
+                        inString = false;
+                    }
+
+                    continue;
+                }
+
+                if (character == '"')
+                {
+                    inString = true;
+                }
+                else if (character == opening)
+                {
+                    depth++;
+                }
+                else if (character == closing && --depth == 0)
+                {
+                    yield return content[start..(index + 1)];
+                    break;
+                }
+            }
+        }
+    }
+
+    private static IReadOnlyList<string> ParseExtractedObjects(string content, int expectedCount)
+    {
+        var translations = new string?[expectedCount];
+        bool foundTranslationObject = false;
+
+        foreach (var json in ExtractJsonObjects(content))
+        {
+            JsonDocument? document = null;
+            try
+            {
+                document = JsonDocument.Parse(json);
+                var item = document.RootElement;
+                if (!item.TryGetProperty("id", out var idElement) ||
+                    !item.TryGetProperty("translation", out var translationElement))
+                    continue;
+
+                foundTranslationObject = true;
+                var id = idElement.GetInt32();
+                if (id < 0 || id >= expectedCount)
+                    throw new InvalidOperationException($"批次譯文包含無效 ID：{id}。");
+                if (translations[id] is not null)
+                    throw new InvalidOperationException($"批次譯文包含重複 ID：{id}。");
+
+                var translation = translationElement.GetString()?.Trim() ?? "";
+                if (translation.Length == 0)
+                    throw new InvalidOperationException($"批次譯文 ID {id} 沒有內容。");
+                translations[id] = translation;
+            }
+            catch (JsonException)
+            {
+                // A malformed outer object can still contain later complete objects. Only valid
+                // {id, translation} objects participate in reconstruction.
+            }
+            finally
+            {
+                document?.Dispose();
+            }
+        }
+
+        if (!foundTranslationObject)
+            throw new JsonException("回應中找不到完整的批次譯文物件。");
+
+        var missingId = Array.FindIndex(translations, translation => translation is null);
+        if (missingId >= 0)
+            throw new InvalidOperationException($"批次譯文缺少 ID：{missingId}。");
+
+        return translations.Select(translation => translation!).ToArray();
+    }
+
+    private static IReadOnlyList<string> ParseCompleteBatch(string json, int expectedCount)
+    {
         try
         {
             using var document = JsonDocument.Parse(json);
@@ -209,9 +345,10 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
 
             return translations.Select(translation => translation!).ToArray();
         }
-        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        catch (Exception ex) when (
+            ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
         {
-            throw new InvalidOperationException("OpenAI Compatible API 批次譯文格式無法解析。", ex);
+            throw new InvalidOperationException("JSON 陣列未通過批次譯文驗證。", ex);
         }
     }
 
