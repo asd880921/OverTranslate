@@ -21,13 +21,15 @@ public sealed record ScreenItem(
 /// <remarks>
 /// The page holds two kinds of value, and the line between them is the rule to keep:
 ///
-/// <para><b>Parameters of one sitting</b> — screen, block count, languages, service — are never read
-/// from or written to the settings file. Reopening the window offers the defaults again rather than
-/// restoring a set-up whose screen may since have been unplugged and whose blocks are long gone.
-/// That includes the translation service, which the rest of the application does share as one
-/// preference: watching a game and translating a document are different jobs with different
-/// tolerances — one wants an engine that answers in 80ms, the other one that reads carefully — and
-/// having this page quietly change what 設定 shows was the worse of the two surprises.</para>
+/// <para><b>Parameters of one sitting</b> — screen, block count and source language — are not read
+/// from or written to the settings file. Reopening the window must not restore a screen that may
+/// have been unplugged, blocks that no longer frame the same content, or a source language the next
+/// programme may not use.</para>
+///
+/// <para><b>Translation preferences</b> — target language and service — are stored independently
+/// from screenshot and text translation. Watching a game and translating a document are different
+/// jobs with different latency and quality requirements, but choosing the same realtime target and
+/// service on every launch is needless repetition.</para>
 ///
 /// <para><b>Appearance preferences</b> — the subtitle's two colours, in 顯示外觀 — are stored and
 /// restored. A reader who needs yellow on dark blue needs it every session, and re-picking it each
@@ -85,6 +87,7 @@ public partial class RealtimePage : UserControl
 
         // Attached after the initial value is set, so initialisation does not fire the handler
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
+        TgtLangBox.SelectionChanged += TgtLangBox_SelectionChanged;
         SrcLangBox.SelectionChanged += (_, _) => RenderState();
 
         RenderColours();
@@ -98,7 +101,7 @@ public partial class RealtimePage : UserControl
     }
 
     /// <summary>
-    /// This page's own starting point, independent of what is saved.
+    /// Applies this page's independent translation preferences and per-session defaults.
     /// </summary>
     /// <remarks>
     /// 原文語言 is left unset on purpose. Realtime recognition offers no retry once the frame has
@@ -107,9 +110,16 @@ public partial class RealtimePage : UserControl
     /// </remarks>
     private void ApplyPageDefaults()
     {
+        var settings = SettingsService.Instance.Current;
         SrcLangBox.SelectedIndex = -1;
-        TgtLangBox.SelectedValue = DefaultTargetLanguage;
-        ProviderBox.SelectedValue = DefaultProvider;
+        TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(
+            settings.RealtimeTargetLanguage);
+        if (TgtLangBox.SelectedValue == null)
+            TgtLangBox.SelectedValue = DefaultTargetLanguage;
+
+        ProviderBox.SelectedValue = settings.RealtimeProvider;
+        if (ProviderBox.SelectedValue == null)
+            ProviderBox.SelectedValue = DefaultProvider;
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
         RenderProviderHint();
     }
@@ -153,8 +163,25 @@ public partial class RealtimePage : UserControl
         RealtimeSessionController.Instance.ForgetBlocks();
     }
 
-    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ProviderBox.SelectedValue is TranslationProvider provider)
+            SaveTranslationPreference(settings => settings.RealtimeProvider = provider);
         RenderProviderHint();
+    }
+
+    private void TgtLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (TgtLangBox.SelectedValue is not string targetLanguage) return;
+        SaveTranslationPreference(settings =>
+            settings.RealtimeTargetLanguage = LanguageData.GetValidTargetCode(targetLanguage));
+    }
+
+    private static void SaveTranslationPreference(Action<AppSettings> apply)
+    {
+        apply(SettingsService.Instance.Current);
+        SettingsService.Instance.Save();
+    }
 
     /// <summary>
     /// The service's own note, plus the one thing that would otherwise only surface as a failure

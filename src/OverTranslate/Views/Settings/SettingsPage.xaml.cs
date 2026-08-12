@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Windows.Navigation;
 using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
@@ -25,6 +27,7 @@ public partial class SettingsPage : UserControl
     private static readonly TimeSpan ApiKeyDebounce = TimeSpan.FromMilliseconds(600);
 
     private readonly DispatcherTimer _apiKeyDebounce;
+    private readonly DispatcherTimer _openAiSettingsDebounce;
     private readonly DispatcherTimer _statusHold;
 
     /// <summary>
@@ -91,6 +94,18 @@ public partial class SettingsPage : UserControl
             Persist(s => s.ApiKey = ApiKeyBox.Text.Trim());
         };
 
+        _openAiSettingsDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
+        _openAiSettingsDebounce.Tick += (_, _) =>
+        {
+            _openAiSettingsDebounce.Stop();
+            Persist(s =>
+            {
+                s.OpenAiBaseUrl = OpenAiBaseUrlBox.Text.Trim();
+                s.OpenAiApiKey = OpenAiApiKeyBox.Text.Trim();
+                s.OpenAiModel = OpenAiModelBox.Text.Trim();
+            });
+        };
+
         _statusHold = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1600) };
         _statusHold.Tick += (_, _) => { _statusHold.Stop(); FadeStatusOut(); };
 
@@ -121,6 +136,9 @@ public partial class SettingsPage : UserControl
 
             foreach (var field in _hotkeyFields) field.Box.Text = field.Display(s);
             ApiKeyBox.Text = s.ApiKey;
+            OpenAiBaseUrlBox.Text = s.OpenAiBaseUrl;
+            OpenAiApiKeyBox.Text = s.OpenAiApiKey;
+            OpenAiModelBox.Text = s.OpenAiModel;
 
             LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
             DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
@@ -207,6 +225,19 @@ public partial class SettingsPage : UserControl
         if (_loading) return;
         _apiKeyDebounce.Stop();
         _apiKeyDebounce.Start();
+    }
+
+    private void OpenAiSetting_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+        _openAiSettingsDebounce.Stop();
+        _openAiSettingsDebounce.Start();
+    }
+
+    private void OllamaGuideLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
     }
 
     private void AutoTranslate_Toggled(object sender, RoutedEventArgs e)
@@ -306,11 +337,13 @@ public partial class SettingsPage : UserControl
 
     private void UpdateApiKeyVisibility()
     {
-        var vis = (ProviderBox.SelectedItem as ProviderItem)?.RequiresApiKey == true
+        var provider = ProviderBox.SelectedValue as TranslationProvider?;
+        DeepLApiKeyRow.Visibility = provider == TranslationProvider.DeepL
             ? Visibility.Visible
             : Visibility.Collapsed;
-        ApiKeyLabel.Visibility = vis;
-        ApiKeyBox.Visibility   = vis;
+        OpenAiSettingsPanel.Visibility = provider == TranslationProvider.OpenAI
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     // ── Hotkey recording ─────────────────────────────────────────────────────
