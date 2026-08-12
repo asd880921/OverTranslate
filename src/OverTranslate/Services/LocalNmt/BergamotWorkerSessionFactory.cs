@@ -62,6 +62,9 @@ public sealed class BergamotWorkerSessionFactory(BergamotWorkerOptions options) 
 
         var process = Process.Start(startInfo)
                       ?? throw new InvalidOperationException("Unable to start the Bergamot worker process.");
+        try { process.PriorityClass = ProcessPriorityClass.BelowNormal; }
+        catch (InvalidOperationException) { /* Process may have failed before priority could be set. */ }
+        catch (System.ComponentModel.Win32Exception) { /* Restricted hosts may deny priority changes. */ }
         var session = new BergamotWorkerSession(process, options.RequestTimeout);
         try
         {

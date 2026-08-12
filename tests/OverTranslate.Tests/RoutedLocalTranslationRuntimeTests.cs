@@ -112,6 +112,24 @@ public class RoutedLocalTranslationRuntimeTests
         Assert.Equal(2, factory.CreatedRoutes.Count);
     }
 
+    [Fact]
+    public async Task DefaultConcurrency_AllowsOnlyOneNativeTranslationAtATime()
+    {
+        var factory = new BlockingFactory();
+        await using var runtime = new RoutedLocalTranslationRuntime(new LocalModelCatalog(), factory);
+
+        var first = runtime.TranslateAsync(new(["first"], "EN", "ZH-HANT"));
+        await factory.FirstEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var second = runtime.TranslateAsync(new(["second"], "EN", "ZH-HANT"));
+        await Task.Delay(50);
+
+        Assert.Equal(1, factory.EnteredCalls);
+        factory.Release.TrySetResult();
+        await Task.WhenAll(first, second);
+        Assert.Equal(2, factory.EnteredCalls);
+        Assert.Equal(1, factory.MaxConcurrentCalls);
+    }
+
     private sealed class RecordingFactory(bool delayCreation = false) : ILocalModelSessionFactory
     {
         private readonly object _gate = new();
@@ -172,5 +190,39 @@ public class RoutedLocalTranslationRuntimeTests
         public override DateTimeOffset GetUtcNow() => now;
 
         public void Advance(TimeSpan elapsed) => now += elapsed;
+    }
+
+    private sealed class BlockingFactory : ILocalModelSessionFactory
+    {
+        public TaskCompletionSource FirstEntered { get; } = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        public int EnteredCalls;
+        public int MaxConcurrentCalls;
+        private int _activeCalls;
+
+        public Task<ILocalModelSession> CreateAsync(
+            LocalTranslationRoute route,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<ILocalModelSession>(new BlockingSession(this));
+
+        private sealed class BlockingSession(BlockingFactory owner) : ILocalModelSession
+        {
+            public async Task<IReadOnlyList<string>> TranslateAsync(
+                IReadOnlyList<string> texts,
+                CancellationToken cancellationToken = default)
+            {
+                Interlocked.Increment(ref owner.EnteredCalls);
+                var active = Interlocked.Increment(ref owner._activeCalls);
+                owner.MaxConcurrentCalls = Math.Max(owner.MaxConcurrentCalls, active);
+                owner.FirstEntered.TrySetResult();
+                await owner.Release.Task.WaitAsync(cancellationToken);
+                Interlocked.Decrement(ref owner._activeCalls);
+                return texts.ToArray();
+            }
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        }
     }
 }

@@ -16,9 +16,12 @@ public interface ILocalModelSessionFactory
         CancellationToken cancellationToken = default);
 }
 
-public sealed record LocalRuntimeOptions(int MaxLoadedSessions, TimeSpan IdleTimeout)
+public sealed record LocalRuntimeOptions(
+    int MaxLoadedSessions,
+    TimeSpan IdleTimeout,
+    int MaxConcurrentTranslations = 1)
 {
-    public static LocalRuntimeOptions Default { get; } = new(2, TimeSpan.FromMinutes(10));
+    public static LocalRuntimeOptions Default { get; } = new(2, TimeSpan.FromMinutes(10), 1);
 }
 
 /// <summary>
@@ -33,6 +36,7 @@ public sealed class RoutedLocalTranslationRuntime : ILocalTranslationRuntime, IA
     private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
     private readonly Dictionary<string, SessionEntry> _sessions = [];
+    private readonly SemaphoreSlim _translationSlots;
     private bool _disposed;
 
     public RoutedLocalTranslationRuntime(
@@ -49,6 +53,10 @@ public sealed class RoutedLocalTranslationRuntime : ILocalTranslationRuntime, IA
             throw new ArgumentOutOfRangeException(nameof(options), "At least one local session must be allowed.");
         if (_options.IdleTimeout <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(options), "Idle timeout must be positive.");
+        if (_options.MaxConcurrentTranslations < 1)
+            throw new ArgumentOutOfRangeException(nameof(options), "At least one translation slot must be allowed.");
+        _translationSlots = new SemaphoreSlim(
+            _options.MaxConcurrentTranslations, _options.MaxConcurrentTranslations);
     }
 
     public string? LastRouteId { get; private set; }
@@ -95,22 +103,30 @@ public sealed class RoutedLocalTranslationRuntime : ILocalTranslationRuntime, IA
 
         try
         {
-            var session = await entry.Session.Value;
-            IReadOnlyList<string> translations;
+            await _translationSlots.WaitAsync(cancellationToken);
             try
             {
-                translations = await session.TranslateAsync(request.Texts, cancellationToken);
-                if (translations.Count != request.Texts.Count)
-                    throw new InvalidDataException(
-                        $"Local route {route.RouteId} returned {translations.Count} results for {request.Texts.Count} texts.");
+                var session = await entry.Session.Value;
+                IReadOnlyList<string> translations;
+                try
+                {
+                    translations = await session.TranslateAsync(request.Texts, cancellationToken);
+                    if (translations.Count != request.Texts.Count)
+                        throw new InvalidDataException(
+                            $"Local route {route.RouteId} returned {translations.Count} results for {request.Texts.Count} texts.");
+                }
+                catch
+                {
+                    lock (_gate) RemoveEntry(entry);
+                    await DisposeEntryAsync(entry);
+                    throw;
+                }
+                return new LocalTranslationResult(translations, route.SourceLanguage);
             }
-            catch
+            finally
             {
-                lock (_gate) RemoveEntry(entry);
-                await DisposeEntryAsync(entry);
-                throw;
+                _translationSlots.Release();
             }
-            return new LocalTranslationResult(translations, route.SourceLanguage);
         }
         finally
         {
@@ -129,6 +145,7 @@ public sealed class RoutedLocalTranslationRuntime : ILocalTranslationRuntime, IA
             _sessions.Clear();
         }
         foreach (var entry in sessions) await DisposeEntryAsync(entry);
+        _translationSlots.Dispose();
     }
 
     private async Task<SessionEntry> AcquireAsync(
