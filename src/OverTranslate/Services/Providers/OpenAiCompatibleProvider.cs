@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using NLog;
 using OverTranslate.Models;
 
 namespace OverTranslate.Services.Providers;
@@ -18,8 +19,10 @@ internal sealed class OpenAiBatchMarkersMissingException()
 /// </summary>
 public sealed class OpenAiCompatibleProvider : ITranslationProvider
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
     private static readonly HttpClient DefaultHttp = new() { Timeout = TimeSpan.FromSeconds(60) };
     private const int MaxBlocksPerBatch = 10;
+    private const int MaxDebugContentLength = 2000;
     private static readonly Regex ThinkingBlock = new(
         @"<think(?:\s[^>]*)?>.*?</think\s*>",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
@@ -103,6 +106,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
             {
                 new { role = "user", content = $"{BuildPrompt(sourceLang, targetLang)}\n\n{batch}" },
             },
+            temperature = 0,
             stream = false,
         };
 
@@ -135,6 +139,14 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
             ex is JsonException or KeyNotFoundException or IndexOutOfRangeException or InvalidOperationException)
         {
             throw new InvalidOperationException("OpenAI Compatible API 回應格式無法解析。", ex);
+        }
+
+        if (!BatchMarker.IsMatch(StripThinking(content)))
+        {
+            Log.Debug(
+                "OpenAI batch response contained no usable marker (blocks={BlockCount}, content={Content})",
+                blocks.Count,
+                FormatDebugContent(content));
         }
 
         return ParseBatchTranslations(content, blocks.Count);
@@ -200,9 +212,37 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
                 translations[id] = translation;
         }
 
-        return translations.Count > 0
-            ? translations
-            : throw new OpenAiBatchMarkersMissingException();
+        if (translations.Count > 0)
+            return translations;
+
+        if (expectedCount == 1 && TrimMarkdownFence(cleaned) is { Length: > 0 } singleTranslation)
+            return new Dictionary<int, string> { [0] = singleTranslation };
+
+        throw new OpenAiBatchMarkersMissingException();
+    }
+
+    private static string TrimMarkdownFence(string value)
+    {
+        var trimmed = value.Trim();
+        if (!trimmed.StartsWith("```", StringComparison.Ordinal)) return trimmed;
+
+        var firstLineEnd = trimmed.IndexOf('\n');
+        if (firstLineEnd < 0) return trimmed;
+
+        var content = trimmed[(firstLineEnd + 1)..].Trim();
+        return content.EndsWith("```", StringComparison.Ordinal)
+            ? content[..^3].TrimEnd()
+            : content;
+    }
+
+    private static string FormatDebugContent(string content)
+    {
+        var escaped = content
+            .Replace("\r", "\\r", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal);
+        return escaped.Length <= MaxDebugContentLength
+            ? escaped
+            : escaped[..MaxDebugContentLength] + "…";
     }
 
     private static string ReadContent(JsonElement message)

@@ -83,6 +83,7 @@ public class OpenAiCompatibleProviderTests
         Assert.Equal("Bearer secret-key", request.Authorization);
         using var payload = JsonDocument.Parse(request.Body);
         Assert.Equal("test-model", payload.RootElement.GetProperty("model").GetString());
+        Assert.Equal(0, payload.RootElement.GetProperty("temperature").GetInt32());
         Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
         var message = Assert.Single(payload.RootElement.GetProperty("messages").EnumerateArray());
         Assert.Equal("user", message.GetProperty("role").GetString());
@@ -239,6 +240,38 @@ public class OpenAiCompatibleProviderTests
         Assert.False(translations.ContainsKey(3));
     }
 
+    [Theory]
+    [InlineData("沒有標記的單筆譯文", "沒有標記的單筆譯文")]
+    [InlineData("<think>hidden</think>純譯文", "純譯文")]
+    [InlineData("```text\n純譯文\n```", "純譯文")]
+    public void ParseBatchTranslations_AcceptsWholeUnmarkedResponseForOneBlock(
+        string response,
+        string expected)
+    {
+        var translations = OpenAiCompatibleProvider.ParseBatchTranslations(response, 1);
+
+        Assert.Equal(expected, translations[0]);
+    }
+
+    [Fact]
+    public async Task TranslateAsync_AcceptsUnmarkedContentForOneBlock()
+    {
+        const string response =
+            """{"choices":[{"message":{"content":"這有點含糊不清。"}}]}""";
+        using var http = new HttpClient(new StaticResponseHandler(HttpStatusCode.OK, response));
+        var provider = new OpenAiCompatibleProvider(
+            http,
+            () => new OpenAiCompatibleOptions("https://example.test/v1", "test-model"));
+
+        var (translated, _) = await provider.TranslateAsync(
+            [new OcrTextBlock("It's a bit too vague.", new Rect())],
+            "EN",
+            "ZH-HANT",
+            "key");
+
+        Assert.Equal("這有點含糊不清。", Assert.Single(translated).TranslatedText);
+    }
+
     [Fact]
     public async Task TranslateAsync_OnlyReturnsBlocksForIdsTheModelProvided()
     {
@@ -263,7 +296,7 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
-    public void ParseBatchTranslations_RejectsResponseWithoutAnyUsableMarker()
+    public void ParseBatchTranslations_RejectsUnmarkedResponseForMultipleBlocks()
     {
         Assert.Throws<OpenAiBatchMarkersMissingException>(() =>
             OpenAiCompatibleProvider.ParseBatchTranslations("沒有可用標記", 2));
