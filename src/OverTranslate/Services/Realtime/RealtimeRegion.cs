@@ -39,7 +39,12 @@ public sealed record RealtimeBlockPlacement(
 /// the region no longer holds any readable text — and clears the overlay rather than leaving the
 /// previous subtitle stranded on screen.
 /// </summary>
+/// <param name="Generation">
+/// Which generation of the session's translation cache produced these lines. An update that arrives
+/// after the session was paused carries an older one and is dropped rather than painted onto a
+/// screen the user has just cleared — see <see cref="RealtimeTranslationCache"/>.
+/// </param>
 public sealed record RealtimeRegionUpdate(
     int RegionId,
     IReadOnlyList<TranslatedBlock> Lines,
-    int RefreshGeneration);
+    int Generation);

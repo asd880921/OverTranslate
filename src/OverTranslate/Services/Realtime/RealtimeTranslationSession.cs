@@ -62,8 +62,8 @@ public sealed class RealtimeTranslationSession
     private readonly OcrService _ocr;
     private readonly TranslationService _translation;
 
-    // Shared by every region, and generation-tagged so a provider answer from before a manual
-    // refresh cannot repopulate the cache after that refresh cleared it.
+    // Shared by every region, and generation-tagged so a provider answer from before a pause cannot
+    // repopulate the cache after that pause cleared it.
     private readonly RealtimeTranslationCache _translationCache = new();
 
     // Shared by every region's pump, for the reasons on MaxConcurrentTranslations.
@@ -103,6 +103,13 @@ public sealed class RealtimeTranslationSession
     // application. Set by Start before any region loop begins.
     private Models.TranslationProvider _provider;
 
+    // What Resume needs to put the loops back the way Start left them. A paused session is still
+    // the session the user framed: the blocks, the languages and the engine cannot change while it
+    // is paused, because everything that could change them lives on a page a session has hidden.
+    private IReadOnlyList<RealtimeRegion> _regions = [];
+    private string _sourceLanguage = "";
+    private string _targetLanguage = "";
+
     public RealtimeTranslationSession(OcrService ocr, TranslationService translation)
     {
         _ocr = ocr;
@@ -122,15 +129,24 @@ public sealed class RealtimeTranslationSession
     /// <summary>True while <see cref="RunAsync"/> is doing something more than hashing pixels.</summary>
     public event EventHandler<bool>? BusyChanged;
 
+    /// <summary>
+    /// True while the region loops are stopped by <see cref="Pause"/> — as opposed to never started,
+    /// or ended by <see cref="Stop"/>.
+    /// </summary>
+    public bool IsPaused { get; private set; }
+
     public void Start(
         IReadOnlyList<RealtimeRegion> regions,
         string sourceLanguage,
         string targetLanguage,
         Models.TranslationProvider provider)
     {
-        _provider = provider;
-
         Stop();
+
+        _provider = provider;
+        _regions = regions;
+        _sourceLanguage = sourceLanguage;
+        _targetLanguage = targetLanguage;
 
         var cts = new CancellationTokenSource();
         _cts = cts;
@@ -165,34 +181,67 @@ public sealed class RealtimeTranslationSession
     }
 
     /// <summary>
-    /// Reads and translates every region again from scratch, as if nothing had been seen before.
+    /// Stops watching the screen without ending the session, and gives the recognition model's
+    /// memory back straight away.
     /// </summary>
     /// <remarks>
-    /// Everything else here exists to avoid repeating work, and on content that has stopped moving
-    /// that is indistinguishable from being stuck: the frame no longer changes, so the region is
-    /// never re-read, and a line that has been translated once is answered from the cache forever
-    /// after. Both are right for a session watching content go by, and both are exactly wrong for a
-    /// user sitting on a still frame who can see that the translation is not good enough. This is
-    /// the way out, and it has to cut through both layers — clearing only the frame state would
-    /// re-read the same words and hand back the same cached wording, which reads as the shortcut
-    /// having done nothing.
+    /// For the scene the user does not want translated: a cutscene they have already read, a menu
+    /// they know by heart, anything where the overlays are in the way rather than helping. Ending
+    /// the session would work too, and would cost them their blocks and a trip back through the
+    /// shell window to draw them again — this keeps the whole arrangement and only stops the work.
     ///
-    /// The cost is one full pass per region, paid only when asked for. The cache is dropped whole
-    /// rather than per region: the regions share it, and a line still on screen elsewhere costs one
-    /// translation to learn again.
+    /// Everything a running session holds goes: the poll loops are cancelled, and the ONNX runtime
+    /// is released rather than left warm, because a paused session that keeps hundreds of MB alive
+    /// is indistinguishable from one that was never paused. Loading it again is what
+    /// <see cref="Resume"/> pays, and it is paid once at human pace.
+    ///
+    /// The translation cache goes with it, which is what the generation is for: an answer already
+    /// in flight when this was called must not land in the cache — or on screen — after it. Keeping
+    /// the cache would save a few provider calls on 繼續; publishing a line from before the pause
+    /// into a scene that has since moved on is the more expensive mistake.
     /// </remarks>
-    /// <returns>The generation assigned to this refresh, for rejecting older queued UI updates.</returns>
-    public int RequestRefresh()
+    /// <returns>The generation assigned to this pause, for rejecting older queued UI updates.</returns>
+    public int Pause()
     {
-        var generation = _translationCache.Refresh();
+        StopLoops();
+        IsPaused = true;
 
-        // The one thing on this path a user could ask about afterwards, and it happens at human
-        // pace — not the per-poll traffic that has to stay at Debug.
-        Log.Info("Realtime refresh requested: every region will be read and translated again");
+        // Not merely "stop keeping it warm": that leaves the model loaded for the inactivity delay,
+        // and the user has just said they are done with it for now.
+        _ocr.ReleaseModel();
+
+        var generation = _translationCache.Invalidate();
+
+        // Human-paced, and the first thing to check when a session is reported as having stopped
+        // updating — unlike the per-poll traffic, which has to stay at Debug.
+        Log.Info("Realtime session paused: region loops stopped and the OCR model released");
         return generation;
     }
 
+    /// <summary>
+    /// Starts watching again after <see cref="Pause"/>, with the blocks, languages and engine the
+    /// session was started with.
+    /// </summary>
+    /// <remarks>
+    /// Every region begins from an empty view of the screen — new frame state, no cached wording —
+    /// so whatever is on screen now is read and translated rather than compared against a frame
+    /// from before the pause.
+    /// </remarks>
+    public void Resume()
+    {
+        if (!IsPaused) return;
+
+        Log.Info("Realtime session resuming: every region will be read from scratch");
+        Start(_regions, _sourceLanguage, _targetLanguage, _provider);
+    }
+
     public void Stop()
+    {
+        StopLoops();
+        IsPaused = false;
+    }
+
+    private void StopLoops()
     {
         _cts?.Cancel();
         _cts = null;
@@ -219,22 +268,9 @@ public sealed class RealtimeTranslationSession
             var lastScan = Stopwatch.GetTimestamp();
             var skippedPolls = 0;
 
-            // Where this region's view of RequestRefresh starts. Taken before the first poll so a
-            // refresh asked for while the session was starting is not read as one this loop missed.
-            var seenRefresh = _translationCache.Generation;
-
             while (await timer.WaitForNextTickAsync(token))
             {
                 token.ThrowIfCancellationRequested();
-
-                // Asked for by the user, and applied in the same place and the same way as the retry
-                // below: the state belongs to this loop, so this is the only thread that may drop it.
-                var refresh = _translationCache.Generation;
-                if (refresh != seenRefresh)
-                {
-                    seenRefresh = refresh;
-                    state.Invalidate();
-                }
 
                 // A translation that never reached the screen leaves this region recorded as showing
                 // words it does not show, and the pixels will not change again on their own — so the
@@ -655,17 +691,17 @@ public sealed class RealtimeTranslationSession
         List<OcrTextBlock> blocks,
         string sourceLanguage,
         string targetLanguage,
-        int refreshGeneration,
+        int generation,
         CancellationToken token)
     {
-        if (!_translationCache.IsCurrent(refreshGeneration)) return null;
+        if (!_translationCache.IsCurrent(generation)) return null;
 
         // The service is part of the key: it cannot change mid-session today, but a cache that
         // silently outlived a change of engine would serve the old engine's wording forever.
         var cacheKeyPrefix = $"{_provider}|{sourceLanguage}|{targetLanguage}|";
         var missing = blocks
             .Where(block => !_translationCache.TryGet(
-                cacheKeyPrefix + block.Text, refreshGeneration, out _))
+                cacheKeyPrefix + block.Text, generation, out _))
             .ToList();
 
         if (missing.Count > 0)
@@ -677,7 +713,7 @@ public sealed class RealtimeTranslationSession
             var (results, _) = await _translation.TranslateAsync(
                 missing, sourceLanguage, targetLanguage, apiKey, cancellationToken: token, engine: _provider);
 
-            _translationCache.ClearIfOverLimit(TranslationCacheLimit, refreshGeneration);
+            _translationCache.ClearIfOverLimit(TranslationCacheLimit, generation);
 
             // Providers answer in request order; pair defensively anyway so a short reply degrades
             // to an untranslated line rather than throwing away the whole pass.
@@ -685,18 +721,18 @@ public sealed class RealtimeTranslationSession
                 _translationCache.Set(
                     cacheKeyPrefix + missing[i].Text,
                     results[i].TranslatedText,
-                    refreshGeneration);
+                    generation);
         }
 
-        // A refresh may have landed while the provider was answering. Its result belongs to the old
-        // screen view: do not draw it, even untranslated, and let the refreshed poll replace it.
-        if (!_translationCache.IsCurrent(refreshGeneration)) return null;
+        // A pause may have landed while the provider was answering. Its result belongs to a screen
+        // view the session has abandoned: do not draw it, even untranslated.
+        if (!_translationCache.IsCurrent(generation)) return null;
 
         return blocks
             .Select(block => new TranslatedBlock(
                 block.Text,
                 _translationCache.TryGet(
-                    cacheKeyPrefix + block.Text, refreshGeneration, out var translated)
+                    cacheKeyPrefix + block.Text, generation, out var translated)
                         ? translated
                         : block.Text,
                 block.Bounds,
@@ -798,10 +834,10 @@ public sealed class RealtimeTranslationSession
                 return;
             }
 
-            // Captured after OCR. If refresh arrives from here onward, this pass is stale and both
+            // Captured after OCR. If a pause arrives from here onward, this pass is stale and both
             // TranslateAsync and the pre-publish check below refuse to let it repopulate the cache or
             // reach the screen.
-            var refreshGeneration = session._translationCache.Generation;
+            var generation = session._translationCache.Generation;
 
             // Not Task.Run(_, token): a token already cancelled skips the body entirely, and the
             // slot taken out above would never be given back.
@@ -812,10 +848,10 @@ public sealed class RealtimeTranslationSession
                 {
                     session.SetBusy(true);
                     var translated = await session.TranslateAsync(
-                        blocks, sourceLanguage, targetLanguage, refreshGeneration, token);
+                        blocks, sourceLanguage, targetLanguage, generation, token);
                     var translateMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 
-                    if (translated is null || !session._translationCache.IsCurrent(refreshGeneration))
+                    if (translated is null || !session._translationCache.IsCurrent(generation))
                     {
                         RequestRetry();
                         return;
@@ -823,7 +859,7 @@ public sealed class RealtimeTranslationSession
 
                     // Both per pass, so both track the content's rate of change — see the read line
                     // in RunRegionAsync for why that cannot sit at Info.
-                    if (Publish(pass, translated, refreshGeneration))
+                    if (Publish(pass, translated, generation))
                         Log.Debug(
                             "Realtime pass region={Region} ocr={Ocr}ms translate={Translate}ms lines={Lines}",
                             region.Id, ocrMs, translateMs, translated.Count);
@@ -857,14 +893,14 @@ public sealed class RealtimeTranslationSession
         public bool Publish(
             long pass,
             IReadOnlyList<TranslatedBlock> lines,
-            int? refreshGeneration = null)
+            int? generation = null)
         {
             if (!_order.TryClaim(pass)) return false;
 
             session.RaiseRegionUpdated(new RealtimeRegionUpdate(
                 region.Id,
                 lines,
-                refreshGeneration ?? session._translationCache.Generation));
+                generation ?? session._translationCache.Generation));
             return true;
         }
 

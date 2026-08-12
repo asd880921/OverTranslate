@@ -150,15 +150,17 @@
                     </StackPanel>
 
                     <!-- Icon-only keeps the running capsule compact. Its tooltip names both the
-                         action and the user's configured keyboard equivalent. -->
-                    <Button x:Name="RefreshBtn"
+                         action and the user's configured keyboard equivalent. The glyph is the
+                         action, not the state: a running session shows ⏸ because that is what
+                         pressing it does — the state is said by the dot and the text beside it. -->
+                    <Button x:Name="PauseBtn"
                             Style="{StaticResource ToolbarIconButton}"
                             FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                             FontSize="13"
-                            Content="&#xE72C;"
+                            Content="&#xE769;"
                             Margin="0,0,4,0"
-                            AutomationProperties.Name="刷新當前畫面翻譯內容"
-                            Click="RefreshBtn_Click"/>
+                            AutomationProperties.Name="暫停即時翻譯"
+                            Click="PauseBtn_Click"/>
 
                     <!-- Icon rather than a word: the two buttons beside it are the session's own
                          controls, and a third label of equal weight would read as a third thing the

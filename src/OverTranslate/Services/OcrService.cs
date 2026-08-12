@@ -93,6 +93,12 @@ public class OcrService : IDisposable
     public void SetKeepWarm(bool keepWarm) => _engine.SetKeepWarm(keepWarm);
 
     /// <summary>
+    /// Releases the loaded model immediately rather than after the inactivity delay — see
+    /// <see cref="OnnxOcrEngine.ReleaseNow"/>.
+    /// </summary>
+    public void ReleaseModel() => _engine.ReleaseNow();
+
+    /// <summary>
     /// How many recognitions may run at once. Exposed so a caller that was turned away can say how
     /// many slots there were, which is the number that makes the refusal mean anything.
     /// </summary>
