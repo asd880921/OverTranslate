@@ -1,4 +1,6 @@
 using System.IO;
+using System.Diagnostics;
+using NLog;
 using OverTranslate.Services.LocalNmt;
 
 namespace OverTranslate.Services.Providers;
@@ -8,6 +10,7 @@ public sealed class LocalNmtTranslationProvider(
     ILocalTranslationRuntime runtime,
     LocalModelCatalog? catalog = null) : ITranslationProvider
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
     private readonly LocalModelCatalog _catalog = catalog ?? new LocalModelCatalog();
 
     public bool RequiresApiKey => false;
@@ -33,12 +36,21 @@ public sealed class LocalNmtTranslationProvider(
         if (blocks.Count == 0) return ([], "");
         cancellationToken.ThrowIfCancellationRequested();
 
+        var started = Stopwatch.GetTimestamp();
         var result = await runtime.TranslateAsync(
             new LocalTranslationRequest(
                 blocks.Select(block => block.Text).ToArray(),
                 sourceLang,
                 targetLang),
             cancellationToken);
+
+        var route = _catalog.Resolve(sourceLang, targetLang);
+        Log.Info(
+            "Local NMT completed: route={RouteId}, mode={Mode}, blocks={BlockCount}, elapsedMs={ElapsedMs:F0}",
+            route.RouteId,
+            route.IsPivot ? "pivot" : "direct",
+            blocks.Count,
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
         if (result.Translations.Count != blocks.Count)
             throw new InvalidDataException(
