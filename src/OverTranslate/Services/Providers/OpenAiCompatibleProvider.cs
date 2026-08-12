@@ -172,14 +172,18 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
 
     internal static string BuildPrompt(string sourceLang, string targetLang)
     {
-        var source = LanguageData.IsAutomaticSource(sourceLang)
-            ? "自動偵測的語言"
-            : LanguageData.GetSourceName(sourceLang);
-        var target = targetLang.Equals("ZH-HANT", StringComparison.OrdinalIgnoreCase)
-            ? "台灣繁體中文"
-            : LanguageData.GetTargetName(targetLang);
+        var target = LanguageData.GetTargetName(targetLang);
 
-        return $"從({source})翻譯成({target})。只回傳自然譯文，不要思考、解釋或補寫。";
+        if (LanguageData.IsAutomaticSource(sourceLang))
+        {
+            return $"將輸入中各種語言的文字翻譯成({target})。" +
+                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。";
+        }
+
+        var source = LanguageData.GetSourceName(sourceLang);
+
+        return $"從({source})翻譯成({target})。" +
+               "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。";
     }
 
     internal static string StripThinking(string value) => ThinkingBlock.Replace(value, "").Trim();
