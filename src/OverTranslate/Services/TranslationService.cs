@@ -23,7 +23,6 @@ public class TranslationService
     private readonly GTranslateProvider _google2   = new(new GoogleTranslator2(Http));
     private readonly GTranslateProvider _bing      = new(new BingTranslator(Http));
     private readonly GTranslateProvider _microsoft = new(new MicrosoftTranslator(Http));
-    private readonly GTranslateProvider _yandex    = new(new YandexTranslator(Http), new() { { "ZH-HANT", "ZH-HANS" } });
     private readonly DeepLProvider      _deepL     = new();
     private readonly OpenAiCompatibleProvider _openAi = new();
 
@@ -33,7 +32,6 @@ public class TranslationService
     private readonly ResilientProvider _google2R;
     private readonly ResilientProvider _bingR;
     private readonly ResilientProvider _microsoftR;
-    private readonly ResilientProvider _yandexR;
 
     public TranslationService()
     {
@@ -42,7 +40,6 @@ public class TranslationService
         _bingR      = new ResilientProvider([_bing, _google2, _microsoft]);
         _microsoftR = new ResilientProvider([_microsoft, _google2, _bing]);
         _googleR    = new ResilientProvider([_google, _google2, _bing]);
-        _yandexR    = new ResilientProvider([_yandex, _google2, _bing]);
     }
 
     /// <summary>
@@ -57,7 +54,6 @@ public class TranslationService
         TranslationProvider.Google    => _googleR,
         TranslationProvider.Bing      => _bingR,
         TranslationProvider.Microsoft => _microsoftR,
-        TranslationProvider.Yandex    => _yandexR,
         TranslationProvider.DeepL     => _deepL,
         TranslationProvider.OpenAI    => _openAi,
         _                             => _google2R,
@@ -69,7 +65,6 @@ public class TranslationService
         TranslationProvider.Google    => _google,
         TranslationProvider.Bing      => _bing,
         TranslationProvider.Microsoft => _microsoft,
-        TranslationProvider.Yandex    => _yandex,
         TranslationProvider.DeepL     => _deepL,
         TranslationProvider.OpenAI    => _openAi,
         _                             => _google2,
