@@ -12,10 +12,10 @@ public class LocalTranslationCacheKeyTests
 
         var key = LocalTranslationCacheKey.Create(route, "こんにちは", "ocr-normalization-v2");
 
-        Assert.Equal("bergamot", key.RuntimeId);
+        Assert.Equal("hy-mt2", key.RuntimeId);
         Assert.Equal(LocalModelCatalog.CatalogVersion, key.CatalogVersion);
-        Assert.Equal("bergamot-ja-en+bergamot-en-zh-hant", key.RouteId);
-        Assert.Equal("a9bf800679bb+559ab90d723a", key.ModelVersions);
+        Assert.Equal("ja-zh-hant:hy-mt2-1.8b-q4-k-m", key.RouteId);
+        Assert.Equal("1cd5208700ac", key.ModelVersions);
         Assert.Equal("JA", key.SourceLanguage);
         Assert.Equal("ZH-HANT", key.TargetLanguage);
         Assert.Equal("ocr-normalization-v2", key.NormalizationVersion);
@@ -29,7 +29,7 @@ public class LocalTranslationCacheKeyTests
 
         var first = LocalTranslationCacheKey.Create(route, "Hello", "v1");
         var normalizedUpgrade = LocalTranslationCacheKey.Create(route, "Hello", "v2");
-        var runtimeUpgrade = LocalTranslationCacheKey.Create(route, "Hello", "v1", "bergamot-v2");
+        var runtimeUpgrade = LocalTranslationCacheKey.Create(route, "Hello", "v1", "hy-mt2-v2");
 
         Assert.NotEqual(first, normalizedUpgrade);
         Assert.NotEqual(first, runtimeUpgrade);

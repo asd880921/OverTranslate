@@ -79,7 +79,7 @@ public static class LanguageData
         new(TranslationProvider.DeepL,   "DeepL 翻譯", true, "需 API Key，可於 DeepL 官方申請（目前有提供免費方案，請至官網申請）"),
         ];
         if (Services.LocalNmt.LocalNmtBootstrap.IsConfigured)
-            providers.Add(new(TranslationProvider.LocalNmt, "本機翻譯 (Bergamot)", false,
+            providers.Add(new(TranslationProvider.LocalNmt, "本機翻譯 (Hy-MT2)", false,
                 "實驗性本機模型；翻譯內容不會傳送到雲端"));
         return providers;
     }

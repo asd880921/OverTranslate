@@ -15,7 +15,7 @@ internal static class LocalNmtBootstrap
         var options = ResolveOptions();
         if (options is null) return null;
         var runtime = new RoutedLocalTranslationRuntime(
-            new LocalModelCatalog(), new BergamotWorkerSessionFactory(options));
+            new LocalModelCatalog(), new LlamaCppSessionFactory(options));
         return new LocalNmtTranslationProvider(runtime);
     }
 
@@ -25,19 +25,15 @@ internal static class LocalNmtBootstrap
         return new LocalModelManager(catalog, new LocalModelInstaller(ModelHttp, ResolveModelRoot()));
     }
 
-    private static BergamotWorkerOptions? ResolveOptions()
+    private static LlamaCppOptions? ResolveOptions()
     {
         var repositoryRoot = FindRepositoryRoot();
-        var worker = FirstExistingFile(
-            Path.Combine(AppContext.BaseDirectory, "OverTranslate.Nmt.Worker.exe"),
-            repositoryRoot is null ? null : Path.Combine(repositoryRoot, "src", "OverTranslate.Nmt.Worker", "bin", "Debug", "net8.0-windows10.0.17763.0", "win-x64", "OverTranslate.Nmt.Worker.exe"),
-            repositoryRoot is null ? null : Path.Combine(repositoryRoot, "src", "OverTranslate.Nmt.Worker", "bin", "Release", "net8.0-windows10.0.17763.0", "win-x64", "OverTranslate.Nmt.Worker.exe"));
-        var native = FirstExistingFile(
-            Path.Combine(AppContext.BaseDirectory, "overtranslate_bergamot.dll"),
-            repositoryRoot is null ? null : Path.Combine(repositoryRoot, "artifacts", "nmt-poc", "bergamot-translator", "build-nmake-avx2", "app", "overtranslate_bergamot.dll"));
-        return worker is null || native is null
+        var server = FirstExistingFile(
+            Path.Combine(AppContext.BaseDirectory, "llama-server.exe"),
+            repositoryRoot is null ? null : Path.Combine(repositoryRoot, "artifacts", "nmt-poc", "llama.cpp", "b10362", "llama-server.exe"));
+        return server is null
             ? null
-            : BergamotWorkerOptions.Create(worker, native, ResolveModelRoot());
+            : LlamaCppOptions.Create(server, ResolveModelRoot());
     }
 
     private static string ResolveModelRoot()

@@ -2,7 +2,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace OverTranslate.Services.LocalNmt;
 
@@ -25,8 +24,6 @@ public sealed class LocalModelInstaller(HttpClient http, string modelRoot)
         CancellationToken cancellationToken = default)
     {
         var directory = GetInstallDirectory(model);
-        if (!File.Exists(Path.Combine(directory, "config.yml"))) return false;
-
         foreach (var artifact in model.Artifacts)
         {
             var path = Path.Combine(directory, artifact.FileName);
@@ -58,19 +55,13 @@ public sealed class LocalModelInstaller(HttpClient http, string modelRoot)
                 var artifact = model.Artifacts[index];
                 EnsureSafeFileName(artifact.FileName);
                 var destination = Path.Combine(stagingDirectory, artifact.FileName);
-                await DownloadAndExpandAsync(artifact, destination, cancellationToken);
+                await DownloadAsync(artifact, destination, cancellationToken);
                 if (!await MatchesAsync(destination, artifact, cancellationToken))
                     throw new InvalidDataException(
                         $"Downloaded model artifact failed verification: {artifact.FileName}.");
                 progress?.Report(new LocalModelInstallProgress(
                     model.ModelId, artifact.FileName, index + 1, model.Artifacts.Count));
             }
-
-            await File.WriteAllTextAsync(
-                Path.Combine(stagingDirectory, "config.yml"),
-                BuildConfig(model, finalDirectory),
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-                cancellationToken);
 
             try
             {
@@ -90,7 +81,7 @@ public sealed class LocalModelInstaller(HttpClient http, string modelRoot)
         }
     }
 
-    private async Task DownloadAndExpandAsync(
+    private async Task DownloadAsync(
         LocalModelArtifact artifact,
         string destination,
         CancellationToken cancellationToken)
@@ -100,12 +91,19 @@ public sealed class LocalModelInstaller(HttpClient http, string modelRoot)
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
         response.EnsureSuccessStatusCode();
-        await using var compressed = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var gzip = new GZipStream(compressed, CompressionMode.Decompress);
+        await using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
         await using var output = new FileStream(
             destination, FileMode.CreateNew, FileAccess.Write, FileShare.None,
             bufferSize: 81920, useAsync: true);
-        await gzip.CopyToAsync(output, cancellationToken);
+        if (artifact.DownloadUri.AbsolutePath.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+        {
+            await using var gzip = new GZipStream(input, CompressionMode.Decompress);
+            await gzip.CopyToAsync(output, cancellationToken);
+        }
+        else
+        {
+            await input.CopyToAsync(output, cancellationToken);
+        }
     }
 
     private static async Task<bool> MatchesAsync(
@@ -121,49 +119,6 @@ public sealed class LocalModelInstaller(HttpClient http, string modelRoot)
             bufferSize: 81920, useAsync: true);
         var hash = Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken));
         return hash.Equals(artifact.UncompressedSha256, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string BuildConfig(LocalModelDescriptor model, string directory)
-    {
-        var modelArtifact = model.Artifacts.Single(artifact => artifact.Role == LocalModelArtifactRole.Model);
-        var vocabularies = model.Artifacts.Where(
-            artifact => artifact.Role == LocalModelArtifactRole.Vocabulary).ToArray();
-        var shortlist = model.Artifacts.Single(
-            artifact => artifact.Role == LocalModelArtifactRole.LexicalShortlist);
-        if (vocabularies.Length is < 1 or > 2)
-            throw new InvalidDataException($"Model {model.ModelId} has an invalid vocabulary count.");
-
-        string PathOf(LocalModelArtifact artifact) =>
-            Path.Combine(directory, artifact.FileName).Replace('\\', '/');
-        var sourceVocab = PathOf(vocabularies[0]);
-        var targetVocab = PathOf(vocabularies.Length == 1 ? vocabularies[0] : vocabularies[1]);
-
-        return string.Join("\r\n",
-        [
-            "models:",
-            $"  - {PathOf(modelArtifact)}",
-            "vocabs:",
-            $"  - {sourceVocab}",
-            $"  - {targetVocab}",
-            "shortlist:",
-            $"  - {PathOf(shortlist)}",
-            "  - false",
-            "beam-size: 1",
-            "normalize: 1.0",
-            "word-penalty: 0",
-            "max-length-break: 128",
-            "mini-batch-words: 1024",
-            "workspace: 128",
-            "max-length-factor: 2.0",
-            "skip-cost: true",
-            "cpu-threads: 0",
-            "quiet: true",
-            "quiet-translation: true",
-            "gemm-precision: int8shiftAlphaAll",
-            "alignment: soft",
-            "ssplit-mode: paragraph",
-            "",
-        ]);
     }
 
     private static void EnsureSafeFileName(string fileName)

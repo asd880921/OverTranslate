@@ -15,7 +15,7 @@ public readonly record struct LocalTranslationCacheKey(
         LocalTranslationRoute route,
         string text,
         string normalizationVersion,
-        string runtimeId = "bergamot") => new(
+        string runtimeId = "hy-mt2") => new(
             runtimeId,
             LocalModelCatalog.CatalogVersion,
             route.RouteId,

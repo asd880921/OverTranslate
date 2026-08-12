@@ -193,9 +193,9 @@ public partial class SettingsPage : UserControl
             var status = await manager.GetStatusAsync();
             var totalMiB = manager.TotalUncompressedBytes / 1024d / 1024d;
             LocalModelStatusText.Text = status.IsComplete
-                ? $"四個模型皆已安裝並通過驗證（約 {totalMiB:F0} MiB）。"
-                : $"已安裝 {status.InstalledModels}/{status.TotalModels} 個模型；完整安裝約 {totalMiB:F0} MiB。";
-            InstallLocalModelsBtn.Content = status.IsComplete ? "重新驗證模型" : "下載並驗證四語向模型";
+                ? $"Hy-MT2 模型已安裝並通過驗證（約 {totalMiB:F0} MiB）。"
+                : $"模型尚未安裝；完整安裝約 {totalMiB:F0} MiB。";
+            InstallLocalModelsBtn.Content = status.IsComplete ? "重新驗證模型" : "下載並驗證 Hy-MT2 模型";
         }
         catch (Exception exception)
         {

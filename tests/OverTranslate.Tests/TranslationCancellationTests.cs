@@ -59,7 +59,10 @@ public class TranslationCancellationTests
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => service.TranslateAsync(SampleBlocks(), "EN", "ZH-HANT", "", cancellationToken: cts.Token));
+            () => service.TranslateAsync(
+                SampleBlocks(), "EN", "ZH-HANT", "",
+                cancellationToken: cts.Token,
+                engine: OverTranslate.Models.TranslationProvider.Bing));
     }
 
     // An empty batch short-circuits before the cancellation check; it must stay cheap and silent

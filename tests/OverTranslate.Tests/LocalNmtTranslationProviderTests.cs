@@ -82,8 +82,8 @@ public class LocalNmtTranslationProviderTests
         var identity = provider.GetCacheIdentity("JA", "ZH-HANT", "ocr-v2");
 
         Assert.Equal(
-            "bergamot|issue-47-v1|bergamot-ja-en+bergamot-en-zh-hant|" +
-            "a9bf800679bb+559ab90d723a|JA|ZH-HANT|ocr-v2",
+            "hy-mt2|issue-47-hy-mt2-v1|ja-zh-hant:hy-mt2-1.8b-q4-k-m|" +
+            "1cd5208700ac|JA|ZH-HANT|ocr-v2",
             identity);
     }
 

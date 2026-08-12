@@ -209,7 +209,7 @@
                         <StackPanel Grid.Row="2">
                             <StackPanel Orientation="Horizontal">
                                 <Button x:Name="InstallLocalModelsBtn"
-                                        Content="下載並驗證四語向模型"
+                                        Content="下載並驗證 Hy-MT2 模型"
                                         Style="{StaticResource FlatButton}"
                                         MinWidth="190"
                                         Click="InstallLocalModelsBtn_Click"/>
@@ -226,7 +226,7 @@
                                          Minimum="0"
                                          Maximum="1"
                                          Visibility="Collapsed"/>
-                            <TextBlock Text="只有按下按鈕後才會直接從 Mozilla 下載；翻譯文字不會上傳。"
+                            <TextBlock Text="只有按下按鈕後才會直接從 Hugging Face 下載；翻譯文字不會上傳。"
                                        Style="{StaticResource FieldHint}"
                                        Margin="0,8,0,0"/>
                         </StackPanel>

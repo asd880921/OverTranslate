@@ -16,12 +16,12 @@ public class RoutedLocalTranslationRuntimeTests
 
         Assert.Equal(["local:Hello"], first.Translations);
         Assert.Equal(["local:Again"], second.Translations);
-        Assert.Equal("bergamot-en-zh-hant", runtime.LastRouteId);
+        Assert.Equal("en-zh-hant:hy-mt2-1.8b-q4-k-m", runtime.LastRouteId);
         Assert.Single(factory.CreatedRoutes);
     }
 
     [Fact]
-    public async Task Translate_PassesEntirePivotRouteToSessionFactory()
+    public async Task Translate_PassesDirectMultilingualRouteToSessionFactory()
     {
         var factory = new RecordingFactory();
         await using var runtime = new RoutedLocalTranslationRuntime(new LocalModelCatalog(), factory);
@@ -29,9 +29,8 @@ public class RoutedLocalTranslationRuntimeTests
         var result = await runtime.TranslateAsync(new(["こんにちは"], "JA", "ZH-HANT"));
 
         var route = Assert.Single(factory.CreatedRoutes);
-        Assert.True(route.IsPivot);
-        Assert.Equal(["bergamot-ja-en", "bergamot-en-zh-hant"],
-            route.Models.Select(model => model.ModelId));
+        Assert.False(route.IsPivot);
+        Assert.Equal("hy-mt2-1.8b-q4-k-m", Assert.Single(route.Models).ModelId);
         Assert.Equal("JA", result.DetectedLanguage);
     }
 

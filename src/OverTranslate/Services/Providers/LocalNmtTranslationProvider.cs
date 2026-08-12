@@ -22,7 +22,7 @@ public sealed class LocalNmtTranslationProvider(
     {
         var route = _catalog.Resolve(sourceLanguage, targetLanguage);
         var versions = string.Join("+", route.Models.Select(model => model.Version));
-        return $"bergamot|{LocalModelCatalog.CatalogVersion}|{route.RouteId}|{versions}|" +
+        return $"hy-mt2|{LocalModelCatalog.CatalogVersion}|{route.RouteId}|{versions}|" +
                $"{route.SourceLanguage}|{route.TargetLanguage}|{normalizationVersion}";
     }
 

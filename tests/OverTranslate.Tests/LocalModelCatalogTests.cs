@@ -8,21 +8,21 @@ public class LocalModelCatalogTests
     private readonly LocalModelCatalog _catalog = new();
 
     [Theory]
-    [InlineData("EN", "ZH-HANT", "bergamot-en-zh-hant", false)]
-    [InlineData("EN-US", "ZH-TW", "bergamot-en-zh-hant", false)]
-    [InlineData("JA", "ZH-HANT", "bergamot-ja-en+bergamot-en-zh-hant", true)]
-    [InlineData("KO", "ZH-HANT", "bergamot-ko-en+bergamot-en-zh-hant", true)]
-    [InlineData("ZH-HANT", "EN-US", "bergamot-zh-hant-en", false)]
-    public void Resolve_ReturnsExpectedDirectOrPivotRoute(
+    [InlineData("EN", "ZH-HANT", "en-zh-hant:hy-mt2-1.8b-q4-k-m")]
+    [InlineData("EN-US", "ZH-TW", "en-zh-hant:hy-mt2-1.8b-q4-k-m")]
+    [InlineData("JA", "ZH-HANT", "ja-zh-hant:hy-mt2-1.8b-q4-k-m")]
+    [InlineData("KO", "ZH-HANT", "ko-zh-hant:hy-mt2-1.8b-q4-k-m")]
+    [InlineData("ZH-HANT", "EN-US", "zh-hant-en:hy-mt2-1.8b-q4-k-m")]
+    public void Resolve_ReturnsExpectedDirectRoute(
         string source,
         string target,
-        string routeId,
-        bool isPivot)
+        string routeId)
     {
         var route = _catalog.Resolve(source, target);
 
         Assert.Equal(routeId, route.RouteId);
-        Assert.Equal(isPivot, route.IsPivot);
+        Assert.False(route.IsPivot);
+        Assert.Equal("hy-mt2-1.8b-q4-k-m", Assert.Single(route.Models).ModelId);
     }
 
     [Fact]
