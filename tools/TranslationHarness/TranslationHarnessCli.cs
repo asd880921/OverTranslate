@@ -10,6 +10,9 @@ public static class TranslationHarnessCli
 {
     public static async Task<int> RunAsync(string[] args)
     {
+        if (args.FirstOrDefault() == BergamotWorkerHost.Command)
+            return await BergamotWorkerHost.RunAsync(args[1..]);
+
         if (args.Length == 0 || args.Contains("--help"))
         {
             PrintUsage();
@@ -35,18 +38,21 @@ public static class TranslationHarnessCli
             ITranslationProvider provider = arguments.Provider.ToLowerInvariant() switch
             {
                 "microsoft" => new GTranslateProvider(new MicrosoftTranslator(http)),
-                "bergamot" => new BergamotTranslationProvider(
+                "bergamot" => new BergamotWorkerTranslationProvider(
                     arguments.NativeLibraryPath ?? throw new ArgumentException(
                         "--native-library is required for the Bergamot provider."),
                     arguments.ModelConfigPath ?? throw new ArgumentException(
-                        "--model-config is required for the Bergamot provider.")),
-                "bergamot-pivot" => new BergamotTranslationProvider(
+                        "--model-config is required for the Bergamot provider."),
+                    null,
+                    arguments.Timeout),
+                "bergamot-pivot" => new BergamotWorkerTranslationProvider(
                     arguments.NativeLibraryPath ?? throw new ArgumentException(
                         "--native-library is required for the Bergamot pivot provider."),
                     arguments.ModelConfigPath ?? throw new ArgumentException(
                         "--model-config is required for the first Bergamot pivot model."),
                     arguments.PivotModelConfigPath ?? throw new ArgumentException(
-                        "--pivot-model-config is required for the second Bergamot pivot model.")),
+                        "--pivot-model-config is required for the second Bergamot pivot model."),
+                    arguments.Timeout),
                 _ => throw new ArgumentException(
                     $"Unknown provider '{arguments.Provider}'. Supported providers: " +
                     "microsoft, bergamot, bergamot-pivot."),
@@ -118,6 +124,7 @@ public static class TranslationHarnessCli
         Console.WriteLine("  --native-library <dll>     Bergamot C ABI library path");
         Console.WriteLine("  --model-config <yaml>      Direct or first pivot model configuration");
         Console.WriteLine("  --pivot-model-config <yml> Second pivot model configuration");
+        Console.WriteLine("  Bergamot providers run in a crash-isolated worker process and require AVX2.");
         Console.WriteLine("  --runs 10                  Measured corpus passes per batch size");
         Console.WriteLine("  --duration-seconds <n>     Run each direction/batch for at least this duration");
         Console.WriteLine("  --warmup-runs 1            Unmeasured warmup passes");

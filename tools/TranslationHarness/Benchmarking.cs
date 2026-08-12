@@ -142,9 +142,9 @@ public static class BenchmarkRunner
                     batch, sourceLanguage, targetLanguage, provider, options.Timeout, cancellationToken);
 
         var process = Process.GetCurrentProcess();
-        process.Refresh();
-        var workingSetBefore = process.WorkingSet64;
-        var cpuBefore = process.TotalProcessorTime;
+        var resourcesBefore = CaptureResources(process, provider);
+        var workingSetBefore = resourcesBefore.WorkingSetBytes;
+        var cpuBefore = resourcesBefore.TotalProcessorTime;
         var wallClock = Stopwatch.StartNew();
         var peakWorkingSet = workingSetBefore;
         var latencies = new List<double>();
@@ -153,7 +153,9 @@ public static class BenchmarkRunner
         var errors = new List<string>();
 
         using var samplerCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var sampler = SampleWorkingSetAsync(process, value => peakWorkingSet = Math.Max(peakWorkingSet, value),
+        var sampler = SampleWorkingSetAsync(
+            () => CaptureResources(process, provider).WorkingSetBytes,
+            value => peakWorkingSet = Math.Max(peakWorkingSet, value),
             samplerCancellation.Token);
 
         try
@@ -196,10 +198,10 @@ public static class BenchmarkRunner
             await sampler;
         }
 
-        process.Refresh();
-        var workingSetAfter = process.WorkingSet64;
+        var resourcesAfter = CaptureResources(process, provider);
+        var workingSetAfter = resourcesAfter.WorkingSetBytes;
         peakWorkingSet = Math.Max(peakWorkingSet, workingSetAfter);
-        var cpuDelta = process.TotalProcessorTime - cpuBefore;
+        var cpuDelta = resourcesAfter.TotalProcessorTime - cpuBefore;
         var cpuPercent = wallClock.Elapsed.TotalMilliseconds <= 0
             ? 0
             : cpuDelta.TotalMilliseconds / wallClock.Elapsed.TotalMilliseconds /
@@ -270,7 +272,7 @@ public static class BenchmarkRunner
     }
 
     private static async Task SampleWorkingSetAsync(
-        Process process,
+        Func<long> captureWorkingSet,
         Action<long> observe,
         CancellationToken cancellationToken)
     {
@@ -278,14 +280,27 @@ public static class BenchmarkRunner
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                process.Refresh();
-                observe(process.WorkingSet64);
+                observe(captureWorkingSet());
                 await Task.Delay(TimeSpan.FromMilliseconds(25), cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
+    }
+
+    private static ProcessResourceSnapshot CaptureResources(
+        Process process,
+        ITranslationProvider provider)
+    {
+        process.Refresh();
+        var snapshot = new ProcessResourceSnapshot(process.WorkingSet64, process.TotalProcessorTime);
+        if (provider is not IBenchmarkProcessResources external) return snapshot;
+
+        var child = external.CaptureProcessResources();
+        return new ProcessResourceSnapshot(
+            snapshot.WorkingSetBytes + child.WorkingSetBytes,
+            snapshot.TotalProcessorTime + child.TotalProcessorTime);
     }
 
     private static EnvironmentSnapshot CaptureEnvironment(string hardwareProfile)

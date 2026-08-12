@@ -46,8 +46,11 @@ corpus 版本、runs、warmup 與 batch sizes，並為硬體使用穩定名稱�
 
 `native/bergamot` 是最小 C ABI wrapper；介面不跨 DLL 暴露 C++ ABI、STL 或物件 ownership。
 `BergamotTranslationProvider` 會載入指定 DLL 與 model config 一次，後續 batch 沿用同一模型，並將
-provider 初始化時間獨立寫入 report。原生推論開始後目前無法硬中止；取消可阻止尚未開始的工作，
-過時結果仍由呼叫端丟棄。若後續需要可靠硬 timeout／native crash 隔離，應比較獨立 worker process。
+provider 初始化時間獨立寫入 report。CLI 的 `bergamot`／`bergamot-pivot` provider 會先檢查 AVX2、
+wrapper DLL、OpenBLAS、config 及其引用的 model／vocab／shortlist／ssplit 檔案，再把 native 初始化與
+推論放進獨立 worker process。timeout 或取消會終止 worker，因此 native crash、損壞模型或無法中止的
+推論不會帶走 harness 主程序；下一次重試必須建立新的 provider。報告的 CPU 與 working set 會合計
+harness 與 worker，避免因程序隔離低估模型資源。
 `bergamot-pivot` 會在同一 native service 載入兩個 model，完整呼叫 Bergamot `pivotMultiple`；初始化、
 CPU、working set 與延遲均包含兩段，不可和 direct 結果混合平均。
 
