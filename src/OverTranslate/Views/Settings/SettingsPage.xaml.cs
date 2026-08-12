@@ -7,6 +7,7 @@ using OverTranslate.Models;
 using OverTranslate.Services;
 using OverTranslate.Views;
 using Microsoft.Win32;
+using OverTranslate.Services.LocalNmt;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -95,6 +96,7 @@ public partial class SettingsPage : UserControl
         _statusHold.Tick += (_, _) => { _statusHold.Stop(); FadeStatusOut(); };
 
         LoadSettings();
+        Loaded += async (_, _) => await RefreshLocalModelStatusAsync();
     }
 
     /// <summary>
@@ -176,6 +178,57 @@ public partial class SettingsPage : UserControl
         };
         fade.Completed += (_, _) => AutoSaveHint.Opacity = 1;
         StatusText.BeginAnimation(OpacityProperty, fade);
+    }
+
+    private async Task RefreshLocalModelStatusAsync()
+    {
+        var manager = AppServices.LocalModels;
+        LocalModelCard.Visibility = manager is null ? Visibility.Collapsed : Visibility.Visible;
+        if (manager is null) return;
+
+        try
+        {
+            var status = await manager.GetStatusAsync();
+            var totalMiB = manager.TotalUncompressedBytes / 1024d / 1024d;
+            LocalModelStatusText.Text = status.IsComplete
+                ? $"四個模型皆已安裝並通過驗證（約 {totalMiB:F0} MiB）。"
+                : $"已安裝 {status.InstalledModels}/{status.TotalModels} 個模型；完整安裝約 {totalMiB:F0} MiB。";
+            InstallLocalModelsBtn.Content = status.IsComplete ? "重新驗證模型" : "下載並驗證四語向模型";
+        }
+        catch (Exception exception)
+        {
+            LocalModelStatusText.Text = $"無法檢查本機模型：{exception.Message}";
+        }
+    }
+
+    private async void InstallLocalModelsBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var manager = AppServices.LocalModels;
+        if (manager is null) return;
+
+        InstallLocalModelsBtn.IsEnabled = false;
+        LocalModelProgress.Visibility = Visibility.Visible;
+        LocalModelProgress.Value = 0;
+        try
+        {
+            var progress = new Progress<LocalModelManagerProgress>(item =>
+            {
+                LocalModelProgress.Maximum = item.TotalFiles;
+                LocalModelProgress.Value = item.CompletedFiles;
+                LocalModelStatusText.Text = $"正在驗證 {item.ModelId}：{item.FileName}（{item.CompletedFiles}/{item.TotalFiles}）";
+            });
+            await manager.InstallAllAsync(progress);
+            await RefreshLocalModelStatusAsync();
+        }
+        catch (Exception exception)
+        {
+            LocalModelStatusText.Text = $"模型安裝失敗：{exception.Message}";
+        }
+        finally
+        {
+            InstallLocalModelsBtn.IsEnabled = true;
+            LocalModelProgress.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void ShowError(string message)

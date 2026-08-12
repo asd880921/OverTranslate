@@ -1,10 +1,13 @@
 using System.IO;
+using System.Net.Http;
 using OverTranslate.Services.Providers;
 
 namespace OverTranslate.Services.LocalNmt;
 
 internal static class LocalNmtBootstrap
 {
+    private static readonly HttpClient ModelHttp = new() { Timeout = TimeSpan.FromMinutes(10) };
+
     public static bool IsConfigured => ResolveOptions() is not null;
 
     public static ITranslationProvider? TryCreateProvider()
@@ -14,6 +17,14 @@ internal static class LocalNmtBootstrap
         var runtime = new RoutedLocalTranslationRuntime(
             new LocalModelCatalog(), new BergamotWorkerSessionFactory(options));
         return new LocalNmtTranslationProvider(runtime);
+    }
+
+    public static LocalModelManager? TryCreateModelManager()
+    {
+        var options = ResolveOptions();
+        if (options is null) return null;
+        var catalog = new LocalModelCatalog();
+        return new LocalModelManager(catalog, new LocalModelInstaller(ModelHttp, options.ModelRoot));
     }
 
     private static BergamotWorkerOptions? ResolveOptions()

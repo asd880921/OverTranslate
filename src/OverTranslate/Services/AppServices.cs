@@ -26,4 +26,7 @@ internal static class AppServices
 
     public static TranslationService Translation { get; } = new(
         LocalNmt.LocalNmtBootstrap.TryCreateProvider());
+
+    public static LocalNmt.LocalModelManager? LocalModels { get; } =
+        LocalNmt.LocalNmtBootstrap.TryCreateModelManager();
 }

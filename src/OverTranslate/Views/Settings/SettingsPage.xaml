@@ -190,6 +190,42 @@
                     </Grid>
                 </Border>
 
+                <!-- ── 本機翻譯模型（僅在本機開發 runtime 配置完成時顯示） ── -->
+                <Border x:Name="LocalModelCard"
+                        Style="{StaticResource CardBorder}"
+                        Visibility="Collapsed">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="本機翻譯模型" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="1" x:Name="LocalModelStatusText"
+                                   TextWrapping="Wrap"
+                                   Style="{StaticResource FieldHint}"
+                                   Margin="0,0,0,10"/>
+                        <StackPanel Grid.Row="2">
+                            <Button x:Name="InstallLocalModelsBtn"
+                                    Content="下載並驗證四語向模型"
+                                    Style="{StaticResource FlatButton}"
+                                    HorizontalAlignment="Left"
+                                    MinWidth="190"
+                                    Click="InstallLocalModelsBtn_Click"/>
+                            <ProgressBar x:Name="LocalModelProgress"
+                                         Height="4"
+                                         Margin="0,10,0,0"
+                                         Minimum="0"
+                                         Maximum="1"
+                                         Visibility="Collapsed"/>
+                            <TextBlock Text="只有按下按鈕後才會直接從 Mozilla 下載；翻譯文字不會上傳。"
+                                       Style="{StaticResource FieldHint}"
+                                       Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
                 <!-- ── 截圖 ── -->
                 <Border Style="{StaticResource CardBorder}">
                     <Grid>
