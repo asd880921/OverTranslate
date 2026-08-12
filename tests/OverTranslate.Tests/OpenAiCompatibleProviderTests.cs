@@ -209,6 +209,16 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Theory]
+    [InlineData("[{\"id\":0,\"translation\":\"第一段\"},{\"id\":1,\"translation\":\"第二段\"},{\"id\":2,\"translation\":\"額外內容\"}]")]
+    [InlineData("[{\"id\":0,\"translation\":\"第一段\"}\n{\"id\":1,\"translation\":\"第二段\"}\n{\"id\":2,\"translation\":\"額外內容\"}]")]
+    public void ParseBatchTranslations_IgnoresOutOfRangeIdsWhenExpectedIdsAreComplete(string response)
+    {
+        var translations = OpenAiCompatibleProvider.ParseBatchTranslations(response, 2);
+
+        Assert.Equal(["第一段", "第二段"], translations);
+    }
+
+    [Theory]
     [InlineData("[{\"id\":0,\"translation\":\"only\"}]", 2)]
     [InlineData("[{\"id\":0,\"translation\":\"a\"},{\"id\":0,\"translation\":\"b\"}]", 2)]
     [InlineData("[{\"id\":2,\"translation\":\"invalid\"}]", 2)]

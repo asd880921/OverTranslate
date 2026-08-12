@@ -286,7 +286,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
                 foundTranslationObject = true;
                 var id = idElement.GetInt32();
                 if (id < 0 || id >= expectedCount)
-                    throw new InvalidOperationException($"批次譯文包含無效 ID：{id}。");
+                    continue;
                 if (translations[id] is not null)
                     throw new InvalidOperationException($"批次譯文包含重複 ID：{id}。");
 
@@ -329,7 +329,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
             {
                 var id = item.GetProperty("id").GetInt32();
                 if (id < 0 || id >= expectedCount)
-                    throw new InvalidOperationException($"批次譯文包含無效 ID：{id}。");
+                    continue;
                 if (translations[id] is not null)
                     throw new InvalidOperationException($"批次譯文包含重複 ID：{id}。");
 
