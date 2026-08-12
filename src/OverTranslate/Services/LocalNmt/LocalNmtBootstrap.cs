@@ -1,3 +1,4 @@
+using System.IO;
 using OverTranslate.Services.Providers;
 
 namespace OverTranslate.Services.LocalNmt;
@@ -20,8 +21,9 @@ internal static class LocalNmtBootstrap
         var worker = Environment.GetEnvironmentVariable("OVERTRANSLATE_NMT_WORKER");
         var native = Environment.GetEnvironmentVariable("OVERTRANSLATE_NMT_NATIVE");
         var modelRoot = Environment.GetEnvironmentVariable("OVERTRANSLATE_NMT_MODEL_ROOT");
-        return string.IsNullOrWhiteSpace(worker) || string.IsNullOrWhiteSpace(native) ||
-               string.IsNullOrWhiteSpace(modelRoot)
+        return string.IsNullOrWhiteSpace(worker) || !File.Exists(worker) ||
+               string.IsNullOrWhiteSpace(native) || !File.Exists(native) ||
+               string.IsNullOrWhiteSpace(modelRoot) || !Directory.Exists(modelRoot)
             ? null
             : BergamotWorkerOptions.Create(worker, native, modelRoot);
     }
