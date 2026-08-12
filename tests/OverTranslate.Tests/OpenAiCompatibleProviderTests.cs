@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -38,7 +37,8 @@ public class OpenAiCompatibleProviderTests
         Assert.Contains("automatically detected", prompt);
         Assert.Contains("Traditional Chinese", prompt);
         Assert.Contains("Taiwan", prompt);
-        Assert.Contains("Return only the translation", prompt);
+        Assert.Contains("Return only a JSON array", prompt);
+        Assert.Contains("Keep every original integer id exactly once", prompt);
         Assert.Contains("reasoning", prompt);
     }
 
@@ -52,7 +52,7 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
-    public async Task TranslateAsync_SendsOneChatCompletionPerBlockAndPreservesOrderAndBounds()
+    public async Task TranslateAsync_SendsAllBlocksInOneChatCompletionAndPreservesOrderAndBounds()
     {
         var handler = new RecordingHandler();
         using var http = new HttpClient(handler);
@@ -68,15 +68,20 @@ public class OpenAiCompatibleProviderTests
         var (translated, detected) = await provider.TranslateAsync(
             blocks, "EN", "ZH-HANT", "secret-key");
 
-        Assert.Equal(2, handler.Requests.Count);
-        Assert.All(handler.Requests, request =>
-        {
-            Assert.Equal("http://localhost:1234/v1/chat/completions", request.Url);
-            Assert.Equal("Bearer secret-key", request.Authorization);
-            using var payload = JsonDocument.Parse(request.Body);
-            Assert.Equal("test-model", payload.RootElement.GetProperty("model").GetString());
-            Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
-        });
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("http://localhost:1234/v1/chat/completions", request.Url);
+        Assert.Equal("Bearer secret-key", request.Authorization);
+        using var payload = JsonDocument.Parse(request.Body);
+        Assert.Equal("test-model", payload.RootElement.GetProperty("model").GetString());
+        Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
+        var batchJson = payload.RootElement.GetProperty("messages")[1]
+            .GetProperty("content").GetString();
+        using var batch = JsonDocument.Parse(batchJson!);
+        Assert.Equal(2, batch.RootElement.GetArrayLength());
+        Assert.Equal(0, batch.RootElement[0].GetProperty("id").GetInt32());
+        Assert.Equal("first", batch.RootElement[0].GetProperty("text").GetString());
+        Assert.Equal(1, batch.RootElement[1].GetProperty("id").GetInt32());
+        Assert.Equal("second", batch.RootElement[1].GetProperty("text").GetString());
         Assert.Equal(["translated:first", "translated:second"],
             translated.Select(block => block.TranslatedText));
         Assert.Equal(blocks[0].Bounds, translated[0].Bounds);
@@ -120,7 +125,7 @@ public class OpenAiCompatibleProviderTests
     public async Task TranslateAsync_ReadsTextContentPartsFromCompatibleServers()
     {
         const string response =
-            """{"choices":[{"message":{"content":[{"type":"text","text":"陣列格式譯文"}]}}]}""";
+            """{"choices":[{"message":{"content":[{"type":"text","text":"[{\"id\":0,\"translation\":\"陣列格式譯文\"}]"}]}}]}""";
         using var http = new HttpClient(new StaticResponseHandler(HttpStatusCode.OK, response));
         var provider = new OpenAiCompatibleProvider(
             http,
@@ -149,11 +154,35 @@ public class OpenAiCompatibleProviderTests
         Assert.Contains("model not found", error.Message);
     }
 
+    [Fact]
+    public void ParseBatchTranslations_UsesIdsInsteadOfResponseOrderAndAcceptsMarkdownFence()
+    {
+        const string response =
+            "<think>hidden</think>```json\n" +
+            "[{\"id\":1,\"translation\":\"第二段\"},{\"id\":0,\"translation\":\"第一段\"}]\n" +
+            "```";
+
+        var translations = OpenAiCompatibleProvider.ParseBatchTranslations(response, 2);
+
+        Assert.Equal(["第一段", "第二段"], translations);
+    }
+
+    [Theory]
+    [InlineData("[{\"id\":0,\"translation\":\"only\"}]", 2)]
+    [InlineData("[{\"id\":0,\"translation\":\"a\"},{\"id\":0,\"translation\":\"b\"}]", 2)]
+    [InlineData("[{\"id\":2,\"translation\":\"invalid\"}]", 2)]
+    [InlineData("not json", 1)]
+    public void ParseBatchTranslations_RejectsIncompleteOrInvalidResponses(string response, int count)
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            OpenAiCompatibleProvider.ParseBatchTranslations(response, count));
+    }
+
     private sealed record RecordedRequest(string Url, string? Authorization, string Body);
 
     private sealed class RecordingHandler : HttpMessageHandler
     {
-        public ConcurrentBag<RecordedRequest> Requests { get; } = [];
+        public List<RecordedRequest> Requests { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -166,8 +195,16 @@ public class OpenAiCompatibleProviderTests
                 body));
 
             using var payload = JsonDocument.Parse(body);
-            var userText = payload.RootElement.GetProperty("messages")[1]
+            var batchJson = payload.RootElement.GetProperty("messages")[1]
                 .GetProperty("content").GetString();
+            using var batch = JsonDocument.Parse(batchJson!);
+            var translations = batch.RootElement.EnumerateArray()
+                .Select(item => new
+                {
+                    id = item.GetProperty("id").GetInt32(),
+                    translation = $"translated:{item.GetProperty("text").GetString()}",
+                })
+                .ToArray();
             var response = JsonSerializer.Serialize(new
             {
                 choices = new[]
@@ -177,7 +214,7 @@ public class OpenAiCompatibleProviderTests
                         message = new
                         {
                             role = "assistant",
-                            content = $"<think>hidden</think>translated:{userText}",
+                            content = $"<think>hidden</think>{JsonSerializer.Serialize(translations)}",
                         },
                     },
                 },
