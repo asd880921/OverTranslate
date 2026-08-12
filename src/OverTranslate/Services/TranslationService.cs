@@ -25,6 +25,7 @@ public class TranslationService
     private readonly GTranslateProvider _microsoft = new(new MicrosoftTranslator(Http));
     private readonly GTranslateProvider _yandex    = new(new YandexTranslator(Http), new() { { "ZH-HANT", "ZH-HANS" } });
     private readonly DeepLProvider      _deepL     = new();
+    private readonly ITranslationProvider? _localNmt;
 
     // Per-engine resilient wrappers: the user's choice is the primary, the other reliable
     // keyless engines act as hedged backups so one slow/throttled endpoint can't stall the batch.
@@ -34,8 +35,9 @@ public class TranslationService
     private readonly ResilientProvider _microsoftR;
     private readonly ResilientProvider _yandexR;
 
-    public TranslationService()
+    public TranslationService(ITranslationProvider? localNmt = null)
     {
+        _localNmt = localNmt;
         // Google2/Bing/Microsoft are the most reliable free endpoints — use them as the backup pool.
         _google2R   = new ResilientProvider([_google2, _bing, _microsoft]);
         _bingR      = new ResilientProvider([_bing, _google2, _microsoft]);
@@ -58,6 +60,7 @@ public class TranslationService
         TranslationProvider.Microsoft => _microsoftR,
         TranslationProvider.Yandex    => _yandexR,
         TranslationProvider.DeepL     => _deepL,
+        TranslationProvider.LocalNmt  => LocalNmt(),
         _                             => _google2R,
     };
 
@@ -69,8 +72,12 @@ public class TranslationService
         TranslationProvider.Microsoft => _microsoft,
         TranslationProvider.Yandex    => _yandex,
         TranslationProvider.DeepL     => _deepL,
+        TranslationProvider.LocalNmt  => LocalNmt(),
         _                             => _google2,
     };
+
+    private ITranslationProvider LocalNmt() => _localNmt ?? throw new InvalidOperationException(
+        "Local translation is not configured in this build.");
 
     public bool RequiresApiKey => Resilient(Saved).RequiresApiKey;
 
