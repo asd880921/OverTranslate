@@ -55,6 +55,29 @@ public class LocalModelInstallerTests
         }
     }
 
+    [Fact]
+    public async Task Install_CancelledBeforeDownloadLeavesNoPublishedOrPartialVersion()
+    {
+        var fixture = CreateFixture();
+        try
+        {
+            var installer = new LocalModelInstaller(fixture.Http, fixture.Root);
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                installer.InstallAsync(fixture.Model, cancellationToken: cancellation.Token));
+
+            Assert.False(Directory.Exists(installer.GetInstallDirectory(fixture.Model)));
+            Assert.Empty(Directory.GetDirectories(
+                Path.Combine(fixture.Root, fixture.Model.ModelId), "*.partial"));
+        }
+        finally
+        {
+            fixture.Dispose();
+        }
+    }
+
     private static Fixture CreateFixture(bool corruptHash = false)
     {
         var root = Directory.CreateTempSubdirectory("overtranslate-model-test-").FullName;

@@ -52,6 +52,7 @@ public partial class SettingsPage : UserControl
 
     /// <summary>True while the controls are being populated, so initialization never writes back.</summary>
     private bool _loading;
+    private CancellationTokenSource? _modelInstallCancellation;
 
     public SettingsPage()
     {
@@ -97,6 +98,7 @@ public partial class SettingsPage : UserControl
 
         LoadSettings();
         Loaded += async (_, _) => await RefreshLocalModelStatusAsync();
+        Unloaded += (_, _) => _modelInstallCancellation?.Cancel();
     }
 
     /// <summary>
@@ -207,8 +209,10 @@ public partial class SettingsPage : UserControl
         if (manager is null) return;
 
         InstallLocalModelsBtn.IsEnabled = false;
+        CancelLocalModelInstallBtn.Visibility = Visibility.Visible;
         LocalModelProgress.Visibility = Visibility.Visible;
         LocalModelProgress.Value = 0;
+        _modelInstallCancellation = new CancellationTokenSource();
         try
         {
             var progress = new Progress<LocalModelManagerProgress>(item =>
@@ -217,8 +221,12 @@ public partial class SettingsPage : UserControl
                 LocalModelProgress.Value = item.CompletedFiles;
                 LocalModelStatusText.Text = $"正在驗證 {item.ModelId}：{item.FileName}（{item.CompletedFiles}/{item.TotalFiles}）";
             });
-            await manager.InstallAllAsync(progress);
+            await manager.InstallAllAsync(progress, _modelInstallCancellation.Token);
             await RefreshLocalModelStatusAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            LocalModelStatusText.Text = "已取消模型下載；未完成的暫存檔已清除。";
         }
         catch (Exception exception)
         {
@@ -227,8 +235,19 @@ public partial class SettingsPage : UserControl
         finally
         {
             InstallLocalModelsBtn.IsEnabled = true;
+            CancelLocalModelInstallBtn.Visibility = Visibility.Collapsed;
             LocalModelProgress.Visibility = Visibility.Collapsed;
+            _modelInstallCancellation.Dispose();
+            _modelInstallCancellation = null;
         }
+    }
+
+    private void CancelLocalModelInstallBtn_Click(object sender, RoutedEventArgs e)
+    {
+        CancelLocalModelInstallBtn.IsEnabled = false;
+        LocalModelStatusText.Text = "正在取消並清理暫存檔…";
+        _modelInstallCancellation?.Cancel();
+        CancelLocalModelInstallBtn.IsEnabled = true;
     }
 
     private void ShowError(string message)

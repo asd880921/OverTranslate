@@ -207,12 +207,19 @@
                                    Style="{StaticResource FieldHint}"
                                    Margin="0,0,0,10"/>
                         <StackPanel Grid.Row="2">
-                            <Button x:Name="InstallLocalModelsBtn"
-                                    Content="下載並驗證四語向模型"
-                                    Style="{StaticResource FlatButton}"
-                                    HorizontalAlignment="Left"
-                                    MinWidth="190"
-                                    Click="InstallLocalModelsBtn_Click"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="InstallLocalModelsBtn"
+                                        Content="下載並驗證四語向模型"
+                                        Style="{StaticResource FlatButton}"
+                                        MinWidth="190"
+                                        Click="InstallLocalModelsBtn_Click"/>
+                                <Button x:Name="CancelLocalModelInstallBtn"
+                                        Content="取消"
+                                        Style="{StaticResource FlatButton}"
+                                        Margin="8,0,0,0"
+                                        Visibility="Collapsed"
+                                        Click="CancelLocalModelInstallBtn_Click"/>
+                            </StackPanel>
                             <ProgressBar x:Name="LocalModelProgress"
                                          Height="4"
                                          Margin="0,10,0,0"
