@@ -30,15 +30,42 @@ public class OpenAiCompatibleProviderTests
         Assert.Throws<InvalidOperationException>(() => OpenAiCompatibleProvider.BuildEndpoint(input));
     }
 
-    [Fact]
-    public void BuildPrompt_IsShortAndRequiresTranslationOnly()
+    [Theory]
+    [InlineData("ZH-HANT", "繁體中文")]
+    [InlineData("ZH-HANS", "簡體中文")]
+    public void BuildPrompt_UsesChineseForChineseTargets(string targetCode, string targetName)
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "ZH-HANT");
+        var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", targetCode);
 
-        Assert.Contains("將輸入中各種語言的文字翻譯成(繁體中文)", prompt);
+        Assert.Contains($"將輸入中各種語言的文字翻譯成({targetName})", prompt);
         Assert.Contains("只回傳自然、人性化的翻譯結果", prompt);
         Assert.DoesNotContain("JSON", prompt);
         Assert.True(prompt.Length <= 80);
+    }
+
+    [Theory]
+    [InlineData("EN", "JA", "English", "Japanese")]
+    [InlineData("JA", "KO", "Japanese", "Korean")]
+    public void BuildPrompt_UsesEnglishForOtherTargets(
+        string sourceCode,
+        string targetCode,
+        string sourceName,
+        string targetName)
+    {
+        var prompt = OpenAiCompatibleProvider.BuildPrompt(sourceCode, targetCode);
+
+        Assert.Contains($"from ({sourceName}) to ({targetName})", prompt);
+        Assert.Contains("Return only a natural, human-sounding translation", prompt);
+        Assert.DoesNotContain("只回傳", prompt);
+    }
+
+    [Fact]
+    public void BuildPrompt_UsesEnglishForAutomaticSourceWhenTargetIsNotChinese()
+    {
+        var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "EN-US");
+
+        Assert.Contains("from any language to (English)", prompt);
+        Assert.Contains("Return only a natural, human-sounding translation", prompt);
     }
 
     [Theory]

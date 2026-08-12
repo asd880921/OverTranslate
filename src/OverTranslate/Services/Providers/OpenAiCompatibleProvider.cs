@@ -172,6 +172,15 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
 
     internal static string BuildPrompt(string sourceLang, string targetLang)
     {
+        return targetLang.Trim().ToUpperInvariant() switch
+        {
+            "ZH-HANS" or "ZH-HANT" => BuildChinesePrompt(sourceLang, targetLang),
+            _ => BuildEnglishPrompt(sourceLang, targetLang),
+        };
+    }
+
+    private static string BuildChinesePrompt(string sourceLang, string targetLang)
+    {
         var target = LanguageData.GetTargetName(targetLang);
 
         if (LanguageData.IsAutomaticSource(sourceLang))
@@ -185,6 +194,26 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         return $"從({source})翻譯成({target})。" +
                "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。";
     }
+
+    private static string BuildEnglishPrompt(string sourceLang, string targetLang)
+    {
+        var target = GetEnglishLanguageName(LanguageData.TargetLanguages, targetLang);
+
+        if (LanguageData.IsAutomaticSource(sourceLang))
+        {
+            return $"Translate the input text from any language to ({target}). " +
+                   "Do not think or add extra text. Return only a natural, human-sounding translation.";
+        }
+
+        var source = GetEnglishLanguageName(LanguageData.SourceLanguages, sourceLang);
+
+        return $"Translate the input text from ({source}) to ({target}). " +
+               "Do not think or add extra text. Return only a natural, human-sounding translation.";
+    }
+
+    private static string GetEnglishLanguageName(IEnumerable<LangItem> languages, string code) =>
+        languages.FirstOrDefault(language =>
+            language.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.English ?? code;
 
     internal static string StripThinking(string value) => ThinkingBlock.Replace(value, "").Trim();
 
