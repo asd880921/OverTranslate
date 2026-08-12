@@ -25,6 +25,7 @@ public class TranslationService
     private readonly GTranslateProvider _microsoft = new(new MicrosoftTranslator(Http));
     private readonly GTranslateProvider _yandex    = new(new YandexTranslator(Http), new() { { "ZH-HANT", "ZH-HANS" } });
     private readonly DeepLProvider      _deepL     = new();
+    private readonly OpenAiCompatibleProvider _openAi = new();
 
     // Per-engine resilient wrappers: the user's choice is the primary, the other reliable
     // keyless engines act as hedged backups so one slow/throttled endpoint can't stall the batch.
@@ -58,6 +59,7 @@ public class TranslationService
         TranslationProvider.Microsoft => _microsoftR,
         TranslationProvider.Yandex    => _yandexR,
         TranslationProvider.DeepL     => _deepL,
+        TranslationProvider.OpenAI    => _openAi,
         _                             => _google2R,
     };
 
@@ -69,6 +71,7 @@ public class TranslationService
         TranslationProvider.Microsoft => _microsoft,
         TranslationProvider.Yandex    => _yandex,
         TranslationProvider.DeepL     => _deepL,
+        TranslationProvider.OpenAI    => _openAi,
         _                             => _google2,
     };
 
@@ -99,7 +102,11 @@ public class TranslationService
     {
         var chosen   = engine ?? Saved;
         var provider = resilient ? Resilient(chosen) : Single(chosen);
-        var result   = await provider.TranslateAsync(blocks, sourceLang, targetLang, apiKey, cancellationToken);
+        var effectiveApiKey = chosen == TranslationProvider.OpenAI
+            ? SettingsService.Instance.Current.OpenAiApiKey
+            : apiKey;
+        var result = await provider.TranslateAsync(
+            blocks, sourceLang, targetLang, effectiveApiKey, cancellationToken);
         LastEngineUsage = (provider as ResilientProvider)?.LastUsage;
         return result;
     }

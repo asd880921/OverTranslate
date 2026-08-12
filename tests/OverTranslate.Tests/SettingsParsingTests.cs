@@ -12,6 +12,16 @@ namespace OverTranslate.Tests;
 public class SettingsParsingTests
 {
     [Fact]
+    public void MissingOpenAiSettings_UseSafeDefaults()
+    {
+        var settings = SettingsService.Parse("{}");
+
+        Assert.Equal("https://api.openai.com/v1", settings.OpenAiBaseUrl);
+        Assert.Equal("", settings.OpenAiApiKey);
+        Assert.Equal("", settings.OpenAiModel);
+    }
+
+    [Fact]
     public void MissingKeys_KeepTheirDefaults_AndLeaveTheRestIntact()
     {
         var settings = SettingsService.Parse(
@@ -108,6 +118,9 @@ public class SettingsParsingTests
             TargetLanguage = "EN",
             Provider = TranslationProvider.DeepL,
             ApiKey = "round-trip",
+            OpenAiBaseUrl = "http://localhost:1234/v1",
+            OpenAiApiKey = "local-key",
+            OpenAiModel = "local-model",
             Theme = "Light",
             AutoTranslateAfterSelection = true,
             SaveScreenshotToDisk = true,
@@ -123,6 +136,9 @@ public class SettingsParsingTests
         Assert.Equal("EN", settings.TargetLanguage);
         Assert.Equal(TranslationProvider.DeepL, settings.Provider);
         Assert.Equal("round-trip", settings.ApiKey);
+        Assert.Equal("http://localhost:1234/v1", settings.OpenAiBaseUrl);
+        Assert.Equal("local-key", settings.OpenAiApiKey);
+        Assert.Equal("local-model", settings.OpenAiModel);
         Assert.Equal("Light", settings.Theme);
         Assert.True(settings.AutoTranslateAfterSelection);
         Assert.True(settings.SaveScreenshotToDisk);
