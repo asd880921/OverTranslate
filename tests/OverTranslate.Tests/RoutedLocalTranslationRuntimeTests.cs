@@ -63,6 +63,55 @@ public class RoutedLocalTranslationRuntimeTests
         Assert.Equal(2, factory.CreateCount);
     }
 
+    [Fact]
+    public async Task Preload_LoadsBeforeFirstTranslationAndReusesSession()
+    {
+        var factory = new RecordingFactory();
+        await using var runtime = new RoutedLocalTranslationRuntime(new LocalModelCatalog(), factory);
+
+        await runtime.PreloadAsync("EN", "ZH-HANT");
+        await runtime.TranslateAsync(new(["Hello"], "EN", "ZH-HANT"));
+
+        Assert.Single(factory.CreatedRoutes);
+        Assert.Equal(1, runtime.LoadedSessionCount);
+    }
+
+    [Fact]
+    public async Task UnloadIdle_RemovesAndDisposesExpiredSession()
+    {
+        var clock = new MutableTimeProvider(DateTimeOffset.Parse("2026-08-12T00:00:00Z"));
+        var factory = new RecordingFactory();
+        await using var runtime = new RoutedLocalTranslationRuntime(
+            new LocalModelCatalog(), factory,
+            new LocalRuntimeOptions(2, TimeSpan.FromMinutes(10)), clock);
+        await runtime.PreloadAsync("EN", "ZH-HANT");
+
+        clock.Advance(TimeSpan.FromMinutes(11));
+        var unloaded = await runtime.UnloadIdleAsync();
+
+        Assert.Equal(1, unloaded);
+        Assert.Equal(0, runtime.LoadedSessionCount);
+        Assert.Equal(1, factory.DisposedSessions);
+    }
+
+    [Fact]
+    public async Task SessionLimit_EvictsLeastRecentlyUsedInactiveRoute()
+    {
+        var clock = new MutableTimeProvider(DateTimeOffset.Parse("2026-08-12T00:00:00Z"));
+        var factory = new RecordingFactory();
+        await using var runtime = new RoutedLocalTranslationRuntime(
+            new LocalModelCatalog(), factory,
+            new LocalRuntimeOptions(1, TimeSpan.FromHours(1)), clock);
+        await runtime.PreloadAsync("EN", "ZH-HANT");
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await runtime.PreloadAsync("ZH-HANT", "EN");
+
+        Assert.Equal(1, runtime.LoadedSessionCount);
+        Assert.Equal(1, factory.DisposedSessions);
+        Assert.Equal(2, factory.CreatedRoutes.Count);
+    }
+
     private sealed class RecordingFactory(bool delayCreation = false) : ILocalModelSessionFactory
     {
         private readonly object _gate = new();
@@ -74,18 +123,24 @@ public class RoutedLocalTranslationRuntimeTests
         {
             if (delayCreation) await Task.Delay(20, cancellationToken);
             lock (_gate) CreatedRoutes.Add(route);
-            return new RecordingSession();
+            return new RecordingSession(() => DisposedSessions++);
         }
+
+        public int DisposedSessions { get; private set; }
     }
 
-    private sealed class RecordingSession : ILocalModelSession
+    private sealed class RecordingSession(Action? onDispose = null) : ILocalModelSession
     {
         public Task<IReadOnlyList<string>> TranslateAsync(
             IReadOnlyList<string> texts,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>(texts.Select(text => $"local:{text}").ToArray());
 
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            onDispose?.Invoke();
+            return ValueTask.CompletedTask;
+        }
     }
 
     private sealed class FailingThenHealthyFactory : ILocalModelSessionFactory
@@ -110,5 +165,12 @@ public class RoutedLocalTranslationRuntimeTests
             throw new InvalidOperationException("worker failed");
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class MutableTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+
+        public void Advance(TimeSpan elapsed) => now += elapsed;
     }
 }
