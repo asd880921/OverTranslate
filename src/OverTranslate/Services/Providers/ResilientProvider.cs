@@ -47,7 +47,6 @@ public class ResilientProvider : ITranslationProvider
         "GoogleTranslator2"   => "Google (RPC)",
         "BingTranslator"      => "Bing",
         "MicrosoftTranslator" => "Microsoft",
-        "YandexTranslator"    => "Yandex",
         "(none)"              => "未翻譯",
         _                     => engineName,
     };

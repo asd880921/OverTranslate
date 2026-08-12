@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace OverTranslate.Models;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum TranslationProvider { Google, Google2, Bing, Microsoft, Yandex, DeepL, OpenAI }
+public enum TranslationProvider { Google, Google2, Bing, Microsoft, DeepL, OpenAI }
 
 public class AppSettings
 {

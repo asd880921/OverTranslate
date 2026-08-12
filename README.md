@@ -74,8 +74,7 @@
 | Google 翻譯（Web） | 傳統 Web 介面 |
 | Bing 翻譯 | 翻譯品質佳 |
 | Microsoft 翻譯 | **(預設)** 穩定性佳、回應速度快 |
-| Yandex 翻譯 | 選用 |
-| DeepL | 串接外部翻譯平台 DeepL，需提供 API Key (官方有免費方案) |
+| DeepL | 需至 DeepL 官方註冊並取得 API Key |
 
 提供「自動備援」機制（備援機制僅適用於 **截圖翻譯**）：  
 當某個翻譯無法使用或回應過慢時，會自動切換到其他可用的翻譯 API，實際使用的引擎顯示於工具列 (翻譯結果可能會是混合組成的)。  
@@ -114,7 +113,7 @@
 
 - **作業系統**：Windows 10 / 11
 - **執行環境**：[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
-- 使用 DeepL 翻譯時，需至官網申請 [DeepL API Key]（官方目前有免費方案）
+- 使用 DeepL 翻譯時，需至 [DeepL 官網](https://www.deepl.com/pro-api) 註冊並取得 API Key
 
 ---
 
