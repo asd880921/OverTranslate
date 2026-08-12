@@ -97,6 +97,34 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         }
     }
 
+    /// <summary>
+    /// Hands the loaded model's memory back now, instead of waiting out
+    /// <see cref="IdleReleaseDelay"/>.
+    /// </summary>
+    /// <remarks>
+    /// For a realtime session being paused: the user has said they are done watching for a while,
+    /// and a runtime that holds hundreds of MB has no business sitting in memory for another minute
+    /// on the strength of a timer. Reloading it costs the same as the first load did, which is what
+    /// makes 繼續 affordable.
+    ///
+    /// Leaves the model alone while a Detect is running against it — freeing the native sessions
+    /// mid-inference would crash the process. Nothing is lost by returning: the pass that is holding
+    /// it re-arms the inactivity countdown as it finishes, so the memory still comes back on its own.
+    /// </remarks>
+    public void ReleaseNow()
+    {
+        lock (_sync)
+        {
+            // Otherwise the release below would be undone by the very next recognition — and a
+            // caller asking for the model to go is a caller that has stopped watching the screen.
+            _keepWarm = false;
+
+            if (_disposed || _inUse > 0) return;
+
+            DisposeCurrentRuntime();
+        }
+    }
+
     public Task<List<OcrTextBlock>> RecognizeAsync(
         Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
     {
@@ -320,26 +348,34 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     {
         lock (_sync)
         {
-            // Skip disposal if we are gone, a session is holding the model open, a Detect is still
-            // running against the runtime, or there is nothing to release. A timer callback that
+            // Skip disposal if we are gone, a session is holding the model open, or a Detect is
+            // still running against the runtime. A timer callback that
             // was queued before a later Change() still fires; these checks are what make a stale
             // callback benign — including one queued before SetKeepWarm was turned on.
-            if (_disposed || _keepWarm || _inUse > 0 || _current is null)
+            if (_disposed || _keepWarm || _inUse > 0)
                 return;
 
-            try
-            {
-                _current.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Log.Warn(ex, "釋放閒置 OCR 模型時發生例外。");
-            }
-            finally
-            {
-                _current = null;
-                _currentModelKey = null;
-            }
+            DisposeCurrentRuntime();
+        }
+    }
+
+    // Callers hold _sync and have already established that nothing is running against the runtime.
+    private void DisposeCurrentRuntime()
+    {
+        if (_current is null) return;
+
+        try
+        {
+            _current.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "釋放閒置 OCR 模型時發生例外。");
+        }
+        finally
+        {
+            _current = null;
+            _currentModelKey = null;
         }
     }
 

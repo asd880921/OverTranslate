@@ -50,7 +50,12 @@ public partial class RealtimeControlWindow : Window
     // What the capsule says before SetLanguages has named the pair. A transient message borrows the
     // same slot and RestoreText brings whichever of the two applies back.
     private readonly string _runStatus = "即時翻譯中";
+    // Not transient, unlike everything else that lands in that slot: a paused session looks exactly
+    // like a session with nothing to translate — no words, no scrims, a still screen — so the one
+    // thing that separates them has to stay on screen for as long as the state lasts.
+    private readonly string _pausedStatus = "已暫停";
     private bool _hasLanguages;
+    private bool _isPaused;
 
     // The scale WPF renders this window at, which is the DPI of whatever monitor it was created on —
     // not necessarily the one it is pinned to. Everything that converts between the window's DIP and
@@ -67,7 +72,7 @@ public partial class RealtimeControlWindow : Window
         InitializeComponent();
 
         _screenBounds = screenBounds;
-        RefreshBtn.ToolTip = RealtimeRefreshHint.ForControlTooltip(RealtimeRefreshHint.CurrentHotkey);
+        ApplyPauseButton();
         RestoreText();
 
         _messageTimer = new DispatcherTimer { Interval = MessageDuration };
@@ -103,7 +108,7 @@ public partial class RealtimeControlWindow : Window
     public event EventHandler? EditRequested;
     public event EventHandler? CloseRequested;
     public event EventHandler? ShotRequested;
-    public event EventHandler? RefreshRequested;
+    public event EventHandler? PauseToggleRequested;
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -132,11 +137,39 @@ public partial class RealtimeControlWindow : Window
         if (!_messageTimer.IsEnabled) RestoreText();
     }
 
+    /// <summary>
+    /// Shows the session as paused or running: the button's action, the status text and the dot.
+    /// </summary>
+    /// <remarks>
+    /// All three, because each answers a different question at a different distance. The dot is the
+    /// only part readable at a glance from across a full-screen window and says something is or is
+    /// not happening; the text says which, in a word, without the user having to remember what grey
+    /// means; the button says what pressing it would do. A pause that only greyed the dot was read
+    /// as the session having died.
+    /// </remarks>
+    public void SetPaused(bool paused)
+    {
+        _isPaused = paused;
+
+        ApplyPauseButton();
+        // A message from before the pause has nothing to say about the state that replaced it, and
+        // its timer would restore the old text on top of the new state a moment later.
+        _messageTimer.Stop();
+        RestoreText();
+        // Nothing is in flight once paused, and a pulse left running would go on saying there is.
+        SetBusy(false);
+    }
+
     public void SetMode(RealtimeControlMode mode)
     {
         _mode = mode;
         EditPanel.Visibility = mode == RealtimeControlMode.Edit ? Visibility.Visible : Visibility.Collapsed;
         RunPanel.Visibility = mode == RealtimeControlMode.Running ? Visibility.Visible : Visibility.Collapsed;
+
+        // Both modes are entered by the session doing something — framing or starting — and neither
+        // is a paused one. Going back to edit mode from a paused session is the case this covers.
+        _isPaused = false;
+        ApplyPauseButton();
 
         _messageTimer.Stop();
         RestoreText();
@@ -152,7 +185,9 @@ public partial class RealtimeControlWindow : Window
     /// <summary>Pulses the status dot while a recognition or translation pass is in flight.</summary>
     public void SetBusy(bool busy)
     {
-        if (busy)
+        // A pass cancelled by 暫停 can report itself busy on its way out; the dot is saying
+        // something else now.
+        if (busy && !_isPaused)
         {
             StatusDot.BeginAnimation(OpacityProperty, new DoubleAnimation
             {
@@ -190,7 +225,7 @@ public partial class RealtimeControlWindow : Window
             // Same frame as the text it belongs to. The dot is the one thing on this bar visible at
             // a glance from across a full-screen window, so a failure is worth spending its colour
             // on; it goes back to accent when the message does.
-            SetDotFailed(kind == RealtimeMessageKind.Failure);
+            SetDotState(kind == RealtimeMessageKind.Failure);
         }
 
         _messageTimer.Stop();
@@ -237,19 +272,36 @@ public partial class RealtimeControlWindow : Window
     private void RestoreText()
     {
         EditHintText.Text = _editHint;
-        RunStatusText.Text = _runStatus;
+        RunStatusText.Text = _isPaused ? _pausedStatus : _runStatus;
 
-        LangPairPanel.Visibility = _hasLanguages ? Visibility.Visible : Visibility.Collapsed;
-        RunStatusText.Visibility = _hasLanguages ? Visibility.Collapsed : Visibility.Visible;
+        // The pair steps aside while paused: it describes work that is not happening, and it is the
+        // one thing on this line long enough to hide the word that says so.
+        var showPair = _hasLanguages && !_isPaused;
+        LangPairPanel.Visibility = showPair ? Visibility.Visible : Visibility.Collapsed;
+        RunStatusText.Visibility = showPair ? Visibility.Collapsed : Visibility.Visible;
 
-        SetDotFailed(false);
+        SetDotState(failed: false);
     }
 
     // SetResourceReference rather than an assigned brush: the theme can still be switched from the
     // shell while a session runs, and a snapshotted brush would keep the old theme's red.
-    private void SetDotFailed(bool failed) =>
-        StatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty,
-            failed ? "AppError" : "AppAccent");
+    //
+    // Paused is the secondary text brush rather than a colour of its own: this bar has no amber, and
+    // inventing one for a state the user asked for would read as a warning. Grey is the absence of
+    // the accent — which is exactly what a paused session is — and it stays legible in both themes.
+    private void SetDotState(bool failed) =>
+        StatusDot.SetResourceReference(
+            System.Windows.Shapes.Shape.FillProperty,
+            failed ? "AppError" : _isPaused ? "AppTextSecondary" : "AppAccent");
+
+    private void ApplyPauseButton()
+    {
+        // Segoe Fluent Icons: play to resume, pause to stop. The glyph is what the press does.
+        PauseBtn.Content = _isPaused ? "\uE768" : "\uE769";
+        PauseBtn.ToolTip = RealtimePauseHint.ForControlTooltip(RealtimePauseHint.CurrentHotkey, _isPaused);
+        System.Windows.Automation.AutomationProperties.SetName(
+            PauseBtn, _isPaused ? "繼續即時翻譯" : "暫停即時翻譯");
+    }
 
     // ── Placement and dragging ───────────────────────────────────────────────────────────────────
 
@@ -340,7 +392,7 @@ public partial class RealtimeControlWindow : Window
 
     private void ShotBtn_Click(object sender, RoutedEventArgs e) => ShotRequested?.Invoke(this, EventArgs.Empty);
 
-    private void RefreshBtn_Click(object sender, RoutedEventArgs e) => RefreshRequested?.Invoke(this, EventArgs.Empty);
+    private void PauseBtn_Click(object sender, RoutedEventArgs e) => PauseToggleRequested?.Invoke(this, EventArgs.Empty);
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }

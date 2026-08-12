@@ -56,9 +56,9 @@ internal sealed class RealtimeSessionController
 
     private readonly Dictionary<int, RealtimeBlockWindow> _blockWindows = [];
     private List<RealtimeBlockPlacement> _blocks = [];
-    // UI updates are dispatched asynchronously. Carrying the session's refresh generation here
-    // prevents an update queued before a manual refresh from restoring text after it was cleared.
-    private int _visibleRefreshGeneration;
+    // UI updates are dispatched asynchronously. Carrying the session's generation here prevents an
+    // update queued before a pause from restoring text after the screen was cleared.
+    private int _visibleGeneration;
 
     /// <summary>
     /// The layout the last sitting ended with, offered back to the next one.
@@ -140,7 +140,7 @@ internal sealed class RealtimeSessionController
         // wrong any more: nothing here has to find a window first, so there is no path on which a
         // second inference runtime could be built by accident.
         _session = new RealtimeTranslationSession(AppServices.Ocr, AppServices.Translation);
-        Volatile.Write(ref _visibleRefreshGeneration, 0);
+        Volatile.Write(ref _visibleGeneration, 0);
         _session.RegionUpdated += OnRegionUpdated;
         _session.Failed += OnSessionFailed;
         _session.BusyChanged += OnBusyChanged;
@@ -150,7 +150,7 @@ internal sealed class RealtimeSessionController
         control.EditRequested += (_, _) => EnterEditMode();
         control.CloseRequested += (_, _) => Stop();
         control.ShotRequested += (_, _) => CaptureShowcase();
-        control.RefreshRequested += (_, _) => Refresh();
+        control.PauseToggleRequested += (_, _) => TogglePause();
         _control = control;
         control.Show();
 
@@ -187,29 +187,41 @@ internal sealed class RealtimeSessionController
     }
 
     /// <summary>
-    /// Throws away everything the session believes about the screen and reads it again — see
-    /// <see cref="RealtimeTranslationSession.RequestRefresh"/> for what is being cut through.
+    /// Stops or restarts the watching, without ending the session — see
+    /// <see cref="RealtimeTranslationSession.Pause"/> for what a pause gives back.
     /// </summary>
     /// <remarks>
-    /// Does nothing while the user is framing blocks: there is no reading to refresh yet, and the
+    /// One entry point for both directions, because both callers are toggles: one button and one
+    /// shortcut, each pressed by a user who can see on the bar which of the two states they are in.
+    ///
+    /// Does nothing while the user is framing blocks: there is nothing running to pause, and the
     /// caller (the capture shortcut) is deliberately silent in that mode rather than explaining a
     /// rule about a feature the user has not started.
     /// </remarks>
-    /// <returns>Whether there was a running session to refresh.</returns>
-    public bool Refresh()
+    /// <returns>Whether there was a running session to toggle.</returns>
+    public bool TogglePause()
     {
         if (!IsTranslating || _session is null || _control is not { } control) return false;
 
-        var generation = _session.RequestRefresh();
-        Volatile.Write(ref _visibleRefreshGeneration, generation);
+        if (_session.IsPaused)
+        {
+            // Before the loops start, so the first result cannot arrive to a bar still saying 已暫停.
+            control.SetPaused(false);
+            _session.Resume();
+            return true;
+        }
 
-        // Immediate, causal feedback: remove both the translated words and their scrims before the
-        // next OCR/provider pass begins. Updates queued before this refresh carry an older generation
-        // and OnRegionUpdated refuses to put them back.
+        var generation = _session.Pause();
+        Volatile.Write(ref _visibleGeneration, generation);
+
+        // The whole point of the feature: 暫停 takes the words and their scrims off the screen
+        // rather than freezing them there, because a frozen translation over a scene that has moved
+        // on is worse than none. Updates queued before this carry an older generation and
+        // OnRegionUpdated refuses to put them back.
         foreach (var window in _blockWindows.Values)
             window.SetLines([]);
 
-        control.ShowMessage("重新翻譯中…");
+        control.SetPaused(true);
         return true;
     }
 
@@ -416,7 +428,7 @@ internal sealed class RealtimeSessionController
     private void OnRegionUpdated(object? sender, RealtimeRegionUpdate update) =>
         OnDispatcher(() =>
         {
-            if (update.RefreshGeneration != Volatile.Read(ref _visibleRefreshGeneration)) return;
+            if (update.Generation != Volatile.Read(ref _visibleGeneration)) return;
 
             // The user may have gone back to edit mode while this pass was in flight; its window is
             // gone and the result belongs to a layout that no longer exists.

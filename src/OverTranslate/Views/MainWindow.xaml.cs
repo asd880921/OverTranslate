@@ -139,20 +139,20 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Starts a capture, or — during a realtime session — refreshes that session instead.
+    /// Starts a capture, or — during a realtime session — pauses and resumes that session instead.
     /// </summary>
     /// <remarks>
     /// A session still rules a capture out, for the reasons on <see cref="RefuseWhileRealtimeRuns"/>,
     /// which left this shortcut inert for the whole of a session that may run for hours. It is now
-    /// the fastest thing on screen to reach, so it is spent on the one thing a user watching a still
-    /// frame keeps needing: forcing the translation to be done again. See
-    /// <see cref="Views.Realtime.RealtimeSessionController.Refresh"/> for why a still frame gets
-    /// stuck in the first place.
+    /// the fastest thing on screen to reach, so it is spent on the one thing a user in front of a
+    /// session keeps needing: turning the overlays off for a scene they do not want translated, and
+    /// back on for the one after it — without hunting for a floating bar over a full-screen game.
+    /// See <see cref="Views.Realtime.RealtimeSessionController.TogglePause"/>.
     ///
-    /// Silent while blocks are being framed, where there is nothing to refresh and no capture to run.
-    /// The notification this used to raise was right when the shortcut had only one meaning and the
-    /// user had to be told why it had stopped working; now it does something in the mode they will
-    /// be in a second later, and interrupting the framing to say "not yet" is noise.
+    /// Silent while blocks are being framed, where there is nothing running to pause and no capture
+    /// to run. The notification this used to raise was right when the shortcut had only one meaning
+    /// and the user had to be told why it had stopped working; now it does something in the mode
+    /// they will be in a second later, and interrupting the framing to say "not yet" is noise.
     /// </remarks>
     private void OnHotkeyPressed(object? sender, EventArgs e) =>
         Dispatcher.Invoke(async () =>
@@ -160,7 +160,7 @@ public partial class MainWindow : Window
             var realtime = Views.Realtime.RealtimeSessionController.Instance;
             if (realtime.IsActive)
             {
-                realtime.Refresh();
+                realtime.TogglePause();
                 return;
             }
 

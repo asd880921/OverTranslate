@@ -3,12 +3,13 @@ using System.Collections.Concurrent;
 namespace OverTranslate.Services.Realtime;
 
 /// <summary>
-/// Session translations tagged with the refresh generation that produced them.
+/// Session translations tagged with the generation that produced them.
 /// </summary>
 /// <remarks>
-/// Clearing a concurrent dictionary is not enough to refresh it: a provider call that began before
-/// the clear can finish afterwards and put its old answer back. Generation-tagged entries make that
-/// late write harmless, because only answers from the current generation can be read or published.
+/// Clearing a concurrent dictionary is not enough to empty it: a provider call that began before the
+/// clear can finish afterwards and put its old answer back. Generation-tagged entries make that late
+/// write harmless, because only answers from the current generation can be read or published — which
+/// is what lets a paused session be sure that nothing from before the pause reaches the screen.
 /// </remarks>
 internal sealed class RealtimeTranslationCache
 {
@@ -54,7 +55,11 @@ internal sealed class RealtimeTranslationCache
         }
     }
 
-    public int Refresh()
+    /// <summary>
+    /// Drops every entry and moves to a new generation, so answers still in flight can neither be
+    /// stored nor published.
+    /// </summary>
+    public int Invalidate()
     {
         lock (_writeGate)
         {

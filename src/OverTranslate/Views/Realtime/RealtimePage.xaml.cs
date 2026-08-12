@@ -91,7 +91,7 @@ public partial class RealtimePage : UserControl
         SrcLangBox.SelectionChanged += (_, _) => RenderState();
 
         RenderColours();
-        RenderRefreshHint();
+        RenderPauseHint();
 
         RealtimeSessionController.Instance.StateChanged += OnSessionStateChanged;
 
@@ -132,7 +132,7 @@ public partial class RealtimePage : UserControl
     {
         LoadScreens();
         RenderColours();
-        RenderRefreshHint();
+        RenderPauseHint();
         RenderState();
     }
 
@@ -144,10 +144,10 @@ public partial class RealtimePage : UserControl
     /// shortcut is changed, and the user reaches this page again through the same nav rail — so the
     /// line would otherwise go on naming the key they just replaced.
     /// </remarks>
-    private void RenderRefreshHint()
+    private void RenderPauseHint()
     {
-        RefreshHint.Text = RealtimeRefreshHint.ForSettingsPage(RealtimeRefreshHint.CurrentHotkey);
-        RefreshHint.Visibility = RefreshHint.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        PauseHint.Text = RealtimePauseHint.ForSettingsPage(RealtimePauseHint.CurrentHotkey);
+        PauseHint.Visibility = PauseHint.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>Detaches from the controller when the shell window is destroyed.</summary>

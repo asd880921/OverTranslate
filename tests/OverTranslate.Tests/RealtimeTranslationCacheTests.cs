@@ -6,36 +6,36 @@ namespace OverTranslate.Tests;
 public class RealtimeTranslationCacheTests
 {
     [Fact]
-    public void RefreshMakesThePreviousGenerationInvisible()
+    public void InvalidateMakesThePreviousGenerationInvisible()
     {
         var cache = new RealtimeTranslationCache();
-        var beforeRefresh = cache.Generation;
-        cache.Set("line", "old translation", beforeRefresh);
+        var beforeInvalidate = cache.Generation;
+        cache.Set("line", "old translation", beforeInvalidate);
 
-        var afterRefresh = cache.Refresh();
+        var afterInvalidate = cache.Invalidate();
 
-        Assert.NotEqual(beforeRefresh, afterRefresh);
-        Assert.False(cache.TryGet("line", afterRefresh, out _));
+        Assert.NotEqual(beforeInvalidate, afterInvalidate);
+        Assert.False(cache.TryGet("line", afterInvalidate, out _));
     }
 
     [Fact]
-    public void ProviderAnswerThatReturnsAfterRefreshCannotRepopulateTheCache()
+    public void ProviderAnswerThatReturnsAfterInvalidateCannotRepopulateTheCache()
     {
         var cache = new RealtimeTranslationCache();
         var providerRequestGeneration = cache.Generation;
 
-        var refreshedGeneration = cache.Refresh();
+        var invalidatedGeneration = cache.Invalidate();
         cache.Set("line", "late old translation", providerRequestGeneration);
 
-        Assert.False(cache.TryGet("line", refreshedGeneration, out _));
+        Assert.False(cache.TryGet("line", invalidatedGeneration, out _));
         Assert.Equal(0, cache.Count);
     }
 
     [Fact]
-    public void CurrentGenerationCanBeCachedAfterRefresh()
+    public void CurrentGenerationCanBeCachedAfterInvalidate()
     {
         var cache = new RealtimeTranslationCache();
-        var generation = cache.Refresh();
+        var generation = cache.Invalidate();
 
         cache.Set("line", "new translation", generation);
 
@@ -48,7 +48,7 @@ public class RealtimeTranslationCacheTests
     {
         var cache = new RealtimeTranslationCache();
         var staleGeneration = cache.Generation;
-        var currentGeneration = cache.Refresh();
+        var currentGeneration = cache.Invalidate();
         cache.Set("line", "new translation", currentGeneration);
 
         cache.ClearIfOverLimit(0, staleGeneration);
