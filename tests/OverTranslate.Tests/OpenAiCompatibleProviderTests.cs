@@ -265,7 +265,7 @@ public class OpenAiCompatibleProviderTests
     [Fact]
     public void ParseBatchTranslations_RejectsResponseWithoutAnyUsableMarker()
     {
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<OpenAiBatchMarkersMissingException>(() =>
             OpenAiCompatibleProvider.ParseBatchTranslations("沒有可用標記", 2));
     }
 

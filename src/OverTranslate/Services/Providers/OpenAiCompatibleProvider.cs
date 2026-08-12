@@ -9,6 +9,9 @@ namespace OverTranslate.Services.Providers;
 
 public sealed record OpenAiCompatibleOptions(string BaseUrl, string Model);
 
+internal sealed class OpenAiBatchMarkersMissingException()
+    : InvalidOperationException("OpenAI Compatible API 回應中找不到可用的批次譯文標記。");
+
 /// <summary>
 /// Translates through the OpenAI-compatible Chat Completions contract while preserving each OCR
 /// block's ordering and bounds.
@@ -199,7 +202,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
 
         return translations.Count > 0
             ? translations
-            : throw new InvalidOperationException("OpenAI Compatible API 回應中找不到可用的批次譯文標記。");
+            : throw new OpenAiBatchMarkersMissingException();
     }
 
     private static string ReadContent(JsonElement message)

@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using NLog;
 using OverTranslate.Services.Ocr;
+using OverTranslate.Services.Providers;
 
 namespace OverTranslate.Services.Realtime;
 
@@ -837,6 +838,16 @@ public sealed class RealtimeTranslationSession
                 catch (OperationCanceledException)
                 {
                     // The session is stopping; nothing to report and nothing to retry.
+                }
+                catch (OpenAiBatchMarkersMissingException ex)
+                {
+                    // Subtitle frames can briefly contain OCR text that the model decides has no
+                    // translatable content. This is expected at polling frequency: keep the control
+                    // bar silent, retain the diagnostic only at Debug, and let a later frame retry.
+                    Log.Debug(ex,
+                        "Realtime translation returned no usable batch markers for region {Region}",
+                        region.Id);
+                    RequestRetry();
                 }
                 catch (Exception ex)
                 {

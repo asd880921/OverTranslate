@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System.Windows.Interop;
 using NLog;
 using OverTranslate.Services;
+using OverTranslate.Services.Providers;
 using OverTranslate.Views.Capture;
 using OverTranslate.Views.Overlay;
 using OverTranslate.Views.Realtime;
@@ -591,6 +592,17 @@ public partial class MainWindow : Window
         catch (InvalidOperationException ex) when (ex.Message.Contains("sequence contains no elements", StringComparison.OrdinalIgnoreCase))
         {
             Log.Debug(ex, "OCR produced no text blocks");
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
+
+            requestToolbar?.SetTranslationState(false);
+            ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect, ToastKind.Info);
+        }
+        catch (OpenAiBatchMarkersMissingException ex)
+        {
+            Log.Info(ex,
+                "OpenAI returned no usable batch translation markers (src={Src}, tgt={Tgt}, selection={Sel})",
+                req.SourceLang, req.TargetLang, selRect);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
