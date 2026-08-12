@@ -24,5 +24,6 @@ internal static class AppServices
     /// <summary>Recognition. Construction is cheap — the model itself is loaded on first use.</summary>
     public static OcrService Ocr { get; } = new();
 
-    public static TranslationService Translation { get; } = new();
+    public static TranslationService Translation { get; } = new(
+        LocalNmt.LocalNmtBootstrap.TryCreateProvider());
 }

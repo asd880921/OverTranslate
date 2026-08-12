@@ -65,15 +65,24 @@ public static class LanguageData
         new("ZH-HANT", "繁體中文", "Traditional Chinese"),
     ];
 
-    public static readonly List<ProviderItem> Providers =
-    [
+    public static readonly List<ProviderItem> Providers = CreateProviders();
+
+    private static List<ProviderItem> CreateProviders()
+    {
+        List<ProviderItem> providers =
+        [
         new(TranslationProvider.Google,  "Google 翻譯 (Web)", false, "傳統 API，整體響應速度較快，但較容易出現請求失敗或限制"),
         new(TranslationProvider.Google2, "Google 翻譯 (RPC)", false, "新版 RPC API，請求成功率較佳"),
         new(TranslationProvider.Bing,    "Bing 翻譯", false),
         new(TranslationProvider.Microsoft, "Microsoft 翻譯", false),
         new(TranslationProvider.Yandex,  "Yandex 翻譯", false, "Yandex 不支持繁體中文翻譯，使用繁體時會自動轉換為簡體中文"),
         new(TranslationProvider.DeepL,   "DeepL 翻譯", true, "需 API Key，可於 DeepL 官方申請（目前有提供免費方案，請至官網申請）"),
-    ];
+        ];
+        if (Services.LocalNmt.LocalNmtBootstrap.IsConfigured)
+            providers.Add(new(TranslationProvider.LocalNmt, "本機翻譯 (Bergamot)", false,
+                "實驗性本機模型；翻譯內容不會傳送到雲端"));
+        return providers;
+    }
 
     /// <summary>
     /// Display name of a provider as shown in the selectors, for use in user-facing messages.
