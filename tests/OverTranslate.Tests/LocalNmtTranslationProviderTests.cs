@@ -73,6 +73,31 @@ public class LocalNmtTranslationProviderTests
         Assert.Equal(0, runtime.CallCount);
     }
 
+    [Fact]
+    public void CacheIdentity_ContainsRuntimeCatalogRouteModelsLanguagesAndNormalization()
+    {
+        var provider = new LocalNmtTranslationProvider(
+            new StubRuntime(new LocalTranslationResult([], "")));
+
+        var identity = provider.GetCacheIdentity("JA", "ZH-HANT", "ocr-v2");
+
+        Assert.Equal(
+            "bergamot|issue-47-v1|bergamot-ja-en+bergamot-en-zh-hant|" +
+            "a9bf800679bb+559ab90d723a|JA|ZH-HANT|ocr-v2",
+            identity);
+    }
+
+    [Fact]
+    public void TranslationService_CloudCacheIdentityIncludesNormalizationWithoutLocalProvider()
+    {
+        var service = new TranslationService();
+
+        var identity = service.GetCacheIdentity(
+            TranslationProvider.Microsoft, "EN", "ZH-HANT", "ocr-v2");
+
+        Assert.Equal("Microsoft|EN|ZH-HANT|ocr-v2", identity);
+    }
+
     private sealed class StubRuntime(LocalTranslationResult result) : ILocalTranslationRuntime
     {
         public int CallCount { get; private set; }

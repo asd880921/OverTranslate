@@ -84,6 +84,15 @@ public class TranslationService
     /// <summary>Whether a specific engine needs an API key, for a caller that chose its own.</summary>
     public bool ProviderRequiresApiKey(TranslationProvider provider) => Resilient(provider).RequiresApiKey;
 
+    public string GetCacheIdentity(
+        TranslationProvider provider,
+        string sourceLanguage,
+        string targetLanguage,
+        string normalizationVersion) => provider == TranslationProvider.LocalNmt
+        ? ((LocalNmtTranslationProvider)LocalNmt()).GetCacheIdentity(
+            sourceLanguage, targetLanguage, normalizationVersion)
+        : $"{provider}|{sourceLanguage}|{targetLanguage}|{normalizationVersion}";
+
     /// <summary>
     /// Which engine(s) actually served the most recent translation. Null for providers that have
     /// no fallback concept (e.g. DeepL), so the UI can keep the engine badge hidden.

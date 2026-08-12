@@ -49,6 +49,7 @@ public sealed class RealtimeTranslationSession
     // wholesale rather than evicted one by one: at this size the loss is one extra translation for
     // lines that are still on screen, and an LRU here would cost more to maintain than it saves.
     private const int TranslationCacheLimit = 400;
+    private const string TranslationNormalizationVersion = "ocr-text-v1";
 
     // How many translations may be in flight across the whole session. More than one because a slow
     // answer must not delay the line after it, and only a few because a provider that has stopped
@@ -662,7 +663,8 @@ public sealed class RealtimeTranslationSession
 
         // The service is part of the key: it cannot change mid-session today, but a cache that
         // silently outlived a change of engine would serve the old engine's wording forever.
-        var cacheKeyPrefix = $"{_provider}|{sourceLanguage}|{targetLanguage}|";
+        var cacheKeyPrefix = _translation.GetCacheIdentity(
+            _provider, sourceLanguage, targetLanguage, TranslationNormalizationVersion) + "|";
         var missing = blocks
             .Where(block => !_translationCache.TryGet(
                 cacheKeyPrefix + block.Text, refreshGeneration, out _))
