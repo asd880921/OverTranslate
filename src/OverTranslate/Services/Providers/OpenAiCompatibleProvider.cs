@@ -181,9 +181,9 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
             ? "台灣繁體中文"
             : LanguageData.GetTargetName(targetLang);
 
-        return $"將每行從({source})翻譯成({target})。\n" +
-               "保留每行開頭的 [__OT_0000__] 標記；一個標記只能對應一筆譯文，不得合併、省略或重新排序。\n" +
-               "只輸出標記與自然譯文，不要解釋。";
+        return $"逐項直譯每個標記後的片段，從({source})翻譯成({target})。" +
+               "各項互不相關，不可參考其他項目；只翻譯原文實際出現的字詞，即使不自然也不得補寫省略內容。" +
+               "保留所有標記與順序，只輸出標記和譯文。";
     }
 
     internal static string StripThinking(string value) => ThinkingBlock.Replace(value, "").Trim();
