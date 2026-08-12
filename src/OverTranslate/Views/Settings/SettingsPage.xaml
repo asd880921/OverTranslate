@@ -199,6 +199,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Column="0" Grid.Row="0" Text="API 位址"
@@ -222,6 +223,17 @@
                                      Margin="0,10,0,0"
                                      Style="{StaticResource ModernTextBox}"
                                      TextChanged="OpenAiSetting_TextChanged"/>
+
+                            <TextBlock Grid.Column="1" Grid.Row="3"
+                                       FontFamily="{StaticResource AppFont}"
+                                       FontSize="11"
+                                       Margin="2,3,0,0"
+                                       TextWrapping="Wrap">
+                                <Hyperlink x:Name="OllamaGuideLink"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           RequestNavigate="OllamaGuideLink_RequestNavigate"
+                                           NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md">本地 LLM (Ollama) 安裝教學</Hyperlink>
+                            </TextBlock>
                         </Grid>
                     </Grid>
                 </Border>
