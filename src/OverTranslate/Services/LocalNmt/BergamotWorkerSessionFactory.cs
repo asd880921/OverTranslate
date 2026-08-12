@@ -36,7 +36,7 @@ public sealed class BergamotWorkerSessionFactory(BergamotWorkerOptions options) 
         var workerPath = RequireFile(options.WorkerExecutablePath, "Bergamot worker executable");
         var nativePath = RequireFile(options.NativeLibraryPath, "Bergamot native library");
         var configs = route.Models.Select(model => RequireFile(
-            Path.Combine(options.ModelRoot, model.ModelId, "config.yml"),
+            Path.Combine(options.ModelRoot, model.ModelId, model.Version, "config.yml"),
             $"model config for {model.ModelId}")).ToArray();
 
         var startInfo = new ProcessStartInfo
