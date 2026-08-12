@@ -1,7 +1,7 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Windows;
 using OverTranslate.Services;
 using OverTranslate.Services.Providers;
@@ -35,7 +35,7 @@ public class OpenAiCompatibleProviderTests
     {
         var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "ZH-HANT");
 
-        Assert.Contains("從自動偵測的語言翻譯成台灣繁體中文", prompt);
+        Assert.Contains("從(自動偵測的語言)翻譯成(台灣繁體中文)", prompt);
         Assert.Contains("[__OT_0000__]", prompt);
         Assert.Contains("不要思考或加入其他文字", prompt);
         Assert.Contains("自然、人性化", prompt);
@@ -47,8 +47,19 @@ public class OpenAiCompatibleProviderTests
     {
         var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "EN-US");
 
-        Assert.Contains("從日語翻譯成英語", prompt);
+        Assert.Contains("從(日語)翻譯成(英語)", prompt);
         Assert.DoesNotContain("台灣繁體中文", prompt);
+    }
+
+    [Fact]
+    public void BuildSinglePrompt_RequestsOnlyOneNaturalTranslation()
+    {
+        var prompt = OpenAiCompatibleProvider.BuildSinglePrompt("AUTO", "ZH-HANT");
+
+        Assert.Contains("從(自動偵測的語言)翻譯成(台灣繁體中文)", prompt);
+        Assert.Contains("只回傳自然、人性化的翻譯結果", prompt);
+        Assert.DoesNotContain("[__OT_", prompt);
+        Assert.DoesNotContain("JSON", prompt);
     }
 
     [Theory]
@@ -61,7 +72,7 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
-    public async Task TranslateAsync_SendsAllBlocksInOneChatCompletionAndPreservesOrderAndBounds()
+    public async Task TranslateAsync_SendsOneChatCompletionPerBlockAndPreservesOrderAndBounds()
     {
         var handler = new RecordingHandler();
         using var http = new HttpClient(handler);
@@ -77,18 +88,25 @@ public class OpenAiCompatibleProviderTests
         var (translated, detected) = await provider.TranslateAsync(
             blocks, "EN", "ZH-HANT", "secret-key");
 
-        var request = Assert.Single(handler.Requests);
-        Assert.Equal("http://localhost:1234/v1/chat/completions", request.Url);
-        Assert.Equal("Bearer secret-key", request.Authorization);
-        using var payload = JsonDocument.Parse(request.Body);
-        Assert.Equal("test-model", payload.RootElement.GetProperty("model").GetString());
-        Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
-        var messages = payload.RootElement.GetProperty("messages");
-        var message = Assert.Single(messages.EnumerateArray());
-        Assert.Equal("user", message.GetProperty("role").GetString());
-        var batchText = message.GetProperty("content").GetString();
-        Assert.Contains("[__OT_0000__] first", batchText);
-        Assert.Contains("[__OT_0001__] second", batchText);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.All(handler.Requests, request =>
+        {
+            Assert.Equal("http://localhost:1234/v1/chat/completions", request.Url);
+            Assert.Equal("Bearer secret-key", request.Authorization);
+            using var payload = JsonDocument.Parse(request.Body);
+            Assert.Equal("test-model", payload.RootElement.GetProperty("model").GetString());
+            Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
+            var messages = payload.RootElement.GetProperty("messages");
+            Assert.Equal(2, messages.GetArrayLength());
+            Assert.Equal("system", messages[0].GetProperty("role").GetString());
+            Assert.Equal("user", messages[1].GetProperty("role").GetString());
+            Assert.DoesNotContain("[__OT_", messages[0].GetProperty("content").GetString());
+        });
+        Assert.Equal(["first", "second"], handler.Requests
+            .Select(request => JsonDocument.Parse(request.Body))
+            .Select(document => document.RootElement.GetProperty("messages")[1]
+                .GetProperty("content").GetString())
+            .OrderBy(text => text));
         Assert.Equal(["translated:first", "translated:second"],
             translated.Select(block => block.TranslatedText));
         Assert.Equal(blocks[0].Bounds, translated[0].Bounds);
@@ -132,7 +150,7 @@ public class OpenAiCompatibleProviderTests
     public async Task TranslateAsync_ReadsTextContentPartsFromCompatibleServers()
     {
         const string response =
-            """{"choices":[{"message":{"content":[{"type":"text","text":"[__OT_0000__] 陣列格式譯文"}]}}]}""";
+            """{"choices":[{"message":{"content":[{"type":"text","text":"陣列格式譯文"}]}}]}""";
         using var http = new HttpClient(new StaticResponseHandler(HttpStatusCode.OK, response));
         var provider = new OpenAiCompatibleProvider(
             http,
@@ -209,10 +227,10 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
-    public async Task TranslateAsync_OnlyReturnsBlocksForIdsTheModelProvided()
+    public async Task TranslateAsync_ReturnsEveryBlockFromIndependentResponses()
     {
         const string response =
-            """{"choices":[{"message":{"content":"[__OT_0001__] 第二段"}}]}""";
+            """{"choices":[{"message":{"content":"單筆譯文"}}]}""";
         using var http = new HttpClient(new StaticResponseHandler(HttpStatusCode.OK, response));
         var provider = new OpenAiCompatibleProvider(
             http,
@@ -225,10 +243,12 @@ public class OpenAiCompatibleProviderTests
 
         var (translated, _) = await provider.TranslateAsync(blocks, "EN", "ZH-HANT", "key");
 
-        var result = Assert.Single(translated);
-        Assert.Equal("second", result.OriginalText);
-        Assert.Equal("第二段", result.TranslatedText);
-        Assert.Equal(blocks[1].Bounds, result.Bounds);
+        Assert.Equal(2, translated.Count);
+        Assert.Equal("first", translated[0].OriginalText);
+        Assert.Equal("second", translated[1].OriginalText);
+        Assert.All(translated, block => Assert.Equal("單筆譯文", block.TranslatedText));
+        Assert.Equal(blocks[0].Bounds, translated[0].Bounds);
+        Assert.Equal(blocks[1].Bounds, translated[1].Bounds);
     }
 
     [Fact]
@@ -242,7 +262,7 @@ public class OpenAiCompatibleProviderTests
 
     private sealed class RecordingHandler : HttpMessageHandler
     {
-        public List<RecordedRequest> Requests { get; } = [];
+        public ConcurrentBag<RecordedRequest> Requests { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -255,13 +275,8 @@ public class OpenAiCompatibleProviderTests
                 body));
 
             using var payload = JsonDocument.Parse(body);
-            var batchText = payload.RootElement.GetProperty("messages")[0]
+            var userText = payload.RootElement.GetProperty("messages")[1]
                 .GetProperty("content").GetString()!;
-            var translations = string.Join("\n", Regex.Matches(
-                    batchText,
-                    @"(?m)^\[__OT_(\d{4})__\] (.*)$")
-                .Select(match =>
-                    $"[__OT_{match.Groups[1].Value}__] translated:{match.Groups[2].Value}"));
             var response = JsonSerializer.Serialize(new
             {
                 choices = new[]
@@ -271,7 +286,7 @@ public class OpenAiCompatibleProviderTests
                         message = new
                         {
                             role = "assistant",
-                            content = $"<think>hidden</think>{translations}",
+                            content = $"<think>hidden</think>translated:{userText}",
                         },
                     },
                 },
