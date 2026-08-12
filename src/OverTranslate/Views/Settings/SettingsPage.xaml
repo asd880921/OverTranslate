@@ -152,6 +152,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Text="翻譯 API" Style="{StaticResource SectionHeader}"/>
@@ -176,7 +177,7 @@
                         </Grid>
 
                         <!-- API Key row (conditionally visible) -->
-                        <Grid Grid.Row="2">
+                        <Grid Grid.Row="2" x:Name="DeepLApiKeyRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="100"/>
                                 <ColumnDefinition Width="*"/>
@@ -186,6 +187,48 @@
                             <TextBox   Grid.Column="1" x:Name="ApiKeyBox"
                                        Style="{StaticResource ModernTextBox}"
                                        TextChanged="ApiKeyBox_TextChanged"/>
+                        </Grid>
+
+                        <!-- OpenAI Compatible settings (conditionally visible) -->
+                        <Grid Grid.Row="3" x:Name="OpenAiSettingsPanel">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="API 位址"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <TextBox Grid.Column="1" Grid.Row="0" x:Name="OpenAiBaseUrlBox"
+                                     Style="{StaticResource ModernTextBox}"
+                                     TextChanged="OpenAiSetting_TextChanged"/>
+
+                            <TextBlock Grid.Column="0" Grid.Row="1" Text="API Key"
+                                       Margin="0,10,0,0"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <TextBox Grid.Column="1" Grid.Row="1" x:Name="OpenAiApiKeyBox"
+                                     Margin="0,10,0,0"
+                                     Style="{StaticResource ModernTextBox}"
+                                     TextChanged="OpenAiSetting_TextChanged"/>
+
+                            <TextBlock Grid.Column="0" Grid.Row="2" Text="模型名稱"
+                                       Margin="0,10,0,0"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <TextBox Grid.Column="1" Grid.Row="2" x:Name="OpenAiModelBox"
+                                     Margin="0,10,0,0"
+                                     Style="{StaticResource ModernTextBox}"
+                                     TextChanged="OpenAiSetting_TextChanged"/>
+
+                            <TextBlock Grid.Column="1" Grid.Row="3"
+                                       Margin="0,6,0,0"
+                                       Text="Local LLM 可將 API Key 留空；翻譯提示詞由應用程式內建，並會過濾常見的思考標記。"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource FieldHint}"/>
                         </Grid>
                     </Grid>
                 </Border>
