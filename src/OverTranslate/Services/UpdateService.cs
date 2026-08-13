@@ -135,10 +135,17 @@ public static class UpdateService
     /// wanders past. Verified against a private repo: Velopack authenticates both the feed request
     /// and the asset download, including the redirect to GitHub's CDN. Omit it for a public one.
     ///
-    /// Unset — the only state a user's machine is ever in — both do nothing and the real repository
-    /// is used exactly as before. Distinct from <see cref="CreateFakeUpdate"/>, which invents a
-    /// version with no package behind it: enough to drive the notification UI, never enough to
-    /// download.
+    /// OVERTRANSLATE_UPDATE_PRERELEASE makes pre-releases visible without switching channel, which
+    /// the beta channel cannot do: it moves both levers at once, and a beta subscriber reads
+    /// releases.beta.json — a different feed, holding differently-named packages. Releases built by
+    /// CI are packed for the stable channel and merely flagged pre-release, so testing them needs
+    /// exactly this: see the pre-release, stay on win. What gets tested is then the same bytes users
+    /// receive once the flag is cleared, rather than a parallel beta build of the same source.
+    ///
+    /// Unset — the only state a user's machine is ever in — all three do nothing and the real
+    /// repository is used exactly as before. Distinct from <see cref="CreateFakeUpdate"/>, which
+    /// invents a version with no package behind it: enough to drive the notification UI, never
+    /// enough to download.
     /// </remarks>
     private static UpdateManager CreateManager()
     {
@@ -149,6 +156,11 @@ public static class UpdateService
         var options = new UpdateOptions { ExplicitChannel = channel };
 
         // beta 的 GitHub Release 會標記為 pre-release，需 prerelease:true 才找得到。
+        // 設 OVERTRANSLATE_UPDATE_PRERELEASE（"0" 以外的任何值）可單獨打開這個開關而不換 channel。
+        var prereleaseOverride = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_PRERELEASE");
+        var seesPrerelease = isBeta
+            || (!string.IsNullOrWhiteSpace(prereleaseOverride) && prereleaseOverride != "0");
+
         var repoUrl = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_REPO");
         var token = string.IsNullOrWhiteSpace(repoUrl)
             ? null
@@ -156,6 +168,6 @@ public static class UpdateService
         if (string.IsNullOrWhiteSpace(repoUrl))
             repoUrl = GitHubRepoUrl;
 
-        return new UpdateManager(new GithubSource(repoUrl, token, prerelease: isBeta), options);
+        return new UpdateManager(new GithubSource(repoUrl, token, prerelease: seesPrerelease), options);
     }
 }
