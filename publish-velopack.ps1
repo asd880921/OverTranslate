@@ -104,9 +104,18 @@ if (-not $SkipPublish) {
         "-c", $Configuration,
         "-r", "win-x64",
         "-p:SelfContained=true",
-        "-p:PublishProfile=$PublishProfile",
         "-p:PublishDir=$publishFullPath"
     )
+
+    # profile 存在才傳。傳一個不存在的 profile 只會換來 NETSDK1198 警告 —— 上面那些設定
+    # 已經涵蓋它的內容，警告純粹是噪音，而噪音會讓真正該看的警告被忽略。
+    $profileFullPath = Join-Path (Split-Path $projectFullPath) "Properties\PublishProfiles\$PublishProfile.pubxml"
+    if (Test-Path $profileFullPath) {
+        $publishArgs += "-p:PublishProfile=$PublishProfile"
+    }
+    else {
+        Write-Host "找不到 publish profile '$PublishProfile'，改用腳本內建的自封式設定。" -ForegroundColor Yellow
+    }
 
     & dotnet @publishArgs
     if ($LASTEXITCODE -ne 0) {
