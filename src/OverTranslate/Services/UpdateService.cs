@@ -119,15 +119,36 @@ public static class UpdateService
             new VelopackUpdateInfo(asset, false, null!, []));
     }
 
+    /// <remarks>
+    /// OVERTRANSLATE_UPDATE_SOURCE overrides where releases are fetched from, so the download and
+    /// apply half of an update can be exercised on one machine. It is the missing counterpart to
+    /// <see cref="CreateFakeUpdate"/>: that one invents a version with no package behind it, so
+    /// 立即更新 necessarily fails there. Point this at a `vpk pack --outputDir` folder holding two
+    /// versions and the whole thing runs for real — check, download, apply, restart — against a feed
+    /// nobody else can see.
+    ///
+    /// The alternative was publishing a GitHub Release to test against, which is not a test: this app
+    /// updates from GitHub Releases, so every such release ships to every user on the channel. There
+    /// is no draft or staging release Velopack can read.
+    ///
+    /// Anything <see cref="UpdateManager"/> accepts works — a local directory, or an http(s) feed.
+    /// The channel still applies: the source must contain releases.{channel}.json. Unset, which is
+    /// the only state a user's machine is ever in, this does nothing and GitHub is used as before.
+    /// </remarks>
     private static UpdateManager CreateManager()
     {
         // 設 OVERTRANSLATE_CHANNEL=beta → 訂閱 beta 先行版管線；未設 → 穩定版 (win)。
         var envChannel = Environment.GetEnvironmentVariable("OVERTRANSLATE_CHANNEL");
         var isBeta = string.Equals(envChannel, BetaChannel, StringComparison.OrdinalIgnoreCase);
         var channel = isBeta ? BetaChannel : StableChannel;
+        var options = new UpdateOptions { ExplicitChannel = channel };
+
+        var localSource = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_SOURCE");
+        if (!string.IsNullOrWhiteSpace(localSource))
+            return new UpdateManager(localSource, options);
 
         // beta 的 GitHub Release 會標記為 pre-release，需 prerelease:true 才找得到。
         var source = new GithubSource(GitHubRepoUrl, null, prerelease: isBeta);
-        return new UpdateManager(source, new UpdateOptions { ExplicitChannel = channel });
+        return new UpdateManager(source, options);
     }
 }
