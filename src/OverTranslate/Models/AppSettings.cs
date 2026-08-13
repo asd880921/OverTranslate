@@ -49,4 +49,15 @@ public class AppSettings
     public string RealtimeTextColor { get; set; } = Services.Realtime.RealtimeSubtitleColors.DefaultText;
     /// <inheritdoc cref="RealtimeTextColor"/>
     public string RealtimeScrimColor { get; set; } = Services.Realtime.RealtimeSubtitleColors.DefaultScrim;
+
+    /// <summary>
+    /// The newest version the user has told us to stop interrupting them about, or empty for none.
+    /// </summary>
+    /// <remarks>
+    /// Compared as a version rather than for equality, so it silences that release and nothing later:
+    /// skipping 1.9.0 leaves 1.9.1 free to prompt again. It suppresses only the startup dialog — the
+    /// nav rail still offers the update — because what the user declined was being interrupted, not
+    /// the update itself. See <see cref="Services.UpdateNotifier"/>.
+    /// </remarks>
+    public string SkippedUpdateVersion { get; set; } = "";
 }

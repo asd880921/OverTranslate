@@ -78,6 +78,7 @@ public partial class ShellWindow : Window
         VersionText.Text = $"v{Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0"}";
 
         _instance = this;
+        MatchBrandIconToText();
         RefreshHotkeyHint();
 
         // Subscribed rather than refreshed on show: a session ending brings this window back with
@@ -86,8 +87,37 @@ public partial class ShellWindow : Window
         Realtime.RealtimeSessionController.Instance.StateChanged += OnRealtimeStateChanged;
         RefreshCaptureAvailability();
 
+        // Same reasoning, and one more: the periodic check runs whether or not this window exists,
+        // so the rail has to be able to gain the row while the user is sitting in front of it.
+        UpdateNotifier.AvailabilityChanged += OnUpdateAvailabilityChanged;
+        RefreshUpdateAvailability();
+
         // Nav_Checked drives navigation, so this also renders the initial page
         TranslationNav.IsChecked = true;
+    }
+
+    /// <summary>
+    /// Caps the brand mark to the height of the wordmark and version beside it.
+    /// </summary>
+    /// <remarks>
+    /// A size-changed handler rather than a binding on ActualHeight. The grid's first column is
+    /// Auto, so its width comes from the image's desired width, which under a binding is still the
+    /// source bitmap's own until the binding has resolved — by which point the column has claimed
+    /// the whole rail and squeezed out the text the height was to be measured from. Measuring after
+    /// the text has been laid out has no such ordering to lose.
+    ///
+    /// Only on a height change. Setting the image's width resizes the Auto column, which resizes
+    /// the starred column beside it, which raises this event again — reacting to that would loop.
+    /// The badge is deliberately not part of the measurement: it is on its own row, so a release
+    /// appearing never resizes the mark.
+    /// </remarks>
+    private void MatchBrandIconToText()
+    {
+        BrandText.SizeChanged += (_, e) =>
+        {
+            if (!e.HeightChanged) return;
+            BrandIcon.Width = BrandIcon.Height = e.NewSize.Height;
+        };
     }
 
     /// <summary>
@@ -125,6 +155,41 @@ public partial class ShellWindow : Window
 
         CaptureBtn.IsEnabled = !running;
         CaptureBtn.ToolTip = running ? "即時翻譯進行中，請先結束後再使用截圖翻譯" : null;
+    }
+
+    private void OnUpdateAvailabilityChanged(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(RefreshUpdateAvailability);
+
+    /// <summary>
+    /// Shows or hides the rail's update badge to match what <see cref="UpdateNotifier"/> has found.
+    /// </summary>
+    /// <remarks>
+    /// Unaffected by 跳過此版本 by design — that choice silences the startup dialog, and taking the
+    /// badge away with it would leave a user who skipped a release with no way back to it short of
+    /// reinstalling.
+    /// </remarks>
+    private void RefreshUpdateAvailability()
+    {
+        var update = UpdateNotifier.Available;
+        if (update is null)
+        {
+            UpdateBtn.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        // The version is on the badge itself rather than behind a hover: it is the one piece of
+        // information that tells the user whether this is the release they already decided about.
+        // 「至」carries the relationship to the version directly above — this is where that number
+        // goes, not merely that a number exists. "v" matches that label's own formatting.
+        UpdateBtnText.Text = $"可更新至 v{update.LatestVersion}";
+        UpdateBtn.Visibility = Visibility.Visible;
+    }
+
+    private void UpdateBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var update = UpdateNotifier.Available;
+        if (update is null) return;
+        UpdateWindow.ShowOrActivate(update);
     }
 
     private void CaptureBtn_Click(object sender, RoutedEventArgs e)
@@ -279,6 +344,9 @@ public partial class ShellWindow : Window
         // on the screen, not in this window, and closing the shell is not a request to end it.
         _realtimePage.Teardown();
         Realtime.RealtimeSessionController.Instance.StateChanged -= OnRealtimeStateChanged;
+        // UpdateNotifier is static and outlives every window, so a handler left attached would keep
+        // this closed window alive for as long as the application runs.
+        UpdateNotifier.AvailabilityChanged -= OnUpdateAvailabilityChanged;
         _instance = null;
         base.OnClosed(e);
     }

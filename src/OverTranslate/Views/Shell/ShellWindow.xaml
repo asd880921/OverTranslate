@@ -22,13 +22,46 @@
                 BorderThickness="0,0,1,0">
             <DockPanel>
 
-                <!-- Brand -->
-                <StackPanel DockPanel.Dock="Top"
-                            Orientation="Horizontal"
-                            Margin="18,18,16,20">
-                    <Image x:Name="BrandIcon" Width="30" Height="30"
+                <!-- Brand.
+
+                     A two-row grid rather than nested stacks, so both of the alignments here hold
+                     themselves together instead of being maintained by hand.
+
+                     The mark's height is bound to the name-and-version column beside it, which caps
+                     it to exactly the block of text it belongs to — top edge on the wordmark's
+                     ascender, bottom edge on the version's descender — and keeps it there if either
+                     type size is ever changed. Width is left free so Stretch works the aspect ratio
+                     out; the artwork is square, so it follows.
+
+                     The badge sits on the second row of the same column as the text, so it starts
+                     on the wordmark's left edge without anyone computing an indent from the mark's
+                     width. It is deliberately outside the height binding: the mark answers to the
+                     name and version, which are always there, and not to a badge that comes and
+                     goes — otherwise the mark would resize itself every time a release appeared. -->
+                <Grid DockPanel.Dock="Top" Margin="18,18,16,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- These are a seed, not the final size: MatchBrandIconToText replaces both the
+                         moment the text beside it has been measured, so the mark ends up exactly as
+                         tall as the wordmark and version together. Both dimensions are always set
+                         together — the column is Auto, so an Image left to work its own width out
+                         would report the source bitmap's and take the whole rail. -->
+                    <Image x:Name="BrandIcon"
+                           Grid.Row="0" Grid.Column="0"
+                           Width="34" Height="34"
+                           VerticalAlignment="Top"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+
+                    <StackPanel x:Name="BrandText"
+                                Grid.Row="0" Grid.Column="1"
+                                Margin="10,0,0,0">
                         <TextBlock Text="OverTranslate"
                                    FontFamily="{StaticResource AppFont}"
                                    FontSize="14"
@@ -39,7 +72,63 @@
                                    FontSize="11"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
                     </StackPanel>
-                </StackPanel>
+
+                    <!-- The application's only lasting way of saying a new version exists, and
+                         absent entirely until one does — a permanent badge reading "已是最新版本"
+                         would be a fixture that is right about nothing the user needs to act on.
+                         It sits under the version it contradicts, so the claim and its subject are
+                         read together.
+
+                         Whether it appears is driven by UpdateNotifier rather than by anything this
+                         window knows: the shell is built on demand and destroyed on close, while
+                         the check that found the release may have run hours before this window
+                         existed.
+
+                         A DockPanel inside, not a StackPanel: a horizontal StackPanel measures its
+                         children against infinite width, so the label would never trim and a long
+                         beta version string would run straight out of the rail. Docking the icon
+                         gives the label the remaining width to trim against — and the grid column
+                         is what bounds that width, so no MaxWidth has to be kept in step with the
+                         rail's own. -->
+                    <Button x:Name="UpdateBtn"
+                            Grid.Row="1" Grid.Column="1"
+                            Style="{StaticResource RailUpdateChip}"
+                            HorizontalAlignment="Left"
+                            Margin="10,5,0,0"
+                            Visibility="Collapsed"
+                            Click="UpdateBtn_Click">
+                        <DockPanel>
+                            <!-- Drawn rather than set in Segoe, because Segoe has no circled arrow
+                                 and its circled glyphs (E946, E930) lose their interior below about
+                                 14px anyway — at the 11px this line is set in, the ring survives and
+                                 whatever is inside it does not. A Canvas, not a Grid: Grid centres
+                                 each child by its own bounding box, which would drop the arrowhead
+                                 to the circle's centre instead of its upper half. Canvas keeps the
+                                 literal coordinates, and the Viewbox scales the finished 24-unit
+                                 drawing down to the size the text needs. -->
+                            <Viewbox DockPanel.Dock="Left"
+                                     Width="14" Height="14"
+                                     VerticalAlignment="Center"
+                                     Margin="0,0,6,0">
+                                <Canvas Width="24" Height="24">
+                                    <Ellipse Canvas.Left="2" Canvas.Top="2"
+                                             Width="20" Height="20"
+                                             Stroke="{DynamicResource AppAccent}"
+                                             StrokeThickness="1.75"/>
+                                    <Path Stroke="{DynamicResource AppAccent}"
+                                          StrokeThickness="1.75"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Data="M16,12 L12,8 L8,12 M12,16 L12,8"/>
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="UpdateBtnText"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </DockPanel>
+                    </Button>
+                </Grid>
 
                 <!-- 關於 opens a modal overlay rather than switching pages, so it sits
                      apart from the nav list and never takes the selected state -->
@@ -55,6 +144,16 @@
                         <TextBlock Text="關於" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
+
+                <!-- Docked after 關於 so it lands above it. 關於 is the one item down here and the
+                     nav list ends a long way above it, so without a line the two read as one list
+                     with a large accidental gap in it. Inset to 16 so it starts and ends on the
+                     same vertical as the nav rows' own edges, which is what makes it read as
+                     dividing them rather than as a stray rule. -->
+                <Border DockPanel.Dock="Bottom"
+                        Height="1"
+                        Margin="16,0,16,10"
+                        Background="{DynamicResource AppBorder}"/>
 
                 <!-- 截圖翻譯 — the app's primary action, and since the tray menu no longer
                      offers it, the only place other than the shortcut itself. It sits above the
