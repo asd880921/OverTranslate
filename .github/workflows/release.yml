@@ -1,0 +1,152 @@
+# 壓 tag 後自動打包並發成 pre-release。
+#
+# 只發 pre-release，永遠不會直接成為正式版 —— 一般使用者的更新來源是
+# GithubSource(prerelease: false)，看不到標成 pre-release 的 release。
+# 要正式發布時，由人到 GitHub 上手動取消勾選 pre-release。
+#
+# 版號**以 tag 為準**（v2.0.0-beta.1 → 2.0.0-beta.1），csproj 的 <Version> 不參與。
+# 這是刻意的：測試時常常只想壓一個不同版號的 tag 看打包結果，不該被迫先發一個
+# 改版號的 commit。csproj 與 tag 不一致時只警告，不擋。
+name: 打包並發布 pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 版號，不含 v（例如 2.0.0-beta.1）
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 安裝 Velopack CLI
+        shell: pwsh
+        run: |
+          # 版本鎖死，與 OverTranslate.csproj 的 Velopack 套件一致。
+          # CLI 與 runtime 版本不一致時產出的 delta 可能無法套用。
+          dotnet tool install -g vpk --version 1.2.0
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      - name: 決定版號
+        id: ver
+        shell: pwsh
+        run: |
+          # tag 觸發時用 tag 名，手動觸發時用輸入值。兩條路都不看 csproj。
+          $tag = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}' } else { 'v${{ inputs.version }}' }
+          $version = $tag -replace '^v', ''
+          if ([string]::IsNullOrWhiteSpace($version)) { throw "版號是空的（tag='$tag'）。" }
+
+          # 不是 semver 的話 vpk 會在打包中途才失敗，那時已經燒掉好幾分鐘的 build。
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+              throw "版號 '$version' 不是合法的 semver。tag 請用 v2.0.0 或 v2.0.0-beta.1 的形式。"
+          }
+
+          # 只是提醒。tag 與 csproj 不一致完全不影響更新流程（Velopack 認的是 packVersion），
+          # 但正式要發的那一版通常會希望兩者一致。
+          [xml]$csproj = Get-Content .\src\OverTranslate\OverTranslate.csproj
+          $csprojVersion = ($csproj.Project.PropertyGroup.Version | Select-Object -First 1).Trim()
+          if ($csprojVersion -ne $version) {
+              Write-Warning "tag 版號 '$version' 與 csproj 的 '$csprojVersion' 不一致。打包用 tag 的版號。"
+          }
+
+          Write-Host "版號：$version（tag: $tag）"
+          "version=$version" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          "tag=$tag"         | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+
+      - name: 防呆——這個版號是否已經發布過
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 同一個版號重壓一次 tag 時，包出來的東西會跟線上某一版同號但內容不同。
+          # 那會讓已經更新過的使用者永遠收不到這一版（版號沒變大），而且不會有任何錯誤。
+          # 寧可在這裡失敗。
+          $target = "OverTranslate-${{ steps.ver.outputs.version }}-full.nupkg"
+          $existing = gh api --paginate repos/${{ github.repository }}/releases `
+              --jq '.[].assets[].name' 2>$null
+          if ($existing -contains $target) {
+              throw "版號 ${{ steps.ver.outputs.version }} 已經發布過（找到 $target）。請先調整 csproj 的 <Version>。"
+          }
+          Write-Host "版號未被使用，繼續。"
+
+      - name: 抓上一版 full 包（產生 delta 用）
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # vpk 需要上一版的 full 包在本地才算得出 delta，而 runner 每次都是全新的。
+          # 抓不到就只出 full 包，使用者這一次要下載整包 —— 會變慢，但不該擋住發布，
+          # 所以這一步失敗不影響後續。
+          New-Item -ItemType Directory -Force -Path .\artifacts\releases | Out-Null
+          vpk download github `
+              --repoUrl https://github.com/${{ github.repository }} `
+              --channel win `
+              --outputDir .\artifacts\releases `
+              --token $env:GH_TOKEN
+
+      - name: 打包
+        shell: pwsh
+        run: |
+          .\publish-velopack.ps1 -Version ${{ steps.ver.outputs.version }}
+
+      - name: 發布 pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $dir = '.\artifacts\releases'
+
+          # 逐一指定，不要整個資料夾丟上去 —— 上一步抓下來的「上一版 full 包」也在裡面，
+          # 那個線上已經有了，重傳只是浪費 100+ MB。
+          $assets = @(
+              "$dir\releases.win.json"
+              "$dir\OverTranslate-$v-full.nupkg"
+              "$dir\OverTranslate-win-Setup.exe"
+              "$dir\OverTranslate-win-Portable.zip"
+          )
+          $delta = "$dir\OverTranslate-$v-delta.nupkg"
+          if (Test-Path $delta) { $assets += $delta } else { Write-Warning "沒有 delta，使用者這一版要下載完整包。" }
+
+          foreach ($a in $assets) {
+              if (-not (Test-Path $a)) { throw "缺少產物：$a" }
+          }
+
+          $notes = @"
+自動打包產出，尚未正式發布。
+
+確認無誤後，到本頁按 **Edit release** 取消勾選 *Set as a pre-release*，
+使用者才會收到這一版。
+
+- commit: ${{ github.sha }}
+- 觸發：${{ github.event_name }}
+"@
+
+          gh release create '${{ steps.ver.outputs.tag }}' `
+              --repo ${{ github.repository }} `
+              --target ${{ github.sha }} `
+              --title $v `
+              --notes $notes `
+              --prerelease `
+              @assets
+
+      - name: 產出清單
+        if: always()
+        shell: pwsh
+        run: Get-ChildItem .\artifacts\releases | Select-Object Name, Length

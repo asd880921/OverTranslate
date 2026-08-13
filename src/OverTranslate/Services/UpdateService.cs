@@ -119,15 +119,55 @@ public static class UpdateService
             new VelopackUpdateInfo(asset, false, null!, []));
     }
 
+    /// <remarks>
+    /// OVERTRANSLATE_UPDATE_REPO points the update feed at a second GitHub repository — a staging
+    /// repo with no users — so a release can be rehearsed end to end without one reaching anybody.
+    /// It keeps <see cref="GithubSource"/> in the loop, so the release listing, the asset lookup and
+    /// the HTTP download are all the code that ships; only the repository differs.
+    ///
+    /// Rehearsing in the real repo cannot be made safe. A release there is visible to every user on
+    /// the channel the moment it exists, and the only thing separating a rehearsal from a real launch
+    /// is remembering to tick pre-release. The staging repo removes that lever entirely, and lets the
+    /// stable (win) channel be rehearsed too, which pre-releases by definition cannot.
+    ///
+    /// OVERTRANSLATE_UPDATE_TOKEN carries a PAT for it. Supplying one lets the staging repo stay
+    /// private, which is worth doing — rehearsal builds are then not downloadable by anyone who
+    /// wanders past. Verified against a private repo: Velopack authenticates both the feed request
+    /// and the asset download, including the redirect to GitHub's CDN. Omit it for a public one.
+    ///
+    /// OVERTRANSLATE_UPDATE_PRERELEASE makes pre-releases visible without switching channel, which
+    /// the beta channel cannot do: it moves both levers at once, and a beta subscriber reads
+    /// releases.beta.json — a different feed, holding differently-named packages. Releases built by
+    /// CI are packed for the stable channel and merely flagged pre-release, so testing them needs
+    /// exactly this: see the pre-release, stay on win. What gets tested is then the same bytes users
+    /// receive once the flag is cleared, rather than a parallel beta build of the same source.
+    ///
+    /// Unset — the only state a user's machine is ever in — all three do nothing and the real
+    /// repository is used exactly as before. Distinct from <see cref="CreateFakeUpdate"/>, which
+    /// invents a version with no package behind it: enough to drive the notification UI, never
+    /// enough to download.
+    /// </remarks>
     private static UpdateManager CreateManager()
     {
         // 設 OVERTRANSLATE_CHANNEL=beta → 訂閱 beta 先行版管線；未設 → 穩定版 (win)。
         var envChannel = Environment.GetEnvironmentVariable("OVERTRANSLATE_CHANNEL");
         var isBeta = string.Equals(envChannel, BetaChannel, StringComparison.OrdinalIgnoreCase);
         var channel = isBeta ? BetaChannel : StableChannel;
+        var options = new UpdateOptions { ExplicitChannel = channel };
 
         // beta 的 GitHub Release 會標記為 pre-release，需 prerelease:true 才找得到。
-        var source = new GithubSource(GitHubRepoUrl, null, prerelease: isBeta);
-        return new UpdateManager(source, new UpdateOptions { ExplicitChannel = channel });
+        // 設 OVERTRANSLATE_UPDATE_PRERELEASE（"0" 以外的任何值）可單獨打開這個開關而不換 channel。
+        var prereleaseOverride = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_PRERELEASE");
+        var seesPrerelease = isBeta
+            || (!string.IsNullOrWhiteSpace(prereleaseOverride) && prereleaseOverride != "0");
+
+        var repoUrl = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_REPO");
+        var token = string.IsNullOrWhiteSpace(repoUrl)
+            ? null
+            : Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_TOKEN");
+        if (string.IsNullOrWhiteSpace(repoUrl))
+            repoUrl = GitHubRepoUrl;
+
+        return new UpdateManager(new GithubSource(repoUrl, token, prerelease: seesPrerelease), options);
     }
 }
