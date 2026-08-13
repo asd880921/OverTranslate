@@ -4,16 +4,17 @@
 # GithubSource(prerelease: false)，看不到標成 pre-release 的 release。
 # 要正式發布時，由人到 GitHub 上手動取消勾選 pre-release。
 #
-# 版號來自 src/OverTranslate/OverTranslate.csproj 的 <Version>，tag 只是觸發器。
-# 所以正常流程是：先發一個調整版號的 commit 到 main，再壓 tag。
+# 版號**以 tag 為準**（v2.0.0-beta.1 → 2.0.0-beta.1），csproj 的 <Version> 不參與。
+# 這是刻意的：測試時常常只想壓一個不同版號的 tag 看打包結果，不該被迫先發一個
+# 改版號的 commit。csproj 與 tag 不一致時只警告，不擋。
 name: 打包並發布 pre-release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 覆寫版號（留空則用 csproj 的 <Version>）
-        required: false
+        description: 版號，不含 v（例如 2.0.0-beta.1）
+        required: true
         type: string
   push:
     tags:
@@ -45,23 +46,34 @@ jobs:
         id: ver
         shell: pwsh
         run: |
-          $version = '${{ inputs.version }}'
-          if ([string]::IsNullOrWhiteSpace($version)) {
-              [xml]$csproj = Get-Content .\src\OverTranslate\OverTranslate.csproj
-              $version = ($csproj.Project.PropertyGroup.Version | Select-Object -First 1).Trim()
-          }
-          if ([string]::IsNullOrWhiteSpace($version)) { throw "找不到版號。" }
+          # tag 觸發時用 tag 名，手動觸發時用輸入值。兩條路都不看 csproj。
+          $tag = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}' } else { 'v${{ inputs.version }}' }
+          $version = $tag -replace '^v', ''
+          if ([string]::IsNullOrWhiteSpace($version)) { throw "版號是空的（tag='$tag'）。" }
 
-          Write-Host "版號：$version"
+          # 不是 semver 的話 vpk 會在打包中途才失敗，那時已經燒掉好幾分鐘的 build。
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+              throw "版號 '$version' 不是合法的 semver。tag 請用 v2.0.0 或 v2.0.0-beta.1 的形式。"
+          }
+
+          # 只是提醒。tag 與 csproj 不一致完全不影響更新流程（Velopack 認的是 packVersion），
+          # 但正式要發的那一版通常會希望兩者一致。
+          [xml]$csproj = Get-Content .\src\OverTranslate\OverTranslate.csproj
+          $csprojVersion = ($csproj.Project.PropertyGroup.Version | Select-Object -First 1).Trim()
+          if ($csprojVersion -ne $version) {
+              Write-Warning "tag 版號 '$version' 與 csproj 的 '$csprojVersion' 不一致。打包用 tag 的版號。"
+          }
+
+          Write-Host "版號：$version（tag: $tag）"
           "version=$version" | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
-          "tag=v$version"    | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+          "tag=$tag"         | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
 
       - name: 防呆——這個版號是否已經發布過
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # 忘記調 csproj 版號時，包出來的東西會跟線上某一版同號但內容不同。
+          # 同一個版號重壓一次 tag 時，包出來的東西會跟線上某一版同號但內容不同。
           # 那會讓已經更新過的使用者永遠收不到這一版（版號沒變大），而且不會有任何錯誤。
           # 寧可在這裡失敗。
           $target = "OverTranslate-${{ steps.ver.outputs.version }}-full.nupkg"
