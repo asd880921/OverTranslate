@@ -137,15 +137,17 @@ jobs:
               if (-not (Test-Path $a)) { throw "缺少產物：$a" }
           }
 
-          $notes = @"
-自動打包產出，尚未正式發布。
-
-確認無誤後，到本頁按 **Edit release** 取消勾選 *Set as a pre-release*，
-使用者才會收到這一版。
-
-- commit: ${{ github.sha }}
-- 觸發：${{ github.event_name }}
-"@
+          # 不要用 here-string。它的結尾 "@ 必須頂在行首，而這整段是 YAML 的 run: | 區塊，
+          # 行首沒有縮排就會把 block scalar 截斷，整個 workflow 檔變成無效 YAML
+          # ——症狀是每次 push 都產生一個 0 秒就失敗的 run，連 tag 觸發都不會執行。
+          $notes = @(
+              '自動打包產出，尚未正式發布。'
+              ''
+              '確認無誤後，到本頁按 **Edit release** 取消勾選 *Set as a pre-release*，使用者才會收到這一版。'
+              ''
+              "- commit: ${{ github.sha }}"
+              "- 觸發：${{ github.event_name }}"
+          ) -join "`n"
 
           gh release create '${{ steps.ver.outputs.tag }}' `
               --repo ${{ github.repository }} `
