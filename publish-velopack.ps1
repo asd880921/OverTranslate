@@ -93,10 +93,17 @@ if (-not $SkipPublish) {
     Write-Host "Config     : $Configuration"
     Write-Host "PublishDir : $publishFullPath"
 
+    # 自封式設定明寫在這裡，不依賴 publish profile。
+    # FolderProfile.pubxml 被 .gitignore 排除（PublishProfiles/），所以任何拿不到它的環境
+    # —— CI checkout、git worktree、新 clone —— 都沒有 <SelfContained>true</SelfContained>。
+    # 而 -p:PublishProfile=... 指向不存在的檔案時 dotnet 不會報錯，只會安靜地退回框架相依建置，
+    # 產出一個看起來正常、但在沒裝 .NET 8 Runtime 的機器上根本開不起來的安裝包。
     $publishArgs = @(
         "publish",
         $projectFullPath,
         "-c", $Configuration,
+        "-r", "win-x64",
+        "-p:SelfContained=true",
         "-p:PublishProfile=$PublishProfile",
         "-p:PublishDir=$publishFullPath"
     )
@@ -104,6 +111,12 @@ if (-not $SkipPublish) {
     & dotnet @publishArgs
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet publish 失敗，exit code: $LASTEXITCODE"
+    }
+
+    # 上面那個坑安靜到 build 會成功、打包會成功、大小也只是「比較小」而已。
+    # 寧可在這裡炸掉，也不要把跑不起來的東西發出去。
+    if (-not (Test-Path (Join-Path $publishFullPath "coreclr.dll"))) {
+        throw "Publish 輸出不是自封式（找不到 coreclr.dll）。這種包在沒有 .NET Runtime 的機器上開不起來。"
     }
 
     if (Test-Path $appSettingsPublishPath) {
