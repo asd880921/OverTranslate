@@ -89,14 +89,25 @@ public partial class App
         MainWindow = mainWindow;
         mainWindow.InitializeApp();
 
-        _ = CheckForUpdateAsync();
+        UpdateNotifier.StartPolling();
+        _ = PromptForUpdateAsync();
     }
 
-    private static async Task CheckForUpdateAsync()
+    /// <summary>
+    /// The one update check allowed to put a window on the screen.
+    /// </summary>
+    /// <remarks>
+    /// Every later check — see <see cref="UpdateNotifier.StartPolling"/> — only lights up the nav
+    /// rail. This used to be the only check there was, which meant the dialog was the sole way an
+    /// update could ever be announced, which in turn meant it had to reappear on every single launch
+    /// until the user gave in. It no longer has to carry that alone: 跳過此版本 turns it off for a
+    /// release without taking the rail's entry with it.
+    /// </remarks>
+    private static async Task PromptForUpdateAsync()
     {
-        var info = await UpdateService.CheckAsync();
-        if (info is null) return;
-        Current.Dispatcher.Invoke(() => new UpdateWindow(info).Show());
+        var info = await UpdateNotifier.CheckAsync();
+        if (info is null || UpdateNotifier.IsSkipped(info)) return;
+        Current.Dispatcher.Invoke(() => UpdateWindow.ShowOrActivate(info));
     }
 
     private void MonitorActivationRequests()

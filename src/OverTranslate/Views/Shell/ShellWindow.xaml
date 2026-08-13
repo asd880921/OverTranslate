@@ -56,6 +56,30 @@
                     </StackPanel>
                 </Button>
 
+                <!-- The application's only lasting way of saying a new version exists. It is absent
+                     entirely until one does — an always-present row reading "已是最新版本" would be
+                     a permanent fixture that is right about nothing the user needs to act on.
+
+                     Docked after 關於 so it lands above it, and carrying the accent colour so it
+                     reads as news rather than as another destination. Whether it appears is driven
+                     by UpdateNotifier rather than by anything this window knows: the shell is built
+                     on demand and destroyed on close, while the check that found the release may
+                     have run hours before this window existed. -->
+                <Button x:Name="UpdateBtn"
+                        DockPanel.Dock="Bottom"
+                        Style="{StaticResource NavActionItem}"
+                        Foreground="{DynamicResource AppAccent}"
+                        Margin="8,0,8,0"
+                        Visibility="Collapsed"
+                        Click="UpdateBtn_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14" Text="&#xE896;"
+                                   Width="24" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="UpdateBtnText" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
                 <!-- 截圖翻譯 — the app's primary action, and since the tray menu no longer
                      offers it, the only place other than the shortcut itself. It sits above the
                      nav list rather than inside it because it performs an action instead of

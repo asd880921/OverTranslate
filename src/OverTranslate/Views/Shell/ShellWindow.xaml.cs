@@ -86,6 +86,11 @@ public partial class ShellWindow : Window
         Realtime.RealtimeSessionController.Instance.StateChanged += OnRealtimeStateChanged;
         RefreshCaptureAvailability();
 
+        // Same reasoning, and one more: the periodic check runs whether or not this window exists,
+        // so the rail has to be able to gain the row while the user is sitting in front of it.
+        UpdateNotifier.AvailabilityChanged += OnUpdateAvailabilityChanged;
+        RefreshUpdateAvailability();
+
         // Nav_Checked drives navigation, so this also renders the initial page
         TranslationNav.IsChecked = true;
     }
@@ -125,6 +130,39 @@ public partial class ShellWindow : Window
 
         CaptureBtn.IsEnabled = !running;
         CaptureBtn.ToolTip = running ? "即時翻譯進行中，請先結束後再使用截圖翻譯" : null;
+    }
+
+    private void OnUpdateAvailabilityChanged(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(RefreshUpdateAvailability);
+
+    /// <summary>
+    /// Shows or hides the rail's 有新版本 row to match what <see cref="UpdateNotifier"/> has found.
+    /// </summary>
+    /// <remarks>
+    /// Unaffected by 跳過此版本 by design — that choice silences the startup dialog, and taking the
+    /// rail's entry away with it would leave a user who skipped a release with no way back to it
+    /// short of reinstalling.
+    /// </remarks>
+    private void RefreshUpdateAvailability()
+    {
+        var update = UpdateNotifier.Available;
+        if (update is null)
+        {
+            UpdateBtn.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        // The version is on the row itself rather than behind a hover: it is the one piece of
+        // information that tells the user whether this is the release they already decided about.
+        UpdateBtnText.Text = $"有新版本 {update.LatestVersion}";
+        UpdateBtn.Visibility = Visibility.Visible;
+    }
+
+    private void UpdateBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var update = UpdateNotifier.Available;
+        if (update is null) return;
+        UpdateWindow.ShowOrActivate(update);
     }
 
     private void CaptureBtn_Click(object sender, RoutedEventArgs e)
@@ -279,6 +317,9 @@ public partial class ShellWindow : Window
         // on the screen, not in this window, and closing the shell is not a request to end it.
         _realtimePage.Teardown();
         Realtime.RealtimeSessionController.Instance.StateChanged -= OnRealtimeStateChanged;
+        // UpdateNotifier is static and outlives every window, so a handler left attached would keep
+        // this closed window alive for as long as the application runs.
+        UpdateNotifier.AvailabilityChanged -= OnUpdateAvailabilityChanged;
         _instance = null;
         base.OnClosed(e);
     }

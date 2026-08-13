@@ -10,8 +10,32 @@ namespace OverTranslate.Views.Shell;
 
 public partial class UpdateWindow : Window
 {
+    private static UpdateWindow? _instance;
+
     private readonly UpdateInfo _updateInfo;
     private bool _isUpdating;
+
+    /// <summary>
+    /// Opens the update window, or brings the open one forward.
+    /// </summary>
+    /// <remarks>
+    /// Two entry points reach this now — the startup check and the nav rail's 有新版本 — and the
+    /// rail's is a button the user can press while the window it opens is already on screen behind
+    /// the shell. A second instance would be a second download button for the same release.
+    /// </remarks>
+    public static void ShowOrActivate(UpdateInfo info)
+    {
+        if (_instance is not null)
+        {
+            _instance.Activate();
+            return;
+        }
+
+        var window = new UpdateWindow(info);
+        _instance = window;
+        window.Closed += (_, _) => _instance = null;
+        window.Show();
+    }
 
     public UpdateWindow(UpdateInfo info)
     {
@@ -30,6 +54,7 @@ public partial class UpdateWindow : Window
             _isUpdating = true;
             DismissBtn.IsEnabled = false;
             DownloadBtn.IsEnabled = false;
+            SkipVersionLink.IsEnabled = false;
             ErrorText.Visibility = Visibility.Collapsed;
             DownloadBtnText.Text = "下載中 0%";
             DownloadProgress.IsIndeterminate = false;
@@ -43,6 +68,7 @@ public partial class UpdateWindow : Window
             _isUpdating = false;
             DismissBtn.IsEnabled = true;
             DownloadBtn.IsEnabled = true;
+            SkipVersionLink.IsEnabled = true;
             DownloadBtnText.Text = "重試";
             DownloadProgress.BeginAnimation(System.Windows.Controls.ProgressBar.ValueProperty, null);
             DownloadProgress.IsIndeterminate = false;
@@ -108,6 +134,20 @@ public partial class UpdateWindow : Window
     }
 
     private void DismissBtn_Click(object sender, RoutedEventArgs e) => Close();
+
+    /// <summary>
+    /// Silences the startup dialog for this release and anything older, then closes.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not a refusal of the update: the nav rail keeps offering it, so a user who
+    /// skips a release in the morning and changes their mind that evening has somewhere to go. What
+    /// this turns off is the interruption, which is the part they actually objected to.
+    /// </remarks>
+    private void SkipVersionLink_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateNotifier.Skip(_updateInfo);
+        Close();
+    }
 
     private void ReleaseNotesLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
     {
