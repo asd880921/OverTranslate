@@ -52,5 +52,6 @@ Desktop.ini
 launchSettings.json
 
 # publish
+# publish-velopack.ps1 已納入版控 —— CI 在本倉打包，腳本必須跟著程式碼走。
+# 發版步驟文件仍放在 OverTranslate-Ops（私有倉）。
 PUBLISH.md
-publish-velopack.ps1
