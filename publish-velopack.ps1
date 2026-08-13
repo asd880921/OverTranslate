@@ -128,11 +128,6 @@ if (-not $SkipPublish) {
         throw "Publish 輸出不是自封式（找不到 coreclr.dll）。這種包在沒有 .NET Runtime 的機器上開不起來。"
     }
 
-    if (Test-Path $appSettingsPublishPath) {
-        Remove-Item -LiteralPath $appSettingsPublishPath -Force
-        Write-Host "已從 Publish 輸出移除 appsettings.json" -ForegroundColor Yellow
-    }
-
     Write-Host ""
 }
 
@@ -146,6 +141,14 @@ if (-not (Test-Path $publishFullPath)) {
 
 if (-not (Test-Path $mainExeFullPath)) {
     throw "找不到主程式：$mainExeFullPath"
+}
+
+# 在 pack 之前、且不受 -SkipPublish 影響。打包進去的 appsettings.json 會在更新時覆蓋
+# 使用者既有的設定，而 -SkipPublish 的用途正是「已手動 publish、只想重新打包」——
+# 那個資料夾沒有經過上面的流程，裡面就會有這個檔。
+if (Test-Path $appSettingsPublishPath) {
+    Remove-Item -LiteralPath $appSettingsPublishPath -Force
+    Write-Host "已從 Publish 輸出移除 appsettings.json" -ForegroundColor Yellow
 }
 
 if (-not (Test-Path $iconFullPath)) {
