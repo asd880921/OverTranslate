@@ -120,20 +120,26 @@ public static class UpdateService
     }
 
     /// <remarks>
-    /// OVERTRANSLATE_UPDATE_SOURCE overrides where releases are fetched from, so the download and
-    /// apply half of an update can be exercised on one machine. It is the missing counterpart to
-    /// <see cref="CreateFakeUpdate"/>: that one invents a version with no package behind it, so
-    /// 立即更新 necessarily fails there. Point this at a `vpk pack --outputDir` folder holding two
-    /// versions and the whole thing runs for real — check, download, apply, restart — against a feed
-    /// nobody else can see.
+    /// Two environment variables redirect where releases come from, so an update can be rehearsed
+    /// without one reaching users. Both are unset on every user's machine, where this method behaves
+    /// exactly as it did before they existed.
     ///
-    /// The alternative was publishing a GitHub Release to test against, which is not a test: this app
-    /// updates from GitHub Releases, so every such release ships to every user on the channel. There
-    /// is no draft or staging release Velopack can read.
+    /// OVERTRANSLATE_UPDATE_REPO points at a second GitHub repository — a staging repo with no users
+    /// — and is the one to reach for. It keeps <see cref="GithubSource"/> in the loop, so the release
+    /// listing, the asset lookup and the HTTP download are all the code that ships; only the
+    /// repository differs. Rehearsing in the real repo cannot do that safely: a release there is
+    /// visible to every user on the channel the moment it exists, and the only lever separating a
+    /// rehearsal from a real launch is remembering to tick pre-release.
     ///
-    /// Anything <see cref="UpdateManager"/> accepts works — a local directory, or an http(s) feed.
-    /// The channel still applies: the source must contain releases.{channel}.json. Unset, which is
-    /// the only state a user's machine is ever in, this does nothing and GitHub is used as before.
+    /// OVERTRANSLATE_UPDATE_TOKEN carries a PAT for it, which is what lets the staging repo stay
+    /// private. Optional — a public staging repo needs no token.
+    ///
+    /// OVERTRANSLATE_UPDATE_SOURCE takes a local `vpk pack --outputDir` folder instead. It is the
+    /// fast loop: a pack is seconds where a staging release is a few hundred MB uploaded. What it
+    /// cannot cover is everything GithubSource does, so it does not replace the staging repo.
+    ///
+    /// Both differ from <see cref="CreateFakeUpdate"/>, which invents a version with no package
+    /// behind it — enough to drive the notification UI, never enough to download.
     /// </remarks>
     private static UpdateManager CreateManager()
     {
@@ -142,6 +148,14 @@ public static class UpdateService
         var isBeta = string.Equals(envChannel, BetaChannel, StringComparison.OrdinalIgnoreCase);
         var channel = isBeta ? BetaChannel : StableChannel;
         var options = new UpdateOptions { ExplicitChannel = channel };
+
+        var stagingRepo = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_REPO");
+        if (!string.IsNullOrWhiteSpace(stagingRepo))
+        {
+            var token = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_TOKEN");
+            return new UpdateManager(
+                new GithubSource(stagingRepo, token, prerelease: isBeta), options);
+        }
 
         var localSource = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_SOURCE");
         if (!string.IsNullOrWhiteSpace(localSource))
