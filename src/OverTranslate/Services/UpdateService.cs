@@ -120,26 +120,25 @@ public static class UpdateService
     }
 
     /// <remarks>
-    /// Two environment variables redirect where releases come from, so an update can be rehearsed
-    /// without one reaching users. Both are unset on every user's machine, where this method behaves
-    /// exactly as it did before they existed.
+    /// OVERTRANSLATE_UPDATE_REPO points the update feed at a second GitHub repository — a staging
+    /// repo with no users — so a release can be rehearsed end to end without one reaching anybody.
+    /// It keeps <see cref="GithubSource"/> in the loop, so the release listing, the asset lookup and
+    /// the HTTP download are all the code that ships; only the repository differs.
     ///
-    /// OVERTRANSLATE_UPDATE_REPO points at a second GitHub repository — a staging repo with no users
-    /// — and is the one to reach for. It keeps <see cref="GithubSource"/> in the loop, so the release
-    /// listing, the asset lookup and the HTTP download are all the code that ships; only the
-    /// repository differs. Rehearsing in the real repo cannot do that safely: a release there is
-    /// visible to every user on the channel the moment it exists, and the only lever separating a
-    /// rehearsal from a real launch is remembering to tick pre-release.
+    /// Rehearsing in the real repo cannot be made safe. A release there is visible to every user on
+    /// the channel the moment it exists, and the only thing separating a rehearsal from a real launch
+    /// is remembering to tick pre-release. The staging repo removes that lever entirely, and lets the
+    /// stable (win) channel be rehearsed too, which pre-releases by definition cannot.
     ///
-    /// OVERTRANSLATE_UPDATE_TOKEN carries a PAT for it, which is what lets the staging repo stay
-    /// private. Optional — a public staging repo needs no token.
+    /// OVERTRANSLATE_UPDATE_TOKEN carries a PAT for it. Supplying one lets the staging repo stay
+    /// private, which is worth doing — rehearsal builds are then not downloadable by anyone who
+    /// wanders past. Verified against a private repo: Velopack authenticates both the feed request
+    /// and the asset download, including the redirect to GitHub's CDN. Omit it for a public one.
     ///
-    /// OVERTRANSLATE_UPDATE_SOURCE takes a local `vpk pack --outputDir` folder instead. It is the
-    /// fast loop: a pack is seconds where a staging release is a few hundred MB uploaded. What it
-    /// cannot cover is everything GithubSource does, so it does not replace the staging repo.
-    ///
-    /// Both differ from <see cref="CreateFakeUpdate"/>, which invents a version with no package
-    /// behind it — enough to drive the notification UI, never enough to download.
+    /// Unset — the only state a user's machine is ever in — both do nothing and the real repository
+    /// is used exactly as before. Distinct from <see cref="CreateFakeUpdate"/>, which invents a
+    /// version with no package behind it: enough to drive the notification UI, never enough to
+    /// download.
     /// </remarks>
     private static UpdateManager CreateManager()
     {
@@ -149,20 +148,14 @@ public static class UpdateService
         var channel = isBeta ? BetaChannel : StableChannel;
         var options = new UpdateOptions { ExplicitChannel = channel };
 
-        var stagingRepo = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_REPO");
-        if (!string.IsNullOrWhiteSpace(stagingRepo))
-        {
-            var token = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_TOKEN");
-            return new UpdateManager(
-                new GithubSource(stagingRepo, token, prerelease: isBeta), options);
-        }
-
-        var localSource = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_SOURCE");
-        if (!string.IsNullOrWhiteSpace(localSource))
-            return new UpdateManager(localSource, options);
-
         // beta 的 GitHub Release 會標記為 pre-release，需 prerelease:true 才找得到。
-        var source = new GithubSource(GitHubRepoUrl, null, prerelease: isBeta);
-        return new UpdateManager(source, options);
+        var repoUrl = Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_REPO");
+        var token = string.IsNullOrWhiteSpace(repoUrl)
+            ? null
+            : Environment.GetEnvironmentVariable("OVERTRANSLATE_UPDATE_TOKEN");
+        if (string.IsNullOrWhiteSpace(repoUrl))
+            repoUrl = GitHubRepoUrl;
+
+        return new UpdateManager(new GithubSource(repoUrl, token, prerelease: isBeta), options);
     }
 }
