@@ -4,9 +4,12 @@
 # GithubSource(prerelease: false)，看不到標成 pre-release 的 release。
 # 要正式發布時，由人到 GitHub 上手動取消勾選 pre-release。
 #
-# 版號**以 tag 為準**（v2.0.0-beta.1 → 2.0.0-beta.1），csproj 的 <Version> 不參與。
+# 版號**以 tag 為準**（2.0.0-beta.1 → 2.0.0-beta.1），csproj 的 <Version> 不參與。
 # 這是刻意的：測試時常常只想壓一個不同版號的 tag 看打包結果，不該被迫先發一個
 # 改版號的 commit。csproj 與 tag 不一致時只警告，不擋。
+#
+# tag 沿用本倉既有慣例：不加 v 前綴（1.7.0、1.6.1-beta.1）。舊紀錄裡有一個 v1.6.0，
+# 所以 v 前綴也一併接受並在解析時去掉，免得手滑打了 v 就整條流程不動。
 name: 打包並發布 pre-release
 
 on:
@@ -18,7 +21,10 @@ on:
         type: string
   push:
     tags:
-      - 'v*'
+      # 數字開頭（本倉慣例）或 v 開頭都收。不用 '*' 是為了讓非版本的 tag
+      # ——標記某個 commit、備份用的 tag——不會誤觸發一次 370 MB 的打包。
+      - '[0-9]*'
+      - 'v[0-9]*'
 
 permissions:
   contents: write
@@ -47,13 +53,13 @@ jobs:
         shell: pwsh
         run: |
           # tag 觸發時用 tag 名，手動觸發時用輸入值。兩條路都不看 csproj。
-          $tag = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}' } else { 'v${{ inputs.version }}' }
+          $tag = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}' } else { '${{ inputs.version }}' }
           $version = $tag -replace '^v', ''
           if ([string]::IsNullOrWhiteSpace($version)) { throw "版號是空的（tag='$tag'）。" }
 
           # 不是 semver 的話 vpk 會在打包中途才失敗，那時已經燒掉好幾分鐘的 build。
           if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
-              throw "版號 '$version' 不是合法的 semver。tag 請用 v2.0.0 或 v2.0.0-beta.1 的形式。"
+              throw "版號 '$version' 不是合法的 semver。tag 請用 2.0.0 或 2.0.0-beta.1 的形式。"
           }
 
           # 只是提醒。tag 與 csproj 不一致完全不影響更新流程（Velopack 認的是 packVersion），
