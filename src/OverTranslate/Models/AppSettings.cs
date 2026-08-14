@@ -50,17 +50,6 @@ public class AppSettings
     /// running the app in English still wants Chinese output.
     /// </remarks>
     public string UiLanguage { get; set; } = "";
-    /// <summary>
-    /// Width of the shell's nav rail in device-independent pixels, or 0 to use the default.
-    /// </summary>
-    /// <remarks>
-    /// Stored because the width that fits depends on things this app cannot see: how long the
-    /// user's capture shortcut prints, and which interface language they read. Someone who drags
-    /// the rail out to fit "Ctrl+Alt+Shift+F12" has answered a question for good, not for one
-    /// session. Clamped on load to the column's own MinWidth/MaxWidth, so an edited settings file
-    /// cannot produce a rail that covers the page or vanishes.
-    /// </remarks>
-    public double ShellSidebarWidth { get; set; }
     public bool AutoTranslateAfterSelection { get; set; } = false;
     public bool SaveScreenshotToDisk { get; set; } = false;
     /// <summary>Empty means "use ScreenshotSaveService.DefaultDirectory" (圖片\OverTranslate).</summary>

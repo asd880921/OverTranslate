@@ -130,8 +130,8 @@ public partial class RealtimeControlWindow : Window
     /// </remarks>
     public void SetLanguages(string sourceCode, string targetCode)
     {
-        SourceLangText.Text = Models.LanguageData.GetSourceName(sourceCode);
-        TargetLangText.Text = Models.LanguageData.GetTargetName(targetCode);
+        SourceLangText.Text = Models.LanguageData.GetSourceDisplayName(sourceCode);
+        TargetLangText.Text = Models.LanguageData.GetTargetDisplayName(targetCode);
         _hasLanguages = SourceLangText.Text.Length > 0 && TargetLangText.Text.Length > 0;
 
         if (!_messageTimer.IsEnabled) RestoreText();

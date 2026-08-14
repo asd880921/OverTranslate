@@ -8,8 +8,9 @@ using OverTranslate.Services;
 using OverTranslate.Views.Realtime;
 using OverTranslate.Views.Settings;
 using OverTranslate.Views.Translation;
-// UseWindowsForms puts System.Windows.Forms in the implicit usings, so this name collides
+// UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using Point = System.Windows.Point;
+using Size = System.Windows.Size;
 
 namespace OverTranslate.Views.Shell;
 
@@ -28,6 +29,24 @@ public enum ShellPage
 public partial class ShellWindow : Window
 {
     private static ShellWindow? _instance;
+
+    /// <summary>
+    /// The shell's dimensions from the last time it was open, for as long as the process lives.
+    /// </summary>
+    /// <remarks>
+    /// In memory rather than in the settings file, on purpose. Closing this window is the ordinary
+    /// way to get it off the screen — the app goes on running in the tray — so reopening it during
+    /// the same sitting should give back the window the user had, not the one the app ships with.
+    /// Surviving a restart is a different question, and the answer there is the designed default:
+    /// centred, at a size picked to fit the content.
+    /// </remarks>
+    private static Size? _lastSize;
+
+    /// <inheritdoc cref="_lastSize"/>
+    private static WindowState _lastWindowState = WindowState.Normal;
+
+    /// <inheritdoc cref="_lastSize"/>
+    private static double? _lastSidebarWidth;
 
     private static readonly Duration IndicatorDuration = new(TimeSpan.FromMilliseconds(180));
     private static readonly Duration ContentDuration   = new(TimeSpan.FromMilliseconds(120));
@@ -99,31 +118,28 @@ public partial class ShellWindow : Window
         LocalizationService.LanguageChanged += OnLanguageChanged;
         Closed += (_, _) => LocalizationService.LanguageChanged -= OnLanguageChanged;
 
-        RestoreSidebarWidth();
+        RestoreSessionLayout();
 
         // Nav_Checked drives navigation, so this also renders the initial page
         TranslationNav.IsChecked = true;
     }
 
-    private void RestoreSidebarWidth()
+    /// <inheritdoc cref="_lastSize"/>
+    private void RestoreSessionLayout()
     {
-        var stored = SettingsService.Instance.Current.ShellSidebarWidth;
-        if (stored <= 0) return;
+        if (_lastSize is { } size)
+        {
+            Width  = size.Width;
+            Height = size.Height;
+        }
 
-        // Clamped against the column's own bounds rather than trusted: this comes off disk, and
-        // the values there are the only thing standing between a hand-edited file and a rail wide
-        // enough to hide the page.
-        var width = Math.Clamp(stored, SidebarColumn.MinWidth, SidebarColumn.MaxWidth);
-        SidebarColumn.Width = new GridLength(width);
-    }
+        if (_lastWindowState == WindowState.Maximized) WindowState = WindowState.Maximized;
 
-    private void SidebarSplitter_DragCompleted(
-        object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
-    {
-        // On completion rather than on every delta: dragging raises this continuously, and the
-        // settings file is rewritten in full on each save.
-        SettingsService.Instance.Current.ShellSidebarWidth = SidebarColumn.ActualWidth;
-        SettingsService.Instance.Save();
+        if (_lastSidebarWidth is { } railWidth)
+        {
+            SidebarColumn.Width = new GridLength(
+                Math.Clamp(railWidth, SidebarColumn.MinWidth, SidebarColumn.MaxWidth));
+        }
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)
@@ -372,6 +388,23 @@ public partial class ShellWindow : Window
     }
 
     private void AboutBtn_Click(object sender, RoutedEventArgs e) => About.Open();
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        // RestoreBounds rather than the live size: a maximised window's actual size is the screen's,
+        // and handing that back as a normal-state size would reopen a window that fills the display
+        // without being maximised — and with no way to shrink it back short of dragging.
+        var bounds = WindowState == WindowState.Normal
+            ? new Rect(Left, Top, Width, Height)
+            : RestoreBounds;
+
+        _lastSize = new Size(bounds.Width, bounds.Height);
+        // Minimised is a state to reopen out of, not into.
+        _lastWindowState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+        _lastSidebarWidth = SidebarColumn.ActualWidth;
+
+        base.OnClosing(e);
+    }
 
     protected override void OnClosed(EventArgs e)
     {

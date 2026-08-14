@@ -291,8 +291,7 @@
                       Focusable="False"
                       ResizeDirection="Columns"
                       ResizeBehavior="CurrentAndNext"
-                      Cursor="SizeWE"
-                      DragCompleted="SidebarSplitter_DragCompleted"/>
+                      Cursor="SizeWE"/>
 
         <!-- ══════════ About modal ══════════ -->
         <shell:AboutOverlay Grid.ColumnSpan="2" x:Name="About"/>

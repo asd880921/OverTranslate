@@ -35,6 +35,19 @@ public record LangItem(string Code, string Name, string English, bool StandsAlon
             return StandsAlone || string.IsNullOrEmpty(English) ? Name : $"{Name} {English}";
         }
     }
+
+    /// <summary>
+    /// The name alone, in the interface's language, for somewhere with one line to spare.
+    /// </summary>
+    /// <remarks>
+    /// The realtime control bar names the pair it is translating between and has room for neither
+    /// the doubled-up label <see cref="Display"/> produces in Chinese nor a language the reader
+    /// cannot read.
+    /// </remarks>
+    public string ShortName =>
+        LocalizationService.Current == LocalizationService.English && !string.IsNullOrEmpty(English)
+            ? English
+            : Name;
 }
 /// <param name="DisplayKey">Resource key for the name shown in the pickers.</param>
 /// <param name="HintKey">Resource key for the line under the picker, or null for no hint.</param>
@@ -237,4 +250,23 @@ public static class LanguageData
     public static string GetTargetName(string? code) =>
         TargetLanguages.FirstOrDefault(l =>
             l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.Name ?? code ?? "";
+
+    /// <summary>
+    /// A source language's name for display, in whichever language the interface is in.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="GetSourceName"/>, which stays Chinese whatever the interface is
+    /// set to, because its caller is not the interface: it names the languages inside the prompt
+    /// sent to an OpenAI-compatible model, and that prompt is written in Chinese throughout. A
+    /// single accessor serving both would tie what a model is asked to do to what language the
+    /// user happens to read the buttons in.
+    /// </remarks>
+    public static string GetSourceDisplayName(string? code) =>
+        OcrSourceLanguages.FirstOrDefault(l =>
+            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.ShortName ?? code ?? "";
+
+    /// <inheritdoc cref="GetSourceDisplayName"/>
+    public static string GetTargetDisplayName(string? code) =>
+        TargetLanguages.FirstOrDefault(l =>
+            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.ShortName ?? code ?? "";
 }
