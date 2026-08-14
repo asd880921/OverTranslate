@@ -31,7 +31,7 @@ public class AppSettings
     public string RealtimeTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
     public TranslationProvider RealtimeProvider { get; set; } = TranslationProvider.Microsoft;
     public string ApiKey { get; set; } = "";
-    public string OpenAiBaseUrl { get; set; } = "https://api.openai.com/v1";
+    public string OpenAiBaseUrl { get; set; } = "http://localhost:11434/v1";
     public string OpenAiApiKey { get; set; } = "";
     public string OpenAiModel { get; set; } = "";
     public string Theme { get; set; } = "Dark";

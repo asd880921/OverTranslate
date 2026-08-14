@@ -16,7 +16,7 @@ public class SettingsParsingTests
     {
         var settings = SettingsService.Parse("{}");
 
-        Assert.Equal("https://api.openai.com/v1", settings.OpenAiBaseUrl);
+        Assert.Equal("http://localhost:11434/v1", settings.OpenAiBaseUrl);
         Assert.Equal("", settings.OpenAiApiKey);
         Assert.Equal("", settings.OpenAiModel);
     }
