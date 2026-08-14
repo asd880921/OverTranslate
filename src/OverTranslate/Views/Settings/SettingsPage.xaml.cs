@@ -7,7 +7,9 @@ using System.Windows.Navigation;
 using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Services.Providers;
 using OverTranslate.Views;
+using OverTranslate.Views.Controls;
 using Microsoft.Win32;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
@@ -28,7 +30,18 @@ public partial class SettingsPage : UserControl
 
     private readonly DispatcherTimer _apiKeyDebounce;
     private readonly DispatcherTimer _openAiSettingsDebounce;
+    private readonly DispatcherTimer _promptDebounce;
     private readonly DispatcherTimer _statusHold;
+
+    private const int PromptAutoSegment = 0;
+    private const int PromptExplicitSegment = 1;
+
+    /// <summary>
+    /// Which of the two prompts the editor is currently holding. Kept alongside the switch's own
+    /// selection because a pending edit has to be written to the prompt it was typed into, even if
+    /// the user has since switched to the other one.
+    /// </summary>
+    private int _promptSegment = PromptAutoSegment;
 
     /// <summary>
     /// One editable shortcut: the two controls that edit it and the settings it reads and writes.
@@ -106,6 +119,13 @@ public partial class SettingsPage : UserControl
             });
         };
 
+        _promptDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
+        _promptDebounce.Tick += (_, _) =>
+        {
+            _promptDebounce.Stop();
+            PersistPrompt();
+        };
+
         _statusHold = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1600) };
         _statusHold.Tick += (_, _) => { _statusHold.Stop(); FadeStatusOut(); };
 
@@ -147,6 +167,7 @@ public partial class SettingsPage : UserControl
             OpenAiBaseUrlBox.Text = s.OpenAiBaseUrl;
             OpenAiApiKeyBox.Secret = s.OpenAiApiKey;
             OpenAiModelBox.Text = s.OpenAiModel;
+            LoadPromptEditor(s);
 
             LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
             DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
@@ -253,6 +274,128 @@ public partial class SettingsPage : UserControl
         if (_loading) return;
         _openAiSettingsDebounce.Stop();
         _openAiSettingsDebounce.Start();
+    }
+
+    // ── Prompt editor ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fills the switch and the editor. Also the language-change path, since the segment labels and
+    /// the built-in wording shown behind an empty box are both localized.
+    /// </summary>
+    private void LoadPromptEditor(AppSettings s)
+    {
+        PromptSwitch.Items.Clear();
+        PromptSwitch.Items.Add(new SegmentedItem(LocalizationService.Get("S.Settings.PromptAuto")));
+        PromptSwitch.Items.Add(new SegmentedItem(LocalizationService.Get("S.Settings.PromptExplicit")));
+        // Not animated: the user has not moved anything, the page is simply arriving.
+        PromptSwitch.Select(_promptSegment, animate: false);
+
+        PromptBox.Text = _promptSegment == PromptAutoSegment ? s.OpenAiPromptAuto : s.OpenAiPromptExplicit;
+        UpdatePromptChrome();
+    }
+
+    private void PromptSwitch_SelectionChanged(object? sender, EventArgs e)
+    {
+        // The pending edit belongs to the prompt it was typed into, so it is written out before the
+        // editor is handed to the other one.
+        FlushPromptEdit();
+
+        _promptSegment = PromptSwitch.SelectedIndex;
+
+        var s = SettingsService.Instance.Current;
+        var text = _promptSegment == PromptAutoSegment ? s.OpenAiPromptAuto : s.OpenAiPromptExplicit;
+
+        // Assigning Text would raise TextChanged and start the debounce, which would then write
+        // this prompt straight back over itself; _loading is what the rest of the page uses to mean
+        // "this change came from us, not the user".
+        _loading = true;
+        try { PromptBox.Text = text; }
+        finally { _loading = false; }
+
+        UpdatePromptChrome();
+    }
+
+    private void PromptBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // Chrome first and unconditionally: the dot and the reset button describe what is in the
+        // box right now, and waiting for the debounce would leave them a beat behind the typing.
+        UpdatePromptChrome();
+
+        if (_loading) return;
+        _promptDebounce.Stop();
+        _promptDebounce.Start();
+    }
+
+    private void PromptResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Cleared through the selection rather than by assigning Text, which would throw away the
+        // undo history: this discards something the user wrote, and Ctrl+Z getting it back is what
+        // makes a confirmation prompt unnecessary.
+        PromptBox.SelectAll();
+        PromptBox.SelectedText = "";
+        PromptBox.Focus();
+
+        _promptDebounce.Stop();
+        PersistPrompt();
+    }
+
+    private void FlushPromptEdit()
+    {
+        if (!_promptDebounce.IsEnabled) return;
+        _promptDebounce.Stop();
+        PersistPrompt();
+    }
+
+    private void PersistPrompt()
+    {
+        var text = PromptBox.Text.Trim();
+        var segment = _promptSegment;
+
+        Persist(s =>
+        {
+            if (segment == PromptAutoSegment) s.OpenAiPromptAuto = text;
+            else s.OpenAiPromptExplicit = text;
+        });
+
+        UpdatePromptChrome();
+    }
+
+    /// <summary>
+    /// Brings the marker dots, the reset button and the placeholder in line with what is on screen.
+    /// </summary>
+    /// <remarks>
+    /// The dot for the segment being edited comes from the box rather than from the stored setting,
+    /// so it appears on the first keystroke instead of when the debounce eventually fires; the other
+    /// segment has nothing being typed into it, so its dot comes from what is stored.
+    /// </remarks>
+    private void UpdatePromptChrome()
+    {
+        if (PromptSwitch.Items.Count < 2) return;
+
+        var s = SettingsService.Instance.Current;
+        var edited = PromptBox.Text.Trim().Length > 0;
+
+        PromptSwitch.Items[PromptAutoSegment].IsMarked = _promptSegment == PromptAutoSegment
+            ? edited
+            : s.OpenAiPromptAuto.Trim().Length > 0;
+        PromptSwitch.Items[PromptExplicitSegment].IsMarked = _promptSegment == PromptExplicitSegment
+            ? edited
+            : s.OpenAiPromptExplicit.Trim().Length > 0;
+
+        // Nothing to restore while the built-in one is in use, and a live button that does nothing
+        // would be the page's only control that lies about having something to do.
+        PromptResetButton.IsEnabled = edited;
+
+        PromptPlaceholder.Visibility = PromptBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PromptPlaceholder.Text = OpenAiCompatibleProvider.DefaultPromptTemplate(
+            _promptSegment == PromptAutoSegment,
+            // The shared target-language preference: it is what decides which built-in wording a
+            // capture actually gets, so it is the one to show.
+            s.TargetLanguage);
+
+        PromptHint.Text = LocalizationService.Get(_promptSegment == PromptAutoSegment
+            ? "S.Settings.PromptHintAuto"
+            : "S.Settings.PromptHintExplicit");
     }
 
     private void OllamaGuideLink_RequestNavigate(object sender, RequestNavigateEventArgs e)

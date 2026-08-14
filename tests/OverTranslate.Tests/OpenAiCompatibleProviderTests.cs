@@ -37,10 +37,25 @@ public class OpenAiCompatibleProviderTests
     {
         var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", targetCode);
 
-        Assert.Contains($"將輸入中各種語言的文字翻譯成({targetName})", prompt);
+        Assert.Contains($"從(各種語言)翻譯成({targetName})", prompt);
         Assert.Contains("只回傳自然、人性化的翻譯結果", prompt);
         Assert.DoesNotContain("JSON", prompt);
         Assert.True(prompt.Length <= 80);
+    }
+
+    // 自動 keeps the same "from … to …" skeleton as a chosen source language rather than
+    // restructuring the sentence: a translation-only model stopped half-way through a Japanese line
+    // when handed the restructured wording, and finished it under this one.
+    [Theory]
+    [InlineData("ZH-HANT")]
+    [InlineData("EN-US")]
+    public void BuildPrompt_NamesTheSourceEvenWhenItIsAutomatic(string targetCode)
+    {
+        var automatic = OpenAiCompatibleProvider.BuildPrompt("AUTO", targetCode);
+        var chosen = OpenAiCompatibleProvider.BuildPrompt("JA", targetCode);
+
+        var skeleton = chosen.Split('(')[0];
+        Assert.StartsWith(skeleton, automatic);
     }
 
     [Theory]
@@ -64,8 +79,44 @@ public class OpenAiCompatibleProviderTests
     {
         var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "EN-US");
 
-        Assert.Contains("from any language to (English)", prompt);
+        Assert.Contains("from (any language) to (English)", prompt);
         Assert.Contains("Return only a natural, human-sounding translation", prompt);
+    }
+
+    // The custom prompt belongs to the case it was written for: editing one must not change what
+    // the other case sends, which is the whole reason two of them are stored.
+    [Fact]
+    public void BuildPrompt_PrefersTheCustomPromptForTheCaseInHand()
+    {
+        var automatic = OpenAiCompatibleProvider.BuildPrompt(
+            "AUTO", "ZH-HANT", customAuto: "自動用：翻成{target}", customExplicit: "指定用：{source}→{target}");
+        var chosen = OpenAiCompatibleProvider.BuildPrompt(
+            "JA", "ZH-HANT", customAuto: "自動用：翻成{target}", customExplicit: "指定用：{source}→{target}");
+
+        Assert.Equal("自動用：翻成繁體中文", automatic);
+        Assert.Equal("指定用：日語→繁體中文", chosen);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void BuildPrompt_FallsBackToTheBuiltInWhenTheCustomOneIsBlank(string custom)
+    {
+        var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT", customExplicit: custom);
+
+        Assert.Equal(OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT"), prompt);
+    }
+
+    // A template written for a chosen source language, left in place after switching to 自動, would
+    // otherwise send the model a literal "{source}".
+    [Fact]
+    public void BuildPrompt_FillsTheSourcePlaceholderEvenWhenTheSourceIsAutomatic()
+    {
+        var prompt = OpenAiCompatibleProvider.BuildPrompt(
+            "AUTO", "ZH-HANT", customAuto: "從({source})翻譯成({target})");
+
+        Assert.Equal("從(各種語言)翻譯成(繁體中文)", prompt);
+        Assert.DoesNotContain("{source}", prompt);
     }
 
     [Theory]

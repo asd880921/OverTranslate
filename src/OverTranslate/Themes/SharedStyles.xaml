@@ -103,6 +103,46 @@
         </Setter>
     </Style>
 
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  TEXTBOX (multi-line, in a settings field)  -->
+    <!--  ModernTextBox with the content host let    -->
+    <!--  out of its single-line centring.           -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="SettingsMultilineTextBox" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+        <Setter Property="Height"                   Value="Auto"/>
+        <Setter Property="MinHeight"                Value="76"/>
+        <Setter Property="Padding"                  Value="9,7"/>
+        <Setter Property="AcceptsReturn"            Value="True"/>
+        <Setter Property="TextWrapping"             Value="Wrap"/>
+        <Setter Property="VerticalContentAlignment" Value="Top"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto"
+                                      Focusable="False"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush"
+                                    Value="{DynamicResource AppInputFocusBorder}"/>
+                            <Setter TargetName="Root" Property="BorderThickness" Value="1.5"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Multi-line textbox (translation content area) -->
     <Style x:Key="MultilineTextBox" TargetType="TextBox">
         <Setter Property="FontFamily"              Value="{StaticResource AppFont}"/>

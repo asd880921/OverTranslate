@@ -235,6 +235,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.ApiBaseUrl}"
@@ -258,7 +259,50 @@
                                      Style="{StaticResource ModernTextBox}"
                                      TextChanged="OpenAiSetting_TextChanged"/>
 
-                            <TextBlock Grid.Column="1" Grid.Row="3"
+                            <TextBlock Grid.Column="0" Grid.Row="3"
+                                       Text="{DynamicResource S.Settings.Prompt}"
+                                       Margin="0,10,12,0"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <StackPanel Grid.Column="1" Grid.Row="3" Margin="0,10,0,0">
+                                <!-- The switch and the reset sit on one line above the editor, so
+                                     it is clear the reset applies to the prompt being shown and
+                                     not to both of them. -->
+                                <Grid>
+                                    <controls:SegmentedControl x:Name="PromptSwitch"
+                                                               HorizontalAlignment="Left"
+                                                               SelectionChanged="PromptSwitch_SelectionChanged"/>
+                                    <Button x:Name="PromptResetButton"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource FlatButton}"
+                                            Content="{DynamicResource S.Settings.PromptReset}"
+                                            Click="PromptResetButton_Click"/>
+                                </Grid>
+
+                                <Grid Margin="0,6,0,0">
+                                    <TextBox x:Name="PromptBox"
+                                             Style="{StaticResource SettingsMultilineTextBox}"
+                                             TextChanged="PromptBox_TextChanged"/>
+                                    <!-- The built-in wording shown in place rather than described
+                                         elsewhere: an empty box is what "using the default" looks
+                                         like, and this is the default it is using. IsHitTestVisible
+                                         off so clicking the text still lands in the box. -->
+                                    <TextBlock x:Name="PromptPlaceholder"
+                                               IsHitTestVisible="False"
+                                               FontFamily="{StaticResource AppFont}"
+                                               FontSize="{StaticResource AppFontSize}"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               Opacity="0.7"
+                                               Margin="10,8,10,0"
+                                               VerticalAlignment="Top"
+                                               TextWrapping="Wrap"/>
+                                </Grid>
+
+                                <TextBlock x:Name="PromptHint" Style="{StaticResource FieldHint}"/>
+                            </StackPanel>
+
+                            <TextBlock Grid.Column="1" Grid.Row="4"
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="11"
                                        Margin="2,3,0,0"
