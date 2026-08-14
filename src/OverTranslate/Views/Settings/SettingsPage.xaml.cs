@@ -7,7 +7,9 @@ using System.Windows.Navigation;
 using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Services.Providers;
 using OverTranslate.Views;
+using OverTranslate.Views.Controls;
 using Microsoft.Win32;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
@@ -28,7 +30,24 @@ public partial class SettingsPage : UserControl
 
     private readonly DispatcherTimer _apiKeyDebounce;
     private readonly DispatcherTimer _openAiSettingsDebounce;
+    private readonly DispatcherTimer _promptDebounce;
     private readonly DispatcherTimer _statusHold;
+
+    private const int PromptAutoSegment = 0;
+    private const int PromptExplicitSegment = 1;
+
+    /// <summary>How many lines of prompt the box accepts.</summary>
+    private const int PromptMaxLines = 200;
+
+    /// <summary>True while the box is being cut back to the line limit, so its own edit is ignored.</summary>
+    private bool _trimmingPrompt;
+
+    /// <summary>
+    /// Which of the two prompts the editor is currently holding. Kept alongside the switch's own
+    /// selection because a pending edit has to be written to the prompt it was typed into, even if
+    /// the user has since switched to the other one.
+    /// </summary>
+    private int _promptSegment = PromptAutoSegment;
 
     /// <summary>
     /// One editable shortcut: the two controls that edit it and the settings it reads and writes.
@@ -106,6 +125,13 @@ public partial class SettingsPage : UserControl
             });
         };
 
+        _promptDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
+        _promptDebounce.Tick += (_, _) =>
+        {
+            _promptDebounce.Stop();
+            PersistPrompt();
+        };
+
         _statusHold = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1600) };
         _statusHold.Tick += (_, _) => { _statusHold.Stop(); FadeStatusOut(); };
 
@@ -147,6 +173,7 @@ public partial class SettingsPage : UserControl
             OpenAiBaseUrlBox.Text = s.OpenAiBaseUrl;
             OpenAiApiKeyBox.Secret = s.OpenAiApiKey;
             OpenAiModelBox.Text = s.OpenAiModel;
+            LoadPromptEditor(s);
 
             LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
             DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
@@ -253,6 +280,172 @@ public partial class SettingsPage : UserControl
         if (_loading) return;
         _openAiSettingsDebounce.Stop();
         _openAiSettingsDebounce.Start();
+    }
+
+    // ── Prompt editor ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fills the switch and the editor. Also the language-change path, since the segment labels and
+    /// the built-in wording shown behind an empty box are both localized.
+    /// </summary>
+    private void LoadPromptEditor(AppSettings s)
+    {
+        PromptSwitch.Items.Clear();
+        PromptSwitch.Items.Add(new SegmentedItem(LocalizationService.Get("S.Settings.PromptAuto")));
+        PromptSwitch.Items.Add(new SegmentedItem(LocalizationService.Get("S.Settings.PromptExplicit")));
+        // Not animated: the user has not moved anything, the page is simply arriving.
+        PromptSwitch.Select(_promptSegment, animate: false);
+
+        PromptBox.Text = _promptSegment == PromptAutoSegment ? s.OpenAiPromptAuto : s.OpenAiPromptExplicit;
+        UpdatePromptChrome();
+    }
+
+    private void PromptSwitch_SelectionChanged(object? sender, EventArgs e)
+    {
+        // The pending edit belongs to the prompt it was typed into, so it is written out before the
+        // editor is handed to the other one.
+        FlushPromptEdit();
+
+        _promptSegment = PromptSwitch.SelectedIndex;
+
+        var s = SettingsService.Instance.Current;
+        var text = _promptSegment == PromptAutoSegment ? s.OpenAiPromptAuto : s.OpenAiPromptExplicit;
+
+        // Assigning Text would raise TextChanged and start the debounce, which would then write
+        // this prompt straight back over itself; _loading is what the rest of the page uses to mean
+        // "this change came from us, not the user".
+        _loading = true;
+        try { PromptBox.Text = text; }
+        finally { _loading = false; }
+
+        UpdatePromptChrome();
+    }
+
+    private void PromptBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // The trim below raises this event again for its own edit.
+        if (_trimmingPrompt) return;
+
+        // Only what the user types or pastes is held to the limit. A longer prompt already in the
+        // settings file is left alone until they touch it, rather than being quietly cut down on a
+        // page they only came to look at.
+        if (!_loading) TrimPromptToLineLimit();
+
+        // Chrome unconditionally: the reset button describes what is in the box right now, and
+        // waiting for the debounce would leave it a beat behind the typing.
+        UpdatePromptChrome();
+
+        if (_loading) return;
+        _promptDebounce.Stop();
+        _promptDebounce.Start();
+    }
+
+    /// <summary>
+    /// Drops anything past <see cref="PromptMaxLines"/> lines, silently.
+    /// </summary>
+    /// <remarks>
+    /// A cap on the input rather than a check further in: the prompt is sent once per recognised
+    /// block, so a pasted document is a real cost repeated a dozen times over, and the place to
+    /// stop it is where it arrives. Nothing is said about it — the box visibly refuses to grow,
+    /// which is the whole message, and a warning about a limit nobody reaches by writing an
+    /// instruction would only be in the way.
+    ///
+    /// Removed through the selection so the paste stays undoable; the trim is then simply applied
+    /// again if the undone text is still too long.
+    /// </remarks>
+    private void TrimPromptToLineLimit()
+    {
+        var overflow = LineLimitOverflowIndex(PromptBox.Text, PromptMaxLines);
+        if (overflow < 0) return;
+
+        _trimmingPrompt = true;
+        try
+        {
+            PromptBox.Select(overflow, PromptBox.Text.Length - overflow);
+            PromptBox.SelectedText = "";
+            PromptBox.CaretIndex = overflow;
+        }
+        finally
+        {
+            _trimmingPrompt = false;
+        }
+    }
+
+    /// <summary>
+    /// Where the text passes <paramref name="maxLines"/> lines, or -1 when it does not.
+    /// </summary>
+    /// <remarks>
+    /// Hard line breaks only. <see cref="TextBox.LineCount"/> counts the lines actually drawn, so
+    /// with wrapping on it would make the cap depend on how wide the window happens to be.
+    /// </remarks>
+    internal static int LineLimitOverflowIndex(string text, int maxLines)
+    {
+        var index = -1;
+        for (var line = 0; line < maxLines; line++)
+        {
+            index = text.IndexOf('\n', index + 1);
+            if (index < 0) return -1;
+        }
+
+        // Cut before the break that would have started the next line, and before the carriage
+        // return in front of it, so the kept text does not end on a half of a CRLF pair.
+        return index > 0 && text[index - 1] == '\r' ? index - 1 : index;
+    }
+
+    private void PromptResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Cleared through the selection rather than by assigning Text, which would throw away the
+        // undo history: this discards something the user wrote, and Ctrl+Z getting it back is what
+        // makes a confirmation prompt unnecessary.
+        PromptBox.SelectAll();
+        PromptBox.SelectedText = "";
+        PromptBox.Focus();
+
+        _promptDebounce.Stop();
+        PersistPrompt();
+    }
+
+    private void FlushPromptEdit()
+    {
+        if (!_promptDebounce.IsEnabled) return;
+        _promptDebounce.Stop();
+        PersistPrompt();
+    }
+
+    private void PersistPrompt()
+    {
+        var text = PromptBox.Text.Trim();
+        var segment = _promptSegment;
+
+        Persist(s =>
+        {
+            if (segment == PromptAutoSegment) s.OpenAiPromptAuto = text;
+            else s.OpenAiPromptExplicit = text;
+        });
+
+        UpdatePromptChrome();
+    }
+
+    /// <summary>
+    /// Brings the reset button and the placeholder in line with what is on screen.
+    /// </summary>
+    private void UpdatePromptChrome()
+    {
+        if (PromptSwitch.Items.Count < 2) return;
+
+        // Nothing to restore while the built-in one is in use, and a live button that does nothing
+        // would be the page's only control that lies about having something to do. This reads the
+        // box rather than the stored setting, so it answers on the first keystroke instead of when
+        // the debounce eventually fires.
+        PromptResetButton.IsEnabled = PromptBox.Text.Trim().Length > 0;
+
+        PromptPlaceholder.Visibility = PromptBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PromptPlaceholder.Text = OpenAiCompatibleProvider.DefaultPromptTemplate(
+            _promptSegment == PromptAutoSegment);
+
+        PromptHint.Text = LocalizationService.Get(_promptSegment == PromptAutoSegment
+            ? "S.Settings.PromptHintAuto"
+            : "S.Settings.PromptHintExplicit");
     }
 
     private void OllamaGuideLink_RequestNavigate(object sender, RequestNavigateEventArgs e)

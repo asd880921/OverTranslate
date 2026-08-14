@@ -248,6 +248,12 @@ Leave some room around each area you want translated rather than hugging its con
     <sys:String x:Key="S.Settings.ApiBaseUrl">API URL</sys:String>
     <sys:String x:Key="S.Settings.ModelName">Model</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">Local LLM (Ollama) setup guide</sys:String>
+    <sys:String x:Key="S.Settings.Prompt">Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptAuto">Automatic</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicit">Chosen language</sys:String>
+    <sys:String x:Key="S.Settings.PromptReset">Reset</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintAuto">Leave empty to use the built-in prompt. {target} is replaced automatically with the target language.</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintExplicit">Leave empty to use the built-in prompt. {source} is replaced automatically with the source language, and {target} with the target language.</sys:String>
 
     <sys:String x:Key="S.Settings.Screenshot">Screenshots</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshot">Save</sys:String>

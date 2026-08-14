@@ -48,19 +48,20 @@ public class LanguageDataTests
     }
 
     /// <summary>
-    /// The realtime control bar's language pair follows the interface language; the names inside
-    /// the OpenAI prompt do not.
+    /// Language names follow the interface language everywhere they are shown — the realtime
+    /// control bar's pair, and the names filled into the OpenAI prompt.
     /// </summary>
     /// <remarks>
-    /// One accessor used to serve both, which is how "英語 → 繁體中文" ended up on an English
-    /// control bar. Splitting them is the fix, and this is the line that has to stay split: the
-    /// prompt around those names is written in Chinese, and swapping only the names to English
-    /// because the user changed their buttons would alter what the model is asked to do.
+    /// The prompt used to keep its own always-Chinese accessor, on the reasoning that its reader is
+    /// a model rather than a person. That stopped holding once the prompt became something the user
+    /// reads and edits on the settings page: prose in a language they cannot read is no use as the
+    /// starting point for their own, and the sentence names the language to translate into either
+    /// way, so nothing about the model's instructions is lost by following the interface.
     /// </remarks>
     [Theory]
     [InlineData("zh-Hant", "英語", "繁體中文")]
     [InlineData("en", "English", "Traditional Chinese")]
-    public void DisplayNames_FollowTheInterfaceLanguage_ButPromptNamesDoNot(
+    public void DisplayNames_FollowTheInterfaceLanguage(
         string uiLanguage, string expectedSource, string expectedTarget)
     {
         var settings = SettingsService.Instance.Current;
@@ -71,10 +72,6 @@ public class LanguageDataTests
 
             Assert.Equal(expectedSource, LanguageData.GetSourceDisplayName("EN"));
             Assert.Equal(expectedTarget, LanguageData.GetTargetDisplayName("ZH-HANT"));
-
-            // The prompt's names stay put whichever language the interface is in.
-            Assert.Equal("英語", LanguageData.GetSourceName("EN"));
-            Assert.Equal("繁體中文", LanguageData.GetTargetName("ZH-HANT"));
         }
         finally
         {
