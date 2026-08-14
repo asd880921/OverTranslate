@@ -110,8 +110,10 @@
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="SettingsMultilineTextBox" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
         <Setter Property="Height"                   Value="Auto"/>
-        <Setter Property="MinHeight"                Value="76"/>
-        <Setter Property="Padding"                  Value="9,7"/>
+        <Setter Property="MinHeight"                Value="96"/>
+        <Setter Property="Padding"                  Value="14,10"/>
+        <!-- Prose, not a value: lines need room to be read as a paragraph. -->
+        <Setter Property="TextBlock.LineHeight"     Value="21"/>
         <Setter Property="AcceptsReturn"            Value="True"/>
         <Setter Property="TextWrapping"             Value="Wrap"/>
         <Setter Property="VerticalContentAlignment" Value="Top"/>

@@ -361,37 +361,21 @@ public partial class SettingsPage : UserControl
     }
 
     /// <summary>
-    /// Brings the marker dots, the reset button and the placeholder in line with what is on screen.
+    /// Brings the reset button and the placeholder in line with what is on screen.
     /// </summary>
-    /// <remarks>
-    /// The dot for the segment being edited comes from the box rather than from the stored setting,
-    /// so it appears on the first keystroke instead of when the debounce eventually fires; the other
-    /// segment has nothing being typed into it, so its dot comes from what is stored.
-    /// </remarks>
     private void UpdatePromptChrome()
     {
         if (PromptSwitch.Items.Count < 2) return;
 
-        var s = SettingsService.Instance.Current;
-        var edited = PromptBox.Text.Trim().Length > 0;
-
-        PromptSwitch.Items[PromptAutoSegment].IsMarked = _promptSegment == PromptAutoSegment
-            ? edited
-            : s.OpenAiPromptAuto.Trim().Length > 0;
-        PromptSwitch.Items[PromptExplicitSegment].IsMarked = _promptSegment == PromptExplicitSegment
-            ? edited
-            : s.OpenAiPromptExplicit.Trim().Length > 0;
-
         // Nothing to restore while the built-in one is in use, and a live button that does nothing
-        // would be the page's only control that lies about having something to do.
-        PromptResetButton.IsEnabled = edited;
+        // would be the page's only control that lies about having something to do. This reads the
+        // box rather than the stored setting, so it answers on the first keystroke instead of when
+        // the debounce eventually fires.
+        PromptResetButton.IsEnabled = PromptBox.Text.Trim().Length > 0;
 
         PromptPlaceholder.Visibility = PromptBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         PromptPlaceholder.Text = OpenAiCompatibleProvider.DefaultPromptTemplate(
-            _promptSegment == PromptAutoSegment,
-            // The shared target-language preference: it is what decides which built-in wording a
-            // capture actually gets, so it is the one to show.
-            s.TargetLanguage);
+            _promptSegment == PromptAutoSegment);
 
         PromptHint.Text = LocalizationService.Get(_promptSegment == PromptAutoSegment
             ? "S.Settings.PromptHintAuto"

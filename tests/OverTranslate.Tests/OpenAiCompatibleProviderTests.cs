@@ -30,17 +30,65 @@ public class OpenAiCompatibleProviderTests
         Assert.Throws<InvalidOperationException>(() => OpenAiCompatibleProvider.BuildEndpoint(input));
     }
 
+    /// <summary>
+    /// Runs a test with the interface in a given language, and puts it back afterwards.
+    /// </summary>
+    /// <remarks>
+    /// The interface language lives in the one shared settings instance, so a test that set it and
+    /// walked away would decide the answer for whichever test ran next.
+    /// </remarks>
+    private static void WithInterfaceLanguage(string language, Action assert)
+    {
+        var settings = SettingsService.Instance.Current;
+        var original = settings.UiLanguage;
+        try
+        {
+            settings.UiLanguage = language;
+            assert();
+        }
+        finally
+        {
+            settings.UiLanguage = original;
+        }
+    }
+
     [Theory]
     [InlineData("ZH-HANT", "繁體中文")]
     [InlineData("ZH-HANS", "簡體中文")]
-    public void BuildPrompt_UsesChineseForChineseTargets(string targetCode, string targetName)
+    public void BuildPrompt_IsWrittenInTheInterfaceLanguage(string targetCode, string targetName)
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", targetCode);
+        WithInterfaceLanguage(LocalizationService.TraditionalChinese, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", targetCode);
 
-        Assert.Contains($"從(各種語言)翻譯成({targetName})", prompt);
-        Assert.Contains("只回傳自然、人性化的翻譯結果", prompt);
-        Assert.DoesNotContain("JSON", prompt);
-        Assert.True(prompt.Length <= 80);
+            Assert.Contains($"從(各種語言)翻譯成({targetName})", prompt);
+            Assert.Contains("只回傳自然、人性化的翻譯結果", prompt);
+            Assert.DoesNotContain("JSON", prompt);
+            Assert.True(prompt.Length <= 80);
+        });
+    }
+
+    // The target language decides what the model is asked to produce; the interface language decides
+    // what the sentence asking for it is written in. Translating into Chinese from an English
+    // interface has to produce an English instruction naming Chinese.
+    [Fact]
+    public void BuildPrompt_FollowsTheInterfaceRatherThanTheTarget()
+    {
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT");
+
+            Assert.Contains("from (Japanese) to (Traditional Chinese)", prompt);
+            Assert.DoesNotContain("繁體中文", prompt);
+        });
+
+        WithInterfaceLanguage(LocalizationService.TraditionalChinese, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "EN-US");
+
+            Assert.Contains("從(日語)翻譯成(英語)", prompt);
+            Assert.DoesNotContain("Translate", prompt);
+        });
     }
 
     // 自動 keeps the same "from … to …" skeleton as a chosen source language rather than
@@ -61,26 +109,32 @@ public class OpenAiCompatibleProviderTests
     [Theory]
     [InlineData("EN", "JA", "English", "Japanese")]
     [InlineData("JA", "KO", "Japanese", "Korean")]
-    public void BuildPrompt_UsesEnglishForOtherTargets(
+    public void BuildPrompt_NamesBothLanguagesInAnEnglishInterface(
         string sourceCode,
         string targetCode,
         string sourceName,
         string targetName)
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt(sourceCode, targetCode);
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt(sourceCode, targetCode);
 
-        Assert.Contains($"from ({sourceName}) to ({targetName})", prompt);
-        Assert.Contains("Return only a natural, human-sounding translation", prompt);
-        Assert.DoesNotContain("只回傳", prompt);
+            Assert.Contains($"from ({sourceName}) to ({targetName})", prompt);
+            Assert.Contains("Return only a natural, human-sounding translation", prompt);
+            Assert.DoesNotContain("只回傳", prompt);
+        });
     }
 
     [Fact]
-    public void BuildPrompt_UsesEnglishForAutomaticSourceWhenTargetIsNotChinese()
+    public void BuildPrompt_UsesEnglishForAutomaticSourceInAnEnglishInterface()
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "EN-US");
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "EN-US");
 
-        Assert.Contains("from (any language) to (English)", prompt);
-        Assert.Contains("Return only a natural, human-sounding translation", prompt);
+            Assert.Contains("from (any language) to (English)", prompt);
+            Assert.Contains("Return only a natural, human-sounding translation", prompt);
+        });
     }
 
     // The custom prompt belongs to the case it was written for: editing one must not change what
@@ -88,13 +142,16 @@ public class OpenAiCompatibleProviderTests
     [Fact]
     public void BuildPrompt_PrefersTheCustomPromptForTheCaseInHand()
     {
-        var automatic = OpenAiCompatibleProvider.BuildPrompt(
-            "AUTO", "ZH-HANT", customAuto: "自動用：翻成{target}", customExplicit: "指定用：{source}→{target}");
-        var chosen = OpenAiCompatibleProvider.BuildPrompt(
-            "JA", "ZH-HANT", customAuto: "自動用：翻成{target}", customExplicit: "指定用：{source}→{target}");
+        WithInterfaceLanguage(LocalizationService.TraditionalChinese, () =>
+        {
+            var automatic = OpenAiCompatibleProvider.BuildPrompt(
+                "AUTO", "ZH-HANT", customAuto: "自動用：翻成{target}", customExplicit: "指定用：{source}→{target}");
+            var chosen = OpenAiCompatibleProvider.BuildPrompt(
+                "JA", "ZH-HANT", customAuto: "自動用：翻成{target}", customExplicit: "指定用：{source}→{target}");
 
-        Assert.Equal("自動用：翻成繁體中文", automatic);
-        Assert.Equal("指定用：日語→繁體中文", chosen);
+            Assert.Equal("自動用：翻成繁體中文", automatic);
+            Assert.Equal("指定用：日語→繁體中文", chosen);
+        });
     }
 
     [Theory]
@@ -112,11 +169,14 @@ public class OpenAiCompatibleProviderTests
     [Fact]
     public void BuildPrompt_FillsTheSourcePlaceholderEvenWhenTheSourceIsAutomatic()
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt(
-            "AUTO", "ZH-HANT", customAuto: "從({source})翻譯成({target})");
+        WithInterfaceLanguage(LocalizationService.TraditionalChinese, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt(
+                "AUTO", "ZH-HANT", customAuto: "從({source})翻譯成({target})");
 
-        Assert.Equal("從(各種語言)翻譯成(繁體中文)", prompt);
-        Assert.DoesNotContain("{source}", prompt);
+            Assert.Equal("從(各種語言)翻譯成(繁體中文)", prompt);
+            Assert.DoesNotContain("{source}", prompt);
+        });
     }
 
     [Theory]

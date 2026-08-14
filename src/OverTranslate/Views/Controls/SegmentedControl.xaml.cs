@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
 using Button = System.Windows.Controls.Button;
@@ -15,22 +16,11 @@ namespace OverTranslate.Views.Controls;
 public sealed class SegmentedItem : INotifyPropertyChanged
 {
     private string _text = "";
-    private bool _isMarked;
     private bool _isSelected;
 
     public SegmentedItem(string text) => _text = text;
 
     public string Text { get => _text; set => Set(ref _text, value); }
-
-    /// <summary>
-    /// Whether this segment shows its "changed from the default" dot.
-    /// </summary>
-    /// <remarks>
-    /// The point of the marker is the segment that is *not* on screen: a control that hides one of
-    /// its two panes has to say something about the hidden one, or an edit made there is invisible
-    /// until someone happens to switch back.
-    /// </remarks>
-    public bool IsMarked { get => _isMarked; set => Set(ref _isMarked, value); }
 
     public bool IsSelected { get => _isSelected; internal set => Set(ref _isSelected, value); }
 
@@ -63,12 +53,31 @@ public partial class SegmentedControl : UserControl
 
     private bool _measured;
 
+    /// <summary>Set while a layout pass is already queued, so one retry cannot become a loop.</summary>
+    private bool _pendingLayout;
+
     public SegmentedControl()
     {
         InitializeComponent();
         SegmentHost.ItemsSource = Items;
         Items.CollectionChanged += (_, _) => ApplySelection(animate: false);
-        Track.SizeChanged += (_, _) => LayoutIndicator(animate: false);
+        SegmentHost.SizeChanged += (_, _) => LayoutIndicator(animate: false);
+        // The row this sits in is hidden for every provider but one, and a hidden panel measures
+        // to nothing — so the first real measurement often only happens on becoming visible.
+        IsVisibleChanged += (_, _) => LayoutIndicator(animate: false);
+    }
+
+    private void DeferLayout()
+    {
+        if (_pendingLayout) return;
+        _pendingLayout = true;
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Loaded,
+            new Action(() =>
+            {
+                _pendingLayout = false;
+                LayoutIndicator(animate: false);
+            }));
     }
 
     /// <summary>The segments, in the order they appear.</summary>
@@ -111,6 +120,15 @@ public partial class SegmentedControl : UserControl
         LayoutIndicator(animate);
     }
 
+    /// <summary>
+    /// Sizes and places the indicator over the selected segment.
+    /// </summary>
+    /// <remarks>
+    /// Measured from the segments themselves rather than by dividing the track, because they are
+    /// sized to their own labels — "自動" and "指定語言" are not the same width, and neither are
+    /// "Automatic" and "Chosen language". Their widths are only known once they have been laid out,
+    /// so a call that arrives before that reschedules itself instead of writing a zero.
+    /// </remarks>
     private void LayoutIndicator(bool animate)
     {
         if (Items.Count == 0 || SelectedIndex < 0)
@@ -119,16 +137,31 @@ public partial class SegmentedControl : UserControl
             return;
         }
 
-        var available = Track.ActualWidth - Track.Padding.Left - Track.Padding.Right
-                        - Track.BorderThickness.Left - Track.BorderThickness.Right;
-        if (available <= 0) return;
+        // Nothing to measure while the panel is collapsed — the settings page hides this row for
+        // every provider but one. IsVisibleChanged brings us back.
+        if (!IsVisible) return;
 
-        var segment = available / Items.Count;
-        Indicator.Width = segment;
+        double offset = 0;
+        double width = 0;
+        for (var i = 0; i < Items.Count; i++)
+        {
+            if (SegmentHost.ItemContainerGenerator.ContainerFromIndex(i) is not FrameworkElement segment
+                || segment.ActualWidth <= 0)
+            {
+                DeferLayout();
+                return;
+            }
+
+            if (i < SelectedIndex) offset += segment.ActualWidth;
+            else if (i == SelectedIndex) width = segment.ActualWidth;
+        }
+
+        _pendingLayout = false;
+        Indicator.Width = width;
         Indicator.Height = Track.ActualHeight - Track.Padding.Top - Track.Padding.Bottom
                            - Track.BorderThickness.Top - Track.BorderThickness.Bottom;
 
-        var target = segment * SelectedIndex;
+        var target = offset;
 
         // The very first layout pass places the indicator; animating it would show it flying in
         // from the left edge on a page the user has only just opened. Windows' own "show

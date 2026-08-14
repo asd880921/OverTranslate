@@ -236,6 +236,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.ApiBaseUrl}"
@@ -264,7 +265,7 @@
                                        Margin="0,10,12,0"
                                        VerticalAlignment="Top"
                                        Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Grid.Column="1" Grid.Row="3" Margin="0,10,0,0">
+                            <StackPanel Grid.Column="1" Grid.Row="3" Margin="0,12,0,0">
                                 <!-- The switch and the reset sit on one line above the editor, so
                                      it is clear the reset applies to the prompt being shown and
                                      not to both of them. -->
@@ -275,12 +276,14 @@
                                     <Button x:Name="PromptResetButton"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Center"
+                                            Height="34"
+                                            Padding="18,0"
                                             Style="{StaticResource FlatButton}"
                                             Content="{DynamicResource S.Settings.PromptReset}"
                                             Click="PromptResetButton_Click"/>
                                 </Grid>
 
-                                <Grid Margin="0,6,0,0">
+                                <Grid Margin="0,10,0,0">
                                     <TextBox x:Name="PromptBox"
                                              Style="{StaticResource SettingsMultilineTextBox}"
                                              TextChanged="PromptBox_TextChanged"/>
@@ -294,24 +297,61 @@
                                                FontSize="{StaticResource AppFontSize}"
                                                Foreground="{DynamicResource AppTextSecondary}"
                                                Opacity="0.7"
-                                               Margin="10,8,10,0"
+                                               Margin="15,11,15,0"
+                                               LineHeight="21"
                                                VerticalAlignment="Top"
                                                TextWrapping="Wrap"/>
                                 </Grid>
 
-                                <TextBlock x:Name="PromptHint" Style="{StaticResource FieldHint}"/>
+                                <TextBlock x:Name="PromptHint"
+                                           Margin="2,9,0,0"
+                                           Style="{StaticResource FieldHint}"/>
                             </StackPanel>
 
-                            <TextBlock Grid.Column="1" Grid.Row="4"
-                                       FontFamily="{StaticResource AppFont}"
-                                       FontSize="11"
-                                       Margin="2,3,0,0"
-                                       TextWrapping="Wrap">
-                                <Hyperlink x:Name="OllamaGuideLink"
-                                           Foreground="{DynamicResource AppTextSecondary}"
-                                           RequestNavigate="OllamaGuideLink_RequestNavigate"
-                                           NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
-                            </TextBlock>
+                            <!-- The guide is about the provider as a whole, not about the prompt
+                                 directly above it, so a rule separates the two rather than letting
+                                 the link read as one more line of the prompt's own help. -->
+                            <Border Grid.Column="1" Grid.Row="4"
+                                    Height="1"
+                                    Margin="0,14,0,0"
+                                    Background="{DynamicResource AppBorder}"/>
+
+                            <StackPanel Grid.Column="1" Grid.Row="5"
+                                        Orientation="Horizontal"
+                                        Margin="2,12,0,0">
+                                <!-- An open book, drawn rather than set in an icon font: the two
+                                     glyph fonts this app can rely on (Segoe Fluent Icons, Segoe
+                                     MDL2 Assets) are not on every supported Windows build, and a
+                                     missing glyph next to a link reads as a broken image. Stroked,
+                                     not filled, so it carries the same weight as the 11px text
+                                     beside it, and drawn on a 16-unit grid so it stays crisp.
+                                     Uses the link's own colour by binding to the text below. -->
+                                <Path x:Name="OllamaGuideIcon"
+                                      Width="15" Height="15"
+                                      Margin="0,0,7,0"
+                                      VerticalAlignment="Center"
+                                      Stretch="Uniform"
+                                      Stroke="{DynamicResource AppTextSecondary}"
+                                      StrokeThickness="1.15"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      Data="M8,4.3 C6.7,3.3 4.9,2.9 3,2.9 L1.7,2.9 L1.7,12.1 L3,12.1
+                                            C4.9,12.1 6.7,12.5 8,13.5
+                                            M8,4.3 C9.3,3.3 11.1,2.9 13,2.9 L14.3,2.9 L14.3,12.1 L13,12.1
+                                            C11.1,12.1 9.3,12.5 8,13.5
+                                            M8,4.3 L8,13.5"/>
+
+                                <TextBlock FontFamily="{StaticResource AppFont}"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap">
+                                    <Hyperlink x:Name="OllamaGuideLink"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               RequestNavigate="OllamaGuideLink_RequestNavigate"
+                                               NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
+                                </TextBlock>
+                            </StackPanel>
                         </Grid>
                     </Grid>
                 </Border>

@@ -263,8 +263,8 @@
     <sys:String x:Key="S.Settings.PromptAuto">自動</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">指定語言</sys:String>
     <sys:String x:Key="S.Settings.PromptReset">還原預設</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintAuto">留空即使用內建預設。{target} 會代換成目標語言。</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintExplicit">留空即使用內建預設。{source} 會代換成來源語言、{target} 代換成目標語言。</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintAuto">留空時使用內建預設。{target} 會自動替換為目標語言。</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintExplicit">留空時使用內建預設。{source} 會自動替換為來源語言，{target} 會自動替換為目標語言。</sys:String>
 
     <sys:String x:Key="S.Settings.Screenshot">截圖</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshot">儲存截圖</sys:String>

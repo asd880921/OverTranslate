@@ -233,7 +233,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     {
         var automatic = LanguageData.IsAutomaticSource(sourceLang);
         var custom = (automatic ? customAuto : customExplicit).Trim();
-        var template = custom.Length > 0 ? custom : DefaultPromptTemplate(automatic, targetLang);
+        var template = custom.Length > 0 ? custom : DefaultPromptTemplate(automatic);
 
         return Fill(template, sourceLang, targetLang, automatic);
     }
@@ -243,16 +243,20 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// starting point, so the placeholders are visible rather than described in prose elsewhere.
     /// </summary>
     /// <remarks>
-    /// Written in the target's own language, which is the same nudge the instruction itself is:
-    /// a model asked in Chinese to produce Chinese has one fewer way to drift. A template the user
-    /// wrote replaces this wholesale, whatever language they wrote it in.
+    /// Written in the interface's language, because this is text the user reads and edits: the
+    /// settings page shows it as the starting point for their own, and prose they cannot read is
+    /// no starting point at all. It carries no risk of steering the model to the wrong language,
+    /// since the language to translate into is named in the sentence either way.
+    ///
+    /// A template the user wrote replaces this wholesale and is stored once, not per interface
+    /// language — having written their own, they own it in whatever language they wrote it.
     ///
     /// Both automatic forms deliberately keep the "from … to …" skeleton of the explicit one rather
     /// than restructuring the sentence. Translation-only models are trained on that shape, and one
     /// measurably stopped half-way through a Japanese line when handed the restructured wording.
     /// </remarks>
-    internal static string DefaultPromptTemplate(bool automatic, string targetLang) =>
-        UsesChinesePrompt(targetLang)
+    internal static string DefaultPromptTemplate(bool automatic) =>
+        UsesChinesePrompt()
             ? (automatic
                 ? $"從(各種語言)翻譯成({TargetPlaceholder})。" +
                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。"
@@ -264,39 +268,31 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
                 : $"Translate the input text from ({SourcePlaceholder}) to ({TargetPlaceholder}). " +
                   "Do not think or add extra text. Return only a natural, human-sounding translation.");
 
-    private static bool UsesChinesePrompt(string targetLang) =>
-        targetLang.Trim().ToUpperInvariant() is "ZH-HANS" or "ZH-HANT";
+    private static bool UsesChinesePrompt() =>
+        LocalizationService.Current != LocalizationService.English;
 
     /// <summary>
-    /// Substitutes the language placeholders. Which language the names themselves are written in
-    /// follows the target, so a filled built-in template reads as one sentence; a custom template
-    /// written in another language gets the same names, since there is no way to know what language
-    /// the user's prose is in.
+    /// Substitutes the language placeholders, naming the languages in the interface's language so a
+    /// filled built-in template reads as one sentence.
     /// </summary>
+    /// <remarks>
+    /// A custom template gets those same names: there is no way to tell what language the user's
+    /// own prose is in, and the interface's is the best guess available.
+    /// </remarks>
     private static string Fill(string template, string sourceLang, string targetLang, bool automatic)
     {
-        var chinese = UsesChinesePrompt(targetLang);
-
-        var target = chinese
-            ? LanguageData.GetTargetName(targetLang)
-            : GetEnglishLanguageName(LanguageData.TargetLanguages, targetLang);
+        var target = LanguageData.GetTargetDisplayName(targetLang);
 
         // Nothing to name when the source is 自動, so a template that asks for one anyway is given
         // the same words the built-in automatic template uses in that position.
         var source = automatic
-            ? (chinese ? "各種語言" : "any language")
-            : chinese
-                ? LanguageData.GetSourceName(sourceLang)
-                : GetEnglishLanguageName(LanguageData.SourceLanguages, sourceLang);
+            ? (UsesChinesePrompt() ? "各種語言" : "any language")
+            : LanguageData.GetSourceDisplayName(sourceLang);
 
         return template
             .Replace(SourcePlaceholder, source, StringComparison.OrdinalIgnoreCase)
             .Replace(TargetPlaceholder, target, StringComparison.OrdinalIgnoreCase);
     }
-
-    private static string GetEnglishLanguageName(IEnumerable<LangItem> languages, string code) =>
-        languages.FirstOrDefault(language =>
-            language.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.English ?? code;
 
     internal static string StripThinking(string value) => ThinkingBlock.Replace(value, "").Trim();
 

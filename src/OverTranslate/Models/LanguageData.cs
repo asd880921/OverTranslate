@@ -237,30 +237,11 @@ public static class LanguageData
     }
 
     /// <summary>
-    /// A language's name for saying back to the user what is in effect — the interface's own name
-    /// for it, without the English one the pickers also carry, because a message has one line and
-    /// the reader already knows which language they are reading in. Falls back to the code, which
-    /// is still readable, rather than to an empty string.
+    /// A source language's name for saying back to the user what is in effect: the interface's own
+    /// name for it, without the English one the pickers also carry, because a line with one
+    /// language's worth of room has a reader who already knows which language they are reading in.
+    /// Falls back to the code, which is still readable, rather than to an empty string.
     /// </summary>
-    public static string GetSourceName(string? code) =>
-        OcrSourceLanguages.FirstOrDefault(l =>
-            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.Name ?? code ?? "";
-
-    /// <inheritdoc cref="GetSourceName"/>
-    public static string GetTargetName(string? code) =>
-        TargetLanguages.FirstOrDefault(l =>
-            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.Name ?? code ?? "";
-
-    /// <summary>
-    /// A source language's name for display, in whichever language the interface is in.
-    /// </summary>
-    /// <remarks>
-    /// Separate from <see cref="GetSourceName"/>, which stays Chinese whatever the interface is
-    /// set to, because its caller is not the interface: it names the languages inside the prompt
-    /// sent to an OpenAI-compatible model, and that prompt is written in Chinese throughout. A
-    /// single accessor serving both would tie what a model is asked to do to what language the
-    /// user happens to read the buttons in.
-    /// </remarks>
     public static string GetSourceDisplayName(string? code) =>
         OcrSourceLanguages.FirstOrDefault(l =>
             l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.ShortName ?? code ?? "";
