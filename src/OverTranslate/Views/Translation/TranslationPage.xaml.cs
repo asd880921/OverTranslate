@@ -314,9 +314,9 @@ public partial class TranslationPage : UserControl
 
     private void InitializeSelectors(string sourceLang, string targetLang)
     {
-        SrcLangBox.ItemsSource  = LanguageData.SourceLanguages;
-        TgtLangBox.ItemsSource  = LanguageData.TargetLanguages;
-        ProviderBox.ItemsSource = LanguageData.Providers;
+        LocalizationService.BindLocalizedItems(SrcLangBox,  LanguageData.SourceLanguages);
+        LocalizationService.BindLocalizedItems(TgtLangBox,  LanguageData.TargetLanguages);
+        LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
 
         SrcLangBox.SelectedValue  = LanguageData.GetValidSourceCode(sourceLang);
         TgtLangBox.SelectedValue  = LanguageData.GetValidTargetCode(targetLang);

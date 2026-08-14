@@ -109,9 +109,12 @@ public partial class SettingsPage : UserControl
         _statusHold = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1600) };
         _statusHold.Tick += (_, _) => { _statusHold.Stop(); FadeStatusOut(); };
 
-        // Static event, instance handler: without the unsubscribe this page could not be collected
-        // for as long as the app ran, and the shell builds a fresh one each time it is navigated to.
-        LocalizationService.LanguageChanged += OnLanguageChanged;
+        // Paired with Loaded rather than subscribed once: the shell keeps one instance of this
+        // page for its lifetime and swaps it in and out of the content host, so unsubscribing on
+        // Unloaded without re-subscribing on Loaded would leave it deaf from the first time the
+        // user navigated away. A static event holding an instance handler also has to be let go
+        // of at some point, which rules out subscribing only once.
+        Loaded   += (_, _) => LocalizationService.LanguageChanged += OnLanguageChanged;
         Unloaded += (_, _) => LocalizationService.LanguageChanged -= OnLanguageChanged;
 
         LoadSettings();
@@ -130,11 +133,11 @@ public partial class SettingsPage : UserControl
         {
             var s = SettingsService.Instance.Current;
 
-            SourceLangBox.ItemsSource = LanguageData.OcrSourceLanguages;
+            LocalizationService.BindLocalizedItems(SourceLangBox, LanguageData.OcrSourceLanguages);
             SourceLangBox.SelectedValue = LanguageData.GetValidOcrSourceCode(s.SourceLanguage);
             if (SourceLangBox.SelectedValue == null) SourceLangBox.SelectedIndex = 0;
 
-            ProviderBox.ItemsSource = LanguageData.Providers;
+            LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
             ProviderBox.SelectedValue = s.Provider;
             if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
             ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";

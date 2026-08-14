@@ -9,7 +9,12 @@ namespace OverTranslate.Models;
 /// a user scanning a long list can find theirs either way, while somewhere with one line to spare
 /// wants only the first. Composing here means neither has to take a string apart to get at one.
 /// </param>
-public record LangItem(string Code, string Name, string English)
+/// <param name="StandsAlone">
+/// True when <paramref name="Name"/> and <paramref name="English"/> are each a complete label on
+/// their own, so the Chinese interface shows the name alone instead of the usual pair. For the OCR
+/// picker's automatic entry, whose name already carries its own parenthetical.
+/// </param>
+public record LangItem(string Code, string Name, string English, bool StandsAlone = false)
 {
     /// <summary>
     /// The label for the pickers, in whichever language the interface is currently in.
@@ -24,10 +29,10 @@ public record LangItem(string Code, string Name, string English)
     {
         get
         {
-            if (string.IsNullOrEmpty(English)) return Name;
-            return LocalizationService.Current == LocalizationService.English
-                ? English
-                : $"{Name} {English}";
+            if (LocalizationService.Current == LocalizationService.English)
+                return string.IsNullOrEmpty(English) ? Name : English;
+
+            return StandsAlone || string.IsNullOrEmpty(English) ? Name : $"{Name} {English}";
         }
     }
 }
@@ -89,7 +94,7 @@ public static class LanguageData
 
     public static readonly List<LangItem> OcrSourceLanguages =
     [
-        new(AutomaticSourceLanguage, "自動（中英日）", ""),
+        new(AutomaticSourceLanguage, "自動（中英日）", "Automatic (ZH/EN/JA)", StandsAlone: true),
         new("EN",      "英語", "English"),
         new("JA",      "日語", "Japanese"),
         new("KO",      "韓語", "Korean"),

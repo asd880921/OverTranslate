@@ -154,4 +154,22 @@ public static class LocalizationService
     /// <inheritdoc cref="Get"/>
     public static string Format(string key, params object?[] args) =>
         string.Format(CultureInfo.CurrentCulture, Get(key), args);
+
+    /// <summary>
+    /// Points a picker at a list whose item labels come from the string dictionary.
+    /// </summary>
+    /// <remarks>
+    /// The clear is the whole point. These lists are static, so re-assigning one is a no-op to
+    /// WPF — it compares the reference, sees the same list, and keeps the item containers it
+    /// already generated along with the text those were built from. The label properties resolve
+    /// per read, so regenerating the containers is all that is needed; nothing short of it works.
+    ///
+    /// Callers set SelectedValue afterwards: clearing ItemsSource drops the selection with it.
+    /// </remarks>
+    public static void BindLocalizedItems(
+        System.Windows.Controls.ItemsControl picker, System.Collections.IEnumerable items)
+    {
+        picker.ItemsSource = null;
+        picker.ItemsSource = items;
+    }
 }

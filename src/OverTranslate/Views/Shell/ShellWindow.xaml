@@ -3,15 +3,22 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:OverTranslate.Views.Shell"
         Title="OverTranslate"
-        Width="1000" Height="640"
-        MinWidth="780" MinHeight="520"
+        Width="1080" Height="640"
+        MinWidth="840" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         Background="{DynamicResource AppWindowBg}">
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="208"/>
+            <!-- 208 was sized to the Chinese labels, which fit the rail's primary action and its
+                 shortcut on one line with room to spare. English does not — "Screen capture" and
+                 "Ctrl+Alt+A" share that line, and the shortcut is docked first — so the default
+                 is wider and the user can settle it themselves with the splitter below.
+                 MinWidth still fits an icon and a short label; MaxWidth stops the rail from
+                 eating the page beside it. -->
+            <ColumnDefinition x:Name="SidebarColumn"
+                              Width="240" MinWidth="200" MaxWidth="380"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -267,6 +274,25 @@
                 <TranslateTransform x:Name="ContentTransform"/>
             </Border.RenderTransform>
         </Border>
+
+        <!-- ══════════ Sidebar splitter ══════════ -->
+        <!-- Sits on the rail's trailing edge rather than in a column of its own, so it costs no
+             layout width and the seam stays exactly where the two backgrounds meet. Transparent
+             with a wider hit area than it looks: the visible boundary is the Border's edge, and a
+             drawn handle would be a permanent line across a window that otherwise has none.
+             Declared after both panels so it takes the mouse ahead of them, and before the About
+             overlay so a modal still covers it. -->
+        <GridSplitter Grid.Column="0"
+                      x:Name="SidebarSplitter"
+                      Width="6"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Stretch"
+                      Background="Transparent"
+                      Focusable="False"
+                      ResizeDirection="Columns"
+                      ResizeBehavior="CurrentAndNext"
+                      Cursor="SizeWE"
+                      DragCompleted="SidebarSplitter_DragCompleted"/>
 
         <!-- ══════════ About modal ══════════ -->
         <shell:AboutOverlay Grid.ColumnSpan="2" x:Name="About"/>

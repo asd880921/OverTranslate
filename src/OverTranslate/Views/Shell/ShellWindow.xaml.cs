@@ -99,8 +99,31 @@ public partial class ShellWindow : Window
         LocalizationService.LanguageChanged += OnLanguageChanged;
         Closed += (_, _) => LocalizationService.LanguageChanged -= OnLanguageChanged;
 
+        RestoreSidebarWidth();
+
         // Nav_Checked drives navigation, so this also renders the initial page
         TranslationNav.IsChecked = true;
+    }
+
+    private void RestoreSidebarWidth()
+    {
+        var stored = SettingsService.Instance.Current.ShellSidebarWidth;
+        if (stored <= 0) return;
+
+        // Clamped against the column's own bounds rather than trusted: this comes off disk, and
+        // the values there are the only thing standing between a hand-edited file and a rail wide
+        // enough to hide the page.
+        var width = Math.Clamp(stored, SidebarColumn.MinWidth, SidebarColumn.MaxWidth);
+        SidebarColumn.Width = new GridLength(width);
+    }
+
+    private void SidebarSplitter_DragCompleted(
+        object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        // On completion rather than on every delta: dragging raises this continuously, and the
+        // settings file is rewritten in full on each save.
+        SettingsService.Instance.Current.ShellSidebarWidth = SidebarColumn.ActualWidth;
+        SettingsService.Instance.Save();
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)

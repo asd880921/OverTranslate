@@ -38,9 +38,14 @@
                       SelectedValuePath="Code"
                       VerticalContentAlignment="Center"/>
 
+            <!-- 180, not 148: sized to the longest provider name in either language
+                 ("Google Translate (RPC)"), since the English names run longer than the Chinese
+                 ones they were measured against. Fixed rather than Auto on purpose — an Auto
+                 ComboBox takes its width from the widest entry in the list, which for the language
+                 pickers beside it would be whichever language happens to have the longest name. -->
             <ComboBox x:Name="ProviderBox"
                       Style="{StaticResource ModernComboBox}"
-                      Width="148" Height="32"
+                      Width="180" Height="32"
                       SelectedValuePath="Provider"
                       VerticalContentAlignment="Center"/>
         </StackPanel>

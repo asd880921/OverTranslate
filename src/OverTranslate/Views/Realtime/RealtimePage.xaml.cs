@@ -77,11 +77,7 @@ public partial class RealtimePage : UserControl
     {
         InitializeComponent();
 
-        SrcLangBox.ItemsSource = LanguageData.OcrSourceLanguages
-            .Where(language => !LanguageData.IsAutomaticSource(language.Code));
-        TgtLangBox.ItemsSource = LanguageData.TargetLanguages;
-
-        ProviderBox.ItemsSource = LanguageData.Providers;
+        BindPickers();
 
         ApplyPageDefaults();
 
@@ -128,8 +124,38 @@ public partial class RealtimePage : UserControl
     /// Re-reads what may have changed while the user was elsewhere: the attached monitors, and
     /// whether a session is running.
     /// </summary>
+    /// <summary>
+    /// Fills the three language and provider pickers.
+    /// </summary>
+    /// <remarks>
+    /// Re-run on every <see cref="Reload"/> rather than only at construction, because the item
+    /// labels come from the string dictionary and the shell keeps this page for its lifetime —
+    /// built once, it would still be showing the language the app started in. The selections are
+    /// carried across by hand: rebinding drops them, and unlike the other pages nothing here
+    /// restores them afterwards, because this page's choices are deliberately not persisted.
+    /// </remarks>
+    private void BindPickers()
+    {
+        var source   = SrcLangBox.SelectedValue;
+        var target   = TgtLangBox.SelectedValue;
+        var provider = ProviderBox.SelectedValue;
+
+        LocalizationService.BindLocalizedItems(
+            SrcLangBox,
+            LanguageData.OcrSourceLanguages
+                .Where(language => !LanguageData.IsAutomaticSource(language.Code))
+                .ToList());
+        LocalizationService.BindLocalizedItems(TgtLangBox,  LanguageData.TargetLanguages);
+        LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
+
+        SrcLangBox.SelectedValue  = source;
+        TgtLangBox.SelectedValue  = target;
+        ProviderBox.SelectedValue = provider;
+    }
+
     public void Reload()
     {
+        BindPickers();
         LoadScreens();
         RenderColours();
         RenderPauseHint();
