@@ -151,6 +151,7 @@ public class SettingsParsingTests
             AutoTranslateAfterSelection = true,
             SaveScreenshotToDisk = true,
             ScreenshotSavePath = @"D:\shots",
+            RealtimeGuidanceExpanded = false,
         });
 
         var settings = SettingsService.Parse(written);
@@ -171,5 +172,16 @@ public class SettingsParsingTests
         Assert.True(settings.AutoTranslateAfterSelection);
         Assert.True(settings.SaveScreenshotToDisk);
         Assert.Equal(@"D:\shots", settings.ScreenshotSavePath);
+        Assert.False(settings.RealtimeGuidanceExpanded);
+    }
+
+    // Expanded on a file written before the setting existed: someone who has never been shown the
+    // framing guidance must not have it folded away on their behalf.
+    [Fact]
+    public void MissingRealtimeGuidanceSetting_StartsExpanded()
+    {
+        var settings = SettingsService.Parse("""{"Theme":"Light"}""");
+
+        Assert.True(settings.RealtimeGuidanceExpanded);
     }
 }

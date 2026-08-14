@@ -101,6 +101,13 @@ public partial class RealtimeEditWindow : Window
     private readonly int _maxBlocks;
     private readonly List<BlockVisual> _blocks = [];
 
+    /// <summary>
+    /// Whether a block drawn from here on opens with its guidance unfolded — the answer the layer
+    /// started with, then whatever the user's last chevron said. Persisting it is the caller's job:
+    /// see <see cref="GuidanceExpandedChanged"/>.
+    /// </summary>
+    private bool _guidanceExpanded;
+
     private double _dpiX = 1.0;
     private double _dpiY = 1.0;
 
@@ -122,13 +129,15 @@ public partial class RealtimeEditWindow : Window
     public RealtimeEditWindow(
         System.Drawing.Rectangle physBounds,
         IReadOnlyList<RealtimeBlockPlacement> initialBlocks,
-        int maxBlocks)
+        int maxBlocks,
+        bool guidanceExpanded)
     {
         InitializeComponent();
 
         _physBounds = physBounds;
         _initialBlocks = initialBlocks;
         _maxBlocks = maxBlocks;
+        _guidanceExpanded = guidanceExpanded;
 
         Loaded += (_, _) =>
         {
@@ -140,8 +149,10 @@ public partial class RealtimeEditWindow : Window
 
             ApplyScreenScale();
 
+            // Every block opens the way the user last left a chevron, wherever they left it: the
+            // guidance answers "how do I frame this?", and that answer does not differ block by block.
             foreach (var block in _initialBlocks)
-                AddBlock(ToCanvas(block.Bounds), block.Mode, block.GuidanceExpanded, notify: false);
+                AddBlock(ToCanvas(block.Bounds), block.Mode, _guidanceExpanded, notify: false);
 
             RaiseBlocksChanged();
         };
@@ -153,15 +164,19 @@ public partial class RealtimeEditWindow : Window
     /// <summary>Raised when a drag is refused because the block limit is already reached.</summary>
     public event EventHandler? LimitReached;
 
+    /// <summary>
+    /// Raised with the new state whenever the user folds the guidance away or brings it back, so the
+    /// caller can keep it. One setting for the whole feature, written by whichever block was pressed
+    /// last — the layer itself keeps nothing beyond its own lifetime.
+    /// </summary>
+    public event EventHandler<bool>? GuidanceExpandedChanged;
+
     public int BlockCount => _blocks.Count;
 
     /// <summary>The current blocks in physical screen pixels, ready to be watched.</summary>
     public IReadOnlyList<RealtimeBlockPlacement> GetPhysicalBlocks() =>
         [.. _blocks.Select(block =>
-            new RealtimeBlockPlacement(
-                ToPhysical(block.Bounds),
-                block.ModeControl.Value,
-                block.ModeControl.GuidanceExpanded))];
+            new RealtimeBlockPlacement(ToPhysical(block.Bounds), block.ModeControl.Value))];
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -264,7 +279,7 @@ public partial class RealtimeEditWindow : Window
         // Subtitle is the default because it is what nearly every block is, and because it is the
         // cheaper mistake: the other mode's fraction is the first fallback either way, so a panel
         // left on 字幕 costs one extra inference rather than a block that reads nothing.
-        AddBlock(box, RealtimeBlockMode.Subtitle, guidanceExpanded: true, notify: true);
+        AddBlock(box, RealtimeBlockMode.Subtitle, _guidanceExpanded, notify: true);
     }
 
     // Capture lost to something else entirely (an Alt+Tab, another window taking it). The drag is
@@ -309,10 +324,15 @@ public partial class RealtimeEditWindow : Window
             RemoveBlock(visual);
         };
         visual.ModeControl.SelectionChanged += (_, _) => RaiseBlocksChanged();
-        visual.ModeControl.ExpansionChanged += (_, _) =>
+        visual.ModeControl.ExpansionChanged += (_, expanded) =>
         {
             Apply(visual, animateMode: true);
-            RaiseBlocksChanged();
+
+            // The last chevron pressed is the one that counts, for the blocks drawn after it and for
+            // the next sitting alike. The blocks already on screen are left as they are: folding one
+            // away should not make the others move under the pointer.
+            _guidanceExpanded = expanded;
+            GuidanceExpandedChanged?.Invoke(this, expanded);
         };
 
         for (int corner = 0; corner < visual.Corners.Length; corner++)
@@ -951,12 +971,13 @@ public partial class RealtimeEditWindow : Window
         /// <summary>Raised when the user picks the mode this block is not already on.</summary>
         public event EventHandler? SelectionChanged;
 
-        /// <summary>Raised when the guidance changes size so the canvas can keep it beside its block.</summary>
-        public event EventHandler? ExpansionChanged;
+        /// <summary>
+        /// Raised with the new state when the guidance changes size, so the canvas can keep it beside
+        /// its block and the window can record what the user asked for.
+        /// </summary>
+        public event EventHandler<bool>? ExpansionChanged;
 
         public RealtimeBlockMode Value { get; private set; }
-
-        public bool GuidanceExpanded => _guidanceExpanded;
 
         /// <summary>Current size, so the caller can keep the visible surface on screen.</summary>
         public double TotalWidth => _guidanceExpanded ? _expandedWidth : _collapsedWidth;
@@ -996,7 +1017,7 @@ public partial class RealtimeEditWindow : Window
             _guidanceExpanded = !_guidanceExpanded;
             UpdateGuidanceToggleLabel();
             ApplyGuidanceState(animate: true);
-            ExpansionChanged?.Invoke(this, EventArgs.Empty);
+            ExpansionChanged?.Invoke(this, _guidanceExpanded);
         }
 
         private void UpdateGuidanceToggleLabel()
