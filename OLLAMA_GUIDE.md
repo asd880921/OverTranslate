@@ -1,5 +1,7 @@
 # 本地 LLM（Ollama）安裝教學
 
+> **Language：** **[English](OLLAMA_GUIDE.en.md)** ｜ **繁體中文 ✓**
+
 OverTranslate 的 **OpenAI** 翻譯服務支援 OpenAI API 相容格式，可搭配 [Ollama](https://ollama.com/) 在本機執行 LLM 模型。使用本地模型不需要額外支付 API 費用，翻譯內容也不會傳送至外部伺服器。
 
 以下以 `translategemma:4b`（Google 推出，專為翻譯任務優化的模型）作為範例。

@@ -1,4 +1,11 @@
 <div align="center">
+  <p>
+    <strong>Language : </strong>
+    <strong><a href="README.en.md">English</a></strong>
+    &nbsp;｜&nbsp;
+    <strong>繁體中文 ✓</strong>
+  </p>
+
   <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
   <h1>OverTranslate</h1>
   <p>截圖翻譯、即時翻譯、譯文原位覆蓋的 Windows 螢幕翻譯工具</p>
