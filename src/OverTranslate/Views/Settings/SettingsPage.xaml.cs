@@ -39,7 +39,7 @@ public partial class SettingsPage : UserControl
     /// false for the window one, which it names nowhere.
     /// </param>
     private sealed record HotkeyField(
-        string Name,
+        string NameKey,
         TextBox Box,
         Button Record,
         Func<AppSettings, string> Display,
@@ -62,7 +62,7 @@ public partial class SettingsPage : UserControl
         _hotkeyFields =
         [
             new HotkeyField(
-                "截圖翻譯",
+                "S.Settings.CaptureHotkey",
                 HotkeyBox, RecordBtn,
                 s => s.HotkeyDisplay,
                 s => (s.HotkeyModifiers, s.HotkeyVirtualKey),
@@ -74,7 +74,7 @@ public partial class SettingsPage : UserControl
                 },
                 AdvertisedInShell: true),
             new HotkeyField(
-                "開啟翻譯視窗",
+                "S.Settings.WindowHotkey",
                 WindowHotkeyBox, WindowRecordBtn,
                 s => s.TranslationWindowHotkeyDisplay,
                 s => (s.TranslationWindowHotkeyModifiers, s.TranslationWindowHotkeyVirtualKey),
@@ -109,6 +109,14 @@ public partial class SettingsPage : UserControl
         _statusHold = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1600) };
         _statusHold.Tick += (_, _) => { _statusHold.Stop(); FadeStatusOut(); };
 
+        // Paired with Loaded rather than subscribed once: the shell keeps one instance of this
+        // page for its lifetime and swaps it in and out of the content host, so unsubscribing on
+        // Unloaded without re-subscribing on Loaded would leave it deaf from the first time the
+        // user navigated away. A static event holding an instance handler also has to be let go
+        // of at some point, which rules out subscribing only once.
+        Loaded   += (_, _) => LocalizationService.LanguageChanged += OnLanguageChanged;
+        Unloaded += (_, _) => LocalizationService.LanguageChanged -= OnLanguageChanged;
+
         LoadSettings();
     }
 
@@ -125,11 +133,11 @@ public partial class SettingsPage : UserControl
         {
             var s = SettingsService.Instance.Current;
 
-            SourceLangBox.ItemsSource = LanguageData.OcrSourceLanguages;
+            LocalizationService.BindLocalizedItems(SourceLangBox, LanguageData.OcrSourceLanguages);
             SourceLangBox.SelectedValue = LanguageData.GetValidOcrSourceCode(s.SourceLanguage);
             if (SourceLangBox.SelectedValue == null) SourceLangBox.SelectedIndex = 0;
 
-            ProviderBox.ItemsSource = LanguageData.Providers;
+            LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
             ProviderBox.SelectedValue = s.Provider;
             if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
             ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
@@ -142,6 +150,12 @@ public partial class SettingsPage : UserControl
 
             LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
             DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
+
+            // LocalizationService.Current, not s.UiLanguage: an unset preference is showing the
+            // system default right now, and the picker has to agree with what is on screen.
+            UiLanguageBox.ItemsSource = LocalizationService.Options;
+            UiLanguageBox.SelectedValue = LocalizationService.Current;
+            if (UiLanguageBox.SelectedValue == null) UiLanguageBox.SelectedIndex = 0;
 
             StartupCheckBox.IsChecked = StartupService.IsEnabled;
 
@@ -174,7 +188,7 @@ public partial class SettingsPage : UserControl
 
     private void FlashSaved()
     {
-        StatusText.Text       = "✓ 已儲存";
+        StatusText.Text       = LocalizationService.Get("S.Settings.Saved");
         StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AppSuccess");
 
         StatusText.BeginAnimation(OpacityProperty, null);
@@ -261,7 +275,7 @@ public partial class SettingsPage : UserControl
         }
         catch (Exception ex)
         {
-            ShowError($"✗ 無法設定開機啟動：{ex.Message}");
+            ShowError(LocalizationService.Format("S.Settings.StartupFailed", ex.Message));
         }
     }
 
@@ -285,7 +299,7 @@ public partial class SettingsPage : UserControl
         if (!LogLevelService.IsOverriddenByEnvironment) return;
 
         VerboseLoggingCheckBox.IsEnabled = false;
-        VerboseLoggingHint.Text = "目前記錄等級由環境變數 OVERTRANSLATE_LOGLEVEL 指定，此選項暫時無效。";
+        VerboseLoggingHint.Text = LocalizationService.Get("S.Settings.LoggingEnvOverride");
     }
 
     private void ThemeRadio_Checked(object sender, RoutedEventArgs e)
@@ -295,6 +309,33 @@ public partial class SettingsPage : UserControl
         ThemeService.Apply(theme);
         Persist(s => s.Theme = theme);
     }
+
+    private void UiLanguageBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading) return;
+
+        if (UiLanguageBox.SelectedValue as string is not { } language) return;
+
+        // Persist first: the swap re-runs LoadSettings through LanguageChanged, and both that and
+        // LocalizationService.Current read the stored value back.
+        Persist(s => s.UiLanguage = language);
+        LocalizationService.Apply(language);
+
+        // Persist already flashed the confirmation, but it did so in the outgoing language and
+        // LoadSettings does not touch the status line. Say it again in the new one.
+        FlashSaved();
+    }
+
+    /// <summary>
+    /// Re-renders the text on this page that DynamicResource cannot reach.
+    /// </summary>
+    /// <remarks>
+    /// Three things on this page are composed in code and so hold a string from the language that
+    /// was in effect when they were built: the provider list and its hint, the pickers' language
+    /// labels, and the environment-override notice. LoadSettings rebuilds all of them, and is
+    /// already guarded against writing back.
+    /// </remarks>
+    private void OnLanguageChanged(object? sender, EventArgs e) => LoadSettings();
 
     private void SaveScreenshotCheckBox_Toggled(object sender, RoutedEventArgs e)
     {
@@ -316,7 +357,7 @@ public partial class SettingsPage : UserControl
 
         var dialog = new OpenFolderDialog
         {
-            Title = "選擇截圖儲存資料夾",
+            Title = LocalizationService.Get("S.Settings.FolderPickerTitle"),
             InitialDirectory = ScreenshotPathBox.Text
         };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
@@ -338,7 +379,7 @@ public partial class SettingsPage : UserControl
         }
         catch (Exception ex)
         {
-            ShowError($"✗ 無法開啟資料夾：{ex.Message}");
+            ShowError(LocalizationService.Format("S.Settings.OpenFolderFailed", ex.Message));
         }
     }
 
@@ -367,8 +408,8 @@ public partial class SettingsPage : UserControl
         StopRecording();
 
         _recording = field;
-        field.Box.Text = "請按下快捷鍵...";
-        field.Record.Content = "取消";
+        field.Box.Text = LocalizationService.Get("S.Settings.HotkeyPrompt");
+        field.Record.Content = LocalizationService.Get("S.Common.Cancel");
         field.Box.Focus();
     }
 
@@ -383,7 +424,7 @@ public partial class SettingsPage : UserControl
         if (_recording is not { } field) return;
 
         field.Box.Text = field.Display(SettingsService.Instance.Current);
-        field.Record.Content = "錄製";
+        field.Record.Content = LocalizationService.Get("S.Common.Record");
         _recording = null;
     }
 
@@ -445,7 +486,8 @@ public partial class SettingsPage : UserControl
 
         if (taken is not null)
         {
-            ShowError($"✗ {display} 已指派給「{taken.Name}」");
+            ShowError(LocalizationService.Format(
+                "S.Settings.HotkeyTaken", display, LocalizationService.Get(taken.NameKey)));
             StopRecording();
             return;
         }

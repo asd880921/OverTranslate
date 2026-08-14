@@ -545,7 +545,7 @@ public partial class RealtimeEditWindow : Window
                 Width = removeSize,
                 Height = removeSize,
                 Cursor = Cursors.Hand,
-                ToolTip = "移除此區塊",
+                ToolTip = LocalizationService.Get("S.Realtime.RemoveBlock"),
                 Template = BuildRemoveTemplate(removeSize, uiScale),
             };
 
@@ -703,15 +703,11 @@ public partial class RealtimeEditWindow : Window
         /// recogniser then does with it: the reasons live in <see cref="RealtimeDetectorSize"/> and
         /// <see cref="CollapsedDetection"/>, and neither is something to explain over a paused game.
         /// </summary>
-        private const string SubtitleHint =
-            "適合影音字幕、遊戲對話等文字集中且位置較固定的畫面。\n" +
-            "框選時，上下約留半個至一個字的空間，避免貼齊文字；" +
-            "左右可適度放寬，但不要框入過多空白範圍，避免雜訊。";
+        private static string SubtitleHint =>
+            LocalizationService.Get("S.Realtime.ModeSubtitleGuidance");
 
-        private const string PanelHint =
-            "適合文字分散於不同位置，或內容位置經常變動的遊戲畫面。\n" +
-            "框選時，需翻譯的區域請保留一些空間，避免貼齊內容；" +
-            "若畫面有多個區域則建議分開框選，避免辨識速度過慢。";
+        private static string PanelHint =>
+            LocalizationService.Get("S.Realtime.ModeGameUiGuidance");
 
         private readonly TranslateTransform _pillOffset = new();
         private readonly Border[] _segments;
@@ -774,7 +770,11 @@ public partial class RealtimeEditWindow : Window
                 RenderTransform = _pillOffset,
             };
 
-            _labels = [BuildLabel("字幕", uiScale), BuildLabel("遊戲介面", uiScale)];
+            _labels =
+            [
+                BuildLabel(LocalizationService.Get("S.Realtime.ModeSubtitle"), uiScale),
+                BuildLabel(LocalizationService.Get("S.Realtime.ModeGameUi"), uiScale),
+            ];
 
             // Rounded on the outer end only, so a press on either half stays inside the capsule.
             _highlights =
@@ -785,8 +785,10 @@ public partial class RealtimeEditWindow : Window
 
             _segments =
             [
-                BuildSegment(_labels[0], _highlights[0], segmentWidth, "整條字幕、對話框——文字大，讀取時會縮小"),
-                BuildSegment(_labels[1], _highlights[1], segmentWidth, "遊戲面板、物品說明——文字小，讀取時不縮小"),
+                BuildSegment(_labels[0], _highlights[0], segmentWidth,
+                    LocalizationService.Get("S.Realtime.ModeSubtitleSummary")),
+                BuildSegment(_labels[1], _highlights[1], segmentWidth,
+                    LocalizationService.Get("S.Realtime.ModeGameUiSummary")),
             ];
 
             var row = new StackPanel
@@ -999,7 +1001,8 @@ public partial class RealtimeEditWindow : Window
 
         private void UpdateGuidanceToggleLabel()
         {
-            var label = _guidanceExpanded ? "收合模式說明" : "展開模式說明";
+            var label = LocalizationService.Get(
+                _guidanceExpanded ? "S.Realtime.CollapseGuidance" : "S.Realtime.ExpandGuidance");
             _guidanceToggle.ToolTip = label;
             System.Windows.Automation.AutomationProperties.SetName(_guidanceToggle, label);
         }

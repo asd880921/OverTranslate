@@ -54,7 +54,7 @@
                                FontSize="15"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"
-                               Text="辨識中"/>
+                               Text="{DynamicResource S.Overlay.Recognising}"/>
                 </StackPanel>
             </Border>
         </Canvas>

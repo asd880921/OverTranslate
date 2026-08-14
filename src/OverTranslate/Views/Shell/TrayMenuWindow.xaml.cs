@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using OverTranslate.Services;
 
 namespace OverTranslate.Views.Shell;
 
@@ -75,7 +76,8 @@ public partial class TrayMenuWindow : Window
 
     public void SetRealtimeRunning(bool running)
     {
-        OpenWindowLabel.Text = running ? "即時翻譯視窗" : "開啟翻譯視窗";
+        OpenWindowLabel.Text = LocalizationService.Get(
+            running ? "S.Tray.RealtimeWindow" : "S.Tray.OpenWindow");
         OpenWindowIcon.Text = running ? PinIcon : WindowIcon;
     }
 

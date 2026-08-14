@@ -7,6 +7,9 @@
                 <!-- Default theme loaded first; ThemeService swaps it on startup if Dark is saved -->
                 <ResourceDictionary Source="Themes/LightTheme.xaml"/>
                 <ResourceDictionary Source="Themes/SharedStyles.xaml"/>
+                <!-- Likewise the default strings; LocalizationService swaps them on startup, and
+                     again whenever the user changes the language -->
+                <ResourceDictionary Source="Resources/Strings.zh-Hant.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

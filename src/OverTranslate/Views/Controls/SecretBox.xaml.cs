@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using OverTranslate.Services;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so this name collides
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -68,7 +69,8 @@ public partial class SecretBox : UserControl
 
         // Segoe Fluent Icons: Hide (crossed-out eye) while revealed, RedEye while masked.
         RevealIcon.Text = _revealed ? "" : "";
-        RevealToggle.ToolTip = _revealed ? "隱藏內容" : "顯示內容";
+        RevealToggle.ToolTip = LocalizationService.Get(
+            _revealed ? "S.Secret.Hide" : "S.Secret.Show");
 
         // Keep the caret where the user was typing instead of dropping focus on the button.
         if (_revealed)

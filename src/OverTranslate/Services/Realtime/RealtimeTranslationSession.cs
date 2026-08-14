@@ -355,7 +355,7 @@ public sealed class RealtimeTranslationSession
         catch (Exception ex)
         {
             Log.Error(ex, "Realtime region {Region} ended unexpectedly", region.Id);
-            Failed?.Invoke(this, $"即時翻譯已中止：{ex.Message}");
+            Failed?.Invoke(this, LocalizationService.Format("S.Realtime.SessionAborted", ex.Message));
         }
     }
 
@@ -708,7 +708,7 @@ public sealed class RealtimeTranslationSession
         {
             var apiKey = SettingsService.Instance.Current.ApiKey;
             if (_translation.ProviderRequiresApiKey(_provider) && string.IsNullOrWhiteSpace(apiKey))
-                throw new InvalidOperationException("缺少 API Key，請先在設定中輸入。");
+                throw new InvalidOperationException(LocalizationService.Get("S.Realtime.MissingApiKey"));
 
             var (results, _) = await _translation.TranslateAsync(
                 missing, sourceLanguage, targetLanguage, apiKey, cancellationToken: token, engine: _provider);
@@ -775,7 +775,7 @@ public sealed class RealtimeTranslationSession
     {
         InvalidOperationException => ex.Message,
         NotSupportedException => ex.Message,
-        _ => $"翻譯暫時失敗，將持續重試：{ex.Message}"
+        _ => LocalizationService.Format("S.Realtime.RetryingAfterFailure", ex.Message)
     };
 
     /// <summary>

@@ -12,8 +12,8 @@
 
         <!-- ── Page header ── -->
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
-            <TextBlock Text="設定" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="管理快捷鍵、翻譯服務、截圖與外觀"
+            <TextBlock Text="{DynamicResource S.Settings.Title}" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="{DynamicResource S.Settings.Subtitle}"
                        Style="{StaticResource PageSubtitle}"/>
         </StackPanel>
 
@@ -23,8 +23,43 @@
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="0,0,8,0">
             <!-- Stretch (not Left) so the cards fill the column instead of shrink-wrapping
-                 to their content; MaxWidth keeps the rows readable on a wide window -->
-            <StackPanel MaxWidth="760">
+                 to their content; MaxWidth keeps the rows readable on a wide window.
+
+                 IsSharedSizeScope aligns the label column across every card: the rows used to
+                 share a hardcoded 100px, which fit four Chinese characters exactly and clipped
+                 the moment the same labels were written in English. Auto + SharedSizeGroup keeps
+                 the alignment without betting on a width. -->
+            <StackPanel MaxWidth="760" Grid.IsSharedSizeScope="True">
+
+                <!-- ── 介面語言 ── -->
+                <!-- First card on the page, and a card of its own: it is the one setting that
+                     changes how every other setting reads, so a user who opened this page because
+                     they cannot read it should not have to scroll past five cards of text they
+                     cannot read to find it. -->
+                <Border Style="{StaticResource CardBorder}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.UiLanguage}"
+                                   Style="{StaticResource SectionHeader}"/>
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.UiLanguageLabel}"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <ComboBox  Grid.Column="1" x:Name="UiLanguageBox"
+                                       Style="{StaticResource ModernComboBox}"
+                                       SelectedValuePath="Code"
+                                       SelectionChanged="UiLanguageBox_SelectionChanged"/>
+                        </Grid>
+                    </Grid>
+                </Border>
 
                 <!-- ── 一般設定 ── -->
                 <Border Style="{StaticResource CardBorder}">
@@ -38,12 +73,12 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="一般設定" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.General}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- Hotkey row -->
                         <Grid Grid.Row="1" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="70"/>
                             </Grid.ColumnDefinitions>
@@ -51,7 +86,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="截圖翻譯"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.CaptureHotkey}"
                                        Style="{StaticResource FieldLabel}"/>
                             <TextBox   Grid.Column="1" Grid.Row="0" x:Name="HotkeyBox"
                                        Style="{StaticResource ModernTextBox}"
@@ -60,12 +95,12 @@
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RecordBtn" Content="錄製"
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RecordBtn" Content="{DynamicResource S.Common.Record}"
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
                             <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2"
-                                       Text="按下快捷鍵即可使用截圖翻譯功能"
+                                       Text="{DynamicResource S.Settings.CaptureHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
                         </Grid>
 
@@ -75,7 +110,7 @@
                              startup and nothing in the interface names it. -->
                         <Grid Grid.Row="2" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="70"/>
                             </Grid.ColumnDefinitions>
@@ -83,7 +118,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="開啟翻譯視窗"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.WindowHotkey}"
                                        Style="{StaticResource FieldLabel}"/>
                             <TextBox   Grid.Column="1" Grid.Row="0" x:Name="WindowHotkeyBox"
                                        Style="{StaticResource ModernTextBox}"
@@ -92,22 +127,22 @@
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="2" Grid.Row="0" x:Name="WindowRecordBtn" Content="錄製"
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="WindowRecordBtn" Content="{DynamicResource S.Common.Record}"
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
                             <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2"
-                                       Text="即時翻譯進行中時，改為將浮動視窗移至最上層"
+                                       Text="{DynamicResource S.Settings.WindowHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
                         </Grid>
 
                         <!-- Source language row -->
                         <Grid Grid.Row="3" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="來源語言" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SourceLanguage}" Style="{StaticResource FieldLabel}"/>
                             <ComboBox  Grid.Column="1" x:Name="SourceLangBox"
                                        Style="{StaticResource ModernComboBox}"
                                        SelectedValuePath="Code"
@@ -117,12 +152,12 @@
                         <!-- 框選完成自動翻譯 -->
                         <Grid Grid.Row="4" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="自動翻譯" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.AutoTranslate}" Style="{StaticResource FieldLabel}"/>
                             <CheckBox  Grid.Column="1" x:Name="AutoTranslateCheckBox"
-                                       Content="框選完成後自動翻譯"
+                                       Content="{DynamicResource S.Settings.AutoTranslateCheck}"
                                        Style="{StaticResource ModernCheckBox}"
                                        VerticalAlignment="Center"
                                        Checked="AutoTranslate_Toggled"
@@ -132,12 +167,12 @@
                         <!-- 開機自動啟動 -->
                         <Grid Grid.Row="5" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="開機啟動" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.Startup}" Style="{StaticResource FieldLabel}"/>
                             <CheckBox  Grid.Column="1" x:Name="StartupCheckBox"
-                                       Content="開機時自動啟動"
+                                       Content="{DynamicResource S.Settings.StartupCheck}"
                                        Style="{StaticResource ModernCheckBox}"
                                        VerticalAlignment="Center"
                                        Checked="Startup_Toggled"
@@ -156,19 +191,19 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="翻譯 API" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.TranslationApi}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- Provider row -->
                         <Grid Grid.Row="1" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="翻譯服務" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.Provider}" Style="{StaticResource FieldLabel}"/>
                             <ComboBox  Grid.Column="1" Grid.Row="0" x:Name="ProviderBox"
                                        Style="{StaticResource ModernComboBox}"
                                        SelectedValuePath="Provider"
@@ -180,11 +215,11 @@
                         <!-- API Key row (conditionally visible) -->
                         <Grid Grid.Row="2" x:Name="DeepLApiKeyRow">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" x:Name="ApiKeyLabel"
-                                       Text="API Key" Style="{StaticResource FieldLabel}"/>
+                                       Text="{DynamicResource S.Common.ApiKey}" Style="{StaticResource FieldLabel}"/>
                             <controls:SecretBox Grid.Column="1" x:Name="ApiKeyBox"
                                                 SecretChanged="ApiKeyBox_SecretChanged"/>
                         </Grid>
@@ -192,7 +227,7 @@
                         <!-- OpenAI Compatible settings (conditionally visible) -->
                         <Grid Grid.Row="3" x:Name="OpenAiSettingsPanel">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
@@ -202,20 +237,20 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="API 位址"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.ApiBaseUrl}"
                                        Style="{StaticResource FieldLabel}"/>
                             <TextBox Grid.Column="1" Grid.Row="0" x:Name="OpenAiBaseUrlBox"
                                      Style="{StaticResource ModernTextBox}"
                                      TextChanged="OpenAiSetting_TextChanged"/>
 
-                            <TextBlock Grid.Column="0" Grid.Row="1" Text="API Key"
+                            <TextBlock Grid.Column="0" Grid.Row="1" Text="{DynamicResource S.Common.ApiKey}"
                                        Margin="0,10,0,0"
                                        Style="{StaticResource FieldLabel}"/>
                             <controls:SecretBox Grid.Column="1" Grid.Row="1" x:Name="OpenAiApiKeyBox"
                                                 Margin="0,10,0,0"
                                                 SecretChanged="OpenAiSecret_SecretChanged"/>
 
-                            <TextBlock Grid.Column="0" Grid.Row="2" Text="模型名稱"
+                            <TextBlock Grid.Column="0" Grid.Row="2" Text="{DynamicResource S.Settings.ModelName}"
                                        Margin="0,10,0,0"
                                        Style="{StaticResource FieldLabel}"/>
                             <TextBox Grid.Column="1" Grid.Row="2" x:Name="OpenAiModelBox"
@@ -231,7 +266,7 @@
                                 <Hyperlink x:Name="OllamaGuideLink"
                                            Foreground="{DynamicResource AppTextSecondary}"
                                            RequestNavigate="OllamaGuideLink_RequestNavigate"
-                                           NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md">本地 LLM (Ollama) 安裝教學</Hyperlink>
+                                           NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
                             </TextBlock>
                         </Grid>
                     </Grid>
@@ -246,17 +281,17 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="截圖" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Screenshot}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- 同時儲存到本機 -->
                         <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="儲存截圖" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SaveScreenshot}" Style="{StaticResource FieldLabel}"/>
                             <CheckBox  Grid.Column="1" x:Name="SaveScreenshotCheckBox"
-                                       Content="截圖時自動儲存"
+                                       Content="{DynamicResource S.Settings.SaveScreenshotCheck}"
                                        Style="{StaticResource ModernCheckBox}"
                                        VerticalAlignment="Center"
                                        Checked="SaveScreenshotCheckBox_Toggled"
@@ -266,23 +301,23 @@
                         <!-- 儲存位置（僅在開關開啟時顯示） -->
                         <Grid Grid.Row="2" x:Name="ScreenshotPathRow" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="儲存位置" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SavePath}" Style="{StaticResource FieldLabel}"/>
                             <TextBox   Grid.Column="1" x:Name="ScreenshotPathBox"
                                        Style="{StaticResource ModernTextBox}"
                                        IsReadOnly="True"
                                        Cursor="Hand"
                                        Margin="0,0,4,0"
-                                       ToolTip="點擊以選擇儲存資料夾"
+                                       ToolTip="{DynamicResource S.Settings.SavePathTip}"
                                        PreviewMouseLeftButtonDown="ScreenshotPathBox_PreviewMouseLeftButtonDown"/>
                             <Button    Grid.Column="2" x:Name="OpenScreenshotFolderBtn"
                                        Content="📂"
                                        Style="{StaticResource IconButton}"
                                        Height="34"
-                                       ToolTip="開啟資料夾"
+                                       ToolTip="{DynamicResource S.Settings.OpenFolderTip}"
                                        Click="OpenScreenshotFolderBtn_Click"/>
                         </Grid>
                     </Grid>
@@ -296,22 +331,22 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="外觀" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Appearance}" Style="{StaticResource SectionHeader}"/>
 
                         <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="主題" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.Theme}" Style="{StaticResource FieldLabel}"/>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <RadioButton x:Name="LightThemeRadio"
-                                             Content="淺色"
+                                             Content="{DynamicResource S.Settings.ThemeLight}"
                                              GroupName="ThemeGroup"
                                              Style="{StaticResource ThemeRadioButton}"
                                              Checked="ThemeRadio_Checked"/>
                                 <RadioButton x:Name="DarkThemeRadio"
-                                             Content="深色"
+                                             Content="{DynamicResource S.Settings.ThemeDark}"
                                              GroupName="ThemeGroup"
                                              Style="{StaticResource ThemeRadioButton}"
                                              Margin="0"
@@ -331,28 +366,28 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="進階設定" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Advanced}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- 詳細記錄 -->
                         <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="應用紀錄"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.Logging}"
                                        Style="{StaticResource FieldLabel}"/>
                             <CheckBox  Grid.Column="1" Grid.Row="0" x:Name="VerboseLoggingCheckBox"
-                                       Content="記錄詳細資訊"
+                                       Content="{DynamicResource S.Settings.LoggingCheck}"
                                        Style="{StaticResource ModernCheckBox}"
                                        VerticalAlignment="Center"
                                        Checked="VerboseLogging_Toggled"
                                        Unchecked="VerboseLogging_Toggled"/>
                             <TextBlock Grid.Column="1" Grid.Row="1" x:Name="VerboseLoggingHint"
-                                       Text="啟用後會記錄更多應用紀錄資訊，協助排查問題。"
+                                       Text="{DynamicResource S.Settings.LoggingHint}"
                                        Style="{StaticResource FieldHint}"/>
                         </Grid>
                     </Grid>
@@ -365,7 +400,7 @@
              that contract and flashes a confirmation on each write -->
         <Grid Grid.Row="2" Margin="0,12,0,0" Height="20">
             <TextBlock x:Name="AutoSaveHint"
-                       Text="設定變更後會自動儲存"
+                       Text="{DynamicResource S.Settings.AutoSaveHint}"
                        VerticalAlignment="Center"
                        FontFamily="{StaticResource AppFont}"
                        FontSize="12"

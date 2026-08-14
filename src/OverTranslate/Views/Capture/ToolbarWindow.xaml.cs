@@ -168,7 +168,9 @@ public partial class ToolbarWindow : Window
         _isBusy = busy;
         if (busy) HideEngineBadge(); // stale badge shouldn't linger while the next batch runs
         TranslateBtn.IsEnabled = !busy;
-        TranslateBtn.Content   = busy ? "翻譯中..." : (_hasTranslated ? "重新翻譯" : "翻譯");
+        TranslateBtn.Content = LocalizationService.Get(
+            busy ? "S.Toolbar.Translating"
+                 : _hasTranslated ? "S.Toolbar.Retranslate" : "S.Toolbar.Translate");
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
         OpenWindowBtn.IsEnabled = !_isBusy;
     }
@@ -177,7 +179,8 @@ public partial class ToolbarWindow : Window
     {
         _hasTranslated = hasTranslated;
         if (!_isBusy)
-            TranslateBtn.Content = hasTranslated ? "重新翻譯" : "翻譯";
+            TranslateBtn.Content = LocalizationService.Get(
+                hasTranslated ? "S.Toolbar.Retranslate" : "S.Toolbar.Translate");
     }
 
     /// <summary>
@@ -193,8 +196,9 @@ public partial class ToolbarWindow : Window
             return;
         }
 
-        EngineBadgeText.Text  = $"⚡備援 {usage.BackupEngine}";
-        EngineBadge.ToolTip = $"「{usage.Primary}」未能完整翻譯，已由備援「{usage.BackupEngine}」進行部分翻譯。\n本次實際翻譯：{ usage.Summary}";
+        EngineBadgeText.Text = LocalizationService.Format("S.Toolbar.BackupBadge", usage.BackupEngine);
+        EngineBadge.ToolTip = LocalizationService.Format(
+            "S.Toolbar.BackupTooltip", usage.Primary, usage.BackupEngine, usage.Summary);
         EngineBadge.Visibility = Visibility.Visible;
     }
 
@@ -208,7 +212,7 @@ public partial class ToolbarWindow : Window
     {
         _toggleEnabled   = enabled;
         _bubblesVisible  = true;
-        ToggleBtn.Content   = "顯示原文";
+        ToggleBtn.Content = LocalizationService.Get("S.Toolbar.ShowSource");
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
         BubblesVisibilityChanged?.Invoke(this, _bubblesVisible);
     }
@@ -216,7 +220,8 @@ public partial class ToolbarWindow : Window
     private void ToggleBtn_Click(object sender, RoutedEventArgs e)
     {
         _bubblesVisible   = !_bubblesVisible;
-        ToggleBtn.Content = _bubblesVisible ? "顯示原文" : "顯示譯文";
+        ToggleBtn.Content = LocalizationService.Get(
+            _bubblesVisible ? "S.Toolbar.ShowSource" : "S.Toolbar.ShowTranslation");
         BubblesVisibilityChanged?.Invoke(this, _bubblesVisible);
     }
 

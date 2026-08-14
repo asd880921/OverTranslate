@@ -67,7 +67,7 @@
                                     Margin="0,-5,-6,0">
                             <Button Content="⧉"
                                     Style="{StaticResource ToastIconButton}"
-                                    ToolTip="複製訊息"
+                                    ToolTip="{DynamicResource S.Toast.CopyMessage}"
                                     Click="CopyButton_Click"/>
 
                             <!-- A hair smaller: ✕ carries more ink than ⧉ at the same point size,
@@ -75,7 +75,7 @@
                             <Button Content="✕"
                                     Style="{StaticResource ToastIconButton}"
                                     FontSize="11"
-                                    ToolTip="關閉"
+                                    ToolTip="{DynamicResource S.Common.Close}"
                                     Click="CloseButton_Click"/>
                         </StackPanel>
                     </Grid>
@@ -90,7 +90,7 @@
 
                     <TextBlock Grid.Row="2"
                                x:Name="CopyHint"
-                               Text="已複製到剪貼簿"
+                               Text="{DynamicResource S.Toast.Copied}"
                                FontSize="11"
                                Foreground="{DynamicResource AppSuccess}"
                                Visibility="Collapsed"

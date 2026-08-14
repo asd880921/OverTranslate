@@ -46,14 +46,14 @@ public partial class RealtimeControlWindow : Window
     private readonly DispatcherTimer _messageTimer;
 
     private RealtimeControlMode _mode = RealtimeControlMode.Edit;
-    private readonly string _editHint = "在螢幕上拖曳建立要翻譯的區塊";
+    private static string EditHint => LocalizationService.Get("S.Realtime.EditHint");
     // What the capsule says before SetLanguages has named the pair. A transient message borrows the
     // same slot and RestoreText brings whichever of the two applies back.
-    private readonly string _runStatus = "即時翻譯中";
+    private static string RunStatus => LocalizationService.Get("S.Realtime.Running");
     // Not transient, unlike everything else that lands in that slot: a paused session looks exactly
     // like a session with nothing to translate — no words, no scrims, a still screen — so the one
     // thing that separates them has to stay on screen for as long as the state lasts.
-    private readonly string _pausedStatus = "已暫停";
+    private static string PausedStatus => LocalizationService.Get("S.Realtime.Paused");
     private bool _hasLanguages;
     private bool _isPaused;
 
@@ -130,8 +130,8 @@ public partial class RealtimeControlWindow : Window
     /// </remarks>
     public void SetLanguages(string sourceCode, string targetCode)
     {
-        SourceLangText.Text = Models.LanguageData.GetSourceName(sourceCode);
-        TargetLangText.Text = Models.LanguageData.GetTargetName(targetCode);
+        SourceLangText.Text = Models.LanguageData.GetSourceDisplayName(sourceCode);
+        TargetLangText.Text = Models.LanguageData.GetTargetDisplayName(targetCode);
         _hasLanguages = SourceLangText.Text.Length > 0 && TargetLangText.Text.Length > 0;
 
         if (!_messageTimer.IsEnabled) RestoreText();
@@ -271,8 +271,8 @@ public partial class RealtimeControlWindow : Window
 
     private void RestoreText()
     {
-        EditHintText.Text = _editHint;
-        RunStatusText.Text = _isPaused ? _pausedStatus : _runStatus;
+        EditHintText.Text = EditHint;
+        RunStatusText.Text = _isPaused ? PausedStatus : RunStatus;
 
         // The pair steps aside while paused: it describes work that is not happening, and it is the
         // one thing on this line long enough to hide the word that says so.
@@ -300,7 +300,7 @@ public partial class RealtimeControlWindow : Window
         PauseBtn.Content = _isPaused ? "\uE768" : "\uE769";
         PauseBtn.ToolTip = RealtimePauseHint.ForControlTooltip(RealtimePauseHint.CurrentHotkey, _isPaused);
         System.Windows.Automation.AutomationProperties.SetName(
-            PauseBtn, _isPaused ? "繼續即時翻譯" : "暫停即時翻譯");
+            PauseBtn, LocalizationService.Get(_isPaused ? "S.Realtime.Resume" : "S.Realtime.Pause"));
     }
 
     // ── Placement and dragging ───────────────────────────────────────────────────────────────────

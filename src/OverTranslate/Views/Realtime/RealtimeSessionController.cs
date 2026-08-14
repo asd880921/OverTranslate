@@ -180,7 +180,7 @@ internal sealed class RealtimeSessionController
             AlwaysOnTop.Reassert(control);
             // Says the click did something even when nothing was covering the bar, which is the
             // more common case: a user who tries this is looking for a sign of life.
-            control.ShowMessage("已將即時翻譯視窗移至最上層");
+            control.ShowMessage(LocalizationService.Get("S.Realtime.MovedToFront"));
         }
 
         Log.Info("Realtime layers re-asserted on top by request");
@@ -295,7 +295,7 @@ internal sealed class RealtimeSessionController
             control.SetBlockCount(_blocks.Count, request.MaxBlocks);
         };
         edit.LimitReached += (_, _) =>
-            control.ShowMessage($"最多同時 {request.MaxBlocks} 個區塊，請先移除一個");
+            control.ShowMessage(LocalizationService.Format("S.Realtime.TooManyBlocks", request.MaxBlocks));
         _edit = edit;
         edit.Show();
 
@@ -327,7 +327,7 @@ internal sealed class RealtimeSessionController
 
         if (_blocks.Count == 0)
         {
-            control.ShowMessage("請先拖曳建立至少一個區塊");
+            control.ShowMessage(LocalizationService.Get("S.Realtime.NeedOneBlock"));
             return;
         }
 
@@ -383,7 +383,7 @@ internal sealed class RealtimeSessionController
             {
                 // Composing here would produce a plain screenshot, which is not what was asked for
                 // and gives no sign that anything was missing.
-                control.ShowMessage("目前還沒有譯文可以擷取");
+                control.ShowMessage(LocalizationService.Get("S.Realtime.NothingToCapture"));
                 return;
             }
 
@@ -396,7 +396,7 @@ internal sealed class RealtimeSessionController
             var image = RealtimeShowcaseCapture.Compose(request.ScreenBounds, overlays);
             if (image is null)
             {
-                control.ShowMessage("擷取畫面失敗，請再試一次", RealtimeMessageKind.Failure);
+                control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureFailed"), RealtimeMessageKind.Failure);
                 return;
             }
 
@@ -405,13 +405,13 @@ internal sealed class RealtimeSessionController
             var settings = SettingsService.Instance.Current;
             if (!settings.SaveScreenshotToDisk)
             {
-                control.ShowMessage("畫面截圖已複製到剪貼簿");
+                control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureCopied"));
                 return;
             }
 
             var path = ScreenshotSaveService.Save(image, settings.ScreenshotSavePath);
             Log.Info("Realtime showcase capture saved to {Path}", path);
-            control.ShowMessage("畫面截圖已複製到剪貼簿並儲存至本機");
+            control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureCopiedAndSaved"));
         }
         catch (Exception ex)
         {
@@ -419,7 +419,7 @@ internal sealed class RealtimeSessionController
             // folder. Neither is worth ending a session over, and the bar is where the user is
             // looking.
             Log.Warn(ex, "Realtime showcase capture failed");
-            control.ShowMessage($"擷取失敗：{ex.Message}", RealtimeMessageKind.Failure);
+            control.ShowMessage(LocalizationService.Format("S.Realtime.CaptureError", ex.Message), RealtimeMessageKind.Failure);
         }
     }
 

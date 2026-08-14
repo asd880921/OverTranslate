@@ -96,11 +96,13 @@ public partial class MainWindow : Window
     private void ShowStartupBalloon()
     {
         var hotkeyDisplay = SettingsService.Instance.Current.HotkeyDisplay;
-        var shortcutText = string.IsNullOrWhiteSpace(hotkeyDisplay) ? "已設定的快捷鍵" : hotkeyDisplay;
+        var shortcutText = string.IsNullOrWhiteSpace(hotkeyDisplay)
+            ? LocalizationService.Get("S.Main.DefaultShortcutName")
+            : hotkeyDisplay;
 
         ShowTrayNotification(
-            "OverTranslate 已最小化",
-            $"程式已縮小至系統匣，可使用 {shortcutText} 開始進行截圖翻譯。");
+            LocalizationService.Get("S.Main.MinimizedTitle"),
+            LocalizationService.Format("S.Main.MinimizedBody", shortcutText));
     }
 
     /// <summary>
@@ -215,7 +217,9 @@ public partial class MainWindow : Window
     {
         if (!Views.Realtime.RealtimeSessionController.Instance.IsActive) return false;
 
-        ShowTrayNotification("即時翻譯進行中", "請先結束即時翻譯，再使用截圖翻譯。");
+        ShowTrayNotification(
+            LocalizationService.Get("S.Main.RealtimeRunningTitle"),
+            LocalizationService.Get("S.Main.RealtimeRunningBody"));
         return true;
     }
 
@@ -476,7 +480,9 @@ public partial class MainWindow : Window
 
         if (AppServices.Translation.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
         {
-            ShowBalloon("缺少 API Key", "請在設定中輸入 API Key。", selRect);
+            ShowBalloon(
+                LocalizationService.Get("S.Main.MissingApiKeyTitle"),
+                LocalizationService.Get("S.Main.MissingApiKeyBody"), selRect);
             return;
         }
 
@@ -486,7 +492,9 @@ public partial class MainWindow : Window
         {
             if (requestCaptureWindow == null || !requestCaptureWindow.PrepareForTranslation())
             {
-                ShowBalloon("辨識失敗", "找不到框選影像，請重新框選。", selRect);
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.RecogniseFailedTitle"),
+                    LocalizationService.Get("S.Main.NoImageBody"), selRect);
                 return;
             }
 
@@ -509,7 +517,7 @@ public partial class MainWindow : Window
                 _lastSelPhysTop,
                 _lastSelPhysWidth,
                 _lastSelPhysHeight,
-                "辨識中");
+                LocalizationService.Get("S.Main.Recognising"));
 
             var recognizedBlocks = await AppServices.Ocr.RecognizeAsync(workBitmap, req.SourceLang, cancellationToken);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
@@ -519,7 +527,9 @@ public partial class MainWindow : Window
             if (_lastOcrBlocks.Count == 0)
             {
                 requestToolbar?.SetTranslationState(false);
-                ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect, ToastKind.Info);
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.NoTextTitle"),
+                    LocalizationService.Get("S.Main.NoTextBody"), selRect, ToastKind.Info);
                 return;
             }
 
@@ -528,7 +538,7 @@ public partial class MainWindow : Window
                 _lastSelPhysTop,
                 _lastSelPhysWidth,
                 _lastSelPhysHeight,
-                "翻譯中");
+                LocalizationService.Get("S.Main.Translating"));
 
             var (translated, _) = await AppServices.Translation.TranslateAsync(
                 _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey,
@@ -595,7 +605,9 @@ public partial class MainWindow : Window
                 return;
 
             requestToolbar?.SetTranslationState(false);
-            ShowBalloon("未偵測到文字", "所選區域中未找到可辨識的文字。", selRect, ToastKind.Info);
+            ShowBalloon(
+                LocalizationService.Get("S.Main.NoTextTitle"),
+                LocalizationService.Get("S.Main.NoTextBody"), selRect, ToastKind.Info);
         }
         catch (Exception ex)
         {
@@ -608,7 +620,9 @@ public partial class MainWindow : Window
             _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(_lastColoredBlocks.Count > 0);
             requestToolbar?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
-            ShowBalloon("翻譯失敗", $"目前使用的翻譯來源可能暫時無法使用。\n請切換其他翻譯來源後再試一次。\n詳細資訊：{ex.Message}", selRect);
+            ShowBalloon(
+                LocalizationService.Get("S.Main.TranslateFailedTitle"),
+                LocalizationService.Format("S.Main.TranslateFailedBody", ex.Message), selRect);
         }
         finally
         {
@@ -639,7 +653,9 @@ public partial class MainWindow : Window
             var background = _captureWindow?.CreateSelectionImage();
             if (background is null)
             {
-                ShowBalloon("複製失敗", "找不到框選影像，請重新框選。", selRect);
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.CopyFailedTitle"),
+                    LocalizationService.Get("S.Main.NoImageBody"), selRect);
                 return;
             }
 
@@ -671,7 +687,9 @@ public partial class MainWindow : Window
             var settings = SettingsService.Instance.Current;
             if (!settings.SaveScreenshotToDisk)
             {
-                ShowBalloon("已複製", "已將框選截圖複製到剪貼簿。", selRect, ToastKind.Success);
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.CopiedTitle"),
+                    LocalizationService.Get("S.Main.CopiedBody"), selRect, ToastKind.Success);
                 return;
             }
 
@@ -679,18 +697,24 @@ public partial class MainWindow : Window
             try
             {
                 var savedPath = ScreenshotSaveService.Save(result, settings.ScreenshotSavePath);
-                ShowBalloon("已複製", $"已複製到剪貼簿，並儲存至：\n{savedPath}", selRect, ToastKind.Success);
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.CopiedTitle"),
+                    LocalizationService.Format("S.Main.CopiedAndSavedBody", savedPath), selRect, ToastKind.Success);
             }
             catch (Exception ex)
             {
                 Log.Warn(ex, "Screenshot copied to clipboard but saving to disk failed");
-                ShowBalloon("已複製（儲存失敗）", $"已複製到剪貼簿，但無法儲存到本機：{ex.Message}", selRect);
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.CopiedSaveFailedTitle"),
+                    LocalizationService.Format("S.Main.CopiedSaveFailedBody", ex.Message), selRect);
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Copy screenshot failed");
-            ShowBalloon("複製失敗", $"無法複製截圖：{ex.Message}", selRect);
+            ShowBalloon(
+                LocalizationService.Get("S.Main.CopyFailedTitle"),
+                LocalizationService.Format("S.Main.CopyFailedBody", ex.Message), selRect);
         }
     }
 

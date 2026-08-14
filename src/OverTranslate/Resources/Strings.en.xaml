@@ -1,0 +1,283 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Mirror of Strings.zh-Hant.xaml. Same keys, same {0} placeholders in the same meaning —
+         StringsParityTests fails the build if the two drift apart.
+
+         Field labels here are deliberately terse. They sit in a shared-width column that sizes
+         itself to the longest one, so a wordy label pushes every input on the page to the right.
+         Prefer the noun ("Shortcut", "Provider") over the sentence. -->
+
+    <!-- ── Shared ── -->
+    <sys:String x:Key="S.Common.Record">Record</sys:String>
+    <sys:String x:Key="S.Common.Cancel">Cancel</sys:String>
+    <sys:String x:Key="S.Common.Edit">Edit</sys:String>
+    <sys:String x:Key="S.Common.Close">Close</sys:String>
+    <sys:String x:Key="S.Common.ApiKey">API key</sys:String>
+
+    <!-- ── Shell window ── -->
+    <sys:String x:Key="S.Shell.About">About</sys:String>
+    <sys:String x:Key="S.Shell.CaptureTranslate">Screen capture</sys:String>
+    <sys:String x:Key="S.Shell.TextTranslate">Text</sys:String>
+    <sys:String x:Key="S.Shell.RealtimeTranslate">Realtime</sys:String>
+    <sys:String x:Key="S.Shell.Settings">Settings</sys:String>
+    <sys:String x:Key="S.Shell.CaptureBlockedByRealtime">Realtime translation is running — stop it before using screen capture</sys:String>
+    <sys:String x:Key="S.Shell.UpdateAvailable">Update to v{0}</sys:String>
+
+    <!-- ── Tray menu ── -->
+    <sys:String x:Key="S.Tray.OpenWindow">Open translation window</sys:String>
+    <sys:String x:Key="S.Tray.RealtimeWindow">Realtime window</sys:String>
+    <sys:String x:Key="S.Tray.Settings">Settings</sys:String>
+    <sys:String x:Key="S.Tray.Exit">Exit</sys:String>
+
+    <!-- ── About ── -->
+    <sys:String x:Key="S.About.Author">Author</sys:String>
+    <sys:String x:Key="S.About.ViewSource">View the source on GitHub</sys:String>
+    <sys:String x:Key="S.About.Version">Version {0}</sys:String>
+    <sys:String x:Key="S.About.OpenSourceBefore" xml:space="preserve">Free and open source. If you find it useful, a </sys:String>
+    <sys:String x:Key="S.About.OpenSourceAfter" xml:space="preserve"> Star on GitHub is much appreciated!</sys:String>
+
+    <!-- ── Toast ── -->
+    <sys:String x:Key="S.Toast.CopyMessage">Copy message</sys:String>
+    <sys:String x:Key="S.Toast.Copied">Copied to the clipboard</sys:String>
+
+    <!-- ── Update ── -->
+    <sys:String x:Key="S.Update.WindowTitle">Update available</sys:String>
+    <sys:String x:Key="S.Update.Heading">Update available</sys:String>
+    <sys:String x:Key="S.Update.CurrentVersion">Current</sys:String>
+    <sys:String x:Key="S.Update.LatestVersion">Latest</sys:String>
+    <sys:String x:Key="S.Update.Explanation">"Update now" downloads and applies the update, then restarts the app.</sys:String>
+    <sys:String x:Key="S.Update.NotesBefore" xml:space="preserve">Curious what changed? </sys:String>
+    <sys:String x:Key="S.Update.NotesLink">See the release notes</sys:String>
+    <sys:String x:Key="S.Update.Later">Later</sys:String>
+    <sys:String x:Key="S.Update.Now">Update now</sys:String>
+    <sys:String x:Key="S.Update.Skip">Skip this version and stop reminding me</sys:String>
+    <sys:String x:Key="S.Update.Downloading">Downloading {0}%</sys:String>
+    <sys:String x:Key="S.Update.Applying">Applying...</sys:String>
+    <sys:String x:Key="S.Update.Retry">Retry</sys:String>
+    <sys:String x:Key="S.Update.Failed">Could not download the update: {0}</sys:String>
+
+    <!-- ── Service errors ── -->
+    <sys:String x:Key="S.Error.OpenAiNoModel">No model name set for the OpenAI-compatible provider.</sys:String>
+    <sys:String x:Key="S.Error.OpenAiHttp">The OpenAI-compatible API returned {0}: {1}</sys:String>
+    <sys:String x:Key="S.Error.OpenAiUnparsable">Could not parse the OpenAI-compatible API response.</sys:String>
+    <sys:String x:Key="S.Error.OpenAiNoTranslation">The OpenAI-compatible API returned no translation.</sys:String>
+    <sys:String x:Key="S.Error.OpenAiBadUrl">The OpenAI-compatible API address must be a valid HTTP or HTTPS URL.</sys:String>
+    <sys:String x:Key="S.Error.UnknownError">Unknown error</sys:String>
+    <sys:String x:Key="S.Error.NoErrorContent">No error details provided</sys:String>
+    <sys:String x:Key="S.Error.OcrUnsupportedLanguage">OCR currently supports AUTO, EN, ZH, ZH-HANT, JA and KO only; "{0}" is not supported yet.</sys:String>
+    <sys:String x:Key="S.Error.OcrSwapTimeout">Timed out waiting for other recognition to finish before switching OCR models.</sys:String>
+    <sys:String x:Key="S.Error.OcrImageConvert">Could not convert the image into a format the ONNX OCR can read.</sys:String>
+    <sys:String x:Key="S.Error.OcrModelMissing">OCR model file not found: {0}</sys:String>
+    <sys:String x:Key="S.Error.NotTranslated">Not translated</sys:String>
+
+    <!-- ── Text translation page ── -->
+    <sys:String x:Key="S.Translation.Title">Text translation</sys:String>
+    <sys:String x:Key="S.Translation.Subtitle">Type or paste text to translate it. Capture results land here too.</sys:String>
+    <sys:String x:Key="S.Translation.SwapTip">Swap languages and text</sys:String>
+    <sys:String x:Key="S.Translation.SpeakSource">Read the source aloud</sys:String>
+    <sys:String x:Key="S.Translation.Source">Source</sys:String>
+    <sys:String x:Key="S.Translation.SpeakResult">Read the translation aloud</sys:String>
+    <sys:String x:Key="S.Translation.Result">Translation</sys:String>
+    <sys:String x:Key="S.Translation.Retry">↻ Retry</sys:String>
+    <sys:String x:Key="S.Translation.MissingApiKey">No API key — enter one in Settings first</sys:String>
+    <sys:String x:Key="S.Translation.ProviderUnavailable">{0} is unavailable right now. Try a different translation source.
+Translation failed: {1}</sys:String>
+    <sys:String x:Key="S.Translation.Translating">Translating...</sys:String>
+    <sys:String x:Key="S.Translation.SpeakFailed">Could not read it aloud: {0}</sys:String>
+
+    <!-- ── Capture toolbar ── -->
+    <sys:String x:Key="S.Toolbar.Translate">Translate</sys:String>
+    <sys:String x:Key="S.Toolbar.Translating">Translating...</sys:String>
+    <sys:String x:Key="S.Toolbar.Retranslate">Translate again</sys:String>
+    <sys:String x:Key="S.Toolbar.ShowSource">Show source</sys:String>
+    <sys:String x:Key="S.Toolbar.ShowTranslation">Show translation</sys:String>
+    <sys:String x:Key="S.Toolbar.Screenshot">Screenshot</sys:String>
+    <sys:String x:Key="S.Toolbar.OpenWindow">Open in window</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupBadge">⚡Backup {0}</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupTooltip">"{0}" could not translate everything, so "{1}" filled in the rest.
+Actually used this time: {2}</sys:String>
+
+    <!-- ── Capture overlay ── -->
+    <sys:String x:Key="S.Capture.CancelTip">Cancel capture</sys:String>
+    <sys:String x:Key="S.Capture.DragPrompt">Drag to select an area to translate</sys:String>
+    <sys:String x:Key="S.Capture.PressPrefix">Press</sys:String>
+    <sys:String x:Key="S.Capture.CancelSuffix">to cancel</sys:String>
+    <sys:String x:Key="S.Overlay.Recognising">Reading</sys:String>
+
+    <!-- ── Secret box ── -->
+    <sys:String x:Key="S.Secret.Show">Show</sys:String>
+    <sys:String x:Key="S.Secret.Hide">Hide</sys:String>
+
+    <!-- ── Tray notifications and capture balloons ── -->
+    <sys:String x:Key="S.Main.MinimizedTitle">OverTranslate is still running</sys:String>
+    <sys:String x:Key="S.Main.MinimizedBody">Minimised to the system tray. Press {0} to start a screen capture translation.</sys:String>
+    <sys:String x:Key="S.Main.DefaultShortcutName">your shortcut</sys:String>
+    <sys:String x:Key="S.Main.RealtimeRunningTitle">Realtime translation is running</sys:String>
+    <sys:String x:Key="S.Main.RealtimeRunningBody">Stop realtime translation before using screen capture.</sys:String>
+    <sys:String x:Key="S.Main.MissingApiKeyTitle">No API key</sys:String>
+    <sys:String x:Key="S.Main.MissingApiKeyBody">Enter an API key in Settings.</sys:String>
+    <sys:String x:Key="S.Main.RecogniseFailedTitle">Recognition failed</sys:String>
+    <sys:String x:Key="S.Main.NoImageBody">The selected image is missing. Select the area again.</sys:String>
+    <sys:String x:Key="S.Main.Recognising">Reading</sys:String>
+    <sys:String x:Key="S.Main.NoTextTitle">No text found</sys:String>
+    <sys:String x:Key="S.Main.NoTextBody">No readable text in the selected area.</sys:String>
+    <sys:String x:Key="S.Main.Translating">Translating</sys:String>
+    <sys:String x:Key="S.Main.TranslateFailedTitle">Translation failed</sys:String>
+    <sys:String x:Key="S.Main.TranslateFailedBody">The current translation source may be temporarily unavailable.
+Switch to a different source and try again.
+Details: {0}</sys:String>
+    <sys:String x:Key="S.Main.CopiedTitle">Copied</sys:String>
+    <sys:String x:Key="S.Main.CopiedBody">The selected area was copied to the clipboard.</sys:String>
+    <sys:String x:Key="S.Main.CopiedAndSavedBody">Copied to the clipboard and saved to:
+{0}</sys:String>
+    <sys:String x:Key="S.Main.CopiedSaveFailedTitle">Copied (not saved)</sys:String>
+    <sys:String x:Key="S.Main.CopiedSaveFailedBody">Copied to the clipboard, but could not be saved: {0}</sys:String>
+    <sys:String x:Key="S.Main.CopyFailedTitle">Copy failed</sys:String>
+    <sys:String x:Key="S.Main.CopyFailedBody">Could not copy the screenshot: {0}</sys:String>
+
+    <!-- ── Realtime translation ── -->
+    <sys:String x:Key="S.Realtime.Title">Realtime translation</sys:String>
+    <sys:String x:Key="S.Realtime.Subtitle">Pick regions of the screen and they are re-translated whenever the text changes — for video, games and anything else that keeps moving.</sys:String>
+
+    <sys:String x:Key="S.Realtime.TranslationSettings">Translation</sys:String>
+    <sys:String x:Key="S.Realtime.SourceLanguage">Source language</sys:String>
+    <sys:String x:Key="S.Realtime.SourceLanguagePrompt">Choose a source language</sys:String>
+    <sys:String x:Key="S.Realtime.TargetLanguage">Target language</sys:String>
+    <sys:String x:Key="S.Realtime.Provider">Provider</sys:String>
+
+    <sys:String x:Key="S.Realtime.Blocks">Blocks</sys:String>
+    <sys:String x:Key="S.Realtime.Screen">Screen</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenHint">Realtime translation currently covers one screen at a time.</sys:String>
+    <sys:String x:Key="S.Realtime.BlockCount">How many</sys:String>
+    <sys:String x:Key="S.Realtime.DecreaseBlocks">Fewer blocks</sys:String>
+    <sys:String x:Key="S.Realtime.IncreaseBlocks">More blocks</sys:String>
+    <sys:String x:Key="S.Realtime.BlockCountHint">Up to 3 blocks at a time.</sys:String>
+
+    <sys:String x:Key="S.Realtime.Appearance">Appearance</sys:String>
+    <sys:String x:Key="S.Realtime.Preview">Preview</sys:String>
+    <sys:String x:Key="S.Realtime.PreviewText">Text will look like this on screen</sys:String>
+    <sys:String x:Key="S.Realtime.TextColor">Text</sys:String>
+    <sys:String x:Key="S.Realtime.ScrimColor">Background</sys:String>
+    <sys:String x:Key="S.Realtime.ResetColors">Reset to defaults</sys:String>
+    <sys:String x:Key="S.Realtime.ResetColorsName">Reset colours</sys:String>
+
+    <sys:String x:Key="S.Realtime.HowItWorks">How it works</sys:String>
+    <sys:String x:Key="S.Realtime.Step1">1. Click "Select blocks" and drag over the areas you want translated.</sys:String>
+    <sys:String x:Key="S.Realtime.Step2">2. Click "Start" on the floating bar. Each block is re-read and updated whenever its content changes.</sys:String>
+    <sys:String x:Key="S.Realtime.Step3">3. Translated areas do not intercept clicks, so games and other apps keep working. Click "Edit" to adjust the blocks.</sys:String>
+    <sys:String x:Key="S.Realtime.Step4">4. Press {0} while translating to pause and resume. Pausing clears the translations and releases the recognition model.</sys:String>
+
+    <sys:String x:Key="S.Realtime.SelectBlocks">Select blocks</sys:String>
+    <sys:String x:Key="S.Realtime.StopSession">Stop</sys:String>
+    <sys:String x:Key="S.Realtime.ActiveHint">Running. Use the floating bar on screen to adjust or stop it.</sys:String>
+    <sys:String x:Key="S.Realtime.NoApiKey">No API key set. Enter one in Settings, or realtime translation will not be able to fetch translations.</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenItem">Screen {0} · {1}×{2}</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenItemPrimary">Screen {0} · {1}×{2} (primary)</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureInProgress">A screen capture translation is in progress. Finish it before starting realtime translation.</sys:String>
+    <sys:String x:Key="S.Realtime.ChooseSourceFirst">Choose a source language first.</sys:String>
+    <sys:String x:Key="S.Realtime.NoScreens">No usable screen found. Reopen this page.</sys:String>
+
+    <!-- Floating control bar -->
+    <sys:String x:Key="S.Realtime.EditHint">Drag on screen to create the areas you want translated</sys:String>
+    <sys:String x:Key="S.Realtime.StartTranslating">Start</sys:String>
+    <sys:String x:Key="S.Realtime.Running">Translating</sys:String>
+    <sys:String x:Key="S.Realtime.Paused">Paused</sys:String>
+    <sys:String x:Key="S.Realtime.Pause">Pause realtime translation</sys:String>
+    <sys:String x:Key="S.Realtime.Resume">Resume realtime translation</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureScreenshot">Capture a screenshot</sys:String>
+
+    <!-- Control bar and edit window messages -->
+    <sys:String x:Key="S.Realtime.MovedToFront">Realtime windows brought to the front</sys:String>
+    <sys:String x:Key="S.Realtime.TooManyBlocks">{0} blocks at most — remove one first</sys:String>
+    <sys:String x:Key="S.Realtime.NeedOneBlock">Drag to create at least one block first</sys:String>
+    <sys:String x:Key="S.Realtime.NothingToCapture">No translations to capture yet</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureFailed">Could not capture the screen — try again</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureCopied">Screenshot copied to the clipboard</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureCopiedAndSaved">Screenshot copied to the clipboard and saved</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureError">Capture failed: {0}</sys:String>
+    <sys:String x:Key="S.Realtime.RemoveBlock">Remove this block</sys:String>
+
+    <!-- Block mode picker -->
+    <sys:String x:Key="S.Realtime.ModeSubtitle">Subtitles</sys:String>
+    <sys:String x:Key="S.Realtime.ModeGameUi">Game UI</sys:String>
+    <sys:String x:Key="S.Realtime.ModeSubtitleSummary">Subtitle lines, dialogue boxes — large text, scaled down to read</sys:String>
+    <sys:String x:Key="S.Realtime.ModeGameUiSummary">Game panels, item text — small text, read at full size</sys:String>
+    <sys:String x:Key="S.Realtime.ModeSubtitleGuidance">For video subtitles, game dialogue and anything else where the text stays in one place.
+Leave half a character to a character of space above and below rather than hugging the text. Widening the sides a little is fine, but avoid taking in large empty areas, which add noise.</sys:String>
+    <sys:String x:Key="S.Realtime.ModeGameUiGuidance">For text spread across the screen, or that moves around as you play.
+Leave some room around each area you want translated rather than hugging its contents. If there are several separate areas, box them separately — one large block reads slowly.</sys:String>
+    <sys:String x:Key="S.Realtime.CollapseGuidance">Hide mode details</sys:String>
+    <sys:String x:Key="S.Realtime.ExpandGuidance">Show mode details</sys:String>
+
+    <!-- Session failures -->
+    <sys:String x:Key="S.Realtime.SessionAborted">Realtime translation stopped: {0}</sys:String>
+    <sys:String x:Key="S.Realtime.MissingApiKey">No API key. Enter one in Settings first.</sys:String>
+    <sys:String x:Key="S.Realtime.RetryingAfterFailure">Translation failed for now, still retrying: {0}</sys:String>
+
+    <!-- ── Translation providers ── -->
+    <sys:String x:Key="S.Provider.Google">Google Translate (Web)</sys:String>
+    <sys:String x:Key="S.Provider.GoogleHint">Legacy web interface</sys:String>
+    <sys:String x:Key="S.Provider.Google2">Google Translate (RPC)</sys:String>
+    <sys:String x:Key="S.Provider.Google2Hint">Newer RPC interface</sys:String>
+    <sys:String x:Key="S.Provider.Bing">Bing Translator</sys:String>
+    <sys:String x:Key="S.Provider.Microsoft">Microsoft Translator</sys:String>
+    <sys:String x:Key="S.Provider.DeepL">DeepL</sys:String>
+    <sys:String x:Key="S.Provider.DeepLHint">Requires an API key from DeepL</sys:String>
+    <sys:String x:Key="S.Provider.OpenAI">OpenAI</sys:String>
+    <sys:String x:Key="S.Provider.OpenAIHint">Any OpenAI-compatible API. A local LLM is recommended — Ollama is the quickest way to set one up.</sys:String>
+
+    <!-- ── Settings page ── -->
+    <sys:String x:Key="S.Settings.Title">Settings</sys:String>
+    <sys:String x:Key="S.Settings.Subtitle">Shortcuts, translation services, screenshots and appearance</sys:String>
+
+    <sys:String x:Key="S.Settings.General">General</sys:String>
+    <sys:String x:Key="S.Settings.CaptureHotkey">Capture</sys:String>
+    <sys:String x:Key="S.Settings.CaptureHotkeyHint">Press this shortcut to start a screen capture translation</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkey">Open window</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkeyHint">While realtime translation is running, brings the floating window to the front instead</sys:String>
+    <sys:String x:Key="S.Settings.SourceLanguage">Source</sys:String>
+    <sys:String x:Key="S.Settings.AutoTranslate">Auto</sys:String>
+    <sys:String x:Key="S.Settings.AutoTranslateCheck">Translate as soon as a region is selected</sys:String>
+    <sys:String x:Key="S.Settings.Startup">Startup</sys:String>
+    <sys:String x:Key="S.Settings.StartupCheck">Launch when Windows starts</sys:String>
+
+    <sys:String x:Key="S.Settings.TranslationApi">Translation API</sys:String>
+    <sys:String x:Key="S.Settings.Provider">Provider</sys:String>
+    <sys:String x:Key="S.Settings.ApiBaseUrl">API URL</sys:String>
+    <sys:String x:Key="S.Settings.ModelName">Model</sys:String>
+    <sys:String x:Key="S.Settings.OllamaGuide">Local LLM (Ollama) setup guide</sys:String>
+
+    <sys:String x:Key="S.Settings.Screenshot">Screenshots</sys:String>
+    <sys:String x:Key="S.Settings.SaveScreenshot">Save</sys:String>
+    <sys:String x:Key="S.Settings.SaveScreenshotCheck">Save a copy of every capture</sys:String>
+    <sys:String x:Key="S.Settings.SavePath">Location</sys:String>
+    <sys:String x:Key="S.Settings.SavePathTip">Click to choose a folder</sys:String>
+    <sys:String x:Key="S.Settings.OpenFolderTip">Open folder</sys:String>
+
+    <sys:String x:Key="S.Settings.Appearance">Appearance</sys:String>
+    <sys:String x:Key="S.Settings.Theme">Theme</sys:String>
+    <sys:String x:Key="S.Settings.ThemeLight">Light</sys:String>
+    <sys:String x:Key="S.Settings.ThemeDark">Dark</sys:String>
+    <!-- Card heading, then the row label inside it -->
+    <sys:String x:Key="S.Settings.UiLanguage">Interface language</sys:String>
+    <sys:String x:Key="S.Settings.UiLanguageLabel">Language</sys:String>
+
+    <sys:String x:Key="S.Settings.Advanced">Advanced</sys:String>
+    <sys:String x:Key="S.Settings.Logging">Logging</sys:String>
+    <sys:String x:Key="S.Settings.LoggingCheck">Record detailed information</sys:String>
+    <sys:String x:Key="S.Settings.LoggingHint">Logs more detail to help diagnose problems.</sys:String>
+
+    <sys:String x:Key="S.Settings.AutoSaveHint">Changes are saved automatically</sys:String>
+
+    <!-- Settings page, composed in code-behind -->
+    <sys:String x:Key="S.Settings.Saved">✓ Saved</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyPrompt">Press a shortcut...</sys:String>
+    <sys:String x:Key="S.Settings.FolderPickerTitle">Choose where to save screenshots</sys:String>
+    <sys:String x:Key="S.Settings.LoggingEnvOverride">The log level is currently set by the OVERTRANSLATE_LOGLEVEL environment variable, so this option has no effect.</sys:String>
+    <sys:String x:Key="S.Settings.StartupFailed">✗ Could not change the startup setting: {0}</sys:String>
+    <sys:String x:Key="S.Settings.OpenFolderFailed">✗ Could not open the folder: {0}</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyTaken">✗ {0} is already assigned to "{1}"</sys:String>
+
+</ResourceDictionary>

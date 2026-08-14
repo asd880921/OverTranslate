@@ -296,7 +296,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             while (_inUse > 0)
             {
                 if (!Monitor.Wait(_sync, ModelSwapDrainTimeout))
-                    throw new InvalidOperationException("等待其他辨識結束以切換 OCR 模型時逾時。");
+                    throw new InvalidOperationException(LocalizationService.Get("S.Error.OcrSwapTimeout"));
 
                 ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -989,7 +989,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             if (destination == IntPtr.Zero)
             {
                 skBitmap.Dispose();
-                throw new InvalidOperationException("無法將影像轉換為 ONNX OCR 可讀格式。");
+                throw new InvalidOperationException(LocalizationService.Get("S.Error.OcrImageConvert"));
             }
 
             // Row by row rather than one block: GDI+ and Skia pad their rows independently, so the
@@ -1013,7 +1013,8 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     private static void EnsureModelFile(string path)
     {
         if (!File.Exists(path))
-            throw new FileNotFoundException($"找不到 OCR 模型檔案：{path}", path);
+            throw new FileNotFoundException(
+                LocalizationService.Format("S.Error.OcrModelMissing", path), path);
     }
 
     public void Dispose()

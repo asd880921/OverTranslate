@@ -1,3 +1,5 @@
+using OverTranslate.Services;
+
 namespace OverTranslate.Models;
 
 /// <param name="Name">The language's name in the interface's own language, which is what a
@@ -7,11 +9,59 @@ namespace OverTranslate.Models;
 /// a user scanning a long list can find theirs either way, while somewhere with one line to spare
 /// wants only the first. Composing here means neither has to take a string apart to get at one.
 /// </param>
-public record LangItem(string Code, string Name, string English)
+/// <param name="StandsAlone">
+/// True when <paramref name="Name"/> and <paramref name="English"/> are each a complete label on
+/// their own, so the Chinese interface shows the name alone instead of the usual pair. For the OCR
+/// picker's automatic entry, whose name already carries its own parenthetical.
+/// </param>
+public record LangItem(string Code, string Name, string English, bool StandsAlone = false)
 {
-    public string Display => string.IsNullOrEmpty(English) ? Name : $"{Name} {English}";
+    /// <summary>
+    /// The label for the pickers, in whichever language the interface is currently in.
+    /// </summary>
+    /// <remarks>
+    /// The Chinese interface shows both names, which is what the pair was carried separately for.
+    /// The English one shows only <see cref="English"/>: "英語 English" beside an English menu is
+    /// noise to a reader who cannot read the first half, and the doubled-up label is what pushed
+    /// these combo boxes wide in the first place.
+    /// </remarks>
+    public string Display
+    {
+        get
+        {
+            if (LocalizationService.Current == LocalizationService.English)
+                return string.IsNullOrEmpty(English) ? Name : English;
+
+            return StandsAlone || string.IsNullOrEmpty(English) ? Name : $"{Name} {English}";
+        }
+    }
+
+    /// <summary>
+    /// The name alone, in the interface's language, for somewhere with one line to spare.
+    /// </summary>
+    /// <remarks>
+    /// The realtime control bar names the pair it is translating between and has room for neither
+    /// the doubled-up label <see cref="Display"/> produces in Chinese nor a language the reader
+    /// cannot read.
+    /// </remarks>
+    public string ShortName =>
+        LocalizationService.Current == LocalizationService.English && !string.IsNullOrEmpty(English)
+            ? English
+            : Name;
 }
-public record ProviderItem(TranslationProvider Provider, string Display, bool RequiresApiKey, string? Hint = null);
+/// <param name="DisplayKey">Resource key for the name shown in the pickers.</param>
+/// <param name="HintKey">Resource key for the line under the picker, or null for no hint.</param>
+/// <remarks>
+/// Keys rather than text: the list is static, the interface language is not, and a record built
+/// once at type-initialisation would otherwise keep whichever language the app started in.
+/// Resolving in the properties means callers still just read <see cref="Display"/>.
+/// </remarks>
+public record ProviderItem(
+    TranslationProvider Provider, string DisplayKey, bool RequiresApiKey, string? HintKey = null)
+{
+    public string Display => LocalizationService.Get(DisplayKey);
+    public string? Hint => HintKey is null ? null : LocalizationService.Get(HintKey);
+}
 
 public static class LanguageData
 {
@@ -57,7 +107,7 @@ public static class LanguageData
 
     public static readonly List<LangItem> OcrSourceLanguages =
     [
-        new(AutomaticSourceLanguage, "自動（中英日）", ""),
+        new(AutomaticSourceLanguage, "自動（中英日）", "Automatic (ZH/EN/JA)", StandsAlone: true),
         new("EN",      "英語", "English"),
         new("JA",      "日語", "Japanese"),
         new("KO",      "韓語", "Korean"),
@@ -67,12 +117,12 @@ public static class LanguageData
 
     public static readonly List<ProviderItem> Providers =
     [
-        new(TranslationProvider.Google,  "Google 翻譯 (Web)", false, "傳統 Web 介面"),
-        new(TranslationProvider.Google2, "Google 翻譯 (RPC)", false, "新版 RPC 介面"),
-        new(TranslationProvider.Bing,    "Bing 翻譯", false),
-        new(TranslationProvider.Microsoft, "Microsoft 翻譯", false),
-        new(TranslationProvider.DeepL,   "DeepL 翻譯", true, "需至 DeepL 官方註冊並取得 API Key"),
-        new(TranslationProvider.OpenAI,  "OpenAI", false, "支援 OpenAI API 格式，建議使用本地 LLM，可透過 Ollama 快速安裝與使用。"),
+        new(TranslationProvider.Google,    "S.Provider.Google",    false, "S.Provider.GoogleHint"),
+        new(TranslationProvider.Google2,   "S.Provider.Google2",   false, "S.Provider.Google2Hint"),
+        new(TranslationProvider.Bing,      "S.Provider.Bing",      false),
+        new(TranslationProvider.Microsoft, "S.Provider.Microsoft", false),
+        new(TranslationProvider.DeepL,     "S.Provider.DeepL",     true,  "S.Provider.DeepLHint"),
+        new(TranslationProvider.OpenAI,    "S.Provider.OpenAI",    false, "S.Provider.OpenAIHint"),
     ];
 
     /// <summary>
@@ -200,4 +250,23 @@ public static class LanguageData
     public static string GetTargetName(string? code) =>
         TargetLanguages.FirstOrDefault(l =>
             l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.Name ?? code ?? "";
+
+    /// <summary>
+    /// A source language's name for display, in whichever language the interface is in.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="GetSourceName"/>, which stays Chinese whatever the interface is
+    /// set to, because its caller is not the interface: it names the languages inside the prompt
+    /// sent to an OpenAI-compatible model, and that prompt is written in Chinese throughout. A
+    /// single accessor serving both would tie what a model is asked to do to what language the
+    /// user happens to read the buttons in.
+    /// </remarks>
+    public static string GetSourceDisplayName(string? code) =>
+        OcrSourceLanguages.FirstOrDefault(l =>
+            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.ShortName ?? code ?? "";
+
+    /// <inheritdoc cref="GetSourceDisplayName"/>
+    public static string GetTargetDisplayName(string? code) =>
+        TargetLanguages.FirstOrDefault(l =>
+            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.ShortName ?? code ?? "";
 }

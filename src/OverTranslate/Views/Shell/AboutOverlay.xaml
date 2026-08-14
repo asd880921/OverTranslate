@@ -45,7 +45,7 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
                         Margin="0,-4,-8,0"
-                        ToolTip="關閉"
+                        ToolTip="{DynamicResource S.Common.Close}"
                         Click="CloseBtn_Click"/>
 
                 <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="24,4,24,18">
@@ -67,7 +67,7 @@
 
                 <StackPanel Grid.Row="2" Margin="0,16,0,16">
                     <Grid Margin="0,0,0,12">
-                        <TextBlock Text="作者"
+                        <TextBlock Text="{DynamicResource S.About.Author}"
                                    FontFamily="{StaticResource AppFont}"
                                    FontSize="13"
                                    Foreground="{DynamicResource AppTextSecondary}"
@@ -89,7 +89,7 @@
                                        FontSize="14" Text="&#xE774;"
                                        Width="22" VerticalAlignment="Center"
                                        Foreground="{DynamicResource AppTextSecondary}"/>
-                            <TextBlock Text="在 GitHub 上查看原始碼"
+                            <TextBlock Text="{DynamicResource S.About.ViewSource}"
                                        VerticalAlignment="Center"
                                        FontFamily="{StaticResource AppFont}"/>
                         </StackPanel>
@@ -107,12 +107,12 @@
                            Foreground="{DynamicResource AppTextSecondary}"
                            TextWrapping="Wrap"
                            LineHeight="18">
-                    <Run Text="免費開源，可自由使用。如果覺得有幫助，也歡迎到 GitHub 幫忙點個"/>
+                    <Run Text="{DynamicResource S.About.OpenSourceBefore}"/>
                     <Run Text="&#xE735;"
                          FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                          FontSize="11"
                          Foreground="{DynamicResource AppAccent}"/>
-                    <Run Text="Star，感謝！"/>
+                    <Run Text="{DynamicResource S.About.OpenSourceAfter}"/>
                 </TextBlock>
             </Grid>
         </Border>

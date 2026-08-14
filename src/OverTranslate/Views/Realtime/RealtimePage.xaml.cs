@@ -77,11 +77,7 @@ public partial class RealtimePage : UserControl
     {
         InitializeComponent();
 
-        SrcLangBox.ItemsSource = LanguageData.OcrSourceLanguages
-            .Where(language => !LanguageData.IsAutomaticSource(language.Code));
-        TgtLangBox.ItemsSource = LanguageData.TargetLanguages;
-
-        ProviderBox.ItemsSource = LanguageData.Providers;
+        BindPickers();
 
         ApplyPageDefaults();
 
@@ -128,8 +124,38 @@ public partial class RealtimePage : UserControl
     /// Re-reads what may have changed while the user was elsewhere: the attached monitors, and
     /// whether a session is running.
     /// </summary>
+    /// <summary>
+    /// Fills the three language and provider pickers.
+    /// </summary>
+    /// <remarks>
+    /// Re-run on every <see cref="Reload"/> rather than only at construction, because the item
+    /// labels come from the string dictionary and the shell keeps this page for its lifetime —
+    /// built once, it would still be showing the language the app started in. The selections are
+    /// carried across by hand: rebinding drops them, and unlike the other pages nothing here
+    /// restores them afterwards, because this page's choices are deliberately not persisted.
+    /// </remarks>
+    private void BindPickers()
+    {
+        var source   = SrcLangBox.SelectedValue;
+        var target   = TgtLangBox.SelectedValue;
+        var provider = ProviderBox.SelectedValue;
+
+        LocalizationService.BindLocalizedItems(
+            SrcLangBox,
+            LanguageData.OcrSourceLanguages
+                .Where(language => !LanguageData.IsAutomaticSource(language.Code))
+                .ToList());
+        LocalizationService.BindLocalizedItems(TgtLangBox,  LanguageData.TargetLanguages);
+        LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
+
+        SrcLangBox.SelectedValue  = source;
+        TgtLangBox.SelectedValue  = target;
+        ProviderBox.SelectedValue = provider;
+    }
+
     public void Reload()
     {
+        BindPickers();
         LoadScreens();
         RenderColours();
         RenderPauseHint();
@@ -195,7 +221,7 @@ public partial class RealtimePage : UserControl
                          string.IsNullOrWhiteSpace(SettingsService.Instance.Current.ApiKey);
 
         ProviderHint.Text = missingKey
-            ? "尚未設定 API Key，請先到「設定」輸入，否則即時翻譯會無法取得譯文。"
+            ? LocalizationService.Get("S.Realtime.NoApiKey")
             : item?.Hint ?? "";
         ProviderHint.Foreground = missingKey
             ? (System.Windows.Media.Brush)FindResource("AppError")
@@ -210,7 +236,9 @@ public partial class RealtimePage : UserControl
         var items = screens
             .Select((screen, index) => new ScreenItem(
                 screen.DeviceName,
-                $"螢幕 {index + 1} · {screen.Bounds.Width}×{screen.Bounds.Height}{(screen.Primary ? "（主螢幕）" : "")}",
+                LocalizationService.Format(
+                    screen.Primary ? "S.Realtime.ScreenItemPrimary" : "S.Realtime.ScreenItem",
+                    index + 1, screen.Bounds.Width, screen.Bounds.Height),
                 screen.Bounds,
                 screen.Primary))
             .ToList();
@@ -266,19 +294,19 @@ public partial class RealtimePage : UserControl
         // layer is usually over this button — but the toolbar phase leaves the screen usable.
         if (System.Windows.Application.Current.MainWindow is MainWindow { IsCapturing: true })
         {
-            SetStatus("截圖翻譯進行中，請先結束後再啟動即時翻譯。", isError: true);
+            SetStatus(LocalizationService.Get("S.Realtime.CaptureInProgress"), isError: true);
             return;
         }
 
         if (SrcLangBox.SelectedValue is not string sourceLanguage)
         {
-            SetStatus("請先選擇原文語言。", isError: true);
+            SetStatus(LocalizationService.Get("S.Realtime.ChooseSourceFirst"), isError: true);
             return;
         }
 
         if (ScreenBox.SelectedItem is not ScreenItem screen)
         {
-            SetStatus("找不到可用的螢幕，請重新開啟此頁面。", isError: true);
+            SetStatus(LocalizationService.Get("S.Realtime.NoScreens"), isError: true);
             return;
         }
 
@@ -419,7 +447,8 @@ public partial class RealtimePage : UserControl
     {
         bool active = RealtimeSessionController.Instance.IsActive;
 
-        PrimaryBtn.Content = active ? "結束即時翻譯" : "選取翻譯區塊";
+        PrimaryBtn.Content = LocalizationService.Get(
+            active ? "S.Realtime.StopSession" : "S.Realtime.SelectBlocks");
 
         // Locked rather than hidden while running: the user can see what the session was started
         // with, and changing any of it would mean rebuilding every block anyway.
@@ -436,7 +465,7 @@ public partial class RealtimePage : UserControl
         SrcLangPlaceholder.Visibility = hasSource ? Visibility.Collapsed : Visibility.Visible;
 
         SetStatus(
-            active ? "即時翻譯進行中，可用螢幕上的浮動列調整或結束。" : "",
+            active ? LocalizationService.Get("S.Realtime.ActiveHint") : "",
             isError: false);
     }
 

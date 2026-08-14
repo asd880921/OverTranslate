@@ -25,7 +25,7 @@ public static class RealtimePauseHint
     /// </param>
     public static string ForControlTooltip(string? hotkey, bool paused)
     {
-        var action = paused ? "繼續即時翻譯" : "暫停即時翻譯";
+        var action = LocalizationService.Get(paused ? "S.Realtime.Resume" : "S.Realtime.Pause");
 
         return Normalize(hotkey) is { Length: > 0 } key ? $"{action} ({key})" : action;
     }
@@ -37,7 +37,7 @@ public static class RealtimePauseHint
     /// </summary>
     public static string ForSettingsPage(string? hotkey) =>
         Normalize(hotkey) is { Length: > 0 } key
-            ? $"4. 翻譯中按 {key} 可暫停／繼續，暫停時會清除譯文並釋放辨識模型。"
+            ? LocalizationService.Format("S.Realtime.Step4", key)
             : "";
 
     private static string Normalize(string? hotkey) => hotkey?.Trim() ?? "";

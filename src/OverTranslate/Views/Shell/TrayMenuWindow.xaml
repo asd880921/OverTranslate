@@ -74,7 +74,7 @@
                                    FontSize="14" Text="&#xE737;"
                                    Width="22" VerticalAlignment="Center"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
-                        <TextBlock x:Name="OpenWindowLabel" Text="開啟翻譯視窗" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="OpenWindowLabel" Text="{DynamicResource S.Tray.OpenWindow}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
@@ -87,7 +87,7 @@
                                    FontSize="14" Text="&#xE713;"
                                    Width="22" VerticalAlignment="Center"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
-                        <TextBlock Text="設定" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource S.Tray.Settings}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
@@ -103,7 +103,7 @@
                                    FontSize="14" Text="&#xE8BB;"
                                    Width="22" VerticalAlignment="Center"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
-                        <TextBlock Text="結束" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource S.Tray.Exit}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 

@@ -181,7 +181,7 @@ public partial class TranslationPage : UserControl
         var apiKey = SettingsService.Instance.Current.ApiKey;
         if (_translationService.RequiresApiKey && string.IsNullOrWhiteSpace(apiKey))
         {
-            SetStatus("缺少 API Key — 請先在設定中輸入", isError: true);
+            SetStatus(LocalizationService.Get("S.Translation.MissingApiKey"), isError: true);
             ShowRetry(false);
             return;
         }
@@ -220,7 +220,9 @@ public partial class TranslationPage : UserControl
             // a line that says what the user can actually do; keep the original text underneath
             // so the cause is still reportable.
             SetStatus(
-                $"{LanguageData.GetProviderDisplay(provider)} 目前無法使用，請改用其他翻譯來源。\n翻譯失敗：{ex.Message}",
+                LocalizationService.Format(
+                    "S.Translation.ProviderUnavailable",
+                    LanguageData.GetProviderDisplay(provider), ex.Message),
                 isError: true);
             ShowRetry(true);
         }
@@ -233,7 +235,7 @@ public partial class TranslationPage : UserControl
         TranslatingBar.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         if (on)
         {
-            StatusText.Text       = "翻譯中…";
+            StatusText.Text       = LocalizationService.Get("S.Translation.Translating");
             StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AppAccent");
         }
     }
@@ -255,7 +257,7 @@ public partial class TranslationPage : UserControl
         _ttsActiveBtn = btn;
         UpdateTtsIcons();           // show ⏹ immediately on click (don't wait for the fetch)
         try { await _tts.SpeakAsync(text, lang); }
-        catch (Exception ex) { SetStatus($"朗讀失敗：{ex.Message}", isError: true); }
+        catch (Exception ex) { SetStatus(LocalizationService.Format("S.Translation.SpeakFailed", ex.Message), isError: true); }
     }
 
     // StateChanged only needs to handle "stopped/ended/failed" — start is reflected on click.
@@ -312,9 +314,9 @@ public partial class TranslationPage : UserControl
 
     private void InitializeSelectors(string sourceLang, string targetLang)
     {
-        SrcLangBox.ItemsSource  = LanguageData.SourceLanguages;
-        TgtLangBox.ItemsSource  = LanguageData.TargetLanguages;
-        ProviderBox.ItemsSource = LanguageData.Providers;
+        LocalizationService.BindLocalizedItems(SrcLangBox,  LanguageData.SourceLanguages);
+        LocalizationService.BindLocalizedItems(TgtLangBox,  LanguageData.TargetLanguages);
+        LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
 
         SrcLangBox.SelectedValue  = LanguageData.GetValidSourceCode(sourceLang);
         TgtLangBox.SelectedValue  = LanguageData.GetValidTargetCode(targetLang);
