@@ -68,15 +68,21 @@ public static class LocalizationService
     }
 
     /// <summary>
-    /// The language to start a first-run profile in, from the OS UI language.
+    /// The language to start a first-run profile in, from the display language Windows is set to.
     /// </summary>
     /// <remarks>
     /// Chinese of any flavour gets Traditional — this app has no Simplified UI, and Traditional is
     /// far closer for a Simplified reader than English is. Everything else gets English.
+    ///
+    /// CurrentUICulture, not InstalledUICulture: the latter is the language Windows was installed
+    /// in and does not move when the user changes their display language afterwards, so someone
+    /// running a Chinese-installed Windows in English would have been handed a Chinese interface
+    /// despite having said otherwise. This only decides the starting point — an explicit choice on
+    /// the settings page is stored and consulted first from then on.
     /// </remarks>
     public static string ResolveSystemDefault()
     {
-        var name = CultureInfo.InstalledUICulture.TwoLetterISOLanguageName;
+        var name = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
         return name.Equals("zh", StringComparison.OrdinalIgnoreCase)
             ? TraditionalChinese
             : English;
