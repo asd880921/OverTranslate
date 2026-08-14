@@ -54,7 +54,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         var model = options.Model.Trim();
         var configuredApiKey = options.ApiKey.Trim();
         if (model.Length == 0)
-            throw new InvalidOperationException("尚未設定 OpenAI Compatible 的模型名稱。");
+            throw new InvalidOperationException(LocalizationService.Get("S.Error.OpenAiNoModel"));
 
         var translations = new string[blocks.Count];
         await Parallel.ForEachAsync(
@@ -125,7 +125,8 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException(
-                $"OpenAI Compatible API 回傳 {(int)response.StatusCode}：{ReadError(json)}",
+                LocalizationService.Format(
+                    "S.Error.OpenAiHttp", (int)response.StatusCode, ReadError(json)),
                 null,
                 response.StatusCode);
 
@@ -141,12 +142,12 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         catch (Exception ex) when (
             ex is JsonException or KeyNotFoundException or IndexOutOfRangeException or InvalidOperationException)
         {
-            throw new InvalidOperationException("OpenAI Compatible API 回應格式無法解析。", ex);
+            throw new InvalidOperationException(LocalizationService.Get("S.Error.OpenAiUnparsable"), ex);
         }
 
         var translated = StripThinking(content);
         if (translated.Length == 0)
-            throw new InvalidOperationException("OpenAI Compatible API 未回傳譯文。");
+            throw new InvalidOperationException(LocalizationService.Get("S.Error.OpenAiNoTranslation"));
         return translated;
     }
 
@@ -154,7 +155,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     {
         if (!Uri.TryCreate(baseUrl.Trim(), UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            throw new InvalidOperationException("OpenAI Compatible API 位址必須是有效的 HTTP 或 HTTPS 網址。");
+            throw new InvalidOperationException(LocalizationService.Get("S.Error.OpenAiBadUrl"));
 
         var builder = new UriBuilder(uri);
         var path = builder.Path.TrimEnd('/');
@@ -239,7 +240,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
             using var document = JsonDocument.Parse(json);
             if (document.RootElement.TryGetProperty("error", out var error) &&
                 error.TryGetProperty("message", out var message))
-                return message.GetString() ?? "未知錯誤";
+                return message.GetString() ?? LocalizationService.Get("S.Error.UnknownError");
         }
         catch (JsonException)
         {
@@ -247,7 +248,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         }
 
         var compact = json.Trim();
-        if (compact.Length == 0) return "未提供錯誤內容";
+        if (compact.Length == 0) return LocalizationService.Get("S.Error.NoErrorContent");
         return compact.Length <= 300 ? compact : compact[..300] + "…";
     }
 }

@@ -52,7 +52,7 @@
                                FontFamily="{StaticResource AppFont}"
                                FontSize="12.5"
                                Foreground="{DynamicResource AppTextPrimary}"
-                               Text="在螢幕上拖曳建立要翻譯的區塊"/>
+                               Text="{DynamicResource S.Realtime.EditHint}"/>
 
                     <!-- Trailing and a size down: a running count is a reference, not an instruction.
                          Subordinate by position and size rather than by a dimmer colour — it is the
@@ -67,14 +67,14 @@
                     <Separator Style="{StaticResource VerticalSeparator}"/>
 
                     <Button x:Name="StartBtn"
-                            Content="開始翻譯"
+                            Content="{DynamicResource S.Realtime.StartTranslating}"
                             Style="{StaticResource ToolbarAccentButton}"
                             Margin="0,0,4,0"
                             Click="StartBtn_Click"/>
 
                     <Button Content="✕"
                             Style="{StaticResource ToolbarIconButton}"
-                            ToolTip="結束即時翻譯"
+                            ToolTip="{DynamicResource S.Realtime.StopSession}"
                             Click="CloseBtn_Click"/>
                 </StackPanel>
 
@@ -99,7 +99,7 @@
                                FontFamily="{StaticResource AppFont}"
                                FontSize="12.5"
                                Foreground="{DynamicResource AppTextPrimary}"
-                               Text="即時翻譯中"/>
+                               Text="{DynamicResource S.Realtime.Running}"/>
 
                     <!-- Source and target are not two equal labels: the target is the thing on screen
                          from here on, so it keeps the primary colour and the source steps back one
@@ -159,7 +159,7 @@
                             FontSize="13"
                             Content="&#xE769;"
                             Margin="0,0,4,0"
-                            AutomationProperties.Name="暫停即時翻譯"
+                            AutomationProperties.Name="{DynamicResource S.Realtime.Pause}"
                             Click="PauseBtn_Click"/>
 
                     <!-- Icon rather than a word: the two buttons beside it are the session's own
@@ -171,18 +171,18 @@
                             FontSize="15"
                             Content="&#xE722;"
                             Margin="0,0,4,0"
-                            ToolTip="擷取畫面截圖"
-                            AutomationProperties.Name="擷取畫面截圖"
+                            ToolTip="{DynamicResource S.Realtime.CaptureScreenshot}"
+                            AutomationProperties.Name="{DynamicResource S.Realtime.CaptureScreenshot}"
                             Click="ShotBtn_Click"/>
 
-                    <Button Content="編輯"
+                    <Button Content="{DynamicResource S.Common.Edit}"
                             Style="{StaticResource ToolbarFlatButton}"
                             Margin="0,0,4,0"
                             Click="EditBtn_Click"/>
 
                     <Button Content="✕"
                             Style="{StaticResource ToolbarIconButton}"
-                            ToolTip="結束即時翻譯"
+                            ToolTip="{DynamicResource S.Realtime.StopSession}"
                             Click="CloseBtn_Click"/>
                 </StackPanel>
             </Grid>

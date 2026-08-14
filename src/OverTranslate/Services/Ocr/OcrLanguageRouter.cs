@@ -13,5 +13,5 @@ internal static class OcrLanguageRouter
         Normalize(code) is "AUTO" or "EN" or "ZH" or "ZH-HANT" or "JA" or "KO";
 
     public static string GetUnsupportedLanguageMessage(string code) =>
-        $"目前 OCR 僅支援 AUTO、EN、ZH、ZH-HANT、JA、KO；「{Normalize(code)}」尚未支援。";
+        LocalizationService.Format("S.Error.OcrUnsupportedLanguage", Normalize(code));
 }

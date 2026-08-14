@@ -77,6 +77,9 @@ public partial class App
 
         ThemeService.Apply(SettingsService.Instance.Current.Theme);
 
+        // Before any window is built, so nothing is ever constructed against the wrong dictionary.
+        LocalizationService.Apply(LocalizationService.Current);
+
         // Kept in the shipped log: the process's DPI awareness is fixed at launch, and a misreported
         // monitor size is invisible to every managed API, so without this a display-geometry report
         // cannot be diagnosed from a log at all.

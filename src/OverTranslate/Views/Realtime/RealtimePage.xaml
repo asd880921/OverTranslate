@@ -11,8 +11,8 @@
 
         <!-- ── Page header ── -->
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
-            <TextBlock Text="即時翻譯" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="在畫面上選取翻譯區域，文字變更時會自動翻譯並顯示在畫面上，適用於影片或遊戲畫面等。"
+            <TextBlock Text="{DynamicResource S.Realtime.Title}" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="{DynamicResource S.Realtime.Subtitle}"
                        Style="{StaticResource PageSubtitle}"/>
         </StackPanel>
 
@@ -28,12 +28,12 @@
                      across. -->
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
-                        <TextBlock Text="翻譯設定" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.TranslationSettings}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- OCR source languages only: this page recognises text off the screen, so
                              a language the recogniser cannot read has nothing to offer here. Left
                              unset on purpose — see RealtimePage.ApplyPageDefaults. -->
-                        <TextBlock Text="來源語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.SourceLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <!-- Placeholder rather than a line of help underneath: the field is empty
                              because the user has to answer it, and saying so inside the empty space
                              puts the instruction where they are already looking. Margin matches the
@@ -44,7 +44,7 @@
                                       Style="{StaticResource ModernComboBox}"
                                       SelectedValuePath="Code"/>
                             <TextBlock x:Name="SrcLangPlaceholder"
-                                       Text="請選擇來源語言"
+                                       Text="{DynamicResource S.Realtime.SourceLanguagePrompt}"
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="{StaticResource AppFontSize}"
                                        Foreground="{DynamicResource AppTextSecondary}"
@@ -53,7 +53,7 @@
                                        IsHitTestVisible="False"/>
                         </Grid>
 
-                        <TextBlock Text="目標語言" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.TargetLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <ComboBox x:Name="TgtLangBox"
                                   Style="{StaticResource ModernComboBox}"
                                   SelectedValuePath="Code"
@@ -61,7 +61,7 @@
 
                         <!-- Grouped so the spacing below stays the same whether or not the chosen
                              service has anything to warn about -->
-                        <TextBlock Text="翻譯服務" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.Provider}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <StackPanel>
                             <ComboBox x:Name="ProviderBox"
                                       Style="{StaticResource ModernComboBox}"
@@ -76,15 +76,15 @@
                 <!-- ── 區塊設定 ── -->
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
-                        <TextBlock Text="翻譯區塊" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.Blocks}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- One screen per session, chosen here rather than assumed: the primary
                              monitor is not where the game or the video necessarily is. -->
-                        <TextBlock Text="使用螢幕" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.Screen}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <ComboBox x:Name="ScreenBox"
                                   Style="{StaticResource ModernComboBox}"
                                   SelectedValuePath="DeviceName"/>
-                        <TextBlock Text="即時翻譯目前只支援單一螢幕畫面。"
+                        <TextBlock Text="{DynamicResource S.Realtime.ScreenHint}"
                                    Style="{StaticResource FieldHint}"
                                    Margin="0,6,0,14" TextWrapping="Wrap" LineHeight="16"/>
 
@@ -92,13 +92,13 @@
                              box that accepts typing invites 0, 99 and empty, each of which then
                              needs its own rule. The number is display-only and the two buttons are
                              the only way in, so no input can be wrong. -->
-                        <TextBlock Text="區塊數量" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.BlockCount}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <Border Style="{StaticResource StepperBorder}" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
                                 <Button x:Name="BlockCountDown"
                                         Style="{StaticResource StepperButton}"
                                         Content="&#xE949;"
-                                        AutomationProperties.Name="減少區塊數量"
+                                        AutomationProperties.Name="{DynamicResource S.Realtime.DecreaseBlocks}"
                                         Click="BlockCountDown_Click"/>
                                 <TextBlock x:Name="BlockCountText"
                                            Style="{StaticResource StepperValue}"
@@ -106,11 +106,11 @@
                                 <Button x:Name="BlockCountUp"
                                         Style="{StaticResource StepperButton}"
                                         Content="&#xE948;"
-                                        AutomationProperties.Name="增加區塊數量"
+                                        AutomationProperties.Name="{DynamicResource S.Realtime.IncreaseBlocks}"
                                         Click="BlockCountUp_Click"/>
                             </StackPanel>
                         </Border>
-                        <TextBlock Text="最多可同時建立 3 個翻譯區塊。"
+                        <TextBlock Text="{DynamicResource S.Realtime.BlockCountHint}"
                                    Style="{StaticResource FieldHint}"
                                    Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
                     </StackPanel>
@@ -126,7 +126,7 @@
                      they line up with their own control no matter how wide the hex text gets. -->
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
-                        <TextBlock Text="顯示外觀" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.Appearance}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- Preview first, above the two controls that feed it. A session hides the
                              shell window, so this is the last moment the user can see the two
@@ -134,7 +134,7 @@
                              without ending the session. Drawn on a mid-grey so a light scrim and a
                              dark one are both visibly translucent; the real backdrop is whatever
                              they are watching, which this cannot know. -->
-                        <TextBlock Text="預覽" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.Preview}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                         <!-- A fixed mid-grey in both themes, not a theme brush: the real backdrop is
                              whatever the user is watching, and a preview that turned white in the
                              light theme would make a white scrim look invisible and a black one look
@@ -151,7 +151,7 @@
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center">
                                 <TextBlock x:Name="PreviewText"
-                                           Text="文字會像這樣顯示在畫面上"
+                                           Text="{DynamicResource S.Realtime.PreviewText}"
                                            FontFamily="Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif"
                                            FontSize="14"
                                            FontWeight="SemiBold"/>
@@ -169,7 +169,7 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="文字顏色"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Realtime.TextColor}"
                                        Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                             <Button Grid.Column="0" Grid.Row="1"
                                     x:Name="TextColorBtn"
@@ -191,7 +191,7 @@
                                 </StackPanel>
                             </Button>
 
-                            <TextBlock Grid.Column="1" Grid.Row="0" Text="底色"
+                            <TextBlock Grid.Column="1" Grid.Row="0" Text="{DynamicResource S.Realtime.ScrimColor}"
                                        Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                             <Button Grid.Column="1" Grid.Row="1"
                                     x:Name="ScrimColorBtn"
@@ -225,8 +225,8 @@
                                     Height="34"
                                     FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                     Content="&#xE72C;"
-                                    ToolTip="還原預設值"
-                                    AutomationProperties.Name="還原預設顏色"
+                                    ToolTip="{DynamicResource S.Realtime.ResetColors}"
+                                    AutomationProperties.Name="{DynamicResource S.Realtime.ResetColorsName}"
                                     Click="ResetColorsBtn_Click"/>
                         </Grid>
                     </StackPanel>
@@ -239,13 +239,13 @@
                      way to put the overlays away for a scene without giving up the blocks. -->
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
-                        <TextBlock Text="運作方式" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Text="{DynamicResource S.Realtime.HowItWorks}" Style="{StaticResource SectionHeader}"/>
                         <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,6"
-                                   Text="1. 點擊「選取翻譯區塊」，在畫面上框選要翻譯的區域。"/>
+                                   Text="{DynamicResource S.Realtime.Step1}"/>
                         <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,6"
-                                   Text="2. 點擊浮動工具列的「開始翻譯」，內容變更時會自動重新辨識並更新譯文。"/>
+                                   Text="{DynamicResource S.Realtime.Step2}"/>
                         <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" LineHeight="16"
-                                   Text="3. 翻譯中的區域不會影響遊戲或介面操作，如需調整翻譯區塊，請按「編輯」。"/>
+                                   Text="{DynamicResource S.Realtime.Step3}"/>
                         <!-- Filled in by RenderPauseHint, which names the user's own shortcut and
                              drops the line entirely when they have cleared it. Its top margin sits
                              on this line rather than under the one above, so a hidden hint does not
@@ -262,7 +262,7 @@
         <!-- ── Footer ── -->
         <DockPanel Grid.Row="2" Margin="0,14,0,0" VerticalAlignment="Center">
             <Button x:Name="PrimaryBtn"
-                    Content="選取翻譯區塊"
+                    Content="{DynamicResource S.Realtime.SelectBlocks}"
                     Style="{StaticResource AccentButton}"
                     Height="36" MinWidth="140" Padding="16,0"
                     DockPanel.Dock="Left"

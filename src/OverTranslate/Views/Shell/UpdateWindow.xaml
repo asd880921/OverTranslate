@@ -1,7 +1,7 @@
 <Window x:Class="OverTranslate.Views.Shell.UpdateWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="發現新版本"
+        Title="{DynamicResource S.Update.WindowTitle}"
         Width="360"
         SizeToContent="Height"
         ResizeMode="CanMinimize"
@@ -23,7 +23,7 @@
                        FontSize="36" Text="&#xE895;"
                        HorizontalAlignment="Center"
                        Foreground="{DynamicResource AppAccent}"/>
-            <TextBlock Text="發現新版本！"
+            <TextBlock Text="{DynamicResource S.Update.Heading}"
                        FontFamily="{StaticResource AppFont}"
                        FontSize="18"
                        FontWeight="SemiBold"
@@ -40,7 +40,7 @@
                         <ColumnDefinition Width="70"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="目前版本" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Grid.Column="0" Text="{DynamicResource S.Update.CurrentVersion}" Style="{StaticResource FieldLabel}"/>
                     <TextBlock Grid.Column="1" x:Name="CurrentVersionText"
                                FontFamily="{StaticResource AppFont}"
                                FontSize="13"
@@ -52,7 +52,7 @@
                         <ColumnDefinition Width="70"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="最新版本" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Grid.Column="0" Text="{DynamicResource S.Update.LatestVersion}" Style="{StaticResource FieldLabel}"/>
                     <TextBlock Grid.Column="1" x:Name="LatestVersionText"
                                FontFamily="{StaticResource AppFont}"
                                FontSize="13"
@@ -60,7 +60,7 @@
                                Foreground="{DynamicResource AppAccent}"
                                VerticalAlignment="Center"/>
                 </Grid>
-                <TextBlock Text="點擊「立即更新」後將自動下載並套用，完成後自動重新啟動。"
+                <TextBlock Text="{DynamicResource S.Update.Explanation}"
                            FontFamily="{StaticResource AppFont}"
                            FontSize="12"
                            Foreground="{DynamicResource AppTextSecondary}"
@@ -87,11 +87,11 @@
                            Margin="0,8,0,0"
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource AppTextSecondary}">
-                    想了解這次更新了什麼？<Hyperlink x:Name="ReleaseNotesLink"
+                    <Run Text="{DynamicResource S.Update.NotesBefore}"/><Hyperlink x:Name="ReleaseNotesLink"
                               Foreground="{DynamicResource AppAccent}"
                               TextDecorations="None"
                               RequestNavigate="ReleaseNotesLink_RequestNavigate"
-                              NavigateUri="https://github.com/asd880921/OverTranslate/releases/latest">查看更新內容</Hyperlink>
+                              NavigateUri="https://github.com/asd880921/OverTranslate/releases/latest"><Run Text="{DynamicResource S.Update.NotesLink}"/></Hyperlink>
                 </TextBlock>
             </StackPanel>
         </Border>
@@ -104,7 +104,7 @@
                     <ColumnDefinition Width="8"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Button x:Name="DismissBtn" Grid.Column="0" Content="稍後再說"
+                <Button x:Name="DismissBtn" Grid.Column="0" Content="{DynamicResource S.Update.Later}"
                         Style="{StaticResource FlatButton}"
                         Height="36"
                         Click="DismissBtn_Click"/>
@@ -117,7 +117,7 @@
                                    FontSize="13" Text="&#xE896;"
                                    VerticalAlignment="Center"
                                    Margin="0,0,6,0"/>
-                        <TextBlock x:Name="DownloadBtnText" Text="立即更新"
+                        <TextBlock x:Name="DownloadBtnText" Text="{DynamicResource S.Update.Now}"
                                    FontFamily="{StaticResource AppFont}"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
@@ -125,7 +125,7 @@
             </Grid>
 
             <!-- Below the pair rather than beside it, and unstyled as a link rather than a third
-                 button: 稍後再說 and 立即更新 are the two answers to the question being asked, while
+                 button: Later and Update now are the two answers to the question being asked, while
                  this one changes what the application does in future. Giving it equal weight in the
                  row would put a lasting choice one mis-click away from the dismiss button it would
                  sit next to. -->
@@ -137,7 +137,7 @@
                 <Hyperlink x:Name="SkipVersionLink"
                            Foreground="{DynamicResource AppTextSecondary}"
                            TextDecorations="None"
-                           Click="SkipVersionLink_Click">跳過此版本，不要再提醒我</Hyperlink>
+                           Click="SkipVersionLink_Click"><Run Text="{DynamicResource S.Update.Skip}"/></Hyperlink>
             </TextBlock>
         </StackPanel>
     </Grid>

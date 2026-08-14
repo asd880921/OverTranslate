@@ -92,8 +92,21 @@ public partial class ShellWindow : Window
         UpdateNotifier.AvailabilityChanged += OnUpdateAvailabilityChanged;
         RefreshUpdateAvailability();
 
+        // The rail's two composed strings — the update row's version and the capture button's
+        // blocked-by-realtime tooltip — are set from code, so DynamicResource does not reach them
+        // and they would keep the language they were built in. The settings page that changes the
+        // language lives inside this window, so they are always on screen when it happens.
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        Closed += (_, _) => LocalizationService.LanguageChanged -= OnLanguageChanged;
+
         // Nav_Checked drives navigation, so this also renders the initial page
         TranslationNav.IsChecked = true;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        RefreshCaptureAvailability();
+        RefreshUpdateAvailability();
     }
 
     /// <summary>
@@ -154,7 +167,9 @@ public partial class ShellWindow : Window
         var running = Realtime.RealtimeSessionController.Instance.IsActive;
 
         CaptureBtn.IsEnabled = !running;
-        CaptureBtn.ToolTip = running ? "即時翻譯進行中，請先結束後再使用截圖翻譯" : null;
+        CaptureBtn.ToolTip = running
+            ? LocalizationService.Get("S.Shell.CaptureBlockedByRealtime")
+            : null;
     }
 
     private void OnUpdateAvailabilityChanged(object? sender, EventArgs e) =>
@@ -181,7 +196,7 @@ public partial class ShellWindow : Window
         // information that tells the user whether this is the release they already decided about.
         // 「至」carries the relationship to the version directly above — this is where that number
         // goes, not merely that a number exists. "v" matches that label's own formatting.
-        UpdateBtnText.Text = $"可更新至 v{update.LatestVersion}";
+        UpdateBtnText.Text = LocalizationService.Format("S.Shell.UpdateAvailable", update.LatestVersion);
         UpdateBtn.Visibility = Visibility.Visible;
     }
 

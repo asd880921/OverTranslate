@@ -12,9 +12,11 @@ public class LanguageDataTests
         var provider = LanguageData.Providers.Single(item =>
             item.Provider == TranslationProvider.OpenAI);
 
-        Assert.Equal("OpenAI", provider.Display);
+        // The wording moved to the string dictionaries when the interface gained a second language,
+        // so what is asserted here is the wiring; StringsParityTests covers what the text says.
+        Assert.Equal("S.Provider.OpenAI", provider.DisplayKey);
         Assert.False(provider.RequiresApiKey);
-        Assert.Contains("Ollama", provider.Hint);
+        Assert.Equal("S.Provider.OpenAIHint", provider.HintKey);
     }
 
     [Fact]

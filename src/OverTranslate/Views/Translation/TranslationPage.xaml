@@ -12,8 +12,8 @@
 
         <!-- ── Page header ── -->
         <StackPanel Grid.Row="0">
-            <TextBlock Text="文字翻譯" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="輸入或貼上文字即可翻譯，截圖結果也會送到這裡"
+            <TextBlock Text="{DynamicResource S.Translation.Title}" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="{DynamicResource S.Translation.Subtitle}"
                        Style="{StaticResource PageSubtitle}"/>
         </StackPanel>
 
@@ -29,7 +29,7 @@
                     Style="{StaticResource IconButton}"
                     Width="32" Height="32" Margin="0,0,6,0"
                     FontSize="13"
-                    ToolTip="對調語言與內容"
+                    ToolTip="{DynamicResource S.Translation.SwapTip}"
                     Click="SwapBtn_Click"/>
 
             <ComboBox x:Name="TgtLangBox"
@@ -74,9 +74,9 @@
                                     Content="🔊"
                                     Width="30" Height="26" Padding="0"
                                     Style="{StaticResource IconButton}"
-                                    ToolTip="朗讀原文"
+                                    ToolTip="{DynamicResource S.Translation.SpeakSource}"
                                     Click="SrcTtsBtn_Click"/>
-                            <TextBlock Text="原文"
+                            <TextBlock Text="{DynamicResource S.Translation.Source}"
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
@@ -118,9 +118,9 @@
                                     Content="🔊"
                                     Width="30" Height="26" Padding="0"
                                     Style="{StaticResource IconButton}"
-                                    ToolTip="朗讀譯文"
+                                    ToolTip="{DynamicResource S.Translation.SpeakResult}"
                                     Click="TgtTtsBtn_Click"/>
-                            <TextBlock Text="譯文"
+                            <TextBlock Text="{DynamicResource S.Translation.Result}"
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
@@ -152,7 +152,7 @@
         <DockPanel Grid.Row="3" Margin="0,12,0,0" VerticalAlignment="Center">
             <!-- Retry surfaces only when an auto-translate fails (no permanent translate button) -->
             <Button x:Name="RetryBtn"
-                    Content="↻ 重試"
+                    Content="{DynamicResource S.Translation.Retry}"
                     Style="{StaticResource FlatButton}"
                     Height="30" Padding="14,0"
                     DockPanel.Dock="Left"

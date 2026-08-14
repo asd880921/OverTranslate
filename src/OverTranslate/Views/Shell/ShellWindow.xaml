@@ -141,7 +141,7 @@
                         <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                    FontSize="14" Text="&#xE946;"
                                    Width="24" VerticalAlignment="Center"/>
-                        <TextBlock Text="關於" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource S.Shell.About}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
@@ -188,7 +188,7 @@
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
 
-                        <TextBlock Text="截圖翻譯"
+                        <TextBlock Text="{DynamicResource S.Shell.CaptureTranslate}"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
                     </DockPanel>
@@ -217,7 +217,7 @@
                                 <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                            FontSize="15" Text="&#xE8C1;"
                                            Width="24" VerticalAlignment="Center"/>
-                                <TextBlock Text="文字翻譯" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource S.Shell.TextTranslate}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
 
@@ -232,7 +232,7 @@
                                 <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                            FontSize="15" Text="&#xE9D9;"
                                            Width="24" VerticalAlignment="Center"/>
-                                <TextBlock Text="即時翻譯" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource S.Shell.RealtimeTranslate}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
 
@@ -244,7 +244,7 @@
                                 <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                            FontSize="15" Text="&#xE713;"
                                            Width="24" VerticalAlignment="Center"/>
-                                <TextBlock Text="設定" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource S.Shell.Settings}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                     </StackPanel>

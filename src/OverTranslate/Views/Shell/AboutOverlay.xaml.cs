@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using OverTranslate.Services;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -25,7 +26,7 @@ public partial class AboutOverlay : UserControl
     {
         InitializeComponent();
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
-        VersionText.Text = $"版本 {version}";
+        VersionText.Text = LocalizationService.Format("S.About.Version", version);
     }
 
     public void Open()

@@ -47,7 +47,7 @@ public class ResilientProvider : ITranslationProvider
         "GoogleTranslator2"   => "Google (RPC)",
         "BingTranslator"      => "Bing",
         "MicrosoftTranslator" => "Microsoft",
-        "(none)"              => "未翻譯",
+        "(none)"              => LocalizationService.Get("S.Error.NotTranslated"),
         _                     => engineName,
     };
 

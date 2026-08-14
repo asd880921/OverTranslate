@@ -35,6 +35,21 @@ public class AppSettings
     public string OpenAiApiKey { get; set; } = "";
     public string OpenAiModel { get; set; } = "";
     public string Theme { get; set; } = "Dark";
+    /// <summary>
+    /// The interface language, "zh-Hant" or "en". Empty means "not chosen yet".
+    /// </summary>
+    /// <remarks>
+    /// Empty rather than a hardcoded default so a first run can follow the OS language — see
+    /// <see cref="Services.LocalizationService.ResolveSystemDefault"/>. Once the user picks one it
+    /// is stored verbatim and the OS is never consulted again, because an explicit choice should
+    /// survive someone changing their Windows display language.
+    ///
+    /// This is the interface language only. It has no bearing on
+    /// <see cref="TargetLanguage"/> or <see cref="RealtimeTargetLanguage"/>: what someone reads the
+    /// buttons in and what they want subtitles translated into are unrelated, and a Taiwanese user
+    /// running the app in English still wants Chinese output.
+    /// </remarks>
+    public string UiLanguage { get; set; } = "";
     public bool AutoTranslateAfterSelection { get; set; } = false;
     public bool SaveScreenshotToDisk { get; set; } = false;
     /// <summary>Empty means "use ScreenshotSaveService.DefaultDirectory" (圖片\OverTranslate).</summary>

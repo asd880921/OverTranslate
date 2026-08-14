@@ -56,7 +56,7 @@ public partial class UpdateWindow : Window
             DownloadBtn.IsEnabled = false;
             SkipVersionLink.IsEnabled = false;
             ErrorText.Visibility = Visibility.Collapsed;
-            DownloadBtnText.Text = "下載中 0%";
+            DownloadBtnText.Text = LocalizationService.Format("S.Update.Downloading", 0);
             DownloadProgress.IsIndeterminate = false;
             DownloadProgress.Value = 0;
             DownloadProgress.Visibility = Visibility.Visible;
@@ -69,11 +69,11 @@ public partial class UpdateWindow : Window
             DismissBtn.IsEnabled = true;
             DownloadBtn.IsEnabled = true;
             SkipVersionLink.IsEnabled = true;
-            DownloadBtnText.Text = "重試";
+            DownloadBtnText.Text = LocalizationService.Get("S.Update.Retry");
             DownloadProgress.BeginAnimation(System.Windows.Controls.ProgressBar.ValueProperty, null);
             DownloadProgress.IsIndeterminate = false;
             DownloadProgress.Visibility = Visibility.Collapsed;
-            ErrorText.Text = $"下載更新失敗：{ex.Message}";
+            ErrorText.Text = LocalizationService.Format("S.Update.Failed", ex.Message);
             ErrorText.Visibility = Visibility.Visible;
         }
     }
@@ -83,7 +83,7 @@ public partial class UpdateWindow : Window
         Dispatcher.Invoke(() =>
         {
             DownloadProgress.Value = percent;
-            DownloadBtnText.Text = $"下載中 {percent}%";
+            DownloadBtnText.Text = LocalizationService.Format("S.Update.Downloading", percent);
         });
     }
 
@@ -98,7 +98,7 @@ public partial class UpdateWindow : Window
         // The apply step exposes no progress at all, so an indeterminate bar is the honest signal:
         // still working, duration unknown. It keeps moving, which a bar frozen at 100% would not.
         DownloadProgress.IsIndeterminate = true;
-        DownloadBtnText.Text = "套用中…";
+        DownloadBtnText.Text = LocalizationService.Get("S.Update.Applying");
 
         // Let those two land on screen: ApplyUpdatesAndRestart blocks this thread and then kills the
         // process, so anything not painted by now is never painted at all.
@@ -109,7 +109,7 @@ public partial class UpdateWindow : Window
     {
         var completed = new TaskCompletionSource();
 
-        DownloadBtnText.Text = "下載中 100%";
+        DownloadBtnText.Text = LocalizationService.Format("S.Update.Downloading", 100);
         var toFull = new DoubleAnimation(100, TimeSpan.FromMilliseconds(280))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }

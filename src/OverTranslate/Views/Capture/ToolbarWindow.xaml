@@ -76,14 +76,14 @@
 
                 <!-- Translate -->
                 <Button x:Name="TranslateBtn"
-                        Content="翻譯"
+                        Content="{DynamicResource S.Toolbar.Translate}"
                         Style="{StaticResource ToolbarAccentButton}"
                         Margin="0,0,4,0"
                         Click="TranslateBtn_Click"/>
 
                 <!-- Toggle original / translated bubbles -->
                 <Button x:Name="ToggleBtn"
-                        Content="顯示原文"
+                        Content="{DynamicResource S.Toolbar.ShowSource}"
                         Style="{StaticResource ToolbarFlatButton}"
                         IsEnabled="False"
                         Margin="0,0,4,0"
@@ -91,14 +91,14 @@
 
                 <!-- Copy current selection screenshot to clipboard (subtle accent: tonal, not primary) -->
                 <Button x:Name="CopyShotBtn"
-                        Content="截圖"
+                        Content="{DynamicResource S.Toolbar.Screenshot}"
                         Style="{StaticResource ToolbarSubtleAccentButton}"
                         Margin="0,0,4,0"
                         Click="CopyShotBtn_Click"/>
 
                 <!-- Open translation window -->
                 <Button x:Name="OpenWindowBtn"
-                        Content="開啟翻譯視窗"
+                        Content="{DynamicResource S.Toolbar.OpenWindow}"
                         Style="{StaticResource ToolbarFlatButton}"
                         Margin="0,0,4,0"
                         Click="OpenWindowBtn_Click"/>
