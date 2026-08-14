@@ -35,7 +35,7 @@
 It supports both **screenshot translation** and **real-time translation**: text on your screen is recognized, translated, and displayed right where the original text is.
 Whether it's games, PDFs, video subtitles, or any other text you can't select directly, you can translate it instantly without constantly switching windows while reading.
 
-> Works on web pages, PDFs, images, game interfaces, and any other screen where text can't be selected directly, including mixed-language content.
+> Works on web pages, PDFs, images, videos, game interfaces, and any other screen where text can't be selected directly, including mixed-language content.
 ![Translation comparison](docs/images/翻譯比對圖.png)
 
 ### Features
