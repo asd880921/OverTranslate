@@ -24,19 +24,21 @@ public class StringsParityTests
     /// <summary>Placeholders like {0}, ignoring {} escapes.</summary>
     private static readonly Regex Placeholder = new(@"\{(\d+)\}", RegexOptions.Compiled);
 
-    private static string ResourcesDirectory()
+    private static string ProjectDirectory()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            var candidate = Path.Combine(dir.FullName, "src", "OverTranslate", "Resources");
-            if (Directory.Exists(candidate)) return candidate;
+            var candidate = Path.Combine(dir.FullName, "src", "OverTranslate");
+            if (Directory.Exists(Path.Combine(candidate, "Resources"))) return candidate;
             dir = dir.Parent;
         }
 
         throw new DirectoryNotFoundException(
-            $"Could not find src/OverTranslate/Resources above {AppContext.BaseDirectory}");
+            $"Could not find src/OverTranslate above {AppContext.BaseDirectory}");
     }
+
+    private static string ResourcesDirectory() => Path.Combine(ProjectDirectory(), "Resources");
 
     private static Dictionary<string, string> Load(string fileName)
     {
@@ -89,6 +91,85 @@ public class StringsParityTests
                 $"{key} uses {{{string.Join(",", inChinese.Order())}}} in {ChineseFile} " +
                 $"but {{{string.Join(",", inEnglish.Order())}}} in {EnglishFile}");
         }
+    }
+
+    /// <summary>Every "S.…" key named in XAML or code-behind.</summary>
+    /// <remarks>
+    /// Keys are looked up by string at runtime, so neither a typo nor a rename is a compile error —
+    /// the reference just resolves to nothing. DynamicResource silently renders empty and
+    /// LocalizationService.Get returns the key itself, which is how a label saying
+    /// "S.Settings.SavePath" would reach a user.
+    /// </remarks>
+    private static Dictionary<string, List<string>> KeysReferencedInSource()
+    {
+        var project = ProjectDirectory();
+        var references = new Dictionary<string, List<string>>();
+
+        var inXaml = new Regex(@"DynamicResource\s+(S\.[A-Za-z0-9_.]+)", RegexOptions.Compiled);
+        var inCode = new Regex(@"""(S\.[A-Za-z0-9_.]+)""", RegexOptions.Compiled);
+
+        foreach (var path in Directory.EnumerateFiles(project, "*.*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(project, path);
+
+            // obj/ holds generated copies of the same XAML; Resources/ is the definitions themselves.
+            if (relative.StartsWith("obj") || relative.StartsWith("bin") ||
+                relative.StartsWith("Resources")) continue;
+
+            var pattern = Path.GetExtension(path) switch
+            {
+                ".xaml" => inXaml,
+                ".cs"   => inCode,
+                _       => null
+            };
+            if (pattern is null) continue;
+
+            foreach (Match match in pattern.Matches(File.ReadAllText(path)))
+            {
+                var key = match.Groups[1].Value;
+                if (!references.TryGetValue(key, out var files))
+                    references[key] = files = [];
+                files.Add(relative);
+            }
+        }
+
+        return references;
+    }
+
+    [Fact]
+    public void Every_key_referenced_in_source_is_defined()
+    {
+        var defined = Load(ChineseFile).Keys.ToHashSet();
+
+        var missing = KeysReferencedInSource()
+            .Where(entry => !defined.Contains(entry.Key))
+            .Select(entry => $"{entry.Key} (in {string.Join(", ", entry.Value.Distinct())})")
+            .Order()
+            .ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            $"Referenced but not defined:{Environment.NewLine}" +
+            string.Join(Environment.NewLine, missing));
+    }
+
+    /// <summary>
+    /// Catches the other half of a rename: the old key left behind in the dictionaries.
+    /// </summary>
+    [Fact]
+    public void Every_defined_key_is_referenced_somewhere()
+    {
+        var referenced = KeysReferencedInSource().Keys.ToHashSet();
+
+        var orphans = Load(ChineseFile).Keys
+            .Where(key => !referenced.Contains(key))
+            .Order()
+            .ToList();
+
+        Assert.True(
+            orphans.Count == 0,
+            $"Defined but never referenced:{Environment.NewLine}" +
+            string.Join(Environment.NewLine, orphans));
     }
 
     /// <summary>
