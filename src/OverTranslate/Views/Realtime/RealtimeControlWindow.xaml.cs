@@ -57,10 +57,19 @@ public partial class RealtimeControlWindow : Window
     private bool _hasLanguages;
     private bool _isPaused;
 
-    // The scale WPF renders this window at, which is the DPI of whatever monitor it was created on —
-    // not necessarily the one it is pinned to. Everything that converts between the window's DIP and
-    // screen pixels has to use this one.
+    // The scale WPF renders this window at, which is the DPI of whatever monitor it currently sits
+    // on — not necessarily the one the session runs on. Everything that converts between the window's
+    // DIP and screen pixels has to use this one, and it has to be re-read whenever Windows rescales
+    // the window: unlike the edit and block layers, this bar moves, so it does not get to freeze its
+    // scale by refusing WM_DPICHANGED. See OnDpiChanged.
     private double _windowScale = 1.0;
+
+    // True while the scale is being re-applied, so the width change that causes is not mistaken for
+    // the bar's text having grown.
+    private bool _adjustingForScale;
+
+    // One fix-up pass is enough however many times the scale changed before it runs.
+    private bool _scaleFixupQueued;
 
     private System.Drawing.Point _position;
     private bool _isDragging;
@@ -80,11 +89,17 @@ public partial class RealtimeControlWindow : Window
 
         Loaded += (_, _) =>
         {
-            if (PresentationSource.FromVisual(this)?.CompositionTarget is { } target)
-                _windowScale = target.TransformToDevice.M11;
-
+            ReadWindowScale();
             ApplyScreenScale();
             PlaceInitially();
+
+            // The bar is shown before it is placed, so it opens on whichever monitor WPF picked and
+            // is then moved onto the session's. Crossing to a monitor at another scale makes Windows
+            // rescale it, which invalidates everything measured above — so re-apply once it has
+            // landed. Same inputs, so it is a no-op on a uniform desktop. The move usually raises
+            // WM_DPICHANGED and OnDpiChanged queues this anyway; queueing it here as well costs one
+            // no-op pass and covers the case where the scale changed without the message arriving.
+            QueueScaleFixup();
         };
 
         // The bar is sized to its content, so every change of text changes its width — a status
@@ -94,7 +109,9 @@ public partial class RealtimeControlWindow : Window
         // read as the text changing rather than the bar moving.
         SizeChanged += (_, e) =>
         {
-            if (!IsLoaded || !e.WidthChanged || _isDragging) return;
+            // Not while the scale is being re-applied: that changes the width in DIP without the text
+            // having changed at all, and treating it as growth would walk the bar sideways.
+            if (!IsLoaded || !e.WidthChanged || _isDragging || _adjustingForScale) return;
 
             var grown = (int)Math.Round((e.NewSize.Width - e.PreviousSize.Width) * _windowScale);
             if (grown == 0) return;
@@ -116,6 +133,64 @@ public partial class RealtimeControlWindow : Window
 
         WindowStyles.ApplyNoActivate(this);
         WindowCaptureShield.Exclude(this);
+    }
+
+    /// <summary>
+    /// Windows has rescaled the bar — it was moved onto a monitor at another scale, or the user
+    /// changed that monitor's scaling while a session was running.
+    /// </summary>
+    /// <remarks>
+    /// Everything this window measures is relative to <see cref="_windowScale"/>: the compensating
+    /// transform in <see cref="ApplyScreenScale"/>, and the DIP → pixel conversions behind
+    /// <see cref="PhysicalWidth"/>. Left at the value read when the bar opened, the transform would
+    /// multiply a scale WPF has already applied — a bar 1.5× too big on a 150% monitor opened from a
+    /// 100% one — and every physical measurement taken of it would be wrong by the same factor.
+    ///
+    /// Deferred rather than done here: this arrives inside the SetWindowPos that moved the window,
+    /// and re-placing it from within that call would be undone by the rest of the move as the stack
+    /// unwinds. Running at Loaded priority puts it after the window has settled, which is the same
+    /// answer the capture toolbar reached for the same crossing.
+    /// </remarks>
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        QueueScaleFixup();
+    }
+
+    private void QueueScaleFixup()
+    {
+        if (_scaleFixupQueued) return;
+
+        _scaleFixupQueued = true;
+        Dispatcher.BeginInvoke(new Action(ApplyCurrentScale), DispatcherPriority.Loaded);
+    }
+
+    private void ApplyCurrentScale()
+    {
+        _scaleFixupQueued = false;
+        if (!IsLoaded) return;
+
+        _adjustingForScale = true;
+        try
+        {
+            ReadWindowScale();
+            ApplyScreenScale();
+
+            // Before the width is measured in ClampIntoScreen: the transform just set is what decides
+            // it, and an un-run layout pass would place the bar by its previous size.
+            UpdateLayout();
+            ClampIntoScreen();
+        }
+        finally
+        {
+            _adjustingForScale = false;
+        }
+    }
+
+    private void ReadWindowScale()
+    {
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is { } target)
+            _windowScale = target.TransformToDevice.M11;
     }
 
     /// <summary>
