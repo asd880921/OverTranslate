@@ -173,7 +173,7 @@ OCR 全程於本機 CPU 執行，不會將圖片上傳至外部服務。
 
 ## 支持
 
-如果 OverTranslate 翻譯對你有幫助，歡迎透過 [Ko-fi](https://ko-fi.com/honlu) 請我喝杯咖啡 ~ ☕
+本軟體若對你日常或工作使用上有幫助，歡迎透過 [Ko-fi](https://ko-fi.com/honlu) 請我喝杯咖啡 ~ ☕
 
 ---
 
