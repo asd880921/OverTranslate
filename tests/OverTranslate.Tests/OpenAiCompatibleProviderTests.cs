@@ -453,6 +453,77 @@ public class OpenAiCompatibleProviderTests
         Assert.DoesNotContain(read.OpenAiPromptAuto, char.IsSurrogate);
     }
 
+    // ── What reaches the user when a prompt makes the model answer badly ─────
+    //
+    // Both callers put ex.Message straight into the text they show — the capture toast and the
+    // translation window's status line — so these are the words on screen.
+
+    [Fact]
+    public async Task EmptyAnswerSurfacesAsTheNoTranslationMessage()
+    {
+        const string response = """{"choices":[{"message":{"content":"<think>只想不答</think>"}}]}""";
+        using var http = new HttpClient(new StaticResponseHandler(HttpStatusCode.OK, response));
+        var provider = new OpenAiCompatibleProvider(
+            http, () => new OpenAiCompatibleOptions("http://localhost:11434/v1", "local-model"));
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            provider.TranslateAsync([new OcrTextBlock("hello", new Rect())], "JA", "ZH-HANT", ""));
+
+        Assert.Equal(LocalizationService.Get("S.Error.OpenAiNoTranslation"), error.Message);
+    }
+
+    /// <summary>
+    /// One bad block fails the whole capture, and the message still has to name the cause.
+    /// </summary>
+    /// <remarks>
+    /// The blocks go out in parallel, and what that does to an exception on the way out is what
+    /// decides whether the toast names the problem or talks about one or more errors occurring.
+    /// </remarks>
+    [Fact]
+    public async Task ABadAnswerInABatchStillNamesItself()
+    {
+        const string response = """{"choices":[{"message":{"content":""}}]}""";
+        using var http = new HttpClient(new StaticResponseHandler(HttpStatusCode.OK, response));
+        var provider = new OpenAiCompatibleProvider(
+            http, () => new OpenAiCompatibleOptions("http://localhost:11434/v1", "local-model"));
+        var blocks = Enumerable.Range(0, 12)
+            .Select(index => new OcrTextBlock($"block-{index}", new Rect()))
+            .ToList();
+
+        // These blocks are translated on thread-pool threads, and with no Application in a test run
+        // the very first string lookup is what builds the fallback dictionary — a XamlParseException
+        // waiting to happen on whichever thread gets there first. The running app always has an
+        // Application, so it never takes that path; this stands in for it.
+        var expected = LocalizationService.Get("S.Error.OpenAiNoTranslation");
+
+        var error = await Assert.ThrowsAnyAsync<Exception>(() =>
+            provider.TranslateAsync(blocks, "JA", "ZH-HANT", ""));
+
+        // Not wrapped in an aggregate: the toast names the problem instead of reporting that one or
+        // more errors occurred.
+        Assert.Equal(expected, error.Message);
+        Assert.IsType<InvalidOperationException>(error);
+    }
+
+    // A prompt long enough to blow the model's context window is rejected by the server, not here,
+    // so what the user reads is the status and the server's own words.
+    [Fact]
+    public async Task ARejectedRequestSurfacesTheServersOwnWords()
+    {
+        const string response = """{"error":{"message":"input length exceeds context length"}}""";
+        using var http = new HttpClient(
+            new StaticResponseHandler(HttpStatusCode.BadRequest, response));
+        var provider = new OpenAiCompatibleProvider(
+            http, () => new OpenAiCompatibleOptions("http://localhost:11434/v1", "local-model"));
+
+        var error = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            provider.TranslateAsync([new OcrTextBlock("hello", new Rect())], "JA", "ZH-HANT", ""));
+
+        Assert.Equal(
+            LocalizationService.Format("S.Error.OpenAiHttp", 400, "input length exceeds context length"),
+            error.Message);
+    }
+
     private sealed record RecordedRequest(string Url, string? Authorization, string Body);
 
     private sealed class RecordingHandler : HttpMessageHandler
