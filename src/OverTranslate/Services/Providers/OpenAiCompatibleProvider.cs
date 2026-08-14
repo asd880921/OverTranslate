@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using NLog;
 using OverTranslate.Models;
 
 namespace OverTranslate.Services.Providers;
@@ -15,6 +16,7 @@ public sealed record OpenAiCompatibleOptions(string BaseUrl, string Model, strin
 /// </summary>
 public sealed class OpenAiCompatibleProvider : ITranslationProvider
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
     private static readonly HttpClient DefaultHttp = new() { Timeout = TimeSpan.FromSeconds(60) };
     private const int MaxConcurrentRequests = 8;
     private static readonly Regex ThinkingBlock = new(
@@ -56,6 +58,18 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         if (model.Length == 0)
             throw new InvalidOperationException(LocalizationService.Get("S.Error.OpenAiNoModel"));
 
+        // Counts and configuration only, so this stays in the shipped log: it is what tells a report
+        // of "nothing was translated" apart from a request that never left, and names the model the
+        // answer came from — with a local server the model is the variable that explains the output.
+        Log.Info("OpenAI 相容翻譯：{Count} 個區塊，模型 \"{Model}\"，端點 {Endpoint}",
+            blocks.Count, model, endpoint);
+
+        // The prompt and the text itself only at Debug: the text is whatever was on the user's
+        // screen, the same reason OnnxOcrEngine keeps the recognised text out of the shipped log.
+        // Once per batch rather than per block — every block is sent the same prompt.
+        if (Log.IsDebugEnabled)
+            Log.Debug("OpenAI 相容翻譯 prompt=\"{Prompt}\"", BuildPrompt(sourceLang, targetLang));
+
         var translations = new string[blocks.Count];
         await Parallel.ForEachAsync(
             Enumerable.Range(0, blocks.Count),
@@ -74,6 +88,13 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
                     endpoint,
                     model,
                     token);
+
+                // Both sides of one block on one line: a block that came back still in its own
+                // language is the shape this provider fails in, and that is only visible by reading
+                // the request against the reply.
+                if (Log.IsDebugEnabled)
+                    Log.Debug("OpenAI 相容翻譯 index={Index} in=\"{In}\" out=\"{Out}\"",
+                        index, blocks[index].Text, translations[index]);
             });
 
         var results = new List<TranslatedBlock>(blocks.Count);
