@@ -12,7 +12,7 @@ public class AppSettings
     public string HotkeyDisplay { get; set; } = "Ctrl+Alt+A";
 
     /// <summary>
-    /// The shortcut that opens the translation window. Ctrl+Alt+S by default.
+    /// The shortcut that opens the translation window. Ctrl+Alt+W by default.
     /// </summary>
     /// <remarks>
     /// A convenience, not a headline: unlike the capture shortcut above it is not announced at
@@ -22,9 +22,9 @@ public class AppSettings
     /// </remarks>
     public uint TranslationWindowHotkeyModifiers { get; set; } = 3;
 
-    public uint TranslationWindowHotkeyVirtualKey { get; set; } = 0x53;
+    public uint TranslationWindowHotkeyVirtualKey { get; set; } = 0x57;
 
-    public string TranslationWindowHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
+    public string TranslationWindowHotkeyDisplay { get; set; } = "Ctrl+Alt+W";
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;
