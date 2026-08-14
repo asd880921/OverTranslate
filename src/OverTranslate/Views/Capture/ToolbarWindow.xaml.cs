@@ -14,10 +14,12 @@ public partial class ToolbarWindow : Window
     public event EventHandler? CloseAllRequested;
     public event EventHandler<bool>? BubblesVisibilityChanged;
 
-    private readonly double _selPhysLeft;
-    private readonly double _selPhysTop;
-    private readonly double _selPhysWidth;
-    private readonly double _selPhysHeight;
+    // Not readonly: the selection can still be moved and resized until translation starts, and this
+    // toolbar is anchored to it — see FollowSelection.
+    private double _selPhysLeft;
+    private double _selPhysTop;
+    private double _selPhysWidth;
+    private double _selPhysHeight;
 
     private bool _isBusy        = false;
     private bool _toggleEnabled = false;
@@ -55,6 +57,25 @@ public partial class ToolbarWindow : Window
         // resize the window and Windows offer a replacement position, either of which moves the
         // edge just aligned to the selection. Same inputs, so it is a no-op on a uniform desktop.
         Dispatcher.BeginInvoke(new Action(PositionNearSelection), DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// Re-anchors the toolbar to the selection after the user has moved or resized it.
+    /// </summary>
+    /// <remarks>
+    /// The same placement the toolbar opened with, run again: it stays under the box where there is
+    /// room and flips above it where there is not, so dragging a selection down to the bottom of the
+    /// screen moves the toolbar over the top of it rather than off the desktop.
+    /// </remarks>
+    public void FollowSelection(Rect physicalSelection)
+    {
+        _selPhysLeft   = physicalSelection.Left;
+        _selPhysTop    = physicalSelection.Top;
+        _selPhysWidth  = physicalSelection.Width;
+        _selPhysHeight = physicalSelection.Height;
+
+        // Nothing to place onto until the window has a handle; OnSourceInitialized does it then.
+        if (IsLoaded) PositionNearSelection();
     }
 
     private void PositionNearSelection()

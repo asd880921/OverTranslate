@@ -19,6 +19,16 @@ public partial class ScreenCaptureWindow : Window
     private const int HTTRANSPARENT = -1;
     private static readonly Uri CrosshairCursorUri = new("pack://application:,,,/icons/capture_crosshair.cur", UriKind.Absolute);
 
+    /// <summary>Corner radius of the frame, and of the hole cut for it in the dim layer.</summary>
+    private const double FrameCorner = 3;
+
+    /// <summary>
+    /// Dashes while the box is being drawn, a solid edge once it is settled — the same distinction
+    /// the realtime edit layer draws, and the same reason: a dashed edge reads as "still happening",
+    /// so keeping it after the button is released would leave the selection looking unfinished.
+    /// </summary>
+    private static readonly DoubleCollection PreviewDashes = Freeze([4, 3]);
+
     private HwndSource? _hwndSource;
     private bool _inBackgroundMode;
 
@@ -66,6 +76,13 @@ public partial class ScreenCaptureWindow : Window
     }
 
     public Task<bool> WaitForSelectionAsync() => _selectionTcs.Task;
+
+    /// <summary>
+    /// Raised with the new selection, in physical pixels, whenever the user moves or resizes a
+    /// settled box — so the toolbar anchored to it can follow rather than sit next to where the box
+    /// used to be. Never raised while the box is first being drawn: nothing is anchored to it yet.
+    /// </summary>
+    public event EventHandler<Rect>? SelectionAdjusted;
 
     protected override void OnContentRendered(EventArgs e)
     {
@@ -175,7 +192,8 @@ public partial class ScreenCaptureWindow : Window
         _startPoint  = e.GetPosition(this);
         _isDragging  = true;
         HintHost.Visibility      = Visibility.Collapsed;
-        SelectionRect.Visibility = Visibility.Visible;
+        SelectionRect.StrokeDashArray = PreviewDashes;
+        SetFrameVisibility(true);
         CaptureMouse();
         DrawRect(_startPoint, _startPoint);
     }
@@ -205,13 +223,15 @@ public partial class ScreenCaptureWindow : Window
         if (rect.Width < 4 || rect.Height < 4)
         {
             _hasSelection = false;
-            SelectionRect.Visibility = Visibility.Collapsed;
+            SetFrameVisibility(false);
             SetHandlesVisibility(false);
+            UpdateDimLayer();
             HintHost.Visibility = Visibility.Visible;
             return;
         }
 
         _hasSelection = true;
+        SelectionRect.StrokeDashArray = null;
         UpdateSelectionMetadata();
         UpdateSelectionVisuals();
 
@@ -255,9 +275,12 @@ public partial class ScreenCaptureWindow : Window
 
     public void SwitchToBackgroundMode()
     {
-        SelectionRect.Visibility    = Visibility.Collapsed;
+        SetFrameVisibility(false);
         SetHandlesVisibility(false);
 
+        // Square-cornered from here on, unlike the hole under the frame: the rounded one matched the
+        // frame's corners, and the frame has just gone. What is left is the area the translation is
+        // painted into, and that is a plain rectangle.
         var outer = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
         var inner = new RectangleGeometry(_selectionWpfRect);
         var group = new GeometryGroup { FillRule = FillRule.EvenOdd };
@@ -283,10 +306,54 @@ public partial class ScreenCaptureWindow : Window
     {
         var r = Normalize(p1, p2);
         _selectionWpfRect = r;
-        System.Windows.Controls.Canvas.SetLeft(SelectionRect, r.X);
-        System.Windows.Controls.Canvas.SetTop(SelectionRect,  r.Y);
-        SelectionRect.Width  = r.Width;
-        SelectionRect.Height = r.Height;
+        PlaceFrame(r);
+        UpdateDimLayer();
+    }
+
+    // The tint and the edge are two elements — see the XAML — and are always given the same box.
+    private void PlaceFrame(Rect r)
+    {
+        PlacePart(SelectionFill, r);
+        PlacePart(SelectionRect, r);
+
+        static void PlacePart(System.Windows.Shapes.Rectangle part, Rect r)
+        {
+            System.Windows.Controls.Canvas.SetLeft(part, r.X);
+            System.Windows.Controls.Canvas.SetTop(part,  r.Y);
+            part.Width  = r.Width;
+            part.Height = r.Height;
+        }
+    }
+
+    private void SetFrameVisibility(bool visible)
+    {
+        var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        SelectionFill.Visibility = visibility;
+        SelectionRect.Visibility = visibility;
+    }
+
+    /// <summary>
+    /// Dims everything except the box being framed. The hole follows the frame's rounded corners, so
+    /// the two read as one shape rather than as a rectangle sitting inside a slightly larger one.
+    /// </summary>
+    /// <remarks>
+    /// Rebuilt on every move of the pointer, which is two rectangles and a group — cheap next to the
+    /// full-screen screenshot this window is already compositing on each frame.
+    /// </remarks>
+    private void UpdateDimLayer()
+    {
+        var outer = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
+
+        if (!_isDragging && !_hasSelection)
+        {
+            DimPath.Data = outer;
+            return;
+        }
+
+        var group = new GeometryGroup { FillRule = FillRule.EvenOdd };
+        group.Children.Add(outer);
+        group.Children.Add(new RectangleGeometry(_selectionWpfRect, FrameCorner, FrameCorner));
+        DimPath.Data = group;
     }
 
     private void UpdateSelectionMetadata()
@@ -324,11 +391,13 @@ public partial class ScreenCaptureWindow : Window
 
     private void UpdateSelectionVisuals()
     {
-        System.Windows.Controls.Canvas.SetLeft(SelectionRect, _selectionWpfRect.X);
-        System.Windows.Controls.Canvas.SetTop(SelectionRect,  _selectionWpfRect.Y);
-        SelectionRect.Width  = _selectionWpfRect.Width;
-        SelectionRect.Height = _selectionWpfRect.Height;
-        SelectionRect.Visibility = _hasSelection ? Visibility.Visible : Visibility.Collapsed;
+        PlaceFrame(_selectionWpfRect);
+        SetFrameVisibility(_hasSelection);
+
+        System.Windows.Controls.Canvas.SetLeft(SelectionBody, _selectionWpfRect.X);
+        System.Windows.Controls.Canvas.SetTop(SelectionBody,  _selectionWpfRect.Y);
+        SelectionBody.Width  = _selectionWpfRect.Width;
+        SelectionBody.Height = _selectionWpfRect.Height;
 
         const double halfHandle = 7;
         System.Windows.Controls.Canvas.SetLeft(TopLeftHandle, _selectionWpfRect.Left - halfHandle);
@@ -341,6 +410,7 @@ public partial class ScreenCaptureWindow : Window
         System.Windows.Controls.Canvas.SetTop(BottomRightHandle, _selectionWpfRect.Bottom - halfHandle);
 
         SetHandlesVisibility(_hasSelection && !_processingStarted);
+        UpdateDimLayer();
     }
 
     private void SetHandlesVisibility(bool visible)
@@ -350,6 +420,28 @@ public partial class ScreenCaptureWindow : Window
         TopRightHandle.Visibility = handleVisibility;
         BottomLeftHandle.Visibility = handleVisibility;
         BottomRightHandle.Visibility = handleVisibility;
+        // Movable exactly as long as it is resizable: once translation has started the window goes
+        // click-through and the box is no longer the user's to rearrange.
+        SelectionBody.Visibility = handleVisibility;
+    }
+
+    /// <summary>
+    /// Moves the whole selection, clamped to the desktop rather than rubber-banded — a part hanging
+    /// off the edge would be a region the crop cannot include.
+    /// </summary>
+    private void SelectionBody_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (_processingStarted || !_hasSelection) return;
+
+        double x = Math.Clamp(
+            _selectionWpfRect.X + e.HorizontalChange, 0, Math.Max(0, ActualWidth - _selectionWpfRect.Width));
+        double y = Math.Clamp(
+            _selectionWpfRect.Y + e.VerticalChange, 0, Math.Max(0, ActualHeight - _selectionWpfRect.Height));
+
+        _selectionWpfRect = new Rect(x, y, _selectionWpfRect.Width, _selectionWpfRect.Height);
+        UpdateSelectionMetadata();
+        UpdateSelectionVisuals();
+        SelectionAdjusted?.Invoke(this, Selection);
     }
 
     private void TopLeftHandle_DragDelta(object sender, DragDeltaEventArgs e) =>
@@ -391,11 +483,18 @@ public partial class ScreenCaptureWindow : Window
         _selectionWpfRect = Normalize(movingPoint, fixedPoint);
         UpdateSelectionMetadata();
         UpdateSelectionVisuals();
+        SelectionAdjusted?.Invoke(this, Selection);
     }
 
     private static Rect Normalize(WPoint a, WPoint b) =>
         new(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y),
             Math.Abs(b.X - a.X), Math.Abs(b.Y - a.Y));
+
+    private static DoubleCollection Freeze(DoubleCollection dashes)
+    {
+        dashes.Freeze();
+        return dashes;
+    }
 
     private static BitmapSource BitmapToDisplaySource(Bitmap bmp, double dpi = 96) =>
         BitmapInterop.ToBitmapSource(bmp, dpi);

@@ -10,16 +10,52 @@
         <!-- Frozen screenshot as background -->
         <Image x:Name="ScreenshotImage" Stretch="Fill"/>
 
-        <!-- Semi-transparent dim layer; in background mode gets a hole cut for the selection -->
+        <!-- Semi-transparent dim layer, with a hole cut for the selection from the first pixel of
+             the drag onwards: what the user is framing is the one thing on screen they need to see
+             clearly, and the frame's own fill is deliberately light enough not to tint it. -->
         <Path x:Name="DimPath" Fill="#80000000"/>
 
         <!-- Absolute-positioned canvas for selection rect -->
         <Canvas x:Name="OverlayCanvas">
-            <Rectangle x:Name="SelectionRect"
-                       Stroke="#CC1E90D5"
-                       StrokeThickness="2"
+            <!-- The tint over the framed content, light enough to read as a wash rather than as a
+                 filter — the whole point of cutting the dim away here is that this area is legible. -->
+            <Rectangle x:Name="SelectionFill"
+                       RadiusX="3"
+                       RadiusY="3"
                        Visibility="Collapsed"
-                       Fill="#5599C8F0"/>
+                       Fill="#1C99C8F0"/>
+
+            <!-- Same frame the realtime edit layer draws: a solid edge with a shadow under it, so it
+                 stays legible over a bright screenshot as well as a dark one. Carries no fill of its
+                 own, deliberately — an Effect shadows whatever silhouette its element has, and a
+                 translucent fill here would lay a soft grey wash back over the content the hole in
+                 the dim layer just uncovered. -->
+            <Rectangle x:Name="SelectionRect"
+                       Stroke="#E61E90D5"
+                       StrokeThickness="2"
+                       RadiusX="3"
+                       RadiusY="3"
+                       Visibility="Collapsed">
+                <Rectangle.Effect>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.45" Color="Black"/>
+                </Rectangle.Effect>
+            </Rectangle>
+
+            <!-- Drag the middle to move the whole selection, as on the realtime edit layer. A
+                 separate transparent thumb rather than the rectangle itself: the rectangle is also
+                 the drawing preview, and it must not start capturing the pointer mid-draw. Declared
+                 before the corner handles so those stay on top and keep resize reachable at a
+                 corner, where the two overlap. -->
+            <Thumb x:Name="SelectionBody"
+                   Visibility="Collapsed"
+                   Cursor="SizeAll"
+                   DragDelta="SelectionBody_DragDelta">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="Transparent"/>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
 
             <Thumb x:Name="TopLeftHandle"
                    Width="14" Height="14"
