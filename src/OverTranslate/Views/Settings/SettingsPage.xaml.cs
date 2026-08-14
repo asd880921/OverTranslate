@@ -36,6 +36,12 @@ public partial class SettingsPage : UserControl
     private const int PromptAutoSegment = 0;
     private const int PromptExplicitSegment = 1;
 
+    /// <summary>How many lines of prompt the box accepts.</summary>
+    private const int PromptMaxLines = 200;
+
+    /// <summary>True while the box is being cut back to the line limit, so its own edit is ignored.</summary>
+    private bool _trimmingPrompt;
+
     /// <summary>
     /// Which of the two prompts the editor is currently holding. Kept alongside the switch's own
     /// selection because a pending edit has to be written to the prompt it was typed into, even if
@@ -317,13 +323,73 @@ public partial class SettingsPage : UserControl
 
     private void PromptBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        // Chrome first and unconditionally: the dot and the reset button describe what is in the
-        // box right now, and waiting for the debounce would leave them a beat behind the typing.
+        // The trim below raises this event again for its own edit.
+        if (_trimmingPrompt) return;
+
+        // Only what the user types or pastes is held to the limit. A longer prompt already in the
+        // settings file is left alone until they touch it, rather than being quietly cut down on a
+        // page they only came to look at.
+        if (!_loading) TrimPromptToLineLimit();
+
+        // Chrome unconditionally: the reset button describes what is in the box right now, and
+        // waiting for the debounce would leave it a beat behind the typing.
         UpdatePromptChrome();
 
         if (_loading) return;
         _promptDebounce.Stop();
         _promptDebounce.Start();
+    }
+
+    /// <summary>
+    /// Drops anything past <see cref="PromptMaxLines"/> lines, silently.
+    /// </summary>
+    /// <remarks>
+    /// A cap on the input rather than a check further in: the prompt is sent once per recognised
+    /// block, so a pasted document is a real cost repeated a dozen times over, and the place to
+    /// stop it is where it arrives. Nothing is said about it — the box visibly refuses to grow,
+    /// which is the whole message, and a warning about a limit nobody reaches by writing an
+    /// instruction would only be in the way.
+    ///
+    /// Removed through the selection so the paste stays undoable; the trim is then simply applied
+    /// again if the undone text is still too long.
+    /// </remarks>
+    private void TrimPromptToLineLimit()
+    {
+        var overflow = LineLimitOverflowIndex(PromptBox.Text, PromptMaxLines);
+        if (overflow < 0) return;
+
+        _trimmingPrompt = true;
+        try
+        {
+            PromptBox.Select(overflow, PromptBox.Text.Length - overflow);
+            PromptBox.SelectedText = "";
+            PromptBox.CaretIndex = overflow;
+        }
+        finally
+        {
+            _trimmingPrompt = false;
+        }
+    }
+
+    /// <summary>
+    /// Where the text passes <paramref name="maxLines"/> lines, or -1 when it does not.
+    /// </summary>
+    /// <remarks>
+    /// Hard line breaks only. <see cref="TextBox.LineCount"/> counts the lines actually drawn, so
+    /// with wrapping on it would make the cap depend on how wide the window happens to be.
+    /// </remarks>
+    internal static int LineLimitOverflowIndex(string text, int maxLines)
+    {
+        var index = -1;
+        for (var line = 0; line < maxLines; line++)
+        {
+            index = text.IndexOf('\n', index + 1);
+            if (index < 0) return -1;
+        }
+
+        // Cut before the break that would have started the next line, and before the carriage
+        // return in front of it, so the kept text does not end on a half of a CRLF pair.
+        return index > 0 && text[index - 1] == '\r' ? index - 1 : index;
     }
 
     private void PromptResetButton_Click(object sender, RoutedEventArgs e)
