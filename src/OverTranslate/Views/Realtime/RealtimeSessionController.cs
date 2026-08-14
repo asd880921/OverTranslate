@@ -288,11 +288,24 @@ internal sealed class RealtimeSessionController
         CloseBlockWindows();
         CloseEditWindow();
 
-        var edit = new RealtimeEditWindow(request.ScreenBounds, _blocks, request.MaxBlocks);
+        // Read here rather than carried on the request: the user changes it from inside this layer,
+        // and every later trip through edit mode should open on the answer they gave last.
+        var settings = SettingsService.Instance;
+
+        var edit = new RealtimeEditWindow(
+            request.ScreenBounds, _blocks, request.MaxBlocks, settings.Current.RealtimeGuidanceExpanded);
         edit.BlocksChanged += (_, _) =>
         {
             _blocks = [.. edit.GetPhysicalBlocks()];
             control.SetBlockCount(_blocks.Count, request.MaxBlocks);
+        };
+        // Written on the press rather than at the end of the session: a session over a full-screen
+        // game is as likely to end with the machine being shut down as with 結束即時翻譯.
+        edit.GuidanceExpandedChanged += (_, expanded) =>
+        {
+            if (settings.Current.RealtimeGuidanceExpanded == expanded) return;
+            settings.Current.RealtimeGuidanceExpanded = expanded;
+            settings.Save();
         };
         edit.LimitReached += (_, _) =>
             control.ShowMessage(LocalizationService.Format("S.Realtime.TooManyBlocks", request.MaxBlocks));

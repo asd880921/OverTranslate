@@ -66,6 +66,19 @@ public class AppSettings
     public string RealtimeScrimColor { get; set; } = Services.Realtime.RealtimeSubtitleColors.DefaultScrim;
 
     /// <summary>
+    /// Whether the per-block framing guidance on the edit layer is unfolded. Expanded on a first run,
+    /// because the guidance is what stops a badly framed block.
+    /// </summary>
+    /// <remarks>
+    /// One value for the whole feature rather than one per block: a user who has read the guidance has
+    /// read it, and folding it away on every block of every sitting to say so is the same instruction
+    /// being dismissed over and over. Whichever block's chevron is pressed last writes here, and the
+    /// next edit layer opens every block that way. Deliberately not shown on the settings page — it is
+    /// a state the control sets by being used, not a preference anyone would go looking for.
+    /// </remarks>
+    public bool RealtimeGuidanceExpanded { get; set; } = true;
+
+    /// <summary>
     /// The newest version the user has told us to stop interrupting them about, or empty for none.
     /// </summary>
     /// <remarks>

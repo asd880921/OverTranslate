@@ -339,6 +339,19 @@ public partial class MainWindow : Window
             Log.Info("Capture session starting, origin={Origin}, bounds={Bounds}", origin, screenBounds);
             var captureWindow = new ScreenCaptureWindow(screenshot, screenBounds);
             _captureWindow = captureWindow;
+
+            // The box stays adjustable until translation starts, so the toolbar anchored to it has to
+            // keep up. Only the toolbar: the overlay carries no bubbles yet at this stage, and the
+            // crop is re-read from the window at translate time.
+            captureWindow.SelectionAdjusted += (_, selection) =>
+            {
+                _lastSelPhysLeft   = selection.Left;
+                _lastSelPhysTop    = selection.Top;
+                _lastSelPhysWidth  = selection.Width;
+                _lastSelPhysHeight = selection.Height;
+                _toolbarWindow?.FollowSelection(selection);
+            };
+
             captureWindow.Show();
 
             // Diagnostic: where the dim window physically landed and at what scale, versus the
