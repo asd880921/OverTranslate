@@ -158,8 +158,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     {
         // These two frames used to come back empty here, and the test that came before this one
         // pinned that failure on purpose — so that swapping the detector would trip it rather than
-        // let the halving outlive its reason. PP-OCRv6_det_tiny tripped it, and PP-OCRv6_det_small
-        // (#71) keeps it passing: both frames read
+        // let the halving outlive its reason. PP-OCRv6_det_tiny tripped it: both frames now read
         // correctly at the size the screenshot flow uses, which closes the hole issue #22 recorded
         // in that flow (it has no fallback size to fall back to, so a subtitle framed there was
         // simply lost).

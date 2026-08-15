@@ -11,11 +11,9 @@ using SkiaSharp;
 namespace OverTranslate.Services.Ocr;
 
 /// <summary>
-/// A detector that returns a box starting part way along a line loses the characters before it with
-/// nothing in the log to say they existed. #69 chased that through every setting this class has and
-/// closed it as unfixable; #71 then fixed it by changing the detector, which was the one lever #69
-/// had left. The history is kept here because the ruling-out is what makes the fix trustworthy — and
-/// because if it ever comes back, this is the list of places not to look again.
+/// KNOWN LIMITATION: the detector sometimes returns a box that starts part way along a line, and the
+/// characters before it are lost with nothing in the log to say they existed. Closed as unfixable in
+/// #69; do not spend another round looking for the setting that causes it, because it is not one.
 /// </summary>
 /// <remarks>
 /// Ruled out, each with a measurement rather than an argument: the recognition confidence floor (the
@@ -26,23 +24,17 @@ namespace OverTranslate.Services.Ocr;
 /// (<c>--scale-sweep</c>), and how tightly the user framed the capture (<c>--margin-series</c> over
 /// 27 whole screens: 1.1% apart, and the tightest framing is the worst of them).
 ///
-/// What it was, on det_tiny: knife-edge, and only along the short axis. Cropping one pixel off the
-/// top of the reported frame took the reading from 5 characters to 6, four pixels took it to 10, and
-/// cropping up to eight pixels off the side changed nothing at all. Appending blank rows below the
-/// picture, which touches no content whatsoever, walked the reading between 5 and 10 characters with
-/// no pattern: +4px read 10, +20px read 6, +24px read 9. The capture the user happened to draw landed
-/// where it landed.
+/// What it actually is: the response is knife-edge, and only along the short axis. On the reported
+/// frame, cropping one pixel off the top takes the reading from 5 characters to 6, and four pixels
+/// takes it to 10 — while cropping up to eight pixels off the side changes nothing at all. Appending
+/// blank rows below the picture, which touches no content whatsoever, walks the reading between 5 and
+/// 10 characters with no pattern: +4px reads 10, +20px reads 6, +24px reads 9. The capture the user
+/// happened to draw lands where it lands.
 ///
-/// That left the detector itself as the only untried lever, and #33 had already rejected the one
-/// alternative it looked at. #71 found the reason that rejection did not settle the question: #33
-/// compared det_medium at the same input size, where a bigger model carries its full cost, and never
-/// tried det_small at all. On the shipped detector (<see cref="CreateRuntime"/>) the whole effect is
-/// gone — the reported frame reads correctly at 14 of 15 detector sizes.
-///
-/// Two things are worth keeping from all of this. Detection is roughly 85% of a pass (~70ms against
-/// ~12ms for recognising one subtitle line), so detector cost, not recogniser cost, is what a change
-/// here spends. And a sweep at one input size cannot answer whether a bigger model is affordable;
-/// only an equal-time comparison can.
+/// So a frame either reads or does not, and the deciding factor is a few pixels of height that
+/// nobody chose. Replacing the detector is the only lever left and #33 already measured that
+/// trade — PP-OCRv6_det_medium costs 90ms per recognition and 62MB to save roughly one line every
+/// two and a half minutes — and rejected it.
 /// </remarks>
 internal sealed class OnnxOcrEngine : IOcrEngine
 {
@@ -451,19 +443,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// The shipped detector and the statistics to read it with.
     /// </summary>
     /// <remarks>
-    /// 127.5 rather than the ImageNet statistics every one of these detectors is exported with, and
-    /// the contradiction has now been measured three separate ways rather than argued.
-    ///
-    /// It was first chosen on PP-OCRv6_small, then the detector was swapped twice under it without
-    /// being re-measured. Re-measured on det_tiny (#69), ImageNet looked better on the six fixtures
-    /// in this repository and read one reported failure at twice the characters — and then lost on
-    /// 137 real dumped frames, reading four of them as completely empty that 127.5 read fine
-    /// ("It's bright.", "Let's pay CiRCLE a visit on the way home.", "ここは…？" twice) against one
-    /// frame the other way whose reading was a misread anyway. Re-measured again across det_tiny,
-    /// det_small and det_medium (#71), 127.5 won on all three.
-    ///
-    /// So this is settled, and the fixtures in this repository are known to be too small a sample to
-    /// unsettle it.
+    /// Re-measured on PP-OCRv6_det_tiny after the detector was swapped under the choice recorded on
+    /// <see cref="HalfNormalization"/>, which had been made on PP-OCRv6_small. ImageNet looked like
+    /// the better pair on the six fixtures in this repository and read one reported failure at twice
+    /// the characters — and then lost on 137 real dumped frames: it read four of them as completely
+    /// empty that 127.5 read fine ("It's bright.", "Let's pay CiRCLE a visit on the way home.",
+    /// "ここは…？" twice), against one frame the other way whose reading was a misread anyway. The
+    /// leading-character loss that started the investigation happens under both, at about the same
+    /// rate. So 127.5 stays, and the fixtures in this repository are now known to be too small a
+    /// sample to move this on. See issue #69.
     /// </remarks>
     private static DetectorModel ShippedDetector(string detPath) =>
         new(detPath, HalfNormalization, HalfNormalization);
@@ -489,28 +477,13 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// Loads the detector, classifier, recogniser and dictionary for one recognition model.
     /// </summary>
     /// <remarks>
-    /// The detector is PP-OCRv6_det_small, one step up from the det_tiny that #33 put here. It was
-    /// measured after #69 closed the parameter-tuning routes: on 137 real region dumps it reads 8.6%
-    /// more characters than tiny at the shipped subtitle fraction and takes 2.2% less time doing it,
-    /// and it reads the frame #69 was reported on correctly at 14 of 15 detector sizes where tiny
-    /// read it correctly at none. The knife-edge sensitivity #69 measured — four pixels of capture
-    /// height turning 5 characters into 10 — is not present on this one.
-    ///
-    /// It is not free. On game panels it costs a third more time for the same reading (18 whole
-    /// screens, 5363 characters against 5410, 20.8s against 15.7s at the panel fraction), and the
-    /// same shape holds on Korean. That trade was taken deliberately: subtitles and dialogue are
-    /// what this is for, panels are noisier ground where the bar is not regressing rather than
-    /// improving, and neither panels nor Korean regressed on what was read. See issue #71 for the
-    /// sweeps, including medium — still rejected, now on an equal-time basis rather than #33's
-    /// equal-size one: it reads best of the three but needs 3.3x the time to do it.
-    ///
-    /// The one before both, PP-OCRv5_mobile_det, did not respond
+    /// The detector is PP-OCRv6_det_tiny. The one before it, PP-OCRv5_mobile_det, did not respond
     /// to scale smoothly: swept over 15 frames a watched region had failed to read, it read 8 of
     /// them at 0.40 of native, 4 at 0.50, 6 at 0.55 and 8 again at 0.60 — a dead band with the
     /// subtitle primary size sitting in it, which is why a subtitle session spent 13% of its passes
     /// paying for fallback sizes. The same sweep with v6_det_tiny reads 9 of 15 across the whole
     /// band, and 84 of the 84 control frames the old detector already read (2 of them only from
-    /// 0.70 up, where the existing fallback catches them). It was also cheaper: 89ms against 104ms
+    /// 0.70 up, where the existing fallback catches them). It is also cheaper: 89ms against 104ms
     /// at the primary size, and 1.8MB against 4.8MB on disk. See issue #22.
     ///
     /// Only the detector changed. The recogniser stayed on PP-OCRv6_small from #23, deliberately:
