@@ -261,7 +261,7 @@
     <sys:String x:Key="S.Settings.WindowHotkeyHint">[[即時翻譯]]進行中時，改為將[[浮動視窗列]]移至最上層</sys:String>
     <sys:String x:Key="S.Settings.SourceLanguage">來源語言</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslate">自動翻譯</sys:String>
-    <sys:String x:Key="S.Settings.AutoTranslateCheck">框選完成後自動翻譯</sys:String>
+    <sys:String x:Key="S.Settings.AutoTranslateCheck">截圖翻譯：框選完成後立即翻譯，不需要再手動點擊。</sys:String>
     <sys:String x:Key="S.Settings.Startup">開機啟動</sys:String>
     <sys:String x:Key="S.Settings.StartupCheck">開機時自動啟動</sys:String>
 

@@ -116,7 +116,7 @@ Click **Settings** in the left navigation bar, or right-click the tray icon → 
 | Screenshot translation | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`); while real-time translation is running, it pauses / resumes the realtime translation instead |
 | Open translation window | Hotkey to bring up the main window (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
 | Source language | The original language (default Auto) |
-| Auto translate | Translates **immediately** after the area is selected, without clicking the translate button (off by default) |
+| Auto translate | **Screenshot translation** translates **immediately** once the area is selected, with nothing left to click (off by default) |
 | Run at startup | Launch automatically when Windows starts |
 | Translation service | Choose the translation service; when using OpenAI you can set the API endpoint, model name, translation prompt, and temperature |
 | Save screenshots | Save captures to your machine automatically, with a customizable folder (off by default) |
