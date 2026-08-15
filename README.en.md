@@ -76,9 +76,9 @@ Ideal for **video subtitles, game screens**, and other situations that need cont
 ### Translation Block Modes (area selection)
 > Real-time translation currently supports a single monitor only, allows up to 3 translation blocks at the same time, and cannot be used together with screenshot translation.
 
-Each translation block can be set individually to **Subtitle** or **Game UI** mode, so the recognition method matches the type of content on screen.
+Each translation block can be set individually to **Subtitles / Dialogue** or **Game / UI** mode, so the recognition method matches the type of content on screen.
 
-**Subtitle**: for video subtitles, game dialogue, and other content where text is concentrated in a fairly fixed position (1 block recommended).
+**Subtitles / Dialogue**: for scenes where the text stays in one place, such as video subtitles and game dialogue (1 block recommended).
 
 | Selection | Translation result |
 |-----------|--------------------|
@@ -86,7 +86,7 @@ Each translation block can be set individually to **Subtitle** or **Game UI** mo
 | ![Real-time translation1 - dialogue game selection](docs/images/即時翻譯1-對話遊戲框.png) | ![Real-time translation1 - dialogue game result](docs/images/即時翻譯1-對話遊戲翻譯.png) |
 | ![Real-time translation2 - dialogue game selection](docs/images/即時翻譯2-對話遊戲框.png) | ![Real-time translation2 - dialogue game result](docs/images/即時翻譯2-對話遊戲翻譯.png) |
 
-**Game UI**: for game screens where text is scattered across different positions or moves around frequently (1 – 2 blocks recommended).
+**Game / UI**: for game menus and prompts, or scenes where the text is spread out and moves around (1 – 2 blocks recommended).
 > While in game, use the hotkey (default Ctrl + Alt + A) to pause / resume translation.
 > When a screen doesn't need translating, pause first and resume later — there's no need to shut down real-time translation.
 

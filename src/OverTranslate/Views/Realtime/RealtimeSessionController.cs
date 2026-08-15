@@ -72,7 +72,7 @@ internal sealed class RealtimeSessionController
     /// Ending a session is not usually the user finishing — it is them going back to change the
     /// language, the engine or a colour, all of which live on a page a running session has hidden.
     /// Redrawing three blocks by hand every time they touch one of those is the tax that made this
-    /// worth keeping, and the modes go with the rectangles because re-answering 字幕/遊戲介面 for
+    /// worth keeping, and the modes go with the rectangles because re-answering 字幕 / 對話 vs 遊戲 / UI for
     /// each block is the same tax again.
     ///
     /// Held here and not written to the settings file, which is the line RealtimePage draws for
