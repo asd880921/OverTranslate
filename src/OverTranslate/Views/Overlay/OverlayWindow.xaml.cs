@@ -321,6 +321,11 @@ public partial class OverlayWindow : Window
                     SingleLineReadableMinFontSize,
                     SingleLineAbsoluteMinFontSize));
 
+                // Kept because the wrapped fallback below starts its search from here rather than
+                // from what the single-line attempt narrowed the font to. Wrapping trades width for
+                // height, so the size that was too wide for one line is often perfectly fine on two.
+                var sourceMatchedFontSize = fontSize;
+
                 fontSize = layout.FontSize;
                 targetBorderW = layout.BorderWidth;
                 preferRightExpansion = layout.PreferRightExpansion;
@@ -328,25 +333,37 @@ public partial class OverlayWindow : Window
                 var finalSingleLineMeasure = MeasureText(block.TranslatedText, typeface, fontSize);
                 var singleLineInnerWidth = Math.Max(1, targetBorderW - BubbleHorizontalPadding);
                 var stillOverflowsSingleLine = finalSingleLineMeasure.Width > singleLineInnerWidth;
-                if (stillOverflowsSingleLine)
+                // Scaling the size by the width ratio treats text width as exactly proportional to
+                // font size, and it is not — hinting and rounding leave the result a fraction over
+                // often enough to matter. One pass therefore came back still overflowing by a pixel
+                // or two, which was enough for CharacterEllipsis to take the line's last character
+                // off a line that had every appearance of fitting. Converging instead keeps it, and
+                // keeps it on one line, which the wrapped fallback below would not.
+                var emergencyFloor = Math.Min(fontSize, SingleLineEmergencyMinFontSize);
+                for (var attempt = 0; attempt < 3 && stillOverflowsSingleLine; attempt++)
                 {
-                    var fittedFontSize = fontSize * singleLineInnerWidth / finalSingleLineMeasure.Width;
-                    if (fittedFontSize >= SingleLineEmergencyMinFontSize)
-                    {
-                        fontSize = fittedFontSize;
-                        finalSingleLineMeasure = MeasureText(block.TranslatedText, typeface, fontSize);
-                        stillOverflowsSingleLine = finalSingleLineMeasure.Width > singleLineInnerWidth;
-                    }
-                    else if (fontSize > SingleLineEmergencyMinFontSize)
-                    {
-                        fontSize = SingleLineEmergencyMinFontSize;
-                        finalSingleLineMeasure = MeasureText(block.TranslatedText, typeface, fontSize);
-                        stillOverflowsSingleLine = finalSingleLineMeasure.Width > singleLineInnerWidth;
-                    }
+                    var fitted = Math.Max(
+                        emergencyFloor, fontSize * singleLineInnerWidth / finalSingleLineMeasure.Width);
+                    if (fitted >= fontSize) break;
+
+                    fontSize = fitted;
+                    finalSingleLineMeasure = MeasureText(block.TranslatedText, typeface, fontSize);
+                    stillOverflowsSingleLine = finalSingleLineMeasure.Width > singleLineInnerWidth;
                 }
 
-                if (stillOverflowsSingleLine && !HasLowerOverlappingBlock(block, blocks))
+                if (stillOverflowsSingleLine)
                 {
+                    // Not even the emergency size fits this on one line, so it wraps. That used to
+                    // be conditional — nothing overlapping below, at most two lines, and the result
+                    // had to fit the gap — and every case that failed a condition fell through to
+                    // CharacterEllipsis, which threw the tail of the sentence away. A paragraph read
+                    // as separate lines failed the first condition on all but its last line, so the
+                    // commonest shape of text on a page was also the one that lost the most.
+                    //
+                    // Nothing here is worth losing text over. A bubble that grows too far is visible
+                    // and the user can re-select; a trimmed one reads as a finished sentence that
+                    // happens to say something else, and there is no sign anything went missing.
+                    wrap = true;
                     var maxBorderHeight = GetBottomAvailableHeight(
                         block,
                         blocks,
@@ -356,23 +373,19 @@ public partial class OverlayWindow : Window
                         selScreenY,
                         selScreenHeight,
                         canvasHeight);
-                    var wrappedLineCount = EstimateWrappedLineCount(
-                        block.TranslatedText,
-                        typeface,
-                        fontSize,
-                        singleLineInnerWidth);
-                    var wrappedMeasure = MeasureText(
-                        block.TranslatedText,
-                        typeface,
-                        fontSize,
-                        singleLineInnerWidth);
-                    var wrappedBorderHeight = wrappedMeasure.Height + BubbleVerticalPadding;
+                    maxWrapBorderHeight = maxBorderHeight;
 
-                    if (wrappedLineCount <= 2 && wrappedBorderHeight <= maxBorderHeight)
-                    {
-                        wrap = true;
-                        maxWrapBorderHeight = maxBorderHeight;
-                    }
+                    // Largest size whose wrapped form still fits the gap. The line count is left
+                    // unbounded because the gap is the real constraint: this bubble replaces one
+                    // source line, so every extra line is height borrowed from what sits below.
+                    fontSize = FindLargestGroupedFontSize(
+                        block.TranslatedText,
+                        typeface,
+                        sourceMatchedFontSize,
+                        SingleLineAbsoluteMinFontSize,
+                        singleLineInnerWidth,
+                        int.MaxValue,
+                        maxBorderHeight);
                 }
             }
             else
@@ -383,6 +396,22 @@ public partial class OverlayWindow : Window
                     if (scaledFont >= minFontSize)
                     {
                         fontSize = scaledFont;
+
+                        // The same non-proportionality the single-line path above converges around,
+                        // and this branch never re-measured at all: the size it settled on was taken
+                        // on trust, and whatever it was over by came off the end of the line. Wrap
+                        // only if converging cannot close the gap.
+                        var fitted = MeasureText(block.TranslatedText, typeface, fontSize);
+                        for (var attempt = 0; attempt < 3 && fitted.Width > innerW; attempt++)
+                        {
+                            var next = Math.Max(minFontSize, fontSize * innerW / fitted.Width);
+                            if (next >= fontSize) break;
+
+                            fontSize = next;
+                            fitted = MeasureText(block.TranslatedText, typeface, fontSize);
+                        }
+
+                        if (fitted.Width > innerW) wrap = true;
                     }
                     else
                     {
@@ -392,20 +421,26 @@ public partial class OverlayWindow : Window
                 }
             }
 
+            // A translation can arrive with a line break already in it: a local model that answered
+            // over two lines, an engine echoing a break out of the source. NoWrap does not ignore
+            // one — the TextBlock still breaks there — and the bubble was only ever built one line
+            // tall, so everything after the break was outside it. That is what CharacterEllipsis
+            // showed as a "…" at the end of the first line, and it is the shape of the report that
+            // opened #73: not a word missing, the rest of the sentence missing.
+            //
+            // Wrapping is what makes the height below count every line the text really has.
+            if (!wrap && HasLineBreak(block.TranslatedText)) wrap = true;
+
             double actualBorderH = Math.Max(borderH, fontSize + BubbleVerticalPadding);
             if (wrap)
             {
                 innerW = Math.Max(1, targetBorderW - BubbleHorizontalPadding);
                 var wrapMeasured = MeasureText(block.TranslatedText, typeface, fontSize, innerW);
-                actualBorderH = Math.Max(actualBorderH, wrapMeasured.Height + BubbleVerticalPadding);
-                if (maxWrapBorderHeight.HasValue)
-                    // Cap growth so a longer translation does not spill over the block below — but
-                    // never below borderH (the source's own height). When the next block sits right
-                    // under a multi-line source, maxWrapBorderHeight is slightly shorter than the
-                    // source, and clamping to it left the last source line uncovered (original text
-                    // bleeding through). Covering one's own source wins over not touching a neighbour;
-                    // that neighbour's own opaque bubble covers it.
-                    actualBorderH = Math.Min(actualBorderH, Math.Max(maxWrapBorderHeight.Value, borderH));
+                actualBorderH = OverlayBubbleHeight.ForWrapped(
+                    borderH,
+                    actualBorderH,
+                    wrapMeasured.Height + BubbleVerticalPadding,
+                    maxWrapBorderHeight);
             }
 
             var backgroundBorder = new Border
@@ -431,7 +466,10 @@ public partial class OverlayWindow : Window
                     FontWeight = FontWeights.SemiBold,
                     Foreground = textBrush,
                     TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
-                    TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis,
+                    // Never trimmed. Every path that cannot fit the text on one line now wraps, so
+                    // reaching here without wrap means it already fits; leaving CharacterEllipsis on
+                    // would only mean that a measurement being a pixel out costs the user a word.
+                    TextTrimming = TextTrimming.None,
                     VerticalAlignment = VerticalAlignment.Center,
                     FontFamily = new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 }
@@ -457,6 +495,8 @@ public partial class OverlayWindow : Window
         BubbleBackgroundCanvas.Visibility = visibility;
         BubbleTextCanvas.Visibility = visibility;
     }
+
+    private static bool HasLineBreak(string text) => text.Contains('\n') || text.Contains('\r');
 
     private static bool IsSingleLineSource(string originalText, double sourceHeight) =>
         !originalText.Contains('\n') &&
