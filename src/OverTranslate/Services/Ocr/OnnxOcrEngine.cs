@@ -10,6 +10,32 @@ using SkiaSharp;
 
 namespace OverTranslate.Services.Ocr;
 
+/// <summary>
+/// KNOWN LIMITATION: the detector sometimes returns a box that starts part way along a line, and the
+/// characters before it are lost with nothing in the log to say they existed. Closed as unfixable in
+/// #69; do not spend another round looking for the setting that causes it, because it is not one.
+/// </summary>
+/// <remarks>
+/// Ruled out, each with a measurement rather than an argument: the recognition confidence floor (the
+/// leading box is never returned, so nothing filters it), all three detector box thresholds
+/// (<see cref="DetectorThresholdOverride"/> — dropping BoxScoreThresh to 0.10, which discards
+/// nothing, changes not one character), the border (<see cref="DetectorPaddingOverride"/>, 0 to 96),
+/// the normalisation statistics (<see cref="ShippedDetector"/>), the detector size
+/// (<c>--scale-sweep</c>), and how tightly the user framed the capture (<c>--margin-series</c> over
+/// 27 whole screens: 1.1% apart, and the tightest framing is the worst of them).
+///
+/// What it actually is: the response is knife-edge, and only along the short axis. On the reported
+/// frame, cropping one pixel off the top takes the reading from 5 characters to 6, and four pixels
+/// takes it to 10 — while cropping up to eight pixels off the side changes nothing at all. Appending
+/// blank rows below the picture, which touches no content whatsoever, walks the reading between 5 and
+/// 10 characters with no pattern: +4px reads 10, +20px reads 6, +24px reads 9. The capture the user
+/// happened to draw lands where it lands.
+///
+/// So a frame either reads or does not, and the deciding factor is a few pixels of height that
+/// nobody chose. Replacing the detector is the only lever left and #33 already measured that
+/// trade — PP-OCRv6_det_medium costs 90ms per recognition and 62MB to save roughly one line every
+/// two and a half minutes — and rejected it.
+/// </remarks>
 internal sealed class OnnxOcrEngine : IOcrEngine
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
