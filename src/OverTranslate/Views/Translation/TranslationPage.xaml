@@ -73,20 +73,86 @@
                             BorderBrush="{DynamicResource AppSubtleBorder}"
                             BorderThickness="0,0,0,1"
                             Padding="14,6">
+                        <!-- Both glyphs come from the icon font, and that is the whole reason the
+                             two buttons line up. WPF centres a text *line box*, not the ink inside
+                             it, so mixing an emoji (line 18.62, ink pushed low) with an icon glyph
+                             (line 11.00, ink near-centred) left the ✕ sitting 1.2px above the
+                             speaker — visible, and not fixable by touching the buttons, which were
+                             already the same size and already centred.
+
+                             E8BB and E767/E71A are the pair that share an axis: measured, both land
+                             their ink centre exactly on the button's centre at every font size,
+                             where E711 and the rest of the ✕ glyphs come in 0.41px high. The sizes
+                             differ only to make the two inks the same height (11.00 against 10.96);
+                             neither affects the alignment. -->
                         <DockPanel VerticalAlignment="Center">
-                            <Button DockPanel.Dock="Right"
-                                    x:Name="SrcTtsBtn"
-                                    Content="🔊"
-                                    Width="30" Height="26" Padding="0"
-                                    Style="{StaticResource IconButton}"
-                                    ToolTip="{DynamicResource S.Translation.SpeakSource}"
-                                    Click="SrcTtsBtn_Click"/>
-                            <TextBlock Text="{DynamicResource S.Translation.Source}"
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="{DynamicResource S.Translation.Source}"
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource AppTextSecondary}"
                                        VerticalAlignment="Center"/>
+
+                            <!-- Declared before the clear button so it is the outermost of the two.
+                                 That keeps it aligned with 譯文's speaker across the divider, and
+                                 keeps it still while the clear button comes and goes beside it.
+
+                                 ShowOnDisabled because this button spends real time disabled — see
+                                 RenderSourceActions — and WPF withholds tooltips from disabled
+                                 controls by default. The note beside it is what actually tells the
+                                 user; this is the longer sentence for whoever hovers. -->
+                            <Button DockPanel.Dock="Right"
+                                    x:Name="SrcTtsBtn"
+                                    Content="&#xE767;"
+                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                    FontSize="13"
+                                    Width="30" Height="26" Padding="0"
+                                    Style="{StaticResource IconButton}"
+                                    ToolTipService.ShowOnDisabled="True"
+                                    Click="SrcTtsBtn_Click"/>
+                            <!-- Only present when there is something to clear. A button that cannot
+                                 do anything should not be occupying the row. -->
+                            <Button DockPanel.Dock="Right"
+                                    x:Name="SrcClearBtn"
+                                    Content="&#xE8BB;"
+                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                    FontSize="9"
+                                    Width="30" Height="26" Padding="0" Margin="0,0,2,0"
+                                    Style="{StaticResource IconButton}"
+                                    Visibility="Collapsed"
+                                    ToolTip="{DynamicResource S.Translation.ClearSource}"
+                                    AutomationProperties.Name="{DynamicResource S.Translation.ClearSource}"
+                                    Click="SrcClearBtn_Click"/>
+
+                            <!-- Why the speaker is greyed, said where the greyed button is rather
+                                 than behind a hover: a tooltip on a disabled control is found only
+                                 by someone who already suspects there is something to find. Fills
+                                 the row's spare width and is right-aligned against the buttons, so
+                                 the header's height never changes and nothing moves when the source
+                                 language does. Trims rather than pushes when the pane is narrow.
+
+                                 The same font size as the 原文 label beside it, and that is the
+                                 point rather than an accident. At 11 against the label's 12 both
+                                 were centred to within 0.02px and it still read as sitting low:
+                                 centring two different sizes separately puts their baselines half a
+                                 pixel apart, and the eye lines text up by its baseline, so the
+                                 shorter one looks dropped. Matching the size makes the baselines
+                                 identical by construction; the hierarchy is carried by weight
+                                 instead, which the label already had. -->
+                            <!-- Colour: AppTextSecondary rather than AppError, because nothing has
+                                 gone wrong — a mode simply cannot do a thing. An alarm colour in a
+                                 header that is on screen for the whole session would be shouting. -->
+                            <TextBlock x:Name="SrcAutoTtsNote"
+                                       Text="{DynamicResource S.Translation.SpeakSourceAutomaticShort}"
+                                       FontFamily="{StaticResource AppFont}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource AppTextSecondary}"
+                                       HorizontalAlignment="Right"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,8,0"
+                                       TextTrimming="CharacterEllipsis"
+                                       Visibility="Collapsed"/>
                         </DockPanel>
                     </Border>
                     <TextBox Grid.Row="1"
@@ -120,7 +186,9 @@
                         <DockPanel VerticalAlignment="Center">
                             <Button DockPanel.Dock="Right"
                                     x:Name="TgtTtsBtn"
-                                    Content="🔊"
+                                    Content="&#xE767;"
+                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                    FontSize="13"
                                     Width="30" Height="26" Padding="0"
                                     Style="{StaticResource IconButton}"
                                     ToolTip="{DynamicResource S.Translation.SpeakResult}"

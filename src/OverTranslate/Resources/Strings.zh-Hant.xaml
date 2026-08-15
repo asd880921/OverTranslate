@@ -80,7 +80,13 @@
     <sys:String x:Key="S.Translation.Title">文字翻譯</sys:String>
     <sys:String x:Key="S.Translation.Subtitle">輸入或貼上文字即可翻譯，截圖結果也會送到這裡</sys:String>
     <sys:String x:Key="S.Translation.SwapTip">對調語言與內容</sys:String>
+    <sys:String x:Key="S.Translation.ClearSource">清除原文</sys:String>
     <sys:String x:Key="S.Translation.SpeakSource">朗讀原文</sys:String>
+    <!-- 朗讀鈕在自動模式下是停用的，這句就是使用者唯一能得知原因的地方 —— TtsService 把「自動」對應
+         到中文語音，英日韓原文會被用中文口音唸出來。 -->
+    <sys:String x:Key="S.Translation.SpeakSourceAutomatic">來源語言設為「自動」時，無法使用原文朗讀。</sys:String>
+    <!-- 標題列裡的短版，寬度吃緊時會被截斷，完整句子留在上面那個 tooltip。 -->
+    <sys:String x:Key="S.Translation.SpeakSourceAutomaticShort">自動偵測無法使用語音</sys:String>
     <sys:String x:Key="S.Translation.Source">原文</sys:String>
     <sys:String x:Key="S.Translation.SpeakResult">朗讀譯文</sys:String>
     <sys:String x:Key="S.Translation.Result">譯文</sys:String>
