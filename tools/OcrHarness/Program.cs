@@ -18,6 +18,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same frame and size, cjk vs korean recognition model)");
     Console.Error.WriteLine("       OcrHarness --scale-sweep [--det <det.onnx>[:imagenet|:half]] <image.png> [...]");
     Console.Error.WriteLine("                  (reads each frame at every detector size, no translation)");
+    Console.Error.WriteLine("       OcrHarness --margin-series <wholescreen.png> [more.png ...]");
+    Console.Error.WriteLine("                  (whole screens: the same subtitle framed at a range of margins)");
     Console.Error.WriteLine("       OcrHarness --thresh-sweep <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same frame, detector box thresholds moved one axis at a time)");
     Console.Error.WriteLine("       OcrHarness --pad-sweep <image.png> [more.png ...]");
@@ -180,6 +182,133 @@ if (args[0] == "--compare-models")
                 }
             }
         }
+    }
+
+    return 0;
+}
+
+// Margin series: one whole screen, cropped around its subtitle at a range of margins, read at each.
+//
+// The question is what the user's own framing costs. Every other sweep here starts from a region
+// somebody already drew and can only change what is done to it; this one starts from the picture the
+// region was drawn on, so the framing itself is the variable. It needs whole screens rather than
+// region dumps for that reason — a dump has already had its margin chosen.
+//
+// The subtitle is located rather than given: reading a full screen finds it along with whatever else
+// is on the picture, and the boxes in the bottom third of a video frame are the subtitle. The union
+// of those is then re-read once with room around it, because the first pass is subject to the very
+// effect being measured and its box may already be short at one end.
+if (args[0] == "--margin-series")
+{
+    using var marginOcr = new OcrService();
+
+    // Where a subtitle lives, as a fraction of the frame's height. Deliberately generous: a two-line
+    // subtitle on a 16:9 frame starts around 0.82, and a frame with the line higher up is better
+    // skipped by the character floor below than caught by a boundary drawn tightly here.
+    const double SubtitleBandTop = 0.62;
+
+    // Frames whose best reading is shorter than this are not carrying a subtitle to measure, and a
+    // series over one of them reports noise moving around rather than framing.
+    const int MinChars = 8;
+
+    int[] margins = [0, 10, 20, 30, 40, 60, 80, 120];
+    var totals = new int[margins.Length];
+    var perfect = new int[margins.Length];
+    var measured = 0;
+
+    async Task<List<OcrTextBlock>> ReadAsync(Bitmap source, System.Windows.Rect area)
+    {
+        var x = (int)Math.Max(0, area.X);
+        var y = (int)Math.Max(0, area.Y);
+        var w = (int)Math.Min(source.Width - x, area.Width);
+        var h = (int)Math.Min(source.Height - y, area.Height);
+        if (w <= 1 || h <= 1) return [];
+
+        using var crop = source.Clone(new Rectangle(x, y, w, h), source.PixelFormat);
+        return await marginOcr.TryRecognizeAsync(crop, "AUTO") ?? [];
+    }
+
+    static System.Windows.Rect Union(IEnumerable<OcrTextBlock> blocks, double offsetX, double offsetY)
+    {
+        var union = System.Windows.Rect.Empty;
+        foreach (var block in blocks)
+        {
+            var bounds = block.Bounds;
+            bounds.Offset(offsetX, offsetY);
+            union.Union(bounds);
+        }
+
+        return union;
+    }
+
+    static System.Windows.Rect Grow(System.Windows.Rect area, int margin) => new(
+        area.X - margin, area.Y - margin, area.Width + margin * 2, area.Height + margin * 2);
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var name = Path.GetFileName(path);
+
+        // Pass one: the whole screen, keeping only what sits in the subtitle band.
+        var whole = await ReadAsync(image, new System.Windows.Rect(0, 0, image.Width, image.Height));
+        var band = whole.Where(b => b.Bounds.Y + b.Bounds.Height / 2 > image.Height * SubtitleBandTop).ToList();
+        if (band.Count == 0) { Console.WriteLine($"{name}: no subtitle found, skipped"); continue; }
+
+        // The widest line in the band and whatever else belongs to the same subtitle — the second
+        // line of a two-line one — and nothing else. The union of the whole band would swallow the
+        // interface along the bottom of a game screen, and then the series would be measuring how
+        // well a row of buttons reads rather than the subtitle it was pointed at.
+        var anchor = band.MaxBy(b => b.Bounds.Width)!.Bounds;
+        band = band.Where(b =>
+        {
+            var bounds = b.Bounds;
+            var overlap = Math.Min(bounds.Right, anchor.Right) - Math.Max(bounds.Left, anchor.Left);
+            var near = Math.Abs(bounds.Y - anchor.Y) < anchor.Height * 2.5;
+            return near && overlap > Math.Min(bounds.Width, anchor.Width) * 0.5;
+        }).ToList();
+
+        // Pass two: the same text with room around it, which is where this box is most likely to be
+        // the whole line rather than part of one.
+        var rough = Grow(Union(band, 0, 0), 60);
+        var refinedRead = await ReadAsync(image, rough);
+        var refined = refinedRead.Count > 0 ? Union(refinedRead, rough.X, rough.Y) : Union(band, 0, 0);
+
+        var readings = new string[margins.Length];
+        var chars = new int[margins.Length];
+        for (var index = 0; index < margins.Length; index++)
+        {
+            var blocks = await ReadAsync(image, Grow(refined, margins[index]));
+            readings[index] = string.Join(" | ", blocks.Select(b => b.Text.Replace("\n", " ")));
+            chars[index] = blocks.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c)));
+        }
+
+        var best = chars.Max();
+        if (best < MinChars) { Console.WriteLine($"{name}: nothing worth measuring, skipped"); continue; }
+
+        measured++;
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine($"{name}  {image.Width}x{image.Height}  best={best} chars");
+        for (var index = 0; index < margins.Length; index++)
+        {
+            totals[index] += chars[index];
+            if (chars[index] == best) perfect[index]++;
+
+            Console.WriteLine(
+                $"  +{margins[index],3}px : {chars[index],3}/{best,-3} {readings[index]}");
+        }
+    }
+
+    if (measured > 0)
+    {
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine($"SUMMARY over {measured} frames");
+        var bestTotal = totals.Max();
+        for (var index = 0; index < margins.Length; index++)
+            Console.WriteLine(
+                $"  +{margins[index],3}px : {totals[index],5} chars ({totals[index] * 100.0 / bestTotal,5:0.0}% of best)  " +
+                $"read best on {perfect[index],3}/{measured} frames");
     }
 
     return 0;
