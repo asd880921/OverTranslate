@@ -47,6 +47,11 @@ internal readonly record struct ReadingMerge(
 /// pass-level rule was: that one also let a sentence be overwritten by a worse reading of itself
 /// whenever its neighbour improved enough to carry the average.
 ///
+/// The one reading that is taken without improving is the one that is not a re-reading at all: a
+/// line that contains the shown one and carries on past it is the same sentence finishing its
+/// animation, and no score it could arrive with would say so. See
+/// <see cref="TextSimilarity.IsContinuationOf"/>.
+///
 /// Lines are paired across passes by what they say, not where they are. Position sorts the
 /// candidates — the same sentence rarely jumps up the frame between two polls 250ms apart — but the
 /// text decides, because a line appearing above the current one shifts every box below it while the
@@ -113,6 +118,22 @@ internal static class RealtimeReadingMerge
 
             paired++;
             var current = shown[partner];
+
+            // The same sentence, now with the rest of itself after it: the line was read while it
+            // was still being typed out or faded in, and this is it finished. Taken without any
+            // argument about the score, because the score is not what is being argued about — the
+            // half-drawn reading was correct about the half it could see and scored accordingly,
+            // and there is no confidence gain to be had from characters that were not on screen
+            // yet. Left to the rule below, a subtitle caught mid-animation keeps its truncated
+            // ending for the whole time it is up. See TextSimilarity.IsContinuationOf for what
+            // separates this from a line whose end merely wobbled.
+            if (TextSimilarity.IsContinuationOf(block.Text, current.Text))
+            {
+                improved++;
+                blocks.Add(block);
+                lines.Add(new RenderedLine(block.Text, confidence));
+                continue;
+            }
 
             // Better read than what is on screen, so the correction lands — this is the whole point.
             // Any difference in the words counts, not only one big enough to clear the noise
