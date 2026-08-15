@@ -94,9 +94,9 @@ Each translation block can be set individually to **Subtitle** or **Game UI** mo
 |-----------|--------------------|
 | ![Real-time translation - game selection](docs/images/即時翻譯-遊戲翻譯框.png) | ![Real-time translation - game result](docs/images/即時翻譯-遊戲翻譯.png) |
 
-### Floating Control Bar
+### Floating Bar
 
-While translation is running, the floating control bar lets you **pause** or **resume translation**, **capture a screenshot of the current translation**, **re-edit the translation blocks**, or **stop translating**.
+While translation is running, the floating bar lets you **pause** or **resume translation**, **capture a screenshot of the current translation**, **re-edit the translation blocks**, or **stop translating**.
 
 ## Text Translation
 > Use the hotkey (default `Ctrl + Alt + W`) to bring up the main window quickly.
@@ -113,8 +113,8 @@ Click **Settings** in the left navigation bar, or right-click the tray icon → 
 | Setting | Description |
 |---------|-------------|
 | Interface language | Traditional Chinese / English, applied immediately (on first launch it follows your Windows display language) |
-| Screenshot translation | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`) |
-| Open translation window | Hotkey to bring up the main window (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating window to the front |
+| Screenshot translation | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`); while real-time translation is running, it pauses / resumes the realtime translation instead |
+| Open translation window | Hotkey to bring up the main window (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
 | Source language | The original language (default Auto) |
 | Auto translate | Translates **immediately** after the area is selected, without clicking the translate button (off by default) |
 | Run at startup | Launch automatically when Windows starts |

@@ -170,13 +170,15 @@
 
     <sys:String x:Key="S.Realtime.HowItWorks">運作方式</sys:String>
     <sys:String x:Key="S.Realtime.Step1">1. 點擊「選取翻譯區塊」，在畫面上框選要翻譯的區域。</sys:String>
-    <sys:String x:Key="S.Realtime.Step2">2. 點擊浮動工具列的「開始翻譯」，內容變更時會自動重新辨識並更新譯文。</sys:String>
+    <!-- 「浮動視窗列」是這個東西唯一的名字，全介面與 README 一致；曾經同時叫過浮動列、浮動工具列、
+         浮動控制列與浮動視窗，讀的人無從知道講的是不是同一個東西。 -->
+    <sys:String x:Key="S.Realtime.Step2">2. 點擊浮動視窗列的「開始翻譯」，內容變更時會自動重新辨識並更新譯文。</sys:String>
     <sys:String x:Key="S.Realtime.Step3">3. 翻譯中的區域不會影響遊戲或介面操作，如需調整翻譯區塊，請按「編輯」。</sys:String>
     <sys:String x:Key="S.Realtime.Step4">4. 翻譯中按 {0} 可暫停／繼續，暫停時會清除譯文並釋放辨識模型。</sys:String>
 
     <sys:String x:Key="S.Realtime.SelectBlocks">選取翻譯區塊</sys:String>
     <sys:String x:Key="S.Realtime.StopSession">結束即時翻譯</sys:String>
-    <sys:String x:Key="S.Realtime.ActiveHint">即時翻譯進行中，可用螢幕上的浮動列調整或結束。</sys:String>
+    <sys:String x:Key="S.Realtime.ActiveHint">即時翻譯進行中，可用螢幕上的浮動視窗列調整或結束。</sys:String>
     <sys:String x:Key="S.Realtime.NoApiKey">尚未設定 API Key，請先到「設定」輸入，否則即時翻譯會無法取得譯文。</sys:String>
     <!-- Two whole strings rather than a suffix appended to the first: the English marker needs a
          leading space and the Chinese one must not have any, and leading whitespace in a XAML text
@@ -245,9 +247,11 @@
 
     <sys:String x:Key="S.Settings.General">一般設定</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkey">截圖翻譯</sys:String>
-    <sys:String x:Key="S.Settings.CaptureHotkeyHint">按下快捷鍵即可使用截圖翻譯功能</sys:String>
+    <!-- [[…]] 內的字會以主題色強調，見 Views/Controls/HighlightedText。兩種語言的標記數量必須一致，
+         StringsParityTests 會擋。 -->
+    <sys:String x:Key="S.Settings.CaptureHotkeyHint">按下快捷鍵即可使用截圖翻譯功能；[[即時翻譯]]進行中時，改為[[暫停 / 繼續]]目前的即時翻譯</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkey">開啟翻譯視窗</sys:String>
-    <sys:String x:Key="S.Settings.WindowHotkeyHint">即時翻譯進行中時，改為將浮動視窗移至最上層</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkeyHint">[[即時翻譯]]進行中時，改為將[[浮動視窗列]]移至最上層</sys:String>
     <sys:String x:Key="S.Settings.SourceLanguage">來源語言</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslate">自動翻譯</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslateCheck">框選完成後自動翻譯</sys:String>

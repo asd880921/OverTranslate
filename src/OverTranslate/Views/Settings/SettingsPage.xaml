@@ -100,7 +100,7 @@
                                        Height="34"
                                        Click="RecordBtn_Click"/>
                             <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2"
-                                       Text="{DynamicResource S.Settings.CaptureHotkeyHint}"
+                                       controls:HighlightedText.Source="{DynamicResource S.Settings.CaptureHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
                         </Grid>
 
@@ -132,7 +132,7 @@
                                        Height="34"
                                        Click="RecordBtn_Click"/>
                             <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2"
-                                       Text="{DynamicResource S.Settings.WindowHotkeyHint}"
+                                       controls:HighlightedText.Source="{DynamicResource S.Settings.WindowHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
                         </Grid>
 
