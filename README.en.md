@@ -36,16 +36,16 @@ It supports both **screenshot translation** and **real-time translation**: text 
 Whether it's games, PDFs, video subtitles, or any other text you can't select directly, you can translate it instantly without constantly switching windows while reading.
 
 > Works on web pages, PDFs, images, videos, game interfaces, and any other screen where text can't be selected directly, including mixed-language content.
+
 ![Translation comparison](docs/images/翻譯比對圖.png)
 
 ### Features
 
-- 🆓 **Free, no API key required** — several built-in translation services work without an API key, right after installation
+- 🆓 **Free, no API key required** — includes multiple ready-to-use translation services, so you can start translating right after installation.
 - 🎯 **Screenshot translation** — select an area to translate it, with the translation shown in the original position
 - 🎬 **Real-time translation** — translations update automatically as the screen changes, ideal for video subtitles and games
-- 🤖 **Local LLM** — translate with a local AI model through Ollama, with customizable translation prompts
-- 🔁 **Automatic multi-engine fallback** — automatically switches engines when the preferred one doesn't respond in time, for better reliability
 - 📸 **One-click screenshot** — copy the original capture or the translated result after selecting an area, or just use it as a regular screenshot tool
+- 🤖 **Local LLM** — translate with a local AI model through Ollama, with customizable translation prompts
 - 🔒 **Data safety** — OCR runs entirely on your machine; when using online translation services, only the recognized text is sent to them
 - 💾 **Memory management** — models are loaded and released automatically based on usage, reducing memory footprint when idle
 
@@ -56,7 +56,11 @@ Whether it's games, PDFs, video subtitles, or any other text you can't select di
 
 After selecting the area you want to translate, the translation is overlaid on the original position. The toolbar lets you quickly switch languages, translation services, original / translated text, screenshots, and more.
 
-![Screenshot translation preview](docs/images/截圖翻譯預覽.png)
+| Source text | Translation |
+|------|----------|
+| ![截圖翻譯1-前.png](docs/images/截圖翻譯1-前.png) | ![截圖翻譯1-後.png](docs/images/截圖翻譯1-後.png) |
+| ![截圖翻譯2-前.png](docs/images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](docs/images/截圖翻譯2-後.png) |
+| ![截圖翻譯3-前.png](docs/images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](docs/images/截圖翻譯3-後.png) |
 
 ---
 
