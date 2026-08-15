@@ -1282,4 +1282,97 @@
         </Style.Triggers>
     </Style>
 
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  SLIDER                                     -->
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- Templated rather than left to the stock one, which draws itself from the Windows classic
+         palette and would arrive as a grey Win95 track in both of this app's themes. The parts are
+         the standard ones — a Track with two RepeatButtons and a Thumb — so keyboard, page-click and
+         drag all keep working; only the paint is ours. -->
+    <Style x:Key="SliderTrackFill" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Focusable"             Value="False"/>
+        <Setter Property="IsTabStop"             Value="False"/>
+        <Setter Property="Background"            Value="Transparent"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <!-- Transparent rather than absent, so clicking anywhere along the track still
+                         reaches the RepeatButton and pages towards the click. -->
+                    <Border Background="{TemplateBinding Background}"
+                            Height="4"
+                            CornerRadius="2"
+                            VerticalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SliderThumb" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Width"  Value="16"/>
+        <Setter Property="Height" Value="16"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Ellipse x:Name="Dot"
+                             Fill="{DynamicResource AppAccent}"
+                             Stroke="{DynamicResource AppCardBg}"
+                             StrokeThickness="2"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource AppAccentHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource AppAccentPressed}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="AppSlider" TargetType="Slider">
+        <Setter Property="Height"               Value="24"/>
+        <Setter Property="SmallChange"          Value="1"/>
+        <Setter Property="LargeChange"          Value="10"/>
+        <!-- A click on the track jumps to that point rather than paging towards it. For a value the
+             user is judging by eye against a preview, "put it there" is the whole interaction. -->
+        <Setter Property="IsMoveToPointEnabled" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid VerticalAlignment="Center" Background="Transparent">
+                        <Border Height="4"
+                                CornerRadius="2"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource AppInputBorder}"/>
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <!-- The filled half: the same bar as the track, painted accent, so
+                                     how far along the value sits reads without the number. -->
+                                <RepeatButton Command="Slider.DecreaseLarge"
+                                              Style="{StaticResource SliderTrackFill}"
+                                              Background="{DynamicResource AppAccent}"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource SliderThumb}"/>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="Slider.IncreaseLarge"
+                                              Style="{StaticResource SliderTrackFill}"/>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

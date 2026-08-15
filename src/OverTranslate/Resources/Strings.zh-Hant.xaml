@@ -165,8 +165,10 @@
     <sys:String x:Key="S.Realtime.PreviewText">文字會像這樣顯示在畫面上</sys:String>
     <sys:String x:Key="S.Realtime.TextColor">文字顏色</sys:String>
     <sys:String x:Key="S.Realtime.ScrimColor">底色</sys:String>
+    <!-- 「不透明度」而非「透明度」：滑桿往右是底色越厚，用「透明度」會讓數字與方向相反。 -->
+    <sys:String x:Key="S.Realtime.ScrimOpacity">底色不透明度</sys:String>
     <sys:String x:Key="S.Realtime.ResetColors">還原預設值</sys:String>
-    <sys:String x:Key="S.Realtime.ResetColorsName">還原預設顏色</sys:String>
+    <sys:String x:Key="S.Realtime.ResetColorsName">還原預設外觀</sys:String>
 
     <sys:String x:Key="S.Realtime.HowItWorks">運作方式</sys:String>
     <sys:String x:Key="S.Realtime.Step1">1. 點擊「選取翻譯區塊」，在畫面上框選要翻譯的區域。</sys:String>

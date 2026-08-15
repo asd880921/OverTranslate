@@ -229,6 +229,34 @@
                                     AutomationProperties.Name="{DynamicResource S.Realtime.ResetColorsName}"
                                     Click="ResetColorsBtn_Click"/>
                         </Grid>
+
+                        <!-- Full width rather than beside the colours, because it is the one control
+                             here the user sets by watching something else: the preview above is what
+                             tells them when the band is right, and a short slider makes that a
+                             fiddle. It also has a number, since "somewhere near three quarters" is
+                             not a thing anyone can write down and come back to. -->
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{DynamicResource S.Realtime.ScrimOpacity}"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Grid.Column="1"
+                                       x:Name="ScrimOpacityValue"
+                                       Style="{StaticResource FieldLabel}"
+                                       Margin="0"/>
+                        </Grid>
+                        <Slider x:Name="ScrimOpacitySlider"
+                                Style="{StaticResource AppSlider}"
+                                Margin="0,4,0,0"
+                                Minimum="0"
+                                Maximum="100"
+                                TickFrequency="1"
+                                IsSnapToTickEnabled="True"
+                                AutomationProperties.Name="{DynamicResource S.Realtime.ScrimOpacity}"
+                                ValueChanged="ScrimOpacitySlider_ValueChanged"/>
                     </StackPanel>
                 </Border>
 

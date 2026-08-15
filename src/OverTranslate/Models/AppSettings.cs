@@ -28,6 +28,17 @@ public class AppSettings
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;
+    /// <summary>
+    /// The language 即時翻譯 reads from, or empty for "not chosen yet".
+    /// </summary>
+    /// <remarks>
+    /// Empty rather than <see cref="LanguageData.DefaultOcrSourceLanguage"/>, which is 自動 — a mode
+    /// the realtime picker deliberately does not offer, because recognition there gets one look at a
+    /// frame and no retry. A blank field asks the question; a default would answer it badly. Only a
+    /// language the user picked themselves is ever written here, so what comes back is always an
+    /// answer they gave once.
+    /// </remarks>
+    public string RealtimeSourceLanguage { get; set; } = "";
     public string RealtimeTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
     public TranslationProvider RealtimeProvider { get; set; } = TranslationProvider.Microsoft;
     public string ApiKey { get; set; } = "";
@@ -83,11 +94,25 @@ public class AppSettings
     /// <summary>
     /// Realtime subtitle colours, "#RRGGBB". Unlike everything else on 即時翻譯 these are kept: which
     /// screen and how many blocks belong to one sitting, but a reader who needs yellow on dark blue
-    /// needs it every time. The scrim's alpha is not stored — see RealtimeSubtitleColors.
+    /// needs it every time.
     /// </summary>
     public string RealtimeTextColor { get; set; } = Services.Realtime.RealtimeSubtitleColors.DefaultText;
     /// <inheritdoc cref="RealtimeTextColor"/>
     public string RealtimeScrimColor { get; set; } = Services.Realtime.RealtimeSubtitleColors.DefaultScrim;
+
+    /// <summary>
+    /// How opaque the band behind the subtitle is drawn, 0–100 — see
+    /// <see cref="Services.Realtime.RealtimeSubtitleColors.MinScrimOpacity"/>.
+    /// </summary>
+    /// <remarks>
+    /// Its own key rather than an alpha channel on <see cref="RealtimeScrimColor"/>, which could have
+    /// carried one as <c>#AARRGGBB</c>. Two reasons, and the second is the one that decided it: the
+    /// colour is picked in a system dialog that has no alpha to give back, so the two values do not
+    /// arrive together; and a reader who wants the band lighter over one game and heavier over the
+    /// next is changing this and not their colour, which a combined key would make them redo.
+    /// </remarks>
+    public int RealtimeScrimOpacity { get; set; } =
+        Services.Realtime.RealtimeSubtitleColors.DefaultScrimOpacity;
 
     /// <summary>
     /// Whether the per-block framing guidance on the edit layer is unfolded. Expanded on a first run,
