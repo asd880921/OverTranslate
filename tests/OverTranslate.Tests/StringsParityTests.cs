@@ -24,7 +24,9 @@ public class StringsParityTests
     /// <summary>Placeholders like {0}, ignoring {} escapes.</summary>
     private static readonly Regex Placeholder = new(@"\{(\d+)\}", RegexOptions.Compiled);
 
-    private static string ProjectDirectory()
+    /// <summary>The src/OverTranslate directory, found by walking up from the test binaries.</summary>
+    /// <remarks>Public because other tests that read the project's own files need the same walk.</remarks>
+    public static string ProjectDirectory()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
