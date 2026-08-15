@@ -83,6 +83,10 @@ public partial class RealtimeEditWindow : Window
     /// second says how to frame it. Worth re-measuring if either sentence is ever edited — the text
     /// still wraps rather than clips if it outgrows this, so the failure is a taller plate and not a
     /// lost half-sentence.
+    ///
+    /// The break between those two lines comes from the resource string, which only keeps it because
+    /// the entry carries xml:space="preserve" — without it XAML folds the newline into a space and
+    /// the pair runs together as one wrapped paragraph.
     /// </remarks>
     private const double BaseHintWidth = 680;
 

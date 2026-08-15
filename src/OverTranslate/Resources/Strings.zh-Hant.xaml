@@ -223,9 +223,9 @@
     <sys:String x:Key="S.Realtime.ModeGameUi">遊戲 / UI</sys:String>
     <sys:String x:Key="S.Realtime.ModeSubtitleSummary">整條字幕、對話框——文字大，讀取時會縮小</sys:String>
     <sys:String x:Key="S.Realtime.ModeGameUiSummary">遊戲面板、物品說明——文字小，讀取時不縮小</sys:String>
-    <sys:String x:Key="S.Realtime.ModeSubtitleGuidance">適合影音字幕、遊戲對話等文字位置較集中且固定的場景。
+    <sys:String x:Key="S.Realtime.ModeSubtitleGuidance" xml:space="preserve">適合影音字幕、遊戲對話等文字位置較集中且固定的場景。
 框選時，文字上下請保留適量空間，避免貼齊文字；左右可適度放寬，但不要框入過多空白範圍。</sys:String>
-    <sys:String x:Key="S.Realtime.ModeGameUiGuidance">適合遊戲中的介面、提示或文字位置較分散、不固定的場景。
+    <sys:String x:Key="S.Realtime.ModeGameUiGuidance" xml:space="preserve">適合遊戲中的介面、提示或文字位置較分散、不固定的場景。
 框選時，整體請保留一些空間；若畫面有多個需要翻譯的區域，建議分開框選，避免一次框入過大範圍。</sys:String>
     <sys:String x:Key="S.Realtime.CollapseGuidance">收合模式說明</sys:String>
     <sys:String x:Key="S.Realtime.ExpandGuidance">展開模式說明</sys:String>
