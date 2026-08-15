@@ -28,6 +28,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
     Console.Error.WriteLine("       (add --panel to any sweep to read as a game panel rather than a subtitle)");
+    Console.Error.WriteLine("       (add --lang KO to read with the Korean recogniser instead of the general one)");
     return 1;
 }
 
@@ -37,6 +38,24 @@ if (args.Length == 0)
 // dump as a panel would report the wrong half of RealtimeDetectorSize.
 var harnessMode = args.Contains("--panel") ? RealtimeBlockMode.Panel : RealtimeBlockMode.Subtitle;
 args = [.. args.Where(argument => argument != "--panel")];
+
+// Which language to read as. It picks the recognition model, and that is not a detail on a Korean
+// dump: the general model carries no Hangul at all, so a Korean frame read as EN comes back as
+// whatever Latin and Han the recogniser can force onto the shapes. The detector is shared, so this
+// changes nothing about detection — which is the point when the thing under test is a detector.
+var harnessLanguage = "EN";
+var languageFlag = Array.IndexOf(args, "--lang");
+if (languageFlag >= 0)
+{
+    if (languageFlag + 1 >= args.Length)
+    {
+        Console.Error.WriteLine("usage: --lang <EN|JA|KO|AUTO|...>");
+        return 1;
+    }
+
+    harnessLanguage = args[languageFlag + 1].ToUpperInvariant();
+    args = [.. args.Take(languageFlag), .. args.Skip(languageFlag + 2)];
+}
 
 // Forced-fallback check: the primary engine gets a 1ms-timeout HttpClient so it always fails,
 // proving the hedge falls back to a backup engine and that the badge data (FallbackUsed/Dominant)
@@ -429,7 +448,7 @@ if (args[0] == "--thresh-sweep")
 
             List<OcrTextBlock>? blocks = null;
             for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
-                blocks = await threshOcr.TryRecognizeAsync(image, "AUTO");
+                blocks = await threshOcr.TryRecognizeAsync(image, harnessLanguage);
 
             var chars = blocks?.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c))) ?? 0;
             var text = blocks is null || blocks.Count == 0
@@ -473,7 +492,7 @@ if (args[0] == "--pad-sweep")
             for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
             {
                 elapsed.Restart();
-                blocks = await padOcr.TryRecognizeAsync(image, "EN", primary);
+                blocks = await padOcr.TryRecognizeAsync(image, harnessLanguage, primary);
             }
 
             elapsed.Stop();
@@ -531,7 +550,7 @@ if (args[0] == "--margin-sweep")
 
         foreach (var size in new[] { primary }.Concat(fallbacks))
         {
-            var blocks = await marginOcr.TryRecognizeAsync(image, "EN", size);
+            var blocks = await marginOcr.TryRecognizeAsync(image, harnessLanguage, size);
 
             // The two filters the realtime session applies. A reading it would have thrown away is
             // not a reading, and the collapse filter is measured against the block's own height —
@@ -713,7 +732,7 @@ if (args[0] == "--scale-sweep")
             for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
             {
                 elapsed.Restart();
-                blocks = await sweepOcr.TryRecognizeAsync(image, "EN", size);
+                blocks = await sweepOcr.TryRecognizeAsync(image, harnessLanguage, size);
             }
 
             elapsed.Stop();

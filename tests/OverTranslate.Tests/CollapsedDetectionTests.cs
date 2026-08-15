@@ -37,9 +37,14 @@ public class CollapsedDetectionTests
     public void ALooseBoxAroundARealSentenceIsNotACollapse()
     {
         // Measured under PP-OCRv6_det_tiny: a 171px box holding "Let's pay CiRcLE visit on the way
-        // home." in a 190px block, thrown away by the old 0.9 threshold. The new detector draws
-        // looser boxes than the one this rule was calibrated on, and a sentence lost this way never
-        // reaches the screen at all.
+        // home." in a 190px block, thrown away by the old 0.9 threshold. That detector drew looser
+        // boxes than the one this rule was calibrated on, and a sentence lost this way never reaches
+        // the screen at all.
+        //
+        // Still 0.95 under det_small (#71), which loosened the boxes no further: swept over the same
+        // 137 region dumps, the two detectors have this rule and the short-reading one take 24 and 26
+        // boxes respectively, and on 18 game panels the new one trips them less often than the old
+        // one did (90 against 144). Nothing here had to move with the model.
         Assert.False(
             CollapsedDetection.IsCollapsed(171, 190, "Let's pay CiRcLE visit on the way home."));
     }

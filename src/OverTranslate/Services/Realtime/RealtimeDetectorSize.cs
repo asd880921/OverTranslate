@@ -38,6 +38,12 @@ namespace OverTranslate.Services.Realtime;
 /// for half the work. That is why the numbers stayed put; it is not evidence that they are still
 /// optimal, and a sweep on the control group (frames the primary size already read) is what would
 /// move them.
+///
+/// THE DETECTOR CHANGED AGAIN in #71, to PP-OCRv6_det_small, and the fractions still did not move.
+/// That sweep is the control-group one this comment asked for: over 137 real region dumps the new
+/// detector reads 8.6% more characters at 0.50 than the old one did, and 0.65 to 0.70 reads more
+/// still — 1122 characters against 1025 — for 78% more time. So halving remains a cost decision and
+/// the same one, now made against a sample that includes the frames the primary size already read.
 /// </remarks>
 internal static class RealtimeDetectorSize
 {
@@ -106,13 +112,18 @@ internal static class RealtimeDetectorSize
     /// which is why the mode above picks a starting point rather than one size trying to serve
     /// everything.
     ///
-    /// The fallbacks are still earning their place under PP-OCRv6_det_tiny, on a smaller margin
+    /// The fallbacks were still earning their place under PP-OCRv6_det_tiny, on a smaller margin
     /// and for a different reason. Of 84 control frames the old detector read at the primary size,
     /// the new one reads 82 there and the other two only from 0.70 up — so those two are read by
     /// the first fallback rather than lost, at the price of one extra inference. What changed is
     /// how often that happens: on the frames a live session had to fall back for, the primary size
     /// now reads 9 of 15 rather than 4, which is the trigger rate coming down. Rarely used is what
     /// a fallback is supposed to be.
+    ///
+    /// Under det_small (#71) the trigger rate should be lower again — it reads more than tiny at
+    /// every size — but that was not measured directly, because a fallback only fires on a frame the
+    /// primary size read nothing in and #71 swept sizes rather than replaying sessions. Worth
+    /// watching in a live session rather than assuming.
     ///
     /// The first fallback is whichever mode's fraction was not chosen: the two fail on opposite
     /// content, so the one the mode turned down is the best answer for the case where the mode was
