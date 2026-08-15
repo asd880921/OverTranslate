@@ -19,7 +19,9 @@ namespace OverTranslate.Services.Ocr;
 /// Ruled out, each with a measurement rather than an argument: the recognition confidence floor (the
 /// leading box is never returned, so nothing filters it), all three detector box thresholds
 /// (<see cref="DetectorThresholdOverride"/> — dropping BoxScoreThresh to 0.10, which discards
-/// nothing, changes not one character), the border (<see cref="DetectorPaddingOverride"/>, 0 to 96),
+/// nothing, changes not one character; #71 later found all three were on the wrong values anyway and
+/// corrected them, see <see cref="ExportedThresholds"/>, and this symptom survived that too), the
+/// border (<see cref="DetectorPaddingOverride"/>, 0 to 96),
 /// the normalisation statistics (<see cref="ShippedDetector"/>), the detector size
 /// (<c>--scale-sweep</c>), and how tightly the user framed the capture (<c>--margin-series</c> over
 /// 27 whole screens: 1.1% apart, and the tightest framing is the worst of them).
@@ -622,19 +624,50 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         float UnClipRatio);
 
     /// <summary>
-    /// Detector post-processing thresholds to use instead of the library's, or null for the
-    /// library's own.
+    /// What PP-OCRv6_det_tiny was exported to be read with, from the <c>inference.yml</c> published
+    /// beside the model.
+    /// </summary>
+    /// <remarks>
+    /// Until #71 these were whatever <c>RapidOcrOptions.Default</c> happened to carry — 0.30, 0.50
+    /// and 1.60, which are the library's generic numbers and not this model's. Every one of the
+    /// three was wrong, in the direction that costs text: a stricter binarisation threshold leaves
+    /// faint strokes out of a box, a stricter box score throws whole boxes away, and a larger unclip
+    /// returns boxes taller than the glyphs in them — and box height is what the overlay sizes its
+    /// font from.
+    ///
+    /// Measured on the model's own values against three workloads, all of which improve:
+    ///
+    /// <code>
+    ///   workload                       shipped        exported
+    ///   realtime subtitles, 45 frames  697 chars      701, boxes 5% tighter
+    ///   realtime fallback size, 19     364 chars      371, boxes 6% tighter
+    ///   screenshot flow, 16 frames     3481 chars     3522, 15 of 16 frames equal or better
+    /// </code>
+    ///
+    /// Small, but free, and it is a correction rather than a tuning: the same class of mistake as
+    /// reading a v6 detector with v5's normalisation statistics.
+    ///
+    /// WHAT WAS TRIED AND REJECTED. Raising the box score to reject the noise boxes that reach the
+    /// screen as huge garbage — the obvious move — loses on every workload (682 against 697 on
+    /// subtitles, 3450 against 3481 on screenshots) and reads nothing at all on more frames. The
+    /// noise boxes it was aimed at survive it. See #71.
+    /// </remarks>
+    internal static readonly DetectorThresholds ExportedThresholds = new(0.2f, 0.4f, 1.4f);
+
+    /// <summary>
+    /// Detector post-processing thresholds to use instead of <see cref="ExportedThresholds"/>, or
+    /// null for those.
     /// </summary>
     /// <remarks>
     /// A measurement seam for <c>OcrHarness</c>, like <see cref="DetectorPaddingOverride"/>. Nothing
     /// in the application sets this.
     ///
-    /// These three have never been chosen: <see cref="CreateOptions"/> overrides the detector size,
-    /// the angle classifier and the border, and everything else has been whatever
-    /// <c>RapidOcrOptions.Default</c> happened to carry. They are worth a seam because they are the
-    /// only part of the pipeline that can lose text without leaving a trace — <c>rawBlocks</c> is
-    /// counted after the library has already applied <see cref="DetectorThresholds.BoxScoreThresh"/>,
-    /// so a box it dropped is indistinguishable in the log from a box that was never found.
+    /// Worth a seam because these three are the only part of the pipeline that can lose text without
+    /// leaving a trace — <c>rawBlocks</c> is counted after the library has already applied
+    /// <see cref="DetectorThresholds.BoxScoreThresh"/>, so a box it dropped is indistinguishable in
+    /// the log from a box that was never found. #69 spent a round proving that by sweeping each of
+    /// them one at a time, and missed the answer for exactly that reason: the other two stayed on the
+    /// library's values while one moved, and what was wrong was all three together.
     /// </remarks>
     internal static DetectorThresholds? DetectorThresholdOverride { get; set; }
 
@@ -647,14 +680,13 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             Padding = DetectorPaddingOverride ?? RapidOcrOptions.Default.Padding,
         };
 
-        return DetectorThresholdOverride is { } thresholds
-            ? options with
-            {
-                BoxThresh = thresholds.BoxThresh,
-                BoxScoreThresh = thresholds.BoxScoreThresh,
-                UnClipRatio = thresholds.UnClipRatio,
-            }
-            : options;
+        var thresholds = DetectorThresholdOverride ?? ExportedThresholds;
+        return options with
+        {
+            BoxThresh = thresholds.BoxThresh,
+            BoxScoreThresh = thresholds.BoxScoreThresh,
+            UnClipRatio = thresholds.UnClipRatio,
+        };
     }
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)

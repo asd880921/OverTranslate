@@ -16,7 +16,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("       OcrHarness --xlate-line <text>   (translate one line, all engines)");
     Console.Error.WriteLine("       OcrHarness --compare-models <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same frame and size, cjk vs korean recognition model)");
-    Console.Error.WriteLine("       OcrHarness --scale-sweep [--det <det.onnx>[:imagenet|:half]] <image.png> [...]");
+    Console.Error.WriteLine("       OcrHarness --scale-sweep <image.png> [...]");
     Console.Error.WriteLine("                  (reads each frame at every detector size, no translation)");
     Console.Error.WriteLine("       OcrHarness --margin-series <wholescreen.png> [more.png ...]");
     Console.Error.WriteLine("                  (whole screens: the same subtitle framed at a range of margins)");
@@ -27,7 +27,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("       OcrHarness --margin-sweep <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
-    Console.Error.WriteLine("       (add --panel to any sweep to read as a game panel rather than a subtitle)");
+    Console.Error.WriteLine("       (add --panel / --lang KO / --size N / --det model.onnx:half to any sweep)");
     return 1;
 }
 
@@ -37,6 +37,81 @@ if (args.Length == 0)
 // dump as a panel would report the wrong half of RealtimeDetectorSize.
 var harnessMode = args.Contains("--panel") ? RealtimeBlockMode.Panel : RealtimeBlockMode.Subtitle;
 args = [.. args.Where(argument => argument != "--panel")];
+
+// Which language to read as. It picks the recognition model, and that is not a detail on a Korean
+// dump: the general model carries no Hangul at all, so a Korean frame read as EN comes back as
+// whatever Latin and Han the recogniser can force onto the shapes. The detector is shared, so this
+// changes nothing about detection — which is the point when the thing under test is a detector.
+var harnessLanguage = "EN";
+var languageFlag = Array.IndexOf(args, "--lang");
+if (languageFlag >= 0)
+{
+    if (languageFlag + 1 >= args.Length)
+    {
+        Console.Error.WriteLine("usage: --lang <EN|JA|KO|AUTO|...>");
+        return 1;
+    }
+
+    harnessLanguage = args[languageFlag + 1].ToUpperInvariant();
+    args = [.. args.Take(languageFlag), .. args.Skip(languageFlag + 2)];
+}
+
+// The detector size to read at, or null to let the mode decide. #71 needed this: the fault it was
+// chasing only appears at the large sizes the realtime fallbacks use, and every sweep here either
+// walked all the sizes or pinned one of its own, so there was no way to hold the size still and
+// vary something else.
+int? harnessSize = null;
+var sizeFlag = Array.IndexOf(args, "--size");
+if (sizeFlag >= 0)
+{
+    if (sizeFlag + 1 >= args.Length || !int.TryParse(args[sizeFlag + 1], out var parsedSize))
+    {
+        Console.Error.WriteLine("usage: --size <detector input long side in px>");
+        return 1;
+    }
+
+    harnessSize = parsedSize;
+    args = [.. args.Take(sizeFlag), .. args.Skip(sizeFlag + 2)];
+}
+
+// Which detector to read with. Without it every mode uses the shipped one, so the flag's absence
+// reproduces the shipped numbers and its presence is the only thing that differs.
+var detectorFlag = Array.IndexOf(args, "--det");
+if (detectorFlag >= 0)
+{
+    if (detectorFlag + 1 >= args.Length)
+    {
+        Console.Error.WriteLine("usage: --det <det.onnx>[:imagenet|:half]");
+        return 1;
+    }
+
+    var spec = args[detectorFlag + 1];
+    args = [.. args.Take(detectorFlag), .. args.Skip(detectorFlag + 2)];
+
+    // The normalisation travels with the model, so it is named next to it rather than left to a
+    // default: a v6 detector read with v5's statistics is a different, worse detector, and the
+    // mistake is invisible in the output — it just reads less.
+    var separator = spec.LastIndexOf(':');
+    var normalization = separator > 1 ? spec[(separator + 1)..] : "imagenet";
+    var detPath = separator > 1 ? spec[..separator] : spec;
+
+    OnnxOcrEngine.DetectorOverride = normalization switch
+    {
+        "imagenet" => new OnnxOcrEngine.DetectorModel(
+            detPath, OnnxOcrEngine.ImageNetNormalization, OnnxOcrEngine.ImageNetNormalizationStd),
+        "half" => new OnnxOcrEngine.DetectorModel(
+            detPath, OnnxOcrEngine.HalfNormalization, OnnxOcrEngine.HalfNormalization),
+        _ => null,
+    };
+
+    if (OnnxOcrEngine.DetectorOverride is null)
+    {
+        Console.Error.WriteLine($"unknown normalization \"{normalization}\" (expected imagenet or half)");
+        return 1;
+    }
+
+    Console.WriteLine($"detector: {detPath}  normalization={normalization}");
+}
 
 // Forced-fallback check: the primary engine gets a 1ms-timeout HttpClient so it always fails,
 // proving the hedge falls back to a backup engine and that the badge data (FallbackUsed/Dominant)
@@ -187,6 +262,72 @@ if (args[0] == "--compare-models")
     return 0;
 }
 
+// Export: whole screens in, one crop per subtitle out, for use as a fixture set.
+//
+// Comparing two detectors needs frames neither of them chose. A region dump is not that — it was
+// kept because the shipped detector did or did not read it — and a whole screen is not either, since
+// most of it is not the text under test. Locating the subtitle once, with the shipped detector, and
+// writing that crop out gives every later run the same input: the location is decided by one model
+// but the crop is then fixed, so no candidate is being scored on a frame chosen to suit it.
+//
+// The margin is the one --margin-series measured as best over 27 frames, not a round number.
+if (args[0] == "--export-subtitle")
+{
+    if (args.Length < 3)
+    {
+        Console.Error.WriteLine("usage: --export-subtitle <outputDir> <wholescreen.png> [more.png ...]");
+        return 1;
+    }
+
+    const double SubtitleBandTop = 0.62;
+    const int ExportMargin = 60;
+
+    var outputDir = args[1];
+    System.IO.Directory.CreateDirectory(outputDir);
+    using var exportOcr = new OcrService();
+    var written = 0;
+
+    foreach (var path in args.Skip(2))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var name = Path.GetFileNameWithoutExtension(path);
+
+        var whole = await exportOcr.TryRecognizeAsync(image, "AUTO") ?? [];
+        var band = whole
+            .Where(b => b.Bounds.Y + b.Bounds.Height / 2 > image.Height * SubtitleBandTop)
+            .ToList();
+        if (band.Count == 0) { Console.WriteLine($"{name}: no subtitle found, skipped"); continue; }
+
+        var anchor = band.MaxBy(b => b.Bounds.Width)!.Bounds;
+        var union = System.Windows.Rect.Empty;
+        foreach (var block in band)
+        {
+            var bounds = block.Bounds;
+            var overlap = Math.Min(bounds.Right, anchor.Right) - Math.Max(bounds.Left, anchor.Left);
+            if (Math.Abs(bounds.Y - anchor.Y) < anchor.Height * 2.5 &&
+                overlap > Math.Min(bounds.Width, anchor.Width) * 0.5)
+                union.Union(bounds);
+        }
+
+        var x = (int)Math.Max(0, union.X - ExportMargin);
+        var y = (int)Math.Max(0, union.Y - ExportMargin);
+        var w = (int)Math.Min(image.Width - x, union.Width + ExportMargin * 2);
+        var h = (int)Math.Min(image.Height - y, union.Height + ExportMargin * 2);
+        if (w <= 1 || h <= 1) { Console.WriteLine($"{name}: degenerate crop, skipped"); continue; }
+
+        using var crop = image.Clone(new Rectangle(x, y, w, h), image.PixelFormat);
+        var target = Path.Combine(outputDir, $"{name}-sub.png");
+        crop.Save(target, System.Drawing.Imaging.ImageFormat.Png);
+        written++;
+        Console.WriteLine($"{name}: {w}x{h} -> {Path.GetFileName(target)}");
+    }
+
+    Console.WriteLine($"{written} crops written to {outputDir}");
+    return 0;
+}
+
 // Margin series: one whole screen, cropped around its subtitle at a range of margins, read at each.
 //
 // The question is what the user's own framing costs. Every other sweep here starts from a region
@@ -329,24 +470,62 @@ if (args[0] == "--thresh-sweep")
 {
     using var threshOcr = new OcrService();
 
-    var shipped = new OnnxOcrEngine.DetectorThresholds(
+    // What the application actually sends, which since #71 is the model's own exported values
+    // rather than the library's generic ones. The library's are kept as a row below so a sweep can
+    // still show what moving away from them bought.
+    var shipped = OnnxOcrEngine.ExportedThresholds;
+    var libraryDefaults = new OnnxOcrEngine.DetectorThresholds(
         RapidOcrNet.RapidOcrOptions.Default.BoxThresh,
         RapidOcrNet.RapidOcrOptions.Default.BoxScoreThresh,
         RapidOcrNet.RapidOcrOptions.Default.UnClipRatio);
 
     Console.WriteLine(
-        $"library defaults: boxThresh={shipped.BoxThresh:0.00} " +
-        $"boxScore={shipped.BoxScoreThresh:0.00} unclip={shipped.UnClipRatio:0.00}");
+        $"shipped: boxThresh={shipped.BoxThresh:0.00} boxScore={shipped.BoxScoreThresh:0.00} " +
+        $"unclip={shipped.UnClipRatio:0.00}   library: {libraryDefaults.BoxThresh:0.00}/" +
+        $"{libraryDefaults.BoxScoreThresh:0.00}/{libraryDefaults.UnClipRatio:0.00}");
 
     // One axis at a time, each stepping through its own range with the other two left shipped. A
     // grid would be three times the passes for an answer nobody could read: what is being asked
     // first is which of the three is even involved.
-    var runs = new List<(string Axis, OnnxOcrEngine.DetectorThresholds Value)>();
+    // The values PaddlePaddle exported each v6 detector with, from the inference.yml beside the
+    // model on Hugging Face. They are here as whole combinations because that is what they are: this
+    // sweep otherwise moves one axis at a time and holds the other two at the library's generic
+    // defaults, which cannot find a setting whose three parts only work together. #69 swept all
+    // three that way and concluded none of them mattered.
+    var runs = new List<(string Axis, OnnxOcrEngine.DetectorThresholds Value)>
+    {
+        ("shipped        ", shipped),
+        ("library-default", libraryDefaults),
+        ("official-sm/med", new OnnxOcrEngine.DetectorThresholds(0.2f, 0.45f, 1.4f)),
+
+        // Neither the library's defaults nor the export config are aimed at what goes wrong here.
+        // Both move the three together in the same direction — permissive or strict — while the
+        // three faults on record want opposite things: a low binarisation threshold to keep the
+        // faint leading strokes a line loses, a HIGH box score to throw away the noise boxes that
+        // reach the screen as enormous garbage, and a low unclip so a box does not come out taller
+        // than its glyphs. PaddleOCR's own tuning guidance names those three moves separately; no
+        // published preset combines them, so these are the combinations to measure.
+        ("weak+strict-1.4", new OnnxOcrEngine.DetectorThresholds(0.2f, 0.6f, 1.4f)),
+        ("weak+strict-1.5", new OnnxOcrEngine.DetectorThresholds(0.2f, 0.6f, 1.5f)),
+        ("weak+mid-1.4   ", new OnnxOcrEngine.DetectorThresholds(0.2f, 0.5f, 1.4f)),
+        ("weak+strict-1.6", new OnnxOcrEngine.DetectorThresholds(0.2f, 0.6f, 1.6f)),
+
+        // One move at a time from what ships now, so the combinations above can be read against
+        // which single change was doing the work.
+        ("only-weaker    ", new OnnxOcrEngine.DetectorThresholds(0.2f, 0.5f, 1.6f)),
+        ("only-tighter   ", new OnnxOcrEngine.DetectorThresholds(0.3f, 0.5f, 1.4f)),
+        ("only-stricter  ", new OnnxOcrEngine.DetectorThresholds(0.3f, 0.6f, 1.6f)),
+    };
     foreach (var boxThresh in new[] { 0.10f, 0.15f, 0.20f, 0.25f, 0.30f, 0.40f, 0.50f })
         runs.Add(($"boxThresh={boxThresh:0.00}", shipped with { BoxThresh = boxThresh }));
     foreach (var boxScore in new[] { 0.10f, 0.20f, 0.30f, 0.40f, 0.50f, 0.60f })
         runs.Add(($"boxScore ={boxScore:0.00}", shipped with { BoxScoreThresh = boxScore }));
-    foreach (var unclip in new[] { 1.5f, 1.75f, 2.0f, 2.25f, 2.5f, 3.0f })
+
+    // Finer than the other two and reaching lower, because #71 needs this one to answer a question
+    // about box size rather than about whether text is found: the unclip step is what inflates a
+    // detected polygon back out, and a detector whose boxes come out too tall is asking to be tried
+    // below the library's 1.6.
+    foreach (var unclip in new[] { 0.8f, 1.0f, 1.2f, 1.4f, 1.6f, 1.8f, 2.0f, 2.5f })
         runs.Add(($"unclip   ={unclip:0.00}", shipped with { UnClipRatio = unclip }));
 
     foreach (var path in args.Skip(1))
@@ -355,7 +534,9 @@ if (args[0] == "--thresh-sweep")
 
         using var image = new Bitmap(path);
         Console.WriteLine(new string('=', 78));
-        Console.WriteLine($"{Path.GetFileName(path)}  {image.Width}x{image.Height}  detect=screenshot");
+        Console.WriteLine(
+            $"{Path.GetFileName(path)}  {image.Width}x{image.Height}  " +
+            $"detect={harnessSize?.ToString() ?? "screenshot"}  lang={harnessLanguage}");
 
         foreach (var (axis, thresholds) in runs)
         {
@@ -363,15 +544,20 @@ if (args[0] == "--thresh-sweep")
 
             List<OcrTextBlock>? blocks = null;
             for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
-                blocks = await threshOcr.TryRecognizeAsync(image, "AUTO");
+                blocks = await threshOcr.TryRecognizeAsync(image, harnessLanguage, harnessSize);
 
             var chars = blocks?.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c))) ?? 0;
             var text = blocks is null || blocks.Count == 0
                 ? ""
                 : "  " + string.Join(" | ", blocks.Select(b => b.Text.Replace("\n", " ")));
-            var mark = thresholds == shipped ? " <- shipped" : "";
 
-            Console.WriteLine($"  {axis} : {blocks?.Count ?? -1} box chars={chars,3}{mark}{text}");
+            // The tallest box, because #71 is about box shape rather than about what was read: a
+            // reading that is right and a box that is twice the height of its glyphs still reaches
+            // the screen as text twice the size it should be, and the character count cannot see it.
+            var tallest = blocks is null || blocks.Count == 0 ? 0 : blocks.Max(b => b.Bounds.Height);
+
+            Console.WriteLine(
+                $"  {axis} : {blocks?.Count ?? -1} box chars={chars,3} tallest={tallest,3:0}{text}");
         }
 
         OnnxOcrEngine.DetectorThresholdOverride = null;
@@ -572,48 +758,8 @@ if (args[0] == "--scale-sweep")
 {
     var sweepArgs = args.Skip(1).ToList();
 
-    // Which detector to sweep with. Without it the sweep uses the shipped one, which is what every
-    // measurement in #22 up to now was made with — so the flag's absence reproduces those numbers
-    // and its presence is the only thing that differs.
-    if (sweepArgs.FirstOrDefault() == "--det")
-    {
-        if (sweepArgs.Count < 2)
-        {
-            Console.Error.WriteLine("usage: --scale-sweep --det <det.onnx>[:imagenet|:half] <image.png> ...");
-            return 1;
-        }
-
-        var spec = sweepArgs[1];
-        sweepArgs.RemoveRange(0, 2);
-
-        // The normalisation travels with the model, so it is named next to it rather than left to
-        // a default: a v6 detector read with v5's statistics is a different, worse detector, and
-        // the mistake is invisible in the output — it just reads less.
-        var separator = spec.LastIndexOf(':');
-        var normalization = separator > 1 ? spec[(separator + 1)..] : "imagenet";
-        var detPath = separator > 1 ? spec[..separator] : spec;
-
-        OnnxOcrEngine.DetectorOverride = normalization switch
-        {
-            "imagenet" => new OnnxOcrEngine.DetectorModel(
-                detPath, OnnxOcrEngine.ImageNetNormalization, OnnxOcrEngine.ImageNetNormalizationStd),
-            "half" => new OnnxOcrEngine.DetectorModel(
-                detPath, OnnxOcrEngine.HalfNormalization, OnnxOcrEngine.HalfNormalization),
-            _ => null,
-        };
-
-        if (OnnxOcrEngine.DetectorOverride is null)
-        {
-            Console.Error.WriteLine($"unknown normalization \"{normalization}\" (expected imagenet or half)");
-            return 1;
-        }
-
-        Console.WriteLine($"detector: {detPath}  normalization={normalization}");
-    }
-    else
-    {
-        Console.WriteLine("detector: shipped (ocrmodels/onnx/shared/det.onnx)  normalization=imagenet");
-    }
+    if (OnnxOcrEngine.DetectorOverride is null)
+        Console.WriteLine("detector: shipped (ocrmodels/onnx/shared/det.onnx)");
 
     using var sweepOcr = new OcrService();
 
