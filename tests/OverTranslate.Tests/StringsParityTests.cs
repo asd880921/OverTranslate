@@ -185,6 +185,79 @@ public class StringsParityTests
     }
 
     /// <summary>
+    /// A hint's [[…]] marks decide which words carry the accent colour — see HighlightedText — and
+    /// they are the easiest thing to drop when translating, because the sentence still reads fine
+    /// without them. It just reads flat, in the language nobody here is checking.
+    /// </summary>
+    [Fact]
+    public void Highlight_marks_are_balanced_and_appear_in_both_languages()
+    {
+        var zh = Load(ChineseFile);
+        var en = Load(EnglishFile);
+
+        foreach (var (key, chinese) in zh)
+        {
+            if (!en.TryGetValue(key, out var english)) continue;
+
+            var inChinese = HighlightCount(chinese);
+            var inEnglish = HighlightCount(english);
+
+            Assert.True(
+                inChinese == inEnglish,
+                $"{key} highlights {inChinese} stretch(es) in {ChineseFile} " +
+                $"but {inEnglish} in {EnglishFile}");
+
+            // A count that matches on both sides is still no use if one of them is a stray bracket,
+            // which HighlightedText renders as ordinary text.
+            foreach (var (file, text) in new[] { (ChineseFile, chinese), (EnglishFile, english) })
+                Assert.True(
+                    Occurrences(text, "[[") == Occurrences(text, "]]"),
+                    $"{key} has unbalanced [[ ]] in {file}: {text}");
+        }
+    }
+
+    private static int HighlightCount(string text) =>
+        OverTranslate.Views.Controls.HighlightedText.Split(text).Count(s => s.Highlighted);
+
+    private static int Occurrences(string text, string token)
+    {
+        int count = 0, at = 0;
+        while ((at = text.IndexOf(token, at, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            at += token.Length;
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// The strip of controls a running session puts on screen has one name in each language.
+    /// </summary>
+    /// <remarks>
+    /// It had four in Chinese — 浮動列, 浮動工具列, 浮動控制列, 浮動視窗 — spread across the steps on
+    /// 即時翻譯, the running hint and the settings page, so nothing told a reader that all four were
+    /// the same strip. Each was written by someone naming it afresh in the sentence they happened to
+    /// be writing, which is exactly what this stops.
+    /// </remarks>
+    [Theory]
+    [InlineData("Strings.zh-Hant.xaml", "浮動(?!視窗列)", "浮動視窗列")]
+    [InlineData("Strings.en.xaml", "(?i)floating (?!bar)", "floating bar")]
+    public void The_floating_bar_is_called_the_same_thing_everywhere(
+        string file, string pattern, string agreedName)
+    {
+        var offenders = Load(file)
+            .Where(kv => Regex.IsMatch(kv.Value, pattern))
+            .Select(kv => $"{kv.Key}: {kv.Value}")
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            $"{file} names it something other than \"{agreedName}\":{Environment.NewLine}" +
+            string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>
     /// Full-width punctuation is correct in Chinese and wrong in English, and it is the single
     /// easiest thing to carry over when translating by copying a line and editing it in place.
     /// </summary>

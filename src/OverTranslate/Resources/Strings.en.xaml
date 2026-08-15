@@ -235,9 +235,9 @@ Leave some room around each area you want translated rather than hugging its con
 
     <sys:String x:Key="S.Settings.General">General</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkey">Capture</sys:String>
-    <sys:String x:Key="S.Settings.CaptureHotkeyHint">Press this shortcut to start a screen capture translation</sys:String>
+    <sys:String x:Key="S.Settings.CaptureHotkeyHint">Press this shortcut to start a screen capture translation; while [[realtime translation]] is running it [[pauses / resumes]] the realtime translation instead</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkey">Open window</sys:String>
-    <sys:String x:Key="S.Settings.WindowHotkeyHint">While realtime translation is running, brings the floating window to the front instead</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkeyHint">While [[realtime translation]] is running, brings the [[floating bar]] to the front instead</sys:String>
     <sys:String x:Key="S.Settings.SourceLanguage">Source</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslate">Auto</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslateCheck">Translate as soon as a region is selected</sys:String>

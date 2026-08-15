@@ -113,32 +113,52 @@ public static class LocalizationService
     /// tests and from anything running before the UI exists, and a fallback that changed with the
     /// machine's locale would make those results depend on where they ran.
     /// </remarks>
-    private static ResourceDictionary? _fallback;
+    private static volatile ResourceDictionary? _fallback;
+
+    /// <summary>
+    /// Guards the one-time load. <see cref="Get"/> is reached from several threads at once — a
+    /// realtime session runs a loop per region and every one of them can report a failure — and two
+    /// of them arriving here together used to run the load twice, with the second able to see a
+    /// dictionary that was published before it finished reading its source.
+    /// </summary>
+    private static readonly object FallbackGate = new();
 
     private static ResourceDictionary? Fallback
     {
         get
         {
+            // Read once, outside the lock: after the first call this is the only cost, and volatile
+            // is what makes the dictionary another thread built safe to use here.
             if (_fallback is not null) return _fallback;
 
-            try
+            lock (FallbackGate)
             {
-                // Touching the helper registers the pack scheme, which Application would otherwise
-                // have done on startup — without it the Uri below cannot be resolved.
-                _ = System.IO.Packaging.PackUriHelper.UriSchemePack;
-                _fallback = new ResourceDictionary
-                {
-                    Source = new Uri(
-                        "pack://application:,,,/OverTranslate;component/Resources/Strings.zh-Hant.xaml",
-                        UriKind.Absolute)
-                };
-            }
-            catch
-            {
-                // Nothing to be done about it here, and Get still has the key to fall back on.
-            }
+                if (_fallback is not null) return _fallback;
 
-            return _fallback;
+                try
+                {
+                    // Touching the helper registers the pack scheme, which Application would
+                    // otherwise have done on startup — without it the Uri below cannot be resolved.
+                    _ = System.IO.Packaging.PackUriHelper.UriSchemePack;
+
+                    // Built into a local and published only once it is whole, so no other thread can
+                    // ever index a dictionary that is still loading.
+                    var loaded = new ResourceDictionary
+                    {
+                        Source = new Uri(
+                            "pack://application:,,,/OverTranslate;component/Resources/Strings.zh-Hant.xaml",
+                            UriKind.Absolute)
+                    };
+
+                    _fallback = loaded;
+                }
+                catch
+                {
+                    // Nothing to be done about it here, and Get still has the key to fall back on.
+                }
+
+                return _fallback;
+            }
         }
     }
 

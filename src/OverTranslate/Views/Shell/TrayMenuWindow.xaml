@@ -64,7 +64,7 @@
                      the shortcut. Three entry points for one action was one too many, and this menu
                      is the one that has to stay short as the app grows. -->
 
-                <!-- 開啟翻譯視窗；即時翻譯進行中改為把浮動視窗移至最上層 -->
+                <!-- 開啟翻譯視窗；即時翻譯進行中改為把浮動視窗列移至最上層 -->
                 <Button x:Name="OpenWindowBtn"
                         Style="{StaticResource TrayMenuItem}"
                         Click="OpenWindowBtn_Click">
