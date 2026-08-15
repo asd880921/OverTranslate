@@ -187,6 +187,72 @@ if (args[0] == "--compare-models")
     return 0;
 }
 
+// Export: whole screens in, one crop per subtitle out, for use as a fixture set.
+//
+// Comparing two detectors needs frames neither of them chose. A region dump is not that — it was
+// kept because the shipped detector did or did not read it — and a whole screen is not either, since
+// most of it is not the text under test. Locating the subtitle once, with the shipped detector, and
+// writing that crop out gives every later run the same input: the location is decided by one model
+// but the crop is then fixed, so no candidate is being scored on a frame chosen to suit it.
+//
+// The margin is the one --margin-series measured as best over 27 frames, not a round number.
+if (args[0] == "--export-subtitle")
+{
+    if (args.Length < 3)
+    {
+        Console.Error.WriteLine("usage: --export-subtitle <outputDir> <wholescreen.png> [more.png ...]");
+        return 1;
+    }
+
+    const double SubtitleBandTop = 0.62;
+    const int ExportMargin = 60;
+
+    var outputDir = args[1];
+    System.IO.Directory.CreateDirectory(outputDir);
+    using var exportOcr = new OcrService();
+    var written = 0;
+
+    foreach (var path in args.Skip(2))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var name = Path.GetFileNameWithoutExtension(path);
+
+        var whole = await exportOcr.TryRecognizeAsync(image, "AUTO") ?? [];
+        var band = whole
+            .Where(b => b.Bounds.Y + b.Bounds.Height / 2 > image.Height * SubtitleBandTop)
+            .ToList();
+        if (band.Count == 0) { Console.WriteLine($"{name}: no subtitle found, skipped"); continue; }
+
+        var anchor = band.MaxBy(b => b.Bounds.Width)!.Bounds;
+        var union = System.Windows.Rect.Empty;
+        foreach (var block in band)
+        {
+            var bounds = block.Bounds;
+            var overlap = Math.Min(bounds.Right, anchor.Right) - Math.Max(bounds.Left, anchor.Left);
+            if (Math.Abs(bounds.Y - anchor.Y) < anchor.Height * 2.5 &&
+                overlap > Math.Min(bounds.Width, anchor.Width) * 0.5)
+                union.Union(bounds);
+        }
+
+        var x = (int)Math.Max(0, union.X - ExportMargin);
+        var y = (int)Math.Max(0, union.Y - ExportMargin);
+        var w = (int)Math.Min(image.Width - x, union.Width + ExportMargin * 2);
+        var h = (int)Math.Min(image.Height - y, union.Height + ExportMargin * 2);
+        if (w <= 1 || h <= 1) { Console.WriteLine($"{name}: degenerate crop, skipped"); continue; }
+
+        using var crop = image.Clone(new Rectangle(x, y, w, h), image.PixelFormat);
+        var target = Path.Combine(outputDir, $"{name}-sub.png");
+        crop.Save(target, System.Drawing.Imaging.ImageFormat.Png);
+        written++;
+        Console.WriteLine($"{name}: {w}x{h} -> {Path.GetFileName(target)}");
+    }
+
+    Console.WriteLine($"{written} crops written to {outputDir}");
+    return 0;
+}
+
 // Margin series: one whole screen, cropped around its subtitle at a range of margins, read at each.
 //
 // The question is what the user's own framing costs. Every other sweep here starts from a region
