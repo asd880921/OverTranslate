@@ -42,7 +42,15 @@ public class AppSettings
     public string RealtimeTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
     public TranslationProvider RealtimeProvider { get; set; } = TranslationProvider.Microsoft;
     public string ApiKey { get; set; } = "";
-    public string OpenAiBaseUrl { get; set; } = "http://localhost:11434/v1";
+    /// <summary>
+    /// The OpenAI-compatible server to talk to, or empty for
+    /// <see cref="Services.Providers.OpenAiCompatibleProvider.DefaultBaseUrl"/>.
+    /// </summary>
+    /// <remarks>
+    /// Empty rather than a copy of the default, for the same reason the prompt and the model are —
+    /// see <see cref="OpenAiPromptAuto"/>.
+    /// </remarks>
+    public string OpenAiBaseUrl { get; set; } = "";
     public string OpenAiApiKey { get; set; } = "";
     public string OpenAiModel { get; set; } = "";
 
@@ -69,6 +77,26 @@ public class AppSettings
 
     /// <inheritdoc cref="OpenAiPromptAuto"/>
     public string OpenAiPromptExplicit { get; set; } = "";
+
+    /// <summary>
+    /// Whether the request carries a temperature at all.
+    /// </summary>
+    /// <remarks>
+    /// Separate from the value because "no temperature" is not a number: the reasoning models on the
+    /// hosted APIs reject the field outright rather than clamping it, so a request to them has to
+    /// leave it out. On by default, which is what every local server expects.
+    /// </remarks>
+    public bool OpenAiTemperatureEnabled { get; set; } = true;
+
+    /// <summary>
+    /// How much randomness the model is asked for, when <see cref="OpenAiTemperatureEnabled"/>.
+    /// </summary>
+    /// <remarks>
+    /// Zero because this is translation: the same line on screen should come back the same way twice.
+    /// Editable because the value that means "as literal as possible" is the model's to define — some
+    /// small local ones loop on repeated output at 0 and need a little slack to come out of it.
+    /// </remarks>
+    public double OpenAiTemperature { get; set; }
     public string Theme { get; set; } = "Dark";
     /// <summary>
     /// The interface language, "zh-Hant" or "en". Empty means "not chosen yet".

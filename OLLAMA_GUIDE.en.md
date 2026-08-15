@@ -41,4 +41,6 @@ Wait for the download to finish (the model is a few GB, so it takes a few minute
    | API Key | Any text works (for local use it can be blank, or enter `ollama`) |
    | Model name | `translategemma:4b` |
 
+   > These two are the app's own defaults, so you can **leave both empty** — the field shows the value it will actually use.
+
 3. Save, and you can start translating with your local LLM

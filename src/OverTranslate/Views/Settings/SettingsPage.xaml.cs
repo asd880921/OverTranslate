@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Navigation;
@@ -122,6 +124,7 @@ public partial class SettingsPage : UserControl
                 s.OpenAiBaseUrl = OpenAiBaseUrlBox.Text.Trim();
                 s.OpenAiApiKey = OpenAiApiKeyBox.Secret.Trim();
                 s.OpenAiModel = OpenAiModelBox.Text.Trim();
+                s.OpenAiTemperature = ReadTemperature();
             });
         };
 
@@ -173,6 +176,8 @@ public partial class SettingsPage : UserControl
             OpenAiBaseUrlBox.Text = s.OpenAiBaseUrl;
             OpenAiApiKeyBox.Secret = s.OpenAiApiKey;
             OpenAiModelBox.Text = s.OpenAiModel;
+            TemperatureEnabledCheckBox.IsChecked = s.OpenAiTemperatureEnabled;
+            TemperatureBox.Text = FormatTemperature(s.OpenAiTemperature);
             LoadPromptEditor(s);
 
             LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
@@ -194,6 +199,8 @@ public partial class SettingsPage : UserControl
             VerboseLoggingCheckBox.IsChecked = s.VerboseLogging;
 
             UpdateApiKeyVisibility();
+            UpdateOpenAiFieldChrome();
+            UpdateTemperatureChrome();
             UpdateScreenshotPathVisibility();
             UpdateVerboseLoggingAvailability();
         }
@@ -270,9 +277,27 @@ public partial class SettingsPage : UserControl
 
     private void OpenAiSetting_TextChanged(object sender, TextChangedEventArgs e)
     {
+        // Unconditionally: the placeholders answer what an empty box will do, and waiting for the
+        // debounce would leave them a beat behind the typing.
+        UpdateOpenAiFieldChrome();
+
         if (_loading) return;
         _openAiSettingsDebounce.Stop();
         _openAiSettingsDebounce.Start();
+    }
+
+    /// <summary>
+    /// Shows what each empty box falls back to, in place of the empty box.
+    /// </summary>
+    private void UpdateOpenAiFieldChrome()
+    {
+        OpenAiBaseUrlPlaceholder.Text = OpenAiCompatibleProvider.DefaultBaseUrl;
+        OpenAiBaseUrlPlaceholder.Visibility =
+            OpenAiBaseUrlBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        OpenAiModelPlaceholder.Text = OpenAiCompatibleProvider.DefaultModel;
+        OpenAiModelPlaceholder.Visibility =
+            OpenAiModelBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OpenAiSecret_SecretChanged(object? sender, EventArgs e)
@@ -280,6 +305,160 @@ public partial class SettingsPage : UserControl
         if (_loading) return;
         _openAiSettingsDebounce.Stop();
         _openAiSettingsDebounce.Start();
+    }
+
+    // ── OpenAI advanced settings ─────────────────────────────────────────────
+
+    /// <summary>How long the advanced section takes to open or close.</summary>
+    private static readonly Duration AdvancedDuration = TimeSpan.FromMilliseconds(180);
+
+    /// <summary>Widest temperature any of these APIs accepts; the field is clamped to it.</summary>
+    private const double MaxTemperature = 2;
+
+    private bool _openAiAdvancedExpanded;
+
+    /// <summary>
+    /// Which open/close is current, so a run that is replaced part way through does not then finish
+    /// and hand the section a height belonging to the state it was leaving.
+    /// </summary>
+    private int _openAiAdvancedTransition;
+
+    private void OpenAiAdvancedToggle_Click(object sender, RoutedEventArgs e) =>
+        SetOpenAiAdvancedExpanded(!_openAiAdvancedExpanded);
+
+    /// <remarks>
+    /// The height is animated from the content's measured height rather than from a number written
+    /// here, and handed back to Auto once open: the sentences inside are localized and wrap against
+    /// the window's width, so today's measurement is not tomorrow's.
+    /// </remarks>
+    private void SetOpenAiAdvancedExpanded(bool expanded)
+    {
+        _openAiAdvancedExpanded = expanded;
+        var transition = ++_openAiAdvancedTransition;
+
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        OpenAiAdvancedChevronRotation.BeginAnimation(
+            System.Windows.Media.RotateTransform.AngleProperty,
+            new DoubleAnimation(expanded ? 180 : 0, AdvancedDuration) { EasingFunction = ease });
+
+        // Visible for the whole of the opening move, and only taken out of the layout once the
+        // closing one has finished — collapsed, its content is out of the tab order as well as out
+        // of sight, which a zero height alone would not manage.
+        if (expanded) OpenAiAdvancedHost.Visibility = Visibility.Visible;
+
+        var from = OpenAiAdvancedHost.ActualHeight;
+        double to = 0;
+        if (expanded)
+        {
+            var width = OpenAiAdvancedHost.ActualWidth;
+            OpenAiAdvancedContent.Measure(new System.Windows.Size(
+                width > 0 ? width : double.PositiveInfinity, double.PositiveInfinity));
+            to = OpenAiAdvancedContent.DesiredSize.Height;
+        }
+
+        var height = new DoubleAnimation(from, to, AdvancedDuration) { EasingFunction = ease };
+        height.Completed += (_, _) =>
+        {
+            if (transition != _openAiAdvancedTransition) return;
+            OpenAiAdvancedHost.BeginAnimation(HeightProperty, null);
+            if (expanded)
+            {
+                OpenAiAdvancedHost.Height = double.NaN;
+            }
+            else
+            {
+                OpenAiAdvancedHost.Height = 0;
+                OpenAiAdvancedHost.Visibility = Visibility.Collapsed;
+            }
+        };
+
+        OpenAiAdvancedHost.BeginAnimation(HeightProperty, height);
+        OpenAiAdvancedHost.BeginAnimation(
+            OpacityProperty, new DoubleAnimation(expanded ? 1 : 0, AdvancedDuration));
+    }
+
+    private void TemperatureEnabled_Toggled(object sender, RoutedEventArgs e)
+    {
+        UpdateTemperatureChrome();
+        if (_loading) return;
+        Persist(s => s.OpenAiTemperatureEnabled = TemperatureEnabledCheckBox.IsChecked == true);
+    }
+
+    private void TemperatureBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateTemperatureChrome();
+
+        if (_loading) return;
+        _openAiSettingsDebounce.Stop();
+        _openAiSettingsDebounce.Start();
+    }
+
+    /// <summary>Back to sending a temperature, and back to zero.</summary>
+    private void TemperatureResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Assigned before the checkbox so its own handler, which reads the box, sees the new value.
+        TemperatureBox.Text = FormatTemperature(0);
+        TemperatureEnabledCheckBox.IsChecked = true;
+
+        _openAiSettingsDebounce.Stop();
+        Persist(s =>
+        {
+            s.OpenAiTemperatureEnabled = true;
+            s.OpenAiTemperature = 0;
+        });
+
+        UpdateTemperatureChrome();
+    }
+
+    /// <summary>
+    /// Puts the field back in agreement with what will actually be sent: an empty box, a number out
+    /// of range, or something that is not a number at all all become the value stored for them.
+    /// </summary>
+    /// <remarks>
+    /// On leaving the field rather than on each keystroke, so half-typed input is left alone —
+    /// "0." is on the way to "0.5" and rewriting it mid-word would take the decimal point back out.
+    /// </remarks>
+    private void TemperatureBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var value = ReadTemperature();
+        var text = FormatTemperature(value);
+        if (TemperatureBox.Text != text) TemperatureBox.Text = text;
+
+        _openAiSettingsDebounce.Stop();
+        Persist(s => s.OpenAiTemperature = value);
+    }
+
+    /// <summary>The value in the box, or 0 for anything that is not a number in range.</summary>
+    private double ReadTemperature()
+    {
+        var text = TemperatureBox.Text.Trim();
+
+        // The invariant form first because that is what the field is written back as and what the
+        // API takes; the user's own is tried after it, so a comma typed on a locale that uses one
+        // is read as the decimal point it was meant to be.
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) &&
+            !double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
+            return 0;
+
+        return Math.Clamp(value, 0, MaxTemperature);
+    }
+
+    private static string FormatTemperature(double value) =>
+        value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Brings the field and its reset in line with what is on screen: nothing to type into while the
+    /// parameter is not being sent, and nothing to restore while both halves are already the default.
+    /// </summary>
+    private void UpdateTemperatureChrome()
+    {
+        var enabled = TemperatureEnabledCheckBox.IsChecked == true;
+        TemperatureBox.IsEnabled = enabled;
+        TemperatureRangeHint.Opacity = enabled ? 1 : 0.45;
+
+        // The box rather than the stored value, so this answers on the first keystroke instead of
+        // when the debounce eventually fires.
+        TemperatureResetButton.IsEnabled = !enabled || TemperatureBox.Text.Trim() != FormatTemperature(0);
     }
 
     // ── Prompt editor ────────────────────────────────────────────────────────
@@ -440,12 +619,75 @@ public partial class SettingsPage : UserControl
         PromptResetButton.IsEnabled = PromptBox.Text.Trim().Length > 0;
 
         PromptPlaceholder.Visibility = PromptBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        PromptPlaceholder.Text = OpenAiCompatibleProvider.DefaultPromptTemplate(
-            _promptSegment == PromptAutoSegment);
+        WritePlaceholderAware(
+            PromptPlaceholder,
+            OpenAiCompatibleProvider.DefaultPromptTemplate(_promptSegment == PromptAutoSegment));
 
-        PromptHint.Text = LocalizationService.Get(_promptSegment == PromptAutoSegment
+        WritePlaceholderAware(PromptHint, LocalizationService.Get(_promptSegment == PromptAutoSegment
             ? "S.Settings.PromptHintAuto"
-            : "S.Settings.PromptHintExplicit");
+            : "S.Settings.PromptHintExplicit"));
+
+        // FieldHint hides itself when its Text is empty, and writing runs leaves that property
+        // empty however much is on screen — the hint is built out of inlines, not out of Text. A
+        // local value outranks the style's trigger, which is what keeps this one visible.
+        PromptHint.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// Writes prose that mentions <c>{source}</c> or <c>{target}</c>, with those two picked out in
+    /// the accent colour.
+    /// </summary>
+    /// <remarks>
+    /// They are the only part of the sentence that is machinery rather than words — what the user
+    /// types into their own prompt to have a language substituted in — and the colour is what says
+    /// so without a sentence explaining it. The same colour the rest of the app uses for the thing
+    /// being pointed at, through a resource reference so it follows a theme change.
+    /// </remarks>
+    private static void WritePlaceholderAware(TextBlock target, string text)
+    {
+        target.Inlines.Clear();
+        foreach (var (segment, isPlaceholder) in SplitOnPlaceholders(text))
+        {
+            var run = new Run(segment);
+            if (isPlaceholder) run.SetResourceReference(TextElement.ForegroundProperty, "AppAccent");
+            target.Inlines.Add(run);
+        }
+    }
+
+    /// <summary>
+    /// Splits text into runs of ordinary prose and the placeholder tokens between them, in order.
+    /// </summary>
+    private static IEnumerable<(string Text, bool IsPlaceholder)> SplitOnPlaceholders(string text)
+    {
+        string[] tokens =
+        [
+            OpenAiCompatibleProvider.SourcePlaceholder,
+            OpenAiCompatibleProvider.TargetPlaceholder,
+        ];
+
+        var index = 0;
+        while (index < text.Length)
+        {
+            var at = -1;
+            var length = 0;
+            foreach (var token in tokens)
+            {
+                var found = text.IndexOf(token, index, StringComparison.OrdinalIgnoreCase);
+                if (found < 0 || (at >= 0 && found >= at)) continue;
+                at = found;
+                length = token.Length;
+            }
+
+            if (at < 0)
+            {
+                yield return (text[index..], false);
+                yield break;
+            }
+
+            if (at > index) yield return (text[index..at], false);
+            yield return (text.Substring(at, length), true);
+            index = at + length;
+        }
     }
 
     private void OllamaGuideLink_RequestNavigate(object sender, RequestNavigateEventArgs e)

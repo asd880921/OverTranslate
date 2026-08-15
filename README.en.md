@@ -118,7 +118,7 @@ Click **Settings** in the left navigation bar, or right-click the tray icon → 
 | Source language | The original language (default Auto) |
 | Auto translate | Translates **immediately** after the area is selected, without clicking the translate button (off by default) |
 | Run at startup | Launch automatically when Windows starts |
-| Translation service | Choose the translation service; when using OpenAI you can set the API endpoint, model name, and translation prompt |
+| Translation service | Choose the translation service; when using OpenAI you can set the API endpoint, model name, translation prompt, and temperature |
 | Save screenshots | Save captures to your machine automatically, with a customizable folder (off by default) |
 | Theme | Light / Dark |
 | Application logs | Records more complete application information; recommended only while troubleshooting (off by default) |
@@ -137,13 +137,25 @@ Several translation sources are built in; all of them are free and require no AP
 | Bing Translator | Good translation quality |
 | Microsoft Translator | **(default)** Stable and fast |
 | DeepL | Requires registering on DeepL's site and obtaining an API key |
-| OpenAI | Supports the OpenAI API format; a local LLM is recommended, which you can set up quickly with [Ollama](OLLAMA_GUIDE.en.md); the translation prompt is customizable |
+| OpenAI | Supports the OpenAI API format; a local LLM is recommended, which you can set up quickly with [Ollama](OLLAMA_GUIDE.en.md); the prompt and temperature are customizable |
 
 An "automatic fallback" mechanism is provided (it applies to both **screenshot translation** and **real-time translation**):
 when a translation service is unavailable or responds too slowly, the app automatically switches to another available translation API, and the engine actually in use is shown in the toolbar.
 ![Fallback](docs/images/備援.png)
 
 > The fallback mechanism is not triggered when using **OpenAI**.
+
+### OpenAI-compatible settings
+
+| Setting | Description |
+|---------|-------------|
+| API URL | Empty uses `http://localhost:11434/v1` (Ollama's local default) |
+| Model | Empty uses `translategemma:4b` |
+| Prompt | Empty uses the built-in prompt; `{source}` and `{target}` are replaced with the source and target languages |
+| Temperature | Under **Advanced**; controls how random the output is, from 0.0 to 2.0 (default 0) |
+
+> 1. When the API URL, model, or prompt is left empty, the field shows the default it will actually use.
+> 2. Turning temperature off **leaves the parameter out of the request**. Models and APIs differ in whether they accept it and in what they recommend; if the model's documentation says not to send it, turn it off. If the output misbehaves at 0, raise it as the model suggests — start at 0.1 and work up.
 
 ## Text to Speech (TTS)
 

@@ -24,6 +24,15 @@ public class OpenAiCompatibleProviderTests
 
     [Theory]
     [InlineData("")]
+    [InlineData("   ")]
+    public void BuildEndpoint_FallsBackToTheDefaultServerWhenTheBoxIsEmpty(string input)
+    {
+        Assert.Equal(
+            "http://localhost:11434/v1/chat/completions",
+            OpenAiCompatibleProvider.BuildEndpoint(input).AbsoluteUri);
+    }
+
+    [Theory]
     [InlineData("localhost:1234")]
     [InlineData("ftp://example.test/v1")]
     public void BuildEndpoint_RejectsInvalidUrl(string input)
@@ -264,7 +273,7 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
-    public async Task TranslateAsync_RejectsMissingModelBeforeSendingRequest()
+    public async Task TranslateAsync_AsksForTheDefaultModelWhenTheBoxIsEmpty()
     {
         var handler = new RecordingHandler();
         using var http = new HttpClient(handler);
@@ -272,12 +281,45 @@ public class OpenAiCompatibleProviderTests
             http,
             () => new OpenAiCompatibleOptions("http://localhost:1234/v1", " "));
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            provider.TranslateAsync(
-                [new OcrTextBlock("hello", new Rect())], "EN", "ZH-HANT", ""));
+        await provider.TranslateAsync(
+            [new OcrTextBlock("hello", new Rect())], "EN", "ZH-HANT", "");
 
-        Assert.Contains("模型名稱", error.Message);
-        Assert.Empty(handler.Requests);
+        using var payload = JsonDocument.Parse(Assert.Single(handler.Requests).Body);
+        Assert.Equal("translategemma:4b", payload.RootElement.GetProperty("model").GetString());
+    }
+
+    [Fact]
+    public async Task TranslateAsync_LeavesTemperatureOutWhenItIsTurnedOff()
+    {
+        var handler = new RecordingHandler();
+        using var http = new HttpClient(handler);
+        var provider = new OpenAiCompatibleProvider(
+            http,
+            () => new OpenAiCompatibleOptions(
+                "http://localhost:1234/v1", "test-model", SendTemperature: false, Temperature: 0.7));
+
+        await provider.TranslateAsync(
+            [new OcrTextBlock("hello", new Rect())], "EN", "ZH-HANT", "");
+
+        using var payload = JsonDocument.Parse(Assert.Single(handler.Requests).Body);
+        Assert.False(payload.RootElement.TryGetProperty("temperature", out _));
+    }
+
+    [Fact]
+    public async Task TranslateAsync_SendsTheConfiguredTemperature()
+    {
+        var handler = new RecordingHandler();
+        using var http = new HttpClient(handler);
+        var provider = new OpenAiCompatibleProvider(
+            http,
+            () => new OpenAiCompatibleOptions(
+                "http://localhost:1234/v1", "test-model", Temperature: 0.7));
+
+        await provider.TranslateAsync(
+            [new OcrTextBlock("hello", new Rect())], "EN", "ZH-HANT", "");
+
+        using var payload = JsonDocument.Parse(Assert.Single(handler.Requests).Body);
+        Assert.Equal(0.7, payload.RootElement.GetProperty("temperature").GetDouble());
     }
 
     [Fact]

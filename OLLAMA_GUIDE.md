@@ -41,4 +41,6 @@ ollama pull translategemma:4b
    | API Key | 任意文字皆可（本機執行可空白 或 輸入 `ollama`） |
    | 模型名稱 | `translategemma:4b` |
 
+   > API 位址與模型名稱就是程式的預設值，**留空即可**，欄位會以淡色顯示實際會套用的內容。
+
 3. 儲存後即可開始使用本機 LLM 進行翻譯
