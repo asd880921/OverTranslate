@@ -9,6 +9,9 @@ namespace OverTranslate.Tests;
 /// </summary>
 public class RealtimeSubtitleColorsTests
 {
+    /// <summary>Any opacity will do where the test is about the colour rather than the band.</summary>
+    private const int Opacity = RealtimeSubtitleColors.DefaultScrimOpacity;
+
     [Theory]
     [InlineData("#FF8800", 0xFF, 0x88, 0x00)]
     [InlineData("#ff8800", 0xFF, 0x88, 0x00)]   // lower case
@@ -40,8 +43,9 @@ public class RealtimeSubtitleColorsTests
         // The point is that a typo costs the user their colour, not their subtitles.
         Assert.Equal(RealtimeSubtitleColors.Text(RealtimeSubtitleColors.DefaultText),
                      RealtimeSubtitleColors.Text(hex));
-        Assert.Equal(RealtimeSubtitleColors.Scrim(RealtimeSubtitleColors.DefaultScrim),
-                     RealtimeSubtitleColors.Scrim(hex));
+        Assert.Equal(
+            RealtimeSubtitleColors.Scrim(RealtimeSubtitleColors.DefaultScrim, Opacity),
+            RealtimeSubtitleColors.Scrim(hex, Opacity));
     }
 
     [Fact]
@@ -53,12 +57,34 @@ public class RealtimeSubtitleColorsTests
     }
 
     [Fact]
-    public void Scrim_always_carries_the_fixed_alpha()
+    public void Scrim_carries_the_opacity_it_is_given_whatever_the_colour_is()
     {
-        // Whatever the user picked, the band has to stay sheer enough to see through and opaque
-        // enough to hide the line underneath — that is not theirs to set.
         foreach (var hex in new[] { "#000000", "#FFFFFF", "#1E3A5F", "not a colour" })
-            Assert.Equal(RealtimeSubtitleColors.ScrimAlpha, RealtimeSubtitleColors.Scrim(hex).A);
+            Assert.Equal(
+                RealtimeSubtitleColors.ScrimAlpha(40),
+                RealtimeSubtitleColors.Scrim(hex, 40).A);
+    }
+
+    [Fact]
+    public void The_default_opacity_is_the_alpha_the_band_was_fixed_at()
+    {
+        // 0xB8 is what every session drew before this was offered, so a settings file written by an
+        // older build — which has no opacity key at all — has to come back looking the same.
+        Assert.Equal(
+            0xB8,
+            RealtimeSubtitleColors.ScrimAlpha(RealtimeSubtitleColors.DefaultScrimOpacity));
+    }
+
+    [Theory]
+    [InlineData(0, 0x00)]
+    [InlineData(100, 0xFF)]
+    [InlineData(-40, 0x00)]     // hand-edited out of range, below
+    [InlineData(150, 0xFF)]     // and above
+    public void Opacity_spans_the_whole_alpha_range_and_clamps_outside_it(int opacity, byte alpha)
+    {
+        // Clamped rather than refused for the same reason an unreadable colour falls back: a typo in
+        // a file the user is invited to edit should cost them the value, not the session.
+        Assert.Equal(alpha, RealtimeSubtitleColors.ScrimAlpha(opacity));
     }
 
     [Fact]
@@ -77,9 +103,11 @@ public class RealtimeSubtitleColorsTests
     {
         // Round-tripping the scrim is how the picker writes back what it was shown; if Format kept
         // the alpha, each save would add another set of digits for Parse to strip.
-        var stored = RealtimeSubtitleColors.Format(RealtimeSubtitleColors.Scrim("#1E3A5F"));
+        var stored = RealtimeSubtitleColors.Format(RealtimeSubtitleColors.Scrim("#1E3A5F", Opacity));
 
         Assert.Equal("#1E3A5F", stored);
-        Assert.Equal(RealtimeSubtitleColors.Scrim("#1E3A5F"), RealtimeSubtitleColors.Scrim(stored));
+        Assert.Equal(
+            RealtimeSubtitleColors.Scrim("#1E3A5F", Opacity),
+            RealtimeSubtitleColors.Scrim(stored, Opacity));
     }
 }

@@ -21,6 +21,10 @@ namespace OverTranslate.Views.Realtime;
 /// arrive on the request, because a session cannot be asked to change them halfway: reaching the
 /// page that sets them means the shell window, and a running session has hidden it.
 /// </param>
+/// <param name="ScrimOpacity">
+/// How opaque the band behind the text is, 0–100. Travels with the colours for the same reason and
+/// under the same rule.
+/// </param>
 public sealed record RealtimeStartRequest(
     System.Drawing.Rectangle ScreenBounds,
     int MaxBlocks,
@@ -28,7 +32,8 @@ public sealed record RealtimeStartRequest(
     string TargetLanguage,
     Models.TranslationProvider Provider,
     string TextColor,
-    string ScrimColor);
+    string ScrimColor,
+    int ScrimOpacity);
 
 /// <summary>
 /// Owns a realtime session end to end: the edit layer, the per-block overlays, the floating control
@@ -355,7 +360,7 @@ internal sealed class RealtimeSessionController
         {
             var window = new RealtimeBlockWindow(
                 region.Id, region.Bounds, request.SourceLanguage, request.TargetLanguage,
-                request.TextColor, request.ScrimColor);
+                request.TextColor, request.ScrimColor, request.ScrimOpacity);
             _blockWindows[region.Id] = window;
             window.Show();
         }

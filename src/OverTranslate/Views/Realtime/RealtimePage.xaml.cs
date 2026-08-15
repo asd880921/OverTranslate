@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using OverTranslate.Models;
 using OverTranslate.Services;
@@ -21,20 +22,24 @@ public sealed record ScreenItem(
 /// <remarks>
 /// The page holds two kinds of value, and the line between them is the rule to keep:
 ///
-/// <para><b>Parameters of one sitting</b> — screen, block count and source language — are not read
-/// from or written to the settings file. Reopening the window must not restore a screen that may
-/// have been unplugged, blocks that no longer frame the same content, or a source language the next
-/// programme may not use.</para>
+/// <para><b>Parameters of one sitting</b> — screen and block count — are not read from or written to
+/// the settings file. Reopening the window must not restore a screen that may have been unplugged,
+/// or blocks that no longer frame the same content.</para>
 ///
-/// <para><b>Translation preferences</b> — target language and service — are stored independently
+/// <para><b>Translation preferences</b> — both languages and the service — are stored independently
 /// from screenshot and text translation. Watching a game and translating a document are different
-/// jobs with different latency and quality requirements, but choosing the same realtime target and
-/// service on every launch is needless repetition.</para>
+/// jobs with different latency and quality requirements, but choosing the same realtime pair and
+/// service on every launch is needless repetition. The source language joined them late, and it is
+/// the one with a cost: someone who watched Japanese yesterday and English today starts on the wrong
+/// one, and realtime recognition gives no sign of a mismatch beyond reading badly. It is offered
+/// back anyway because it is a language the user picked, not one guessed for them — 自動 is not in
+/// this page's picker at all — and re-picking it every sitting is the repetition this group exists
+/// to remove.</para>
 ///
-/// <para><b>Appearance preferences</b> — the subtitle's two colours, in 顯示外觀 — are stored and
-/// restored. A reader who needs yellow on dark blue needs it every session, and re-picking it each
-/// time is the same failure as forgetting a theme. They live here rather than in 設定 so the control
-/// sits beside what it changes.</para>
+/// <para><b>Appearance preferences</b> — the subtitle's two colours and how opaque its band is, in
+/// 顯示外觀 — are stored and restored. A reader who needs yellow on dark blue needs it every session,
+/// and re-picking it each time is the same failure as forgetting a theme. They live here rather than
+/// in 設定 so the control sits beside what it changes.</para>
 ///
 /// <para>Nothing on screen currently marks which card is which; 翻譯區塊 states that its value is not
 /// kept, and 顯示外觀 says nothing either way. That is a deliberate trade for a shorter card, not an
@@ -73,6 +78,15 @@ public partial class RealtimePage : UserControl
 
     private int _blockCount = MinBlocks;
 
+    // True while this page is writing the opacity slider rather than the user, so that restoring a
+    // stored value does not read as a change and write it straight back.
+    private bool _syncingOpacity;
+
+    // True between the thumb being picked up and put down. The preview follows every step of a drag;
+    // the settings file waits for the end of it, because a drag across the track is one decision and
+    // would otherwise be a hundred writes.
+    private bool _draggingOpacity;
+
     public RealtimePage()
     {
         InitializeComponent();
@@ -84,8 +98,22 @@ public partial class RealtimePage : UserControl
         // Attached after the initial value is set, so initialisation does not fire the handler
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
         TgtLangBox.SelectionChanged += TgtLangBox_SelectionChanged;
-        SrcLangBox.SelectionChanged += (_, _) => RenderState();
+        SrcLangBox.SelectionChanged += SrcLangBox_SelectionChanged;
 
+        // The slider's own drag events, which it forwards from its thumb rather than surfacing as
+        // properties of its own.
+        ScrimOpacitySlider.AddHandler(
+            Thumb.DragStartedEvent,
+            new DragStartedEventHandler((_, _) => _draggingOpacity = true));
+        ScrimOpacitySlider.AddHandler(
+            Thumb.DragCompletedEvent,
+            new DragCompletedEventHandler((_, _) =>
+            {
+                _draggingOpacity = false;
+                PersistScrimOpacity();
+            }));
+
+        SyncScrimOpacity();
         RenderColours();
         RenderPauseHint();
 
@@ -100,14 +128,19 @@ public partial class RealtimePage : UserControl
     /// Applies this page's independent translation preferences and per-session defaults.
     /// </summary>
     /// <remarks>
-    /// 原文語言 is left unset on purpose. Realtime recognition offers no retry once the frame has
-    /// passed, so the user has to make the source language explicit before starting a session. An
-    /// empty field asks that question instead of silently choosing an unreliable automatic mode.
+    /// 原文語言 comes back only if the user has ever set it. Empty is the state that asks the question
+    /// rather than answering it badly: realtime recognition gets one look at a frame and no retry, so
+    /// there is no silent automatic mode to fall back on here — which is why 自動 is cleared rather
+    /// than offered. <see cref="LanguageData.GetValidOcrSourceCode"/> answers 自動 for anything it
+    /// cannot place, so that one branch covers a never-set value, a hand-edited one and a code
+    /// retired since.
     /// </remarks>
     private void ApplyPageDefaults()
     {
         var settings = SettingsService.Instance.Current;
-        SrcLangBox.SelectedIndex = -1;
+        var storedSource = LanguageData.GetValidOcrSourceCode(settings.RealtimeSourceLanguage);
+        SrcLangBox.SelectedValue =
+            LanguageData.IsAutomaticSource(storedSource) ? null : storedSource;
         TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(
             settings.RealtimeTargetLanguage);
         if (TgtLangBox.SelectedValue == null)
@@ -131,8 +164,9 @@ public partial class RealtimePage : UserControl
     /// Re-run on every <see cref="Reload"/> rather than only at construction, because the item
     /// labels come from the string dictionary and the shell keeps this page for its lifetime —
     /// built once, it would still be showing the language the app started in. The selections are
-    /// carried across by hand: rebinding drops them, and unlike the other pages nothing here
-    /// restores them afterwards, because this page's choices are deliberately not persisted.
+    /// carried across by hand, because rebinding the items drops them — and dropping them here would
+    /// read as this page forgetting what the user chose the moment they changed the interface
+    /// language.
     /// </remarks>
     private void BindPickers()
     {
@@ -157,6 +191,7 @@ public partial class RealtimePage : UserControl
     {
         BindPickers();
         LoadScreens();
+        SyncScrimOpacity();
         RenderColours();
         RenderPauseHint();
         RenderState();
@@ -194,6 +229,20 @@ public partial class RealtimePage : UserControl
         if (ProviderBox.SelectedValue is TranslationProvider provider)
             SaveTranslationPreference(settings => settings.RealtimeProvider = provider);
         RenderProviderHint();
+    }
+
+    /// <remarks>
+    /// Only a real selection is written, never the momentary null that rebinding the items produces
+    /// — see <see cref="BindPickers"/>. Without that guard, changing the interface language would
+    /// blank this preference on its way past.
+    /// </remarks>
+    private void SrcLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SrcLangBox.SelectedValue is string sourceLanguage)
+            SaveTranslationPreference(settings =>
+                settings.RealtimeSourceLanguage = LanguageData.GetValidOcrSourceCode(sourceLanguage));
+
+        RenderState();
     }
 
     private void TgtLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -318,7 +367,8 @@ public partial class RealtimePage : UserControl
             LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string),
             ProviderBox.SelectedValue as TranslationProvider? ?? DefaultProvider,
             settings.RealtimeTextColor,
-            settings.RealtimeScrimColor);
+            settings.RealtimeScrimColor,
+            settings.RealtimeScrimOpacity);
 
         // The shell is handed over to be hidden: it is almost certainly sitting on the screen the
         // user is about to frame blocks on, and it comes back when the session ends.
@@ -337,12 +387,54 @@ public partial class RealtimePage : UserControl
             SettingsService.Instance.Current.RealtimeScrimColor,
             picked => Persist(s => s.RealtimeScrimColor = picked));
 
-    private void ResetColorsBtn_Click(object sender, RoutedEventArgs e) =>
+    private void ResetColorsBtn_Click(object sender, RoutedEventArgs e)
+    {
         Persist(s =>
         {
             s.RealtimeTextColor = RealtimeSubtitleColors.DefaultText;
             s.RealtimeScrimColor = RealtimeSubtitleColors.DefaultScrim;
+            s.RealtimeScrimOpacity = RealtimeSubtitleColors.DefaultScrimOpacity;
         });
+
+        // The slider is the one control here that holds its own value rather than reading it back
+        // from the settings on every render, so it has to be told.
+        SyncScrimOpacity();
+        RenderColours();
+    }
+
+    /// <summary>
+    /// Follows the thumb: the label and the preview on every step, the settings file at the end of a
+    /// drag — or immediately, when the value moved by keyboard or by a click on the track, neither of
+    /// which has an end to wait for.
+    /// </summary>
+    private void ScrimOpacitySlider_ValueChanged(
+        object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_syncingOpacity) return;
+
+        // Persist renders on its way through, so only the held-back case has to render for itself.
+        if (_draggingOpacity) RenderColours();
+        else PersistScrimOpacity();
+    }
+
+    /// <summary>Puts the stored opacity on the slider without that reading as the user setting it.</summary>
+    private void SyncScrimOpacity()
+    {
+        _syncingOpacity = true;
+        ScrimOpacitySlider.Value = RealtimeSubtitleColors.ClampOpacity(
+            SettingsService.Instance.Current.RealtimeScrimOpacity);
+        _syncingOpacity = false;
+    }
+
+    private void PersistScrimOpacity() =>
+        Persist(s => s.RealtimeScrimOpacity = CurrentScrimOpacity);
+
+    /// <summary>
+    /// What the slider is showing, which is what the preview draws — not what is stored, because
+    /// mid-drag those are deliberately different.
+    /// </summary>
+    private int CurrentScrimOpacity =>
+        RealtimeSubtitleColors.ClampOpacity((int)Math.Round(ScrimOpacitySlider.Value));
 
     /// <summary>
     /// Opens the system colour picker on the current value and reports what came back.
@@ -380,13 +472,20 @@ public partial class RealtimePage : UserControl
     }
 
     /// <summary>
-    /// Paints the two swatches, their hex labels and the preview from what is currently stored.
+    /// Paints the two swatches, their hex labels, the opacity reading and the preview.
     /// </summary>
+    /// <remarks>
+    /// The colours come from what is stored; the opacity comes from the slider, which during a drag
+    /// is deliberately ahead of it — see <see cref="ScrimOpacitySlider_ValueChanged"/>.
+    /// </remarks>
     private void RenderColours()
     {
         var settings = SettingsService.Instance.Current;
+        var opacity = CurrentScrimOpacity;
         var text = RealtimeSubtitleColors.Text(settings.RealtimeTextColor);
-        var scrim = RealtimeSubtitleColors.Scrim(settings.RealtimeScrimColor);
+        var scrim = RealtimeSubtitleColors.Scrim(settings.RealtimeScrimColor, opacity);
+
+        ScrimOpacityValue.Text = $"{opacity}%";
 
         // The swatch shows the colour the user picked, so it is drawn opaque even for the scrim —
         // the preview below is where its translucency is on display.
@@ -402,7 +501,8 @@ public partial class RealtimePage : UserControl
 
         ResetColorsBtn.IsEnabled =
             settings.RealtimeTextColor != RealtimeSubtitleColors.DefaultText ||
-            settings.RealtimeScrimColor != RealtimeSubtitleColors.DefaultScrim;
+            settings.RealtimeScrimColor != RealtimeSubtitleColors.DefaultScrim ||
+            opacity != RealtimeSubtitleColors.DefaultScrimOpacity;
     }
 
     private void BlockCountDown_Click(object sender, RoutedEventArgs e) => StepBlockCount(-1);

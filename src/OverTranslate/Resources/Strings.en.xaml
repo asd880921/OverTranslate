@@ -160,8 +160,9 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.PreviewText">Text will look like this on screen</sys:String>
     <sys:String x:Key="S.Realtime.TextColor">Text</sys:String>
     <sys:String x:Key="S.Realtime.ScrimColor">Background</sys:String>
+    <sys:String x:Key="S.Realtime.ScrimOpacity">Background opacity</sys:String>
     <sys:String x:Key="S.Realtime.ResetColors">Reset to defaults</sys:String>
-    <sys:String x:Key="S.Realtime.ResetColorsName">Reset colours</sys:String>
+    <sys:String x:Key="S.Realtime.ResetColorsName">Reset appearance</sys:String>
 
     <sys:String x:Key="S.Realtime.HowItWorks">How it works</sys:String>
     <sys:String x:Key="S.Realtime.Step1">1. Click "Select blocks" and drag over the areas you want translated.</sys:String>

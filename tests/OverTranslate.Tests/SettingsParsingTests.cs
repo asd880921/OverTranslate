@@ -29,6 +29,10 @@ public class SettingsParsingTests
 
         Assert.Equal(LanguageData.DefaultTargetLanguage, settings.RealtimeTargetLanguage);
         Assert.Equal(TranslationProvider.Microsoft, settings.RealtimeProvider);
+
+        // Empty rather than 自動: the realtime picker does not offer that mode, so a default here
+        // would put a value in the box that the user cannot have chosen and cannot see is wrong.
+        Assert.Equal("", settings.RealtimeSourceLanguage);
         Assert.Equal("JA", settings.TargetLanguage);
         Assert.Equal(TranslationProvider.DeepL, settings.Provider);
     }
@@ -43,6 +47,40 @@ public class SettingsParsingTests
         Assert.Equal(TranslationProvider.OpenAI, settings.RealtimeProvider);
         Assert.Equal(LanguageData.DefaultTargetLanguage, settings.TargetLanguage);
         Assert.Equal(TranslationProvider.Microsoft, settings.Provider);
+    }
+
+    [Fact]
+    public void TheRealtimeSourceLanguageIsItsOwnKey()
+    {
+        // 即時翻譯 and 截圖翻譯 read different things at different times, so what one was last pointed
+        // at says nothing about the other.
+        var settings = SettingsService.Parse(
+            """{"RealtimeSourceLanguage":"JA","SourceLanguage":"EN"}""");
+
+        Assert.Equal("JA", settings.RealtimeSourceLanguage);
+        Assert.Equal("EN", settings.SourceLanguage);
+    }
+
+    [Fact]
+    public void AFileFromBeforeTheOpacityKey_KeepsTheBandItAlwaysHad()
+    {
+        // Every build before this one drew the scrim at a fixed alpha, so a settings file carried
+        // across must not arrive at a different-looking overlay.
+        var settings = SettingsService.Parse("""{"RealtimeScrimColor":"#1E3A5F"}""");
+
+        Assert.Equal(
+            OverTranslate.Services.Realtime.RealtimeSubtitleColors.DefaultScrimOpacity,
+            settings.RealtimeScrimOpacity);
+    }
+
+    [Fact]
+    public void TheOpacityIsItsOwnKey_AndDoesNotDisturbTheScrimColour()
+    {
+        var settings = SettingsService.Parse(
+            """{"RealtimeScrimColor":"#1E3A5F","RealtimeScrimOpacity":0}""");
+
+        Assert.Equal(0, settings.RealtimeScrimOpacity);
+        Assert.Equal("#1E3A5F", settings.RealtimeScrimColor);
     }
 
     [Fact]

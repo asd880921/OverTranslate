@@ -75,7 +75,8 @@ public partial class RealtimeBlockWindow : Window
         string sourceLanguage,
         string targetLanguage,
         string textColor,
-        string scrimColor)
+        string scrimColor,
+        int scrimOpacity)
     {
         InitializeComponent();
 
@@ -83,7 +84,8 @@ public partial class RealtimeBlockWindow : Window
         _physBounds = physBounds;
         _latinSourceToCjkTarget = IsLatinToCjk(sourceLanguage, targetLanguage);
         _textBrush = Freeze(new SolidColorBrush(RealtimeSubtitleColors.Text(textColor)));
-        _scrimBrush = Freeze(new SolidColorBrush(RealtimeSubtitleColors.Scrim(scrimColor)));
+        _scrimBrush = Freeze(new SolidColorBrush(
+            RealtimeSubtitleColors.Scrim(scrimColor, scrimOpacity)));
 
         Loaded += (_, _) =>
         {
