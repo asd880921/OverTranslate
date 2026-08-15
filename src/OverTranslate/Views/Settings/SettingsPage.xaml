@@ -237,13 +237,25 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.ApiBaseUrl}"
                                        Style="{StaticResource FieldLabel}"/>
-                            <TextBox Grid.Column="1" Grid.Row="0" x:Name="OpenAiBaseUrlBox"
-                                     Style="{StaticResource ModernTextBox}"
-                                     TextChanged="OpenAiSetting_TextChanged"/>
+                            <Grid Grid.Column="1" Grid.Row="0">
+                                <TextBox x:Name="OpenAiBaseUrlBox"
+                                         Style="{StaticResource ModernTextBox}"
+                                         TextChanged="OpenAiSetting_TextChanged"/>
+                                <TextBlock x:Name="OpenAiBaseUrlPlaceholder"
+                                           IsHitTestVisible="False"
+                                           FontFamily="{StaticResource AppFont}"
+                                           FontSize="{StaticResource AppFontSize}"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           Opacity="0.7"
+                                           Margin="10,0,10,0"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
 
                             <TextBlock Grid.Column="0" Grid.Row="1" Text="{DynamicResource S.Common.ApiKey}"
                                        Margin="0,10,0,0"
@@ -255,10 +267,22 @@
                             <TextBlock Grid.Column="0" Grid.Row="2" Text="{DynamicResource S.Settings.ModelName}"
                                        Margin="0,10,0,0"
                                        Style="{StaticResource FieldLabel}"/>
-                            <TextBox Grid.Column="1" Grid.Row="2" x:Name="OpenAiModelBox"
-                                     Margin="0,10,0,0"
-                                     Style="{StaticResource ModernTextBox}"
-                                     TextChanged="OpenAiSetting_TextChanged"/>
+                            <Grid Grid.Column="1" Grid.Row="2" Margin="0,10,0,0">
+                                <TextBox x:Name="OpenAiModelBox"
+                                         Style="{StaticResource ModernTextBox}"
+                                         TextChanged="OpenAiSetting_TextChanged"/>
+                                <!-- Same contract as the prompt below: an empty box means the
+                                     built-in default, and this is that default shown in place
+                                     rather than described somewhere else. -->
+                                <TextBlock x:Name="OpenAiModelPlaceholder"
+                                           IsHitTestVisible="False"
+                                           FontFamily="{StaticResource AppFont}"
+                                           FontSize="{StaticResource AppFontSize}"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           Opacity="0.7"
+                                           Margin="10,0,10,0"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
 
                             <TextBlock Grid.Column="0" Grid.Row="3"
                                        Text="{DynamicResource S.Settings.Prompt}"
@@ -273,13 +297,21 @@
                                     <controls:SegmentedControl x:Name="PromptSwitch"
                                                                HorizontalAlignment="Left"
                                                                SelectionChanged="PromptSwitch_SelectionChanged"/>
+                                    <!-- The same glyph the realtime page resets colours with, but
+                                         on a surface rather than bare: a glyph alone beside a
+                                         segmented control and an input box does not read as
+                                         something to press. -->
                                     <Button x:Name="PromptResetButton"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Center"
-                                            Height="34"
-                                            Padding="18,0"
+                                            Width="38" Height="34" Padding="0"
                                             Style="{StaticResource FlatButton}"
-                                            Content="{DynamicResource S.Settings.PromptReset}"
+                                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                            FontSize="14"
+                                            Foreground="{DynamicResource AppTextSecondary}"
+                                            Content="&#xE72C;"
+                                            ToolTip="{DynamicResource S.Settings.ResetDefault}"
+                                            AutomationProperties.Name="{DynamicResource S.Settings.ResetDefault}"
                                             Click="PromptResetButton_Click"/>
                                 </Grid>
 
@@ -308,15 +340,128 @@
                                            Style="{StaticResource FieldHint}"/>
                             </StackPanel>
 
+                            <!-- Collapsed by default and one level down from the fields above it:
+                                 nothing in here is needed to translate, and a user who never has a
+                                 model that disagrees with the defaults never has to read it. It
+                                 sits inside this panel rather than in the page's own 進階設定 card
+                                 because these settings belong to the model named three rows up. -->
+                            <Button Grid.Column="1" Grid.Row="4"
+                                    x:Name="OpenAiAdvancedToggle"
+                                    Style="{StaticResource FlatButton}"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    HorizontalAlignment="Left"
+                                    Height="30"
+                                    Padding="8,0"
+                                    Margin="-8,12,0,0"
+                                    Click="OpenAiAdvancedToggle_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Drawn rather than set in an icon font, for the same reason
+                                         the guide's book below is: the glyph fonts are not on every
+                                         supported build, and a missing chevron reads as damage. -->
+                                    <Path x:Name="OpenAiAdvancedChevron"
+                                          Width="9" Height="6"
+                                          Margin="0,1,8,0"
+                                          VerticalAlignment="Center"
+                                          Stretch="Uniform"
+                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          StrokeThickness="1.4"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Data="M1,1 L5,5 L9,1"
+                                          RenderTransformOrigin="0.5,0.5">
+                                        <Path.RenderTransform>
+                                            <RotateTransform x:Name="OpenAiAdvancedChevronRotation"/>
+                                        </Path.RenderTransform>
+                                    </Path>
+                                    <TextBlock Text="{DynamicResource S.Settings.OpenAiAdvanced}"
+                                               FontFamily="{StaticResource AppFont}"
+                                               FontSize="{StaticResource AppFontSize}"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Clipped so the content can be animated out of a zero height rather
+                                 than blinking in and out of the layout. -->
+                            <Border Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="2"
+                                    x:Name="OpenAiAdvancedHost"
+                                    ClipToBounds="True"
+                                    Height="0"
+                                    Opacity="0">
+                                <Grid x:Name="OpenAiAdvancedContent" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Not localized: this is the name of the field in the request,
+                                         and every model's own documentation calls it that. -->
+                                    <TextBlock Grid.Column="0" Grid.Row="0"
+                                               Text="{DynamicResource S.Settings.Temperature}"
+                                               Style="{StaticResource FieldLabel}"/>
+
+                                    <Grid Grid.Column="1" Grid.Row="0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <CheckBox x:Name="TemperatureEnabledCheckBox"
+                                                      Content="{DynamicResource S.Settings.TemperatureEnable}"
+                                                      Style="{StaticResource ModernCheckBox}"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,12,0"
+                                                      Checked="TemperatureEnabled_Toggled"
+                                                      Unchecked="TemperatureEnabled_Toggled"/>
+                                            <TextBox x:Name="TemperatureBox"
+                                                     Width="86"
+                                                     Style="{StaticResource ModernTextBox}"
+                                                     TextChanged="TemperatureBox_TextChanged"
+                                                     LostFocus="TemperatureBox_LostFocus"/>
+                                            <!-- Beside the field rather than in the sentence below
+                                                 it: this is the rule the box enforces on the way
+                                                 out, so it belongs where the typing happens. -->
+                                            <TextBlock x:Name="TemperatureRangeHint"
+                                                       Text="{DynamicResource S.Settings.TemperatureRange}"
+                                                       Margin="10,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       FontFamily="{StaticResource AppFont}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource AppTextSecondary}"/>
+                                        </StackPanel>
+
+                                        <Button x:Name="TemperatureResetButton"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Width="38" Height="34" Padding="0"
+                                                Style="{StaticResource FlatButton}"
+                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                FontSize="14"
+                                                Foreground="{DynamicResource AppTextSecondary}"
+                                                Content="&#xE72C;"
+                                                ToolTip="{DynamicResource S.Settings.ResetDefault}"
+                                                AutomationProperties.Name="{DynamicResource S.Settings.ResetDefault}"
+                                                Click="TemperatureResetButton_Click"/>
+                                    </Grid>
+
+                                    <TextBlock Grid.Column="1" Grid.Row="1"
+                                               Text="{DynamicResource S.Settings.TemperatureHint}"
+                                               Margin="2,8,0,0"
+                                               Style="{StaticResource FieldHint}"/>
+                                </Grid>
+                            </Border>
+
                             <!-- The guide is about the provider as a whole, not about the prompt
                                  directly above it, so a rule separates the two rather than letting
                                  the link read as one more line of the prompt's own help. -->
-                            <Border Grid.Column="1" Grid.Row="4"
+                            <Border Grid.Column="1" Grid.Row="6"
                                     Height="1"
                                     Margin="0,14,0,0"
                                     Background="{DynamicResource AppBorder}"/>
 
-                            <StackPanel Grid.Column="1" Grid.Row="5"
+                            <StackPanel Grid.Column="1" Grid.Row="7"
                                         Orientation="Horizontal"
                                         Margin="2,12,0,0">
                                 <!-- An open book, drawn rather than set in an icon font: the two

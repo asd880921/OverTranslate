@@ -59,7 +59,6 @@
     <sys:String x:Key="S.Update.Failed">Could not download the update: {0}</sys:String>
 
     <!-- ── Service errors ── -->
-    <sys:String x:Key="S.Error.OpenAiNoModel">No model name set for the OpenAI-compatible provider.</sys:String>
     <sys:String x:Key="S.Error.OpenAiHttp">The OpenAI-compatible API returned {0}: {1}</sys:String>
     <sys:String x:Key="S.Error.OpenAiUnparsable">Could not parse the OpenAI-compatible API response.</sys:String>
     <sys:String x:Key="S.Error.OpenAiNoTranslation">The OpenAI-compatible API returned no translation.</sys:String>
@@ -257,9 +256,15 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.Prompt">Prompt</sys:String>
     <sys:String x:Key="S.Settings.PromptAuto">Automatic</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">Chosen language</sys:String>
-    <sys:String x:Key="S.Settings.PromptReset">Reset</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintAuto">Leave empty to use the built-in prompt. {target} is replaced automatically with the target language.</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintExplicit">Leave empty to use the built-in prompt. {source} is replaced automatically with the source language, and {target} with the target language.</sys:String>
+    <sys:String x:Key="S.Settings.ResetDefault">Reset to default</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintAuto">{target}: target language</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source}: source language  {target}: target language</sys:String>
+    <sys:String x:Key="S.Settings.OpenAiAdvanced">Advanced</sys:String>
+    <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureEnable">Enable</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureRange">Range: 0.0 ~ 2.0</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureHint" xml:space="preserve">Temperature controls how random the output is; 0 keeps it as predictable as possible, and higher values allow more variation.
+The parameter is left out of the request when this is off. Models differ — follow whatever the model recommends.</sys:String>
 
     <sys:String x:Key="S.Settings.Screenshot">Screenshots</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshot">Save</sys:String>

@@ -16,9 +16,13 @@ public class SettingsParsingTests
     {
         var settings = SettingsService.Parse("{}");
 
-        Assert.Equal("http://localhost:11434/v1", settings.OpenAiBaseUrl);
+        // Empty rather than the addresses and names themselves: the provider fills those in, so a
+        // settings file that never mentions them keeps following whatever the build defaults to.
+        Assert.Equal("", settings.OpenAiBaseUrl);
         Assert.Equal("", settings.OpenAiApiKey);
         Assert.Equal("", settings.OpenAiModel);
+        Assert.True(settings.OpenAiTemperatureEnabled);
+        Assert.Equal(0, settings.OpenAiTemperature);
     }
 
     [Fact]

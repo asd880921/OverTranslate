@@ -63,7 +63,6 @@
          they are interface text despite living in the service layer. The LLM prompts in
          OpenAiCompatibleProvider are deliberately not here: those are sent to a model, not read by
          a person, and they do not follow the interface language. -->
-    <sys:String x:Key="S.Error.OpenAiNoModel">尚未設定 OpenAI Compatible 的模型名稱。</sys:String>
     <sys:String x:Key="S.Error.OpenAiHttp">OpenAI Compatible API 回傳 {0}：{1}</sys:String>
     <sys:String x:Key="S.Error.OpenAiUnparsable">OpenAI Compatible API 回應格式無法解析。</sys:String>
     <sys:String x:Key="S.Error.OpenAiNoTranslation">OpenAI Compatible API 未回傳譯文。</sys:String>
@@ -274,9 +273,15 @@
     <sys:String x:Key="S.Settings.Prompt">提示詞</sys:String>
     <sys:String x:Key="S.Settings.PromptAuto">自動</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">指定語言</sys:String>
-    <sys:String x:Key="S.Settings.PromptReset">還原預設</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintAuto">留空時使用內建預設。{target} 會自動替換為目標語言。</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintExplicit">留空時使用內建預設。{source} 會自動替換為來源語言，{target} 會自動替換為目標語言。</sys:String>
+    <sys:String x:Key="S.Settings.ResetDefault">還原預設</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintAuto">{target}：目標語言</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source}：來源語言  {target}：目標語言</sys:String>
+    <sys:String x:Key="S.Settings.OpenAiAdvanced">進階</sys:String>
+    <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureEnable">啟用</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureRange">範圍：0.0 ~ 2.0</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureHint" xml:space="preserve">Temperature 會影響輸出的隨機程度；0 代表盡量降低隨機性，提高數值則會增加輸出變化。
+未啟用時不傳送此參數。不同模型適合的設定不同，建議依模型建議值設定。</sys:String>
 
     <sys:String x:Key="S.Settings.Screenshot">截圖</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshot">儲存截圖</sys:String>

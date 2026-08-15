@@ -8,18 +8,28 @@ using OverTranslate.Models;
 
 namespace OverTranslate.Services.Providers;
 
+/// <param name="Model">
+/// The model to ask for, or empty for <see cref="OpenAiCompatibleProvider.DefaultModel"/>.
+/// </param>
 /// <param name="PromptAuto">
 /// The user's own instruction for 自動 source, or empty to use the built-in one.
 /// </param>
 /// <param name="PromptExplicit">
 /// The user's own instruction for a chosen source language, or empty to use the built-in one.
 /// </param>
+/// <param name="SendTemperature">
+/// Whether the request carries a temperature at all. Off leaves the field out entirely rather than
+/// sending a default: a server that rejects the field rejects any value in it, so there is no number
+/// that means "never mind".
+/// </param>
 public sealed record OpenAiCompatibleOptions(
     string BaseUrl,
     string Model,
     string ApiKey = "",
     string PromptAuto = "",
-    string PromptExplicit = "");
+    string PromptExplicit = "",
+    bool SendTemperature = true,
+    double Temperature = 0);
 
 /// <summary>
 /// Translates through the OpenAI-compatible Chat Completions contract. Each OCR block is an
@@ -47,8 +57,20 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
             SettingsService.Instance.Current.OpenAiModel,
             SettingsService.Instance.Current.OpenAiApiKey,
             SettingsService.Instance.Current.OpenAiPromptAuto,
-            SettingsService.Instance.Current.OpenAiPromptExplicit));
+            SettingsService.Instance.Current.OpenAiPromptExplicit,
+            SettingsService.Instance.Current.OpenAiTemperatureEnabled,
+            SettingsService.Instance.Current.OpenAiTemperature));
     }
+
+    /// <summary>
+    /// The model asked for when the settings page's model box is left empty.
+    /// </summary>
+    /// <remarks>
+    /// A working default rather than an error: the shipped base URL points at a local Ollama, and a
+    /// translation-only model is what this provider is for. Named here rather than stored in the
+    /// settings file for the same reason the prompt is — see <see cref="DefaultPromptTemplate"/>.
+    /// </remarks>
+    internal const string DefaultModel = "translategemma:4b";
 
     // Local OpenAI-compatible servers commonly accept an empty or dummy key. Endpoint and model
     // validation happens when translating, where the UI can show an actionable error.
@@ -67,9 +89,8 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         var options = _options();
         var endpoint = BuildEndpoint(options.BaseUrl);
         var model = options.Model.Trim();
+        if (model.Length == 0) model = DefaultModel;
         var configuredApiKey = options.ApiKey.Trim();
-        if (model.Length == 0)
-            throw new InvalidOperationException(LocalizationService.Get("S.Error.OpenAiNoModel"));
 
         // Counts and configuration only, so this stays in the shipped log: it is what tells a report
         // of "nothing was translated" apart from a request that never left, and names the model the
@@ -101,6 +122,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
                     configuredApiKey,
                     endpoint,
                     model,
+                    options.SendTemperature ? options.Temperature : null,
                     token);
 
                 // Both sides of one block on one line: a block that came back still in its own
@@ -127,25 +149,30 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         return (results, detected);
     }
 
+    /// <param name="temperature">The temperature to ask for, or null to leave the field out.</param>
     private async Task<string> TranslateOneAsync(
         string text,
         string prompt,
         string apiKey,
         Uri endpoint,
         string model,
+        double? temperature,
         CancellationToken cancellationToken)
     {
-        var payload = new
+        // A dictionary rather than an anonymous type because one field is conditional: a server that
+        // refuses temperature refuses every value of it, so the only way to say nothing is to send
+        // no such field.
+        var payload = new Dictionary<string, object>
         {
-            model,
-            messages = new object[]
+            ["model"] = model,
+            ["messages"] = new object[]
             {
                 new { role = "system", content = prompt },
                 new { role = "user", content = text },
             },
-            temperature = 0,
-            stream = false,
         };
+        if (temperature is { } value) payload["temperature"] = value;
+        payload["stream"] = false;
 
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
         request.Content = new StringContent(
@@ -185,9 +212,18 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
         return translated;
     }
 
+    /// <summary>
+    /// The server asked when the settings page's address box is left empty: a local Ollama on its
+    /// own default port, which is what the setup guide this page links to leaves running.
+    /// </summary>
+    internal const string DefaultBaseUrl = "http://localhost:11434/v1";
+
     internal static Uri BuildEndpoint(string baseUrl)
     {
-        if (!Uri.TryCreate(baseUrl.Trim(), UriKind.Absolute, out var uri) ||
+        baseUrl = baseUrl.Trim();
+        if (baseUrl.Length == 0) baseUrl = DefaultBaseUrl;
+
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
             throw new InvalidOperationException(LocalizationService.Get("S.Error.OpenAiBadUrl"));
 
