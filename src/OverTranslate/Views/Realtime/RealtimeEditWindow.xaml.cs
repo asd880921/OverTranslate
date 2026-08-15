@@ -42,11 +42,15 @@ public partial class RealtimeEditWindow : Window
     private const double BaseRemoveGap = 6;
 
     /// <summary>
-    /// Width of one segment of the mode control. Both segments are this wide whichever label is
-    /// longer, because a segmented control whose halves change width as the selection moves reads
-    /// as two buttons rather than as one control with two states.
+    /// Smallest width of one segment of the mode control. Both segments are the same width whichever
+    /// label is longer, because a segmented control whose halves change width as the selection moves
+    /// reads as two buttons rather than as one control with two states. A locale whose labels do not
+    /// fit widens both segments together — see <see cref="BaseModeLabelPadding"/>.
     /// </summary>
     private const double BaseModeSegmentWidth = 82;
+
+    /// <summary>Space kept either side of the widest mode label before the segment edge.</summary>
+    private const double BaseModeLabelPadding = 14;
 
     /// <summary>
     /// Height of the mode control, deliberately larger than the remove button beside it.
@@ -711,8 +715,8 @@ public partial class RealtimeEditWindow : Window
         ///
         /// The two mode labels do NOT take it, and the same measurement is why. Weight buys
         /// readability by thickening strokes, and it costs the gaps between them — which is a good
-        /// trade over a sentence of ordinary characters and a bad one over 字幕 and 遊戲介面, where
-        /// 遊, 戲 and 幕 carry twelve to seventeen strokes each and close up into a blot at this
+        /// trade over a sentence of ordinary characters and a bad one over 字幕 / 對話 and 遊戲 / UI,
+        /// where 遊, 戲 and 幕 carry twelve to seventeen strokes each and close up into a blot at this
         /// size. Those two words are also not the ones needing help to be found: one sits in white
         /// on a saturated pill and the other is the only other thing on the track.
         /// </remarks>
@@ -766,7 +770,6 @@ public partial class RealtimeEditWindow : Window
         {
             Value = mode;
             _guidanceExpanded = guidanceExpanded;
-            _segmentWidth = segmentWidth;
 
             Orientation = System.Windows.Controls.Orientation.Vertical;
             HorizontalAlignment = HorizontalAlignment.Left;
@@ -774,6 +777,22 @@ public partial class RealtimeEditWindow : Window
             // Sizes here are base units times a monitor scale, so most of them land on fractions of
             // a pixel. Rounded, the plate edges and the text inside them start on whole pixels.
             UseLayoutRounding = true;
+
+            _labels =
+            [
+                BuildLabel(LocalizationService.Get("S.Realtime.ModeSubtitle"), uiScale),
+                BuildLabel(LocalizationService.Get("S.Realtime.ModeGameUi"), uiScale),
+            ];
+
+            // The base width suits labels of a word or two; a locale that needs more room gets it,
+            // and both segments take the wider figure so the halves stay equal.
+            foreach (var label in _labels)
+                label.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+
+            segmentWidth = Math.Max(
+                segmentWidth,
+                _labels.Max(label => label.DesiredSize.Width) + BaseModeLabelPadding * 2 * uiScale);
+            _segmentWidth = segmentWidth;
 
             var trackWidth = segmentWidth * 2 + inset * 2;
             var radius = height / 2;
@@ -789,12 +808,6 @@ public partial class RealtimeEditWindow : Window
                 Background = FrameStroke,
                 RenderTransform = _pillOffset,
             };
-
-            _labels =
-            [
-                BuildLabel(LocalizationService.Get("S.Realtime.ModeSubtitle"), uiScale),
-                BuildLabel(LocalizationService.Get("S.Realtime.ModeGameUi"), uiScale),
-            ];
 
             // Rounded on the outer end only, so a press on either half stays inside the capsule.
             _highlights =

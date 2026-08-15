@@ -206,14 +206,14 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.RemoveBlock">Remove this block</sys:String>
 
     <!-- Block mode picker -->
-    <sys:String x:Key="S.Realtime.ModeSubtitle">Subtitles</sys:String>
-    <sys:String x:Key="S.Realtime.ModeGameUi">Game UI</sys:String>
+    <sys:String x:Key="S.Realtime.ModeSubtitle">Subtitles / Dialogue</sys:String>
+    <sys:String x:Key="S.Realtime.ModeGameUi">Game / UI</sys:String>
     <sys:String x:Key="S.Realtime.ModeSubtitleSummary">Subtitle lines, dialogue boxes — large text, scaled down to read</sys:String>
     <sys:String x:Key="S.Realtime.ModeGameUiSummary">Game panels, item text — small text, read at full size</sys:String>
-    <sys:String x:Key="S.Realtime.ModeSubtitleGuidance">For video subtitles, game dialogue and anything else where the text stays in one place.
-Leave half a character to a character of space above and below rather than hugging the text. Widening the sides a little is fine, but avoid taking in large empty areas, which add noise.</sys:String>
-    <sys:String x:Key="S.Realtime.ModeGameUiGuidance">For text spread across the screen, or that moves around as you play.
-Leave some room around each area you want translated rather than hugging its contents. If there are several separate areas, box them separately — one large block reads slowly.</sys:String>
+    <sys:String x:Key="S.Realtime.ModeSubtitleGuidance">For scenes where the text stays in one place, such as video subtitles and game dialogue.
+Leave a reasonable amount of room above and below the text rather than hugging it. Widening the sides a little is fine, but avoid taking in large empty areas.</sys:String>
+    <sys:String x:Key="S.Realtime.ModeGameUiGuidance">For game menus and prompts, or scenes where the text is spread out and moves around.
+Leave a little room around the whole area. If the screen has several areas to translate, box them separately rather than taking one oversized area.</sys:String>
     <sys:String x:Key="S.Realtime.CollapseGuidance">Hide mode details</sys:String>
     <sys:String x:Key="S.Realtime.ExpandGuidance">Show mode details</sys:String>
 
