@@ -414,6 +414,23 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     internal static float[] HalfNormalization => [127.5f, 127.5f, 127.5f];
 
     /// <summary>
+    /// The shipped detector and the statistics to read it with.
+    /// </summary>
+    /// <remarks>
+    /// Re-measured on PP-OCRv6_det_tiny after the detector was swapped under the choice recorded on
+    /// <see cref="HalfNormalization"/>, which had been made on PP-OCRv6_small. ImageNet looked like
+    /// the better pair on the six fixtures in this repository and read one reported failure at twice
+    /// the characters — and then lost on 137 real dumped frames: it read four of them as completely
+    /// empty that 127.5 read fine ("It's bright.", "Let's pay CiRCLE a visit on the way home.",
+    /// "ここは…？" twice), against one frame the other way whose reading was a misread anyway. The
+    /// leading-character loss that started the investigation happens under both, at about the same
+    /// rate. So 127.5 stays, and the fixtures in this repository are now known to be too small a
+    /// sample to move this on. See issue #69.
+    /// </remarks>
+    private static DetectorModel ShippedDetector(string detPath) =>
+        new(detPath, HalfNormalization, HalfNormalization);
+
+    /// <summary>
     /// Detector to load in place of the shipped one. Null — the shipped detector — everywhere but
     /// <c>OcrHarness</c>.
     /// </summary>
@@ -462,7 +479,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         EnsureModelFile(recPath);
         EnsureModelFile(dictPath);
 
-        var detector = DetectorOverride ?? new DetectorModel(detPath, HalfNormalization, HalfNormalization);
+        var detector = DetectorOverride ?? ShippedDetector(detPath);
         if (DetectorOverride is not null)
         {
             EnsureModelFile(detector.Path);
@@ -558,13 +575,61 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// </remarks>
     internal static int? DetectorPaddingOverride { get; set; }
 
-    private static RapidOcrOptions CreateOptions(int? maxDetectSize) =>
-        RapidOcrOptions.Default with
+    /// <summary>
+    /// The three thresholds that turn the detector's probability map into boxes.
+    /// </summary>
+    /// <param name="BoxThresh">
+    /// Where the probability map is cut into "text" and "not text". Higher leaves weakly answered
+    /// strokes out of the component, which is what puts a box edge inside a glyph.
+    /// </param>
+    /// <param name="BoxScoreThresh">
+    /// The mean probability a finished box must reach to be returned at all. A box under it is
+    /// dropped inside the library, before anything this class can see or count.
+    /// </param>
+    /// <param name="UnClipRatio">
+    /// How far the shrunken polygon is expanded back out. Too small and every box loses a little at
+    /// each end.
+    /// </param>
+    internal readonly record struct DetectorThresholds(
+        float BoxThresh,
+        float BoxScoreThresh,
+        float UnClipRatio);
+
+    /// <summary>
+    /// Detector post-processing thresholds to use instead of the library's, or null for the
+    /// library's own.
+    /// </summary>
+    /// <remarks>
+    /// A measurement seam for <c>OcrHarness</c>, like <see cref="DetectorPaddingOverride"/>. Nothing
+    /// in the application sets this.
+    ///
+    /// These three have never been chosen: <see cref="CreateOptions"/> overrides the detector size,
+    /// the angle classifier and the border, and everything else has been whatever
+    /// <c>RapidOcrOptions.Default</c> happened to carry. They are worth a seam because they are the
+    /// only part of the pipeline that can lose text without leaving a trace — <c>rawBlocks</c> is
+    /// counted after the library has already applied <see cref="DetectorThresholds.BoxScoreThresh"/>,
+    /// so a box it dropped is indistinguishable in the log from a box that was never found.
+    /// </remarks>
+    internal static DetectorThresholds? DetectorThresholdOverride { get; set; }
+
+    private static RapidOcrOptions CreateOptions(int? maxDetectSize)
+    {
+        var options = RapidOcrOptions.Default with
         {
             ImgResize = maxDetectSize ?? ScreenshotDetectSize,
             DoAngle = false,
             Padding = DetectorPaddingOverride ?? RapidOcrOptions.Default.Padding,
         };
+
+        return DetectorThresholdOverride is { } thresholds
+            ? options with
+            {
+                BoxThresh = thresholds.BoxThresh,
+                BoxScoreThresh = thresholds.BoxScoreThresh,
+                UnClipRatio = thresholds.UnClipRatio,
+            }
+            : options;
+    }
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)
     {

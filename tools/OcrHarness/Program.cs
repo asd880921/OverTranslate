@@ -18,6 +18,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same frame and size, cjk vs korean recognition model)");
     Console.Error.WriteLine("       OcrHarness --scale-sweep [--det <det.onnx>[:imagenet|:half]] <image.png> [...]");
     Console.Error.WriteLine("                  (reads each frame at every detector size, no translation)");
+    Console.Error.WriteLine("       OcrHarness --thresh-sweep <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (same frame, detector box thresholds moved one axis at a time)");
     Console.Error.WriteLine("       OcrHarness --pad-sweep <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same frame and size, a range of borders around it)");
     Console.Error.WriteLine("       OcrHarness --margin-sweep <image.png> [more.png ...]");
@@ -178,6 +180,72 @@ if (args[0] == "--compare-models")
                 }
             }
         }
+    }
+
+    return 0;
+}
+
+// Threshold sweep: the same frame read at the shipped detector size, with the three detector
+// post-processing thresholds moved one at a time around the library's defaults.
+//
+// This is the one sweep whose answer cannot be read out of the application's log. rawBlocks is
+// counted after the library has already dropped every box below BoxScoreThresh, so a subtitle whose
+// leading characters went missing looks identical to one where the detector never found them. The
+// only way to tell those apart is to move the threshold and see whether the text comes back.
+//
+// Reads as a screenshot (detect size null -> the shipped ScreenshotDetectSize) and in AUTO, which is
+// what the failing captures were: the point is to reproduce a specific report, not to re-measure the
+// realtime sizes that --scale-sweep already covers.
+if (args[0] == "--thresh-sweep")
+{
+    using var threshOcr = new OcrService();
+
+    var shipped = new OnnxOcrEngine.DetectorThresholds(
+        RapidOcrNet.RapidOcrOptions.Default.BoxThresh,
+        RapidOcrNet.RapidOcrOptions.Default.BoxScoreThresh,
+        RapidOcrNet.RapidOcrOptions.Default.UnClipRatio);
+
+    Console.WriteLine(
+        $"library defaults: boxThresh={shipped.BoxThresh:0.00} " +
+        $"boxScore={shipped.BoxScoreThresh:0.00} unclip={shipped.UnClipRatio:0.00}");
+
+    // One axis at a time, each stepping through its own range with the other two left shipped. A
+    // grid would be three times the passes for an answer nobody could read: what is being asked
+    // first is which of the three is even involved.
+    var runs = new List<(string Axis, OnnxOcrEngine.DetectorThresholds Value)>();
+    foreach (var boxThresh in new[] { 0.10f, 0.15f, 0.20f, 0.25f, 0.30f, 0.40f, 0.50f })
+        runs.Add(($"boxThresh={boxThresh:0.00}", shipped with { BoxThresh = boxThresh }));
+    foreach (var boxScore in new[] { 0.10f, 0.20f, 0.30f, 0.40f, 0.50f, 0.60f })
+        runs.Add(($"boxScore ={boxScore:0.00}", shipped with { BoxScoreThresh = boxScore }));
+    foreach (var unclip in new[] { 1.5f, 1.75f, 2.0f, 2.25f, 2.5f, 3.0f })
+        runs.Add(($"unclip   ={unclip:0.00}", shipped with { UnClipRatio = unclip }));
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine($"{Path.GetFileName(path)}  {image.Width}x{image.Height}  detect=screenshot");
+
+        foreach (var (axis, thresholds) in runs)
+        {
+            OnnxOcrEngine.DetectorThresholdOverride = thresholds;
+
+            List<OcrTextBlock>? blocks = null;
+            for (var attempt = 0; attempt < 20 && blocks is null; attempt++)
+                blocks = await threshOcr.TryRecognizeAsync(image, "AUTO");
+
+            var chars = blocks?.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c))) ?? 0;
+            var text = blocks is null || blocks.Count == 0
+                ? ""
+                : "  " + string.Join(" | ", blocks.Select(b => b.Text.Replace("\n", " ")));
+            var mark = thresholds == shipped ? " <- shipped" : "";
+
+            Console.WriteLine($"  {axis} : {blocks?.Count ?? -1} box chars={chars,3}{mark}{text}");
+        }
+
+        OnnxOcrEngine.DetectorThresholdOverride = null;
     }
 
     return 0;
