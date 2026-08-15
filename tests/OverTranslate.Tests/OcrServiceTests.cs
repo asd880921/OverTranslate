@@ -200,7 +200,7 @@ public class OcrServiceTests
     public async Task OnnxEngine_AutomaticModeRecognizesChineseInterface()
     {
         using var engine = new OnnxOcrEngine();
-        using var bitmap = LoadFixture("設定預覽.png");
+        using var bitmap = LoadFixture("chinese-interface-1341x799.png");
 
         var blocks = await engine.RecognizeAsync(bitmap, "AUTO");
 
@@ -232,7 +232,7 @@ public class OcrServiceTests
     public async Task OnnxEngine_AutomaticModeMatchesManualEnglishOnMixedInterface()
     {
         using var engine = new OnnxOcrEngine();
-        using var bitmap = LoadFixture("翻譯比對圖.png");
+        using var bitmap = LoadFixture("mixed-interface-1060x904.png");
 
         var manual = TextOf(await engine.RecognizeAsync(bitmap, "EN"));
         var automatic = TextOf(await engine.RecognizeAsync(bitmap, "AUTO"));

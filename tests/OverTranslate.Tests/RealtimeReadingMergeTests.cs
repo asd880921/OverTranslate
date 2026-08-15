@@ -229,6 +229,101 @@ public class RealtimeReadingMergeTests
         Assert.Equal("Where have you gone?!", merged.Blocks[0].Text);
     }
 
+    [Fact]
+    public void ALineCaughtMidAnimationIsReplacedByTheFinishedOne()
+    {
+        // A visual novel typing its line out, read when about four fifths of it was on screen. The
+        // truncated reading is not a bad one — the recogniser was right about every character that
+        // existed — so it scores at least as well as the finished line does, and the confidence rule
+        // alone would leave the reader without the end of the sentence for as long as it is up.
+        const string TypedSoFar = "I never thought I would see this place again";
+        const string Finished = "I never thought I would see this place again in my life.";
+
+        var merged = RealtimeReadingMerge.Merge(
+            [new RenderedLine(TypedSoFar, 0.99)],
+            [Read(Finished, 0, 0.94)]);
+
+        Assert.True(merged.Changed);
+        Assert.Equal(1, merged.Improved);
+        Assert.Equal(Finished, merged.Blocks[0].Text);
+        Assert.Equal(0.94, merged.Lines[0].Confidence);
+    }
+
+    [Fact]
+    public void AHalfDrawnLastGlyphDoesNotStopTheFinishedLineLanding()
+    {
+        // The character the animation was part way through is read as something else, so the shown
+        // line is not literally a prefix of the finished one. That is the ordinary case rather than
+        // an edge one, which is why the front of the line is compared with the usual tolerance.
+        var merged = RealtimeReadingMerge.Merge(
+            [new RenderedLine("You should have told me about it a lot soc", 0.97)],
+            [Read("You should have told me about it a lot sooner than this.", 0, 0.95)]);
+
+        Assert.Equal(1, merged.Improved);
+        Assert.Equal("You should have told me about it a lot sooner than this.", merged.Blocks[0].Text);
+    }
+
+    [Fact]
+    public void ALineThatMerelyWobbledAtItsEndIsStillJudgedOnItsScore()
+    {
+        // The rule above must not become "anything longer wins", or every trailing wobble rewrites
+        // the line and the churn MinConfidenceGain exists to stop comes straight back. Three extra
+        // characters in thirty-seven is noise, so this goes to the score — which it happens to win,
+        // as it did before this rule existed.
+        Assert.False(TextSimilarity.IsContinuationOf(RightSecondLine, WrongSecondLine));
+
+        var merged = RealtimeReadingMerge.Merge(
+            [new RenderedLine(WrongSecondLine, 0.96)],
+            [Read(RightSecondLine, 0, 0.99)]);
+
+        Assert.Equal(1, merged.Improved);
+
+        // The same wobble at a score that has not climbed stays off the screen, which is the half
+        // that would have been lost had growth been read into it.
+        var wobbled = RealtimeReadingMerge.Merge(
+            [new RenderedLine(WrongSecondLine, 0.96)],
+            [Read(RightSecondLine, 0, 0.96)]);
+
+        Assert.False(wobbled.Changed);
+        Assert.Equal(WrongSecondLine, wobbled.Blocks[0].Text);
+    }
+
+    [Fact]
+    public void AnAnimationIsFollowedToItsEndInAFewSteps()
+    {
+        // A line typing itself out, read every other poll as the session actually reads it — so each
+        // read finds a chunk more of the sentence than the last one did. What the reader sees is the
+        // overlay following the line in, rather than stopping wherever the first read happened to
+        // catch it.
+        const string Line = "So this is what you meant when you said it would be difficult.";
+        var shown = new List<RenderedLine>();
+        var redraws = 0;
+
+        for (var drawn = 12; drawn <= Line.Length; drawn += 12)
+        {
+            var merged = RealtimeReadingMerge.Merge(shown, [Read(Line[..drawn], 0, 0.98)]);
+            if (merged.Changed) redraws++;
+            shown = [.. merged.Lines];
+        }
+
+        // And the last read of all, once the animation has stopped and the frame settles.
+        var final = RealtimeReadingMerge.Merge(shown, [Read(Line, 0, 0.98)]);
+        if (final.Changed) redraws++;
+
+        // Everything on screen is the real sentence, from its start, and it got there in a handful
+        // of steps — not one per chunk, because each has to clear MinGrowthRatio on the last.
+        Assert.StartsWith(final.Lines[0].Text, Line);
+        Assert.True(redraws <= 6, $"the line was redrawn {redraws} times while animating in");
+
+        // What is deliberately not claimed: an exact finish. The animation's last chunk was two
+        // characters, and two characters appearing at the end of a line is indistinguishable from
+        // recognition noise — see TextSimilarity.MinGrowthChars for why that is the side to lose on.
+        // The complaint this rule answers is the other end of this scale: without it the overlay
+        // would have stopped at the first read that paired at all.
+        var missing = Line.Length - final.Lines[0].Text.Length;
+        Assert.InRange(missing, 0, TextSimilarity.MinGrowthChars - 1);
+    }
+
     /// <summary>One character read wrong, now and then — what recognition noise looks like.</summary>
     private static string Wobble(string text, Random random)
     {

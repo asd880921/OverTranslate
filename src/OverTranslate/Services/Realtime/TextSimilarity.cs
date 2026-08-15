@@ -70,6 +70,91 @@ internal static class TextSimilarity
     public const double MaxRereadDifferenceRatio = 0.3;
 
     /// <summary>
+    /// How much longer a reading has to be, against what is on screen, before the extra characters
+    /// are the sentence still being drawn rather than recognition wobbling at its end.
+    /// </summary>
+    /// <remarks>
+    /// The two look alike from here — both are "the same line, a bit longer" — so the only thing
+    /// separating them is how much longer. Recognition's own wobble at the end of a line is a
+    /// character or three: <c>"guitr."</c> against <c>"guitar..."</c> is three in thirty-seven, and
+    /// <see cref="MaxDifferenceRatio"/> is set at 10% precisely because that is where noise lives. A
+    /// line that is still animating in is missing a clause, not a character.
+    ///
+    /// So this sits above the noise band rather than at it, and is bounded at both ends.
+    ///
+    /// It is bounded from above by pairing: a reading more than <see cref="MaxRereadDifferenceRatio"/>
+    /// away from the shown line is never paired with it — it is simply a new line, drawn on its own
+    /// terms — which puts a ceiling near 43% of the shown length on anything this could ever see.
+    /// 15% leaves that band usable, and the case this exists for (a line drawn to about four fifths
+    /// before it was read, so a quarter of its length still to come) sits in the middle of it.
+    /// </remarks>
+    public const double MinGrowthRatio = 0.15;
+
+    /// <summary>
+    /// The fewest characters that can ever count as growth, whatever <see cref="MinGrowthRatio"/>
+    /// works out to on a short line.
+    /// </summary>
+    /// <remarks>
+    /// This is the side of the trade that has to be accepted rather than solved: a line whose last
+    /// read caught it this close to finished keeps its truncated ending, because three characters
+    /// appearing at the end of a line is exactly what recognition noise looks like and there is no
+    /// signal separating the two. Chosen against what noise actually produces — a stray
+    /// <c>"This is nice!ブハ"</c>, a full stop read as an ellipsis — and against what is lost by
+    /// being wrong the other way, which is a word ending rather than a clause. The complaint this
+    /// whole rule answers is a line read at four fifths; that is nowhere near here.
+    /// </remarks>
+    public const int MinGrowthChars = 4;
+
+    /// <summary>
+    /// The most that can ever be demanded, however long the shown line is.
+    /// </summary>
+    /// <remarks>
+    /// Without it the proportional rule scales the wrong way on both counts: a two-hundred-character
+    /// line would keep its last thirty characters truncated, and reaching that line's full length
+    /// four characters at a time is not the alternative either — everything between 70% and 100% of
+    /// it is paired, so a small threshold there is a dozen redraws and a dozen translations for one
+    /// subtitle. Capped, no line takes more than about five steps to finish arriving, and none
+    /// loses more than a couple of words to the floor.
+    /// </remarks>
+    public const int MaxGrowthChars = 12;
+
+    /// <summary>
+    /// Whether <paramref name="grown"/> is <paramref name="shown"/> with more of the same sentence
+    /// after it — one line caught mid-animation and then read again once it had finished.
+    /// </summary>
+    /// <remarks>
+    /// Dialogue rarely arrives all at once. A visual novel types its line out, a subtitle track
+    /// fades one in, a game reveals a clause at a time — and a poll landing part way through reads
+    /// four fifths of a sentence perfectly, because what is on screen at that instant really is
+    /// four fifths of a sentence. Everything downstream then agrees it is the same line
+    /// (<see cref="IsSameSentence"/>) read no better (the animation adds words, not certainty), so
+    /// the finished sentence is turned down and the truncated one stays up for as long as the line
+    /// is on screen — the reader loses the end of the line, which is usually where its meaning is.
+    ///
+    /// The score cannot arbitrate that, because it is not answering the question: it says how
+    /// confident the recogniser is in the characters it read, and it is entirely right to be
+    /// confident about a half-drawn line. What tells the two apart is the shape of the difference.
+    /// A re-reading disagrees <em>within</em> the line; a line still being drawn agrees with all of
+    /// it and continues past the end.
+    /// </remarks>
+    public static bool IsContinuationOf(string grown, string shown)
+    {
+        var longer = NormaliseWhitespace(grown);
+        var start = NormaliseWhitespace(shown);
+
+        if (start.Length == 0) return false;
+
+        var required = Math.Clamp(
+            (int)Math.Ceiling(start.Length * MinGrowthRatio), MinGrowthChars, MaxGrowthChars);
+        if (longer.Length - start.Length < required) return false;
+
+        // The shown line has to still be there at the front of this one. Compared with the ordinary
+        // tolerance rather than exactly, because the last glyph of a line mid-animation is a
+        // half-drawn one — read as something else, or not at all.
+        return IsSameContent(longer[..start.Length], start);
+    }
+
+    /// <summary>
     /// Whether these are two readings of one sentence rather than two sentences — close enough to
     /// be the same words, too far apart to be the same reading of them.
     /// </summary>
