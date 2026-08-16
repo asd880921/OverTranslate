@@ -470,9 +470,13 @@
                                                ToolTip="{DynamicResource S.Settings.PromptParamsTip}"/>
                                 </StackPanel>
 
+                                <!-- Left, not stretched: every column sizes to its content, so a
+                                     table pulled out to the panel's width would be four short
+                                     columns and a stretch of empty rule. -->
                                 <Border BorderBrush="{DynamicResource AppBorder}"
                                         BorderThickness="1"
                                         CornerRadius="6"
+                                        HorizontalAlignment="Left"
                                         Margin="2,0,0,0">
                                     <StackPanel Grid.IsSharedSizeScope="True">
                                         <StackPanel.Resources>
@@ -496,6 +500,13 @@
                                             <Style x:Key="ParamName" TargetType="TextBlock" BasedOn="{StaticResource ParamText}">
                                                 <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
                                             </Style>
+                                            <!-- The header is the one row that is not data: a size up
+                                                 and dimmer, so it reads as the label of the column
+                                                 rather than the first entry in it. -->
+                                            <Style x:Key="ParamHeaderText" TargetType="TextBlock" BasedOn="{StaticResource ParamText}">
+                                                <Setter Property="FontSize" Value="12"/>
+                                                <Setter Property="Opacity" Value="0.6"/>
+                                            </Style>
                                         </StackPanel.Resources>
 
                                         <!-- Header -->
@@ -503,17 +514,17 @@
                                             <Grid Style="{StaticResource ParamRow}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
-                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
                                                 </Grid.ColumnDefinitions>
                                                 <Border Grid.Column="0" Style="{StaticResource ParamCell}">
-                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol1}" Style="{StaticResource ParamText}"/>
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol1}" Style="{StaticResource ParamHeaderText}"/>
                                                 </Border>
                                                 <Border Grid.Column="1" Style="{StaticResource ParamCell}">
-                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol2}" Style="{StaticResource ParamText}"/>
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol2}" Style="{StaticResource ParamHeaderText}"/>
                                                 </Border>
                                                 <Border Grid.Column="2" Style="{StaticResource ParamLastCell}">
-                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol3}" Style="{StaticResource ParamText}"/>
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol3}" Style="{StaticResource ParamHeaderText}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -524,7 +535,7 @@
                                             <Grid Style="{StaticResource ParamRow}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
-                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
                                                 </Grid.ColumnDefinitions>
                                                 <Border Grid.Column="0" Style="{StaticResource ParamCell}">
@@ -546,7 +557,7 @@
                                             <Grid Style="{StaticResource ParamRow}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
-                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
                                                 </Grid.ColumnDefinitions>
                                                 <Border Grid.Column="0" Style="{StaticResource ParamCell}">
@@ -566,7 +577,7 @@
                                             <Grid Style="{StaticResource ParamRow}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
-                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
                                                 </Grid.ColumnDefinitions>
                                                 <Border Grid.Column="0" Style="{StaticResource ParamCell}">
@@ -585,7 +596,7 @@
                                         <Grid Style="{StaticResource ParamRow}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
-                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
                                                 <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
                                             </Grid.ColumnDefinitions>
                                             <Border Grid.Column="0" Style="{StaticResource ParamCell}">
