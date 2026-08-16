@@ -52,9 +52,9 @@ Whether it's games, PDFs, video subtitles, or any other text you can't select di
 ---
 
 ## Screenshot Translation
-> The main window can be closed (the app stays in the system tray); even while running in the background, screenshot translation can be triggered anytime with a hotkey (default `Ctrl + Alt + A`).
 
-After selecting the area you want to translate, the translation is overlaid on the original position. The toolbar lets you quickly switch languages, translation services, original / translated text, screenshots, and more.
+The main window can be closed so the app just sits in the system tray — there's no need to keep the window open all the time.  
+When you need a translation, press the hotkey (default Ctrl + Alt + A) and select the area you want to translate.
 
 | Source text | Translation |
 |------|----------|
@@ -68,7 +68,7 @@ After selecting the area you want to translate, the translation is overlaid on t
 
 Ideal for **video subtitles, game screens**, and other situations that need continuous translation. After selecting the area, the screen content is recognized continuously, and the translation updates automatically in the original position whenever the text changes.
 
-> Currently only Microsoft, OpenAI, and DeepL are recommended for this mode (lower latency).  
+> Currently only Microsoft, DeepL, and OpenAI are recommended for this mode (lower latency).  
 > The text color, background color, and background opacity of the translation can be adjusted as needed.
 
 ![Real-time translation window preview](docs/images/即時翻譯視窗預覽_en.png)
@@ -78,8 +78,7 @@ Ideal for **video subtitles, game screens**, and other situations that need cont
 > The hotkey (default `Ctrl + Alt + S`) enters block selection directly.  
 > Real-time translation currently supports a single monitor only, and allows up to 3 translation blocks at the same time.  
 
-Each translation block can be set individually to **Subtitles / Dialogue** or **Game / UI** mode, so the recognition method matches the type of content on screen.
-
+Each translation block can be set individually to **Subtitles / Dialogue** or **Game / UI** mode, so the recognition method matches the type of content on screen.  
 **Subtitles / Dialogue**: for scenes where the text stays in one place, such as video subtitles and game dialogue (1 block recommended).
 
 | Selection | Translation result |
@@ -89,21 +88,18 @@ Each translation block can be set individually to **Subtitles / Dialogue** or **
 | ![Real-time translation2 - dialogue game selection](docs/images/即時翻譯2-對話遊戲框.png) | ![Real-time translation2 - dialogue game result](docs/images/即時翻譯2-對話遊戲翻譯.png) |
 
 **Game / UI**: for game menus and prompts, or scenes where the text is spread out and moves around (1 – 2 blocks recommended).
-> While in game, use the hotkey (default Ctrl + Alt + A) to pause / resume translation,
+> While in game, use the hotkey (default Ctrl + Alt + A) to pause / resume translation,  
 > When a screen doesn't need translating, pause first and resume later — there's no need to shut down real-time translation.
 
 | Selection | Translation result |
 |-----------|--------------------|
 | ![Real-time translation - game selection](docs/images/即時翻譯-遊戲翻譯框.png) | ![Real-time translation - game result](docs/images/即時翻譯-遊戲翻譯.png) |
 
-### Floating Bar
-
-While translation is running, the floating bar lets you **pause** or **resume translation**, **capture a screenshot of the current translation**, **re-edit the translation blocks**, or **stop translating**.
-
 ## Text Translation
 > The hotkey (default `Ctrl + Alt + W`) brings up the main window quickly.
 
-Type text to translate it instantly, swap the source and target languages, and have the translation read aloud. Results from screenshot translation also show up here.
+Type text and it is translated instantly, and the source and target languages can be swapped in one click;  
+built-in text to speech (TTS) can also read the original text or the translation aloud.
 
 ![Translation window preview](docs/images/翻譯視窗預覽_en.png)
 
@@ -132,7 +128,8 @@ Click **Settings** in the left navigation bar, or right-click the tray icon → 
 
 ## Translation APIs
 
-Several translation sources are built in; all of them are free and require no API key, except DeepL.
+> Apart from DeepL and OpenAI, everything else works right after you download the app.
+
 | Service | Description |
 |---------|-------------|
 | Google Translate (RPC) | Newer RPC interface |
@@ -141,14 +138,14 @@ Several translation sources are built in; all of them are free and require no AP
 | Microsoft Translator | **(default)** Stable and fast |
 | DeepL | Requires registering on DeepL's site and obtaining an API key |
 | OpenAI | Supports the OpenAI API format; a local LLM is recommended, which you can set up quickly with [Ollama](OLLAMA_GUIDE.en.md); the prompt and temperature are customizable |
-
+  
 An "automatic fallback" mechanism is provided (it applies to both **screenshot translation** and **real-time translation**):
 when a translation service is unavailable or responds too slowly, the app automatically switches to another available translation API, and the engine actually in use is shown in the toolbar.
 ![Fallback](docs/images/備援.png)
 
 > The fallback mechanism is not triggered when using **OpenAI**.
 
-### OpenAI-compatible settings
+### OpenAI settings
 
 | Setting | Description |
 |---------|-------------|
@@ -166,17 +163,9 @@ Prompt parameters (the **Available parameters** block on the settings page lists
 | `{target_name}` | Target language name | Japanese |
 | `{target_code}` | Target language code | ja |
 
-> When the source language is set to automatic detection there is no source language to substitute, so the settings page hides `{source_name}` and `{source_code}`.
-> The built-in prompt uses the language names only; the code parameters are there for models that expect a form like "Japanese (ja)".
-
-> When the API URL, model, or prompt is left empty, the field shows the default it will actually use.  
+> The built-in prompt uses the language names only; the code parameters can be combined as your model needs, for example `{target_name} (target_code)` -> `Japanese (ja)`.
+> 
 > Turning temperature off **leaves the parameter out of the request**. Models and APIs differ in whether they accept it and in what they recommend; if the model's documentation says not to send it, turn it off. If the output misbehaves at 0, raise it as the model suggests — start at 0.1 and work up.
-
-## Text to Speech (TTS)
-
-The translation window includes text-to-speech, which can read the original or translated text aloud to help you check pronunciation or listen to the content.
-The speak button can stop playback at any time, or switch between the original and the translation.
-A suitable voice is selected automatically based on the language, and if the current voice is unavailable another available source is used instead.
 
 ## Multi-language OCR
 
