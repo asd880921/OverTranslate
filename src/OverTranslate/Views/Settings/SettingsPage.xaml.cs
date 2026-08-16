@@ -212,10 +212,14 @@ public partial class SettingsPage : UserControl
 
             foreach (var field in _hotkeyFields) field.Box.Text = field.Display(s);
 
-            // The ticks, then the "a shortcut above took this" lines the ticks can change.
+            // The ticks, then the "a shortcut above took this" lines the ticks can change. The
+            // availability pass is explicit because the toggle handler ignores changes made while
+            // loading, so nothing else would grey these rows out on the way in.
             foreach (var binding in HotkeyBindings.Resolve(s))
                 if (FieldFor(binding.Action)?.EnabledBox is { } box)
                     box.IsChecked = binding.Enabled;
+
+            foreach (var field in _hotkeyFields) ApplyHotkeyRowAvailability(field);
 
             RefreshHotkeyShadowHints();
             ApiKeyBox.Secret = s.ApiKey;
@@ -886,6 +890,27 @@ public partial class SettingsPage : UserControl
     private HotkeyField? FieldFor(HotkeyAction action) =>
         _hotkeyFields.FirstOrDefault(field => field.Action == action);
 
+    /// <summary>
+    /// Greys out the box and the record button of a shortcut that is switched off.
+    /// </summary>
+    /// <remarks>
+    /// The tick is the whole row's switch, so leaving the rest of the row live invites the user to
+    /// record a combination for a shortcut that will not be registered — an edit that appears to work
+    /// and changes nothing.
+    ///
+    /// Only the tick does this. A row shadowed by a higher-priority shortcut stays editable on
+    /// purpose: re-recording it onto a free combination is exactly how that is fixed, and disabling
+    /// the row would take the fix away along with the problem.
+    /// </remarks>
+    private static void ApplyHotkeyRowAvailability(HotkeyField field)
+    {
+        // No tick means the row cannot be switched off at all — the capture shortcut.
+        var on = field.EnabledBox is not { } box || box.IsChecked == true;
+
+        field.Box.IsEnabled = on;
+        field.Record.IsEnabled = on;
+    }
+
     private void HotkeyEnabled_Toggled(object sender, RoutedEventArgs e)
     {
         if (_loading) return;
@@ -893,7 +918,12 @@ public partial class SettingsPage : UserControl
         var field = _hotkeyFields.FirstOrDefault(f => ReferenceEquals(f.EnabledBox, sender));
         if (field?.SetEnabled is not { } setEnabled || field.EnabledBox is not { } box) return;
 
+        // Switching a row off while it is waiting for a key would leave it recording into a control
+        // about to be disabled, and the tick would look like it had done nothing.
+        if (ReferenceEquals(_recording, field)) StopRecording();
+
         Persist(s => setEnabled(s, box.IsChecked == true));
+        ApplyHotkeyRowAvailability(field);
 
         // The global hooks are bound from these settings, so the tick means nothing until they are
         // rebound — without this the shortcut keeps working until the application is restarted, and
