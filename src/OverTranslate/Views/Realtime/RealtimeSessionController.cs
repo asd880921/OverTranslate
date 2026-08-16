@@ -381,6 +381,12 @@ internal sealed class RealtimeSessionController
             .Select((block, index) => new RealtimeRegion(index, block.Bounds, block.Mode))
             .ToList();
 
+        // Resolved before the overlays are shown. They are click-through and belong to this process,
+        // so the resolver would skip them either way — but the order that does not depend on either
+        // of those facts is the one to write down.
+        var framed = regions.Select(region => region.Bounds).ToList();
+        var source = SourceWindowResolver.Resolve(framed);
+
         foreach (var region in regions)
         {
             var window = new RealtimeBlockWindow(
@@ -394,10 +400,9 @@ internal sealed class RealtimeSessionController
         // Built here and not in Start: the layers exist and have handles now, which is the earliest
         // a backend can be asked whether it can keep them out of frame — and the last moment before
         // the loop would begin reading the screen they are drawn on.
-        var capture = new DesktopGrabCaptureBackend(OverlaysHiddenFromCapture());
-        if (!capture.IsIsolated)
+        var capture = CreateCaptureBackend(source, framed);
+        if (capture is null)
         {
-            capture.Dispose();
             EnterEditMode();
             control.ShowMessage(
                 LocalizationService.Get("S.Realtime.CaptureNotIsolated"), RealtimeMessageKind.Failure);
@@ -415,6 +420,73 @@ internal sealed class RealtimeSessionController
 
         _session.Start(regions, request.SourceLanguage, request.TargetLanguage, request.Provider, capture);
     }
+
+    /// <summary>
+    /// Chooses where this session reads the screen from, or returns null when nothing available can
+    /// keep OverTranslate's own overlays out of the frame.
+    /// </summary>
+    /// <remarks>
+    /// Window capture first, and not only because it is newer. Its isolation is structural — the
+    /// source is the watched application's window, and the subtitle layers are not that window — so
+    /// nothing has to succeed for it to hold, and it works identically on the Windows versions where
+    /// <c>WDA_EXCLUDEFROMCAPTURE</c> does not (#94). It also keeps reading a window that something
+    /// else is covering, which the desktop grab never could.
+    ///
+    /// It is not always available. It needs Windows 1903, and it needs the framed blocks to sit over
+    /// one identifiable window — regions spread across two applications, or drawn over the desktop,
+    /// have no single source to capture. Those fall back to the desktop grab, which is honest about
+    /// what it costs: it may only run where the overlays can be excluded from capture, and where
+    /// they cannot, the session does not start at all.
+    ///
+    /// No hidden third path. Falling back from a failed window capture to the desktop without the
+    /// exclusion holding is precisely the accident this whole rework exists to make impossible.
+    /// </remarks>
+    private IRealtimeCaptureBackend? CreateCaptureBackend(
+        SourceWindowResolver.Resolution source, IReadOnlyList<System.Drawing.Rectangle> framed)
+    {
+        // Once per run of translating, and the first thing to look for in any report about this
+        // feature: which capture path the user was actually on, and what their system offered.
+        Log.Info("Realtime capture capability: {Capability}", WgcCapability.Describe());
+
+        if (!source.Resolved)
+            Log.Info("Realtime window capture unavailable: {Reason}", source.Reason);
+        else if (!WgcCapability.IsCaptureSupported)
+            Log.Info("Realtime window capture unavailable: this system does not support it");
+        else if (CreateWindowBackend(framed) is { } windowCapture)
+            return windowCapture;
+
+        var desktop = new DesktopGrabCaptureBackend(OverlaysHiddenFromCapture());
+        if (desktop.IsIsolated) return desktop;
+
+        desktop.Dispose();
+        return null;
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.18362.0")]
+    private WgcWindowCaptureBackend? CreateWindowBackend(IReadOnlyList<System.Drawing.Rectangle> framed)
+    {
+        // Resolved afresh on each attempt rather than captured once: this is also what the backend
+        // calls when its source window closes, and a game that reopened its window in another mode
+        // is a different handle over the same rectangles.
+        var backend = WgcWindowCaptureBackend.TryCreate(() => SourceWindowResolver.Resolve(framed).Hwnd);
+        if (backend is null) return null;
+
+        backend.SourceLost += OnCaptureSourceLost;
+        return backend;
+    }
+
+    /// <summary>
+    /// The captured window is gone for good. Back to edit mode, where the user still has their
+    /// blocks and can point them at something else.
+    /// </summary>
+    private void OnCaptureSourceLost(object? sender, string message) =>
+        OnDispatcher(() =>
+        {
+            if (!IsTranslating) return;
+
+            EnterEditMode();
+            _control?.ShowMessage(message, RealtimeMessageKind.Failure);
+        });
 
     /// <summary>
     /// Whether every layer this session draws is absent from anything that reads the screen.

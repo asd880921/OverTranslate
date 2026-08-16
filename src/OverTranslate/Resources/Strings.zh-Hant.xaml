@@ -217,7 +217,7 @@
     <sys:String x:Key="S.Realtime.TooManyBlocks">最多同時 {0} 個區塊，請先移除一個</sys:String>
     <sys:String x:Key="S.Realtime.NeedOneBlock">請先拖曳建立至少一個區塊</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceLost">被翻譯的視窗已關閉，即時翻譯已停止</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureNotIsolated">此系統無法把字幕層排除在畫面擷取之外，繼續會讀回自己的譯文，因此不啟動</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureNotIsolated">此系統無法把字幕層排除在畫面擷取之外，繼續會讀回自己的譯文。請把區塊框在同一個應用程式視窗內，即可改為直接讀取該視窗</sys:String>
     <sys:String x:Key="S.Realtime.NothingToCapture">目前還沒有譯文可以擷取</sys:String>
     <sys:String x:Key="S.Realtime.CaptureFailed">擷取畫面失敗，請再試一次</sys:String>
     <sys:String x:Key="S.Realtime.CaptureCopied">畫面截圖已複製到剪貼簿</sys:String>
