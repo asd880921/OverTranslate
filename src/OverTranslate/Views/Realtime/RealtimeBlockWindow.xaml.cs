@@ -157,6 +157,13 @@ public partial class RealtimeBlockWindow : Window
     /// <summary>Where this block sits on the screen, in physical pixels — what it was pinned to.</summary>
     public System.Drawing.Rectangle PhysicalBounds => _physBounds;
 
+    /// <summary>
+    /// Whether this block is hidden from anything that reads the screen — see
+    /// <see cref="WindowCaptureShield"/>. Read by <see cref="RealtimeSessionController"/> before it
+    /// lets the desktop-grab backend start polling.
+    /// </summary>
+    public bool IsHiddenFromCapture { get; private set; }
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -169,7 +176,7 @@ public partial class RealtimeBlockWindow : Window
         ScreenGeometry.PinPhysicalBounds(this, _physBounds);
 
         // Without this the next poll would read this window's own translation back off the screen.
-        WindowCaptureShield.Exclude(this);
+        IsHiddenFromCapture = WindowCaptureShield.Exclude(this);
     }
 
     /// <summary>

@@ -127,12 +127,19 @@ public partial class RealtimeControlWindow : Window
     public event EventHandler? ShotRequested;
     public event EventHandler? PauseToggleRequested;
 
+    /// <summary>
+    /// Whether this bar is hidden from anything that reads the screen — see
+    /// <see cref="WindowCaptureShield"/>. Read by <see cref="RealtimeSessionController"/> before it
+    /// lets the desktop-grab backend start polling.
+    /// </summary>
+    public bool IsHiddenFromCapture { get; private set; }
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
 
         WindowStyles.ApplyNoActivate(this);
-        WindowCaptureShield.Exclude(this);
+        IsHiddenFromCapture = WindowCaptureShield.Exclude(this);
     }
 
     /// <summary>

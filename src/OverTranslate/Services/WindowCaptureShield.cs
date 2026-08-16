@@ -15,6 +15,11 @@ namespace OverTranslate.Services;
 /// overlay settles into translating its own text. Hiding the overlay around each grab would work but
 /// costs a visible flicker several times a second, whereas <c>WDA_EXCLUDEFROMCAPTURE</c> keeps the
 /// window fully visible to the user and simply absent from anything that reads the screen.
+///
+/// This only ever mattered because the loop grabbed the composited desktop, which contains these
+/// windows. It is a property of the desktop-grab backend, not of realtime translation — a backend
+/// that captures the watched application directly never sees these windows in the first place and
+/// asks nothing of them. Treat what this returns as that one backend's precondition.
 /// </remarks>
 internal static class WindowCaptureShield
 {
@@ -35,7 +40,12 @@ internal static class WindowCaptureShield
         var hwnd = new WindowInteropHelper(window).Handle;
         if (hwnd == IntPtr.Zero) return false;
 
-        if (SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE))
+        // Read back rather than trust the return value. The call is the request, not the outcome:
+        // this is the one fact the caller acts on — a session refuses to start without it — so it is
+        // worth confirming against the window itself.
+        if (SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)
+            && GetWindowDisplayAffinity(hwnd, out var applied)
+            && applied == WDA_EXCLUDEFROMCAPTURE)
             return true;
 
         // This used to be recorded as not worth blocking the feature over, on the reasoning that the
@@ -63,13 +73,15 @@ internal static class WindowCaptureShield
         // on every later one, which is why it survived this long unnoticed. Tracked in #94, together
         // with the fact that no caller does anything with the value returned below.
         //
-        // Logged once — a per-window warning would repeat for every block on every session.
+        // Logged once — a per-window warning would repeat for every block on every session. The
+        // caller no longer merely notes this: the desktop-grab backend is unusable on this system,
+        // and RealtimeSessionController refuses to poll with it.
         if (!_unsupportedReported)
         {
             _unsupportedReported = true;
             Log.Warn(
                 "SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE) failed (error {Error}); " +
-                "realtime overlays may appear in screen grabs on this system",
+                "the desktop-grab capture backend cannot be used on this system",
                 Marshal.GetLastWin32Error());
         }
 
@@ -79,4 +91,8 @@ internal static class WindowCaptureShield
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowDisplayAffinity(IntPtr hwnd, uint affinity);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowDisplayAffinity(IntPtr hwnd, out uint affinity);
 }
