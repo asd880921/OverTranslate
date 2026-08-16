@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using NLog;
 using OverTranslate.Services.Ocr;
+using OverTranslate.Services.Realtime.Capture;
 
 namespace OverTranslate.Services.Realtime;
 
@@ -81,11 +82,6 @@ public sealed class RealtimeTranslationSession
     // synchronised beyond being interlocked.
     private int _busyRegions;
 
-    // A grab that keeps failing produces no work and no error, which is indistinguishable from a
-    // region that simply has nothing in it. Reported once per session so a locked screen does not
-    // fill the log at four lines a second.
-    private int _grabFailureReported;
-
     // Same shape of problem on the translation side: a provider that has stopped answering holds
     // every slot and refuses a read per poll per region. Session-wide rather than per-region,
     // because the slots are — one report says all there is to say about the provider.
@@ -109,6 +105,11 @@ public sealed class RealtimeTranslationSession
     private IReadOnlyList<RealtimeRegion> _regions = [];
     private string _sourceLanguage = "";
     private string _targetLanguage = "";
+
+    // Where the pixels come from. Handed in by the caller and owned by it — a pause must not tear
+    // down a capture source that 繼續 is about to want back, and the caller is the only one that
+    // knows which windows it had to keep out of frame to build it.
+    private IRealtimeCaptureBackend? _capture;
 
     public RealtimeTranslationSession(OcrService ocr, TranslationService translation)
     {
@@ -135,6 +136,11 @@ public sealed class RealtimeTranslationSession
     /// </summary>
     public bool IsPaused { get; private set; }
 
+    /// <param name="capture">
+    /// Where this session reads the screen. Must be isolated — see
+    /// <see cref="IRealtimeCaptureBackend.IsIsolated"/> — because a session that can recognise its
+    /// own overlays feeds on its own output (#94). Stays owned by the caller.
+    /// </param>
     /// <param name="readAtOnce">
     /// Whether each region reads its first frame immediately instead of waiting for a poll and for
     /// the picture to settle. True for <see cref="Resume"/>; false when a session is starting, where
@@ -145,18 +151,23 @@ public sealed class RealtimeTranslationSession
         string sourceLanguage,
         string targetLanguage,
         Models.TranslationProvider provider,
+        IRealtimeCaptureBackend capture,
         bool readAtOnce = false)
     {
         Stop();
+
+        if (!capture.IsIsolated)
+            throw new InvalidOperationException(
+                $"Capture backend {capture.Name} cannot keep OverTranslate's own overlays out of frame");
 
         _provider = provider;
         _regions = regions;
         _sourceLanguage = sourceLanguage;
         _targetLanguage = targetLanguage;
+        _capture = capture;
 
         var cts = new CancellationTokenSource();
         _cts = cts;
-        Interlocked.Exchange(ref _grabFailureReported, 0);
         Interlocked.Exchange(ref _slotExhaustionReported, 0);
         Interlocked.Exchange(ref _noSlotReported, 0);
         Interlocked.Exchange(ref _busyRegions, 0);
@@ -165,8 +176,8 @@ public sealed class RealtimeTranslationSession
         ClearFailure();
 
         Log.Info(
-            "Realtime session started: {Count} region(s), {Src}->{Tgt}",
-            regions.Count, sourceLanguage, targetLanguage);
+            "Realtime session started: {Count} region(s), {Src}->{Tgt}, capture={Capture}",
+            regions.Count, sourceLanguage, targetLanguage, capture.Name);
 
         // A watched region is idle between lines, and the recogniser cannot tell that from a tray
         // icon nobody has touched all afternoon. Told explicitly, it stops releasing the model that
@@ -247,10 +258,10 @@ public sealed class RealtimeTranslationSession
     /// </remarks>
     public void Resume()
     {
-        if (!IsPaused) return;
+        if (!IsPaused || _capture is not { } capture) return;
 
         Log.Info("Realtime session resuming: every region read at once, from scratch");
-        Start(_regions, _sourceLanguage, _targetLanguage, _provider, readAtOnce: true);
+        Start(_regions, _sourceLanguage, _targetLanguage, _provider, capture, readAtOnce: true);
     }
 
     /// <param name="releaseRecogniser">
@@ -265,6 +276,13 @@ public sealed class RealtimeTranslationSession
         IsPaused = false;
 
         if (releaseRecogniser) _ocr.ReleaseModel();
+
+        // One line per run of translating, on the way out. Which backend was used and how it fared
+        // is the first thing any report about this feature needs and the last thing the log would
+        // otherwise carry — the per-poll traffic sits at Debug, and this must survive being off.
+        if (_capture is { } capture)
+            Log.Info("Realtime capture {Backend}: {Activity}", capture.Name, capture.DescribeActivity());
+        _capture = null;
     }
 
     private void StopLoops()
@@ -321,7 +339,7 @@ public sealed class RealtimeTranslationSession
                 // this one loop.
                 if (pump.TakeRetryRequest()) state.Invalidate();
 
-                using var frame = GrabRegion(region.Bounds);
+                using var frame = _capture?.GrabRegion(region.Bounds);
                 if (frame is null) continue;
 
                 // Closes over this poll's frame, so the policy can summarise the text strips or the
@@ -788,36 +806,6 @@ public sealed class RealtimeTranslationSession
             .ToList();
     }
 
-    /// <summary>
-    /// Copies one region straight off the desktop. The overlay windows are excluded from capture
-    /// (see <see cref="WindowCaptureShield"/>), so what comes back is the application underneath and
-    /// never the translation this loop drew over it a moment ago.
-    /// </summary>
-    private Bitmap? GrabRegion(Rectangle bounds)
-    {
-        if (bounds.Width <= 0 || bounds.Height <= 0) return null;
-
-        Bitmap? bitmap = null;
-        try
-        {
-            bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
-            using var graphics = Graphics.FromImage(bitmap);
-            graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
-            return bitmap;
-        }
-        catch (Exception ex)
-        {
-            // A grab can fail transiently — a secure desktop (UAC prompt, lock screen) is the usual
-            // cause. Skipping this poll is the whole recovery; the next one is 250ms away.
-            if (Interlocked.Exchange(ref _grabFailureReported, 1) == 0)
-                Log.Warn(ex, "Realtime screen grab failed for {Bounds}; further failures logged at Debug", bounds);
-            else
-                Log.Debug(ex, "Realtime screen grab failed for {Bounds}", bounds);
-            bitmap?.Dispose();
-            return null;
-        }
-    }
-
     private static string DescribeFailure(Exception ex) => ex switch
     {
         InvalidOperationException => ex.Message,
@@ -865,8 +853,8 @@ public sealed class RealtimeTranslationSession
                 // stalled rather than merely slow. Nothing in flight can be recalled to make room,
                 // so this read is lost — and asking for a retry is what stops the region sitting
                 // there recorded as showing a translation that was never drawn.
-                // Once per session at Warn, the rest at Debug — the same rule GrabRegion uses for the
-                // same reason: a stalled provider repeats this every poll of every region, and the
+                // Once per session at Warn, the rest at Debug — the same rule a failing grab follows
+                // for the same reason: a stalled provider repeats this every poll of every region, and the
                 // first line already says everything the log needs to say about it.
                 if (Interlocked.Exchange(ref session._slotExhaustionReported, 1) == 0)
                     Log.Warn(

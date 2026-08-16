@@ -3,6 +3,7 @@ using System.Windows.Threading;
 using NLog;
 using OverTranslate.Services;
 using OverTranslate.Services.Realtime;
+using OverTranslate.Services.Realtime.Capture;
 
 namespace OverTranslate.Views.Realtime;
 
@@ -69,6 +70,10 @@ internal sealed class RealtimeSessionController
     private RealtimeControlWindow? _control;
     private RealtimeEditWindow? _edit;
     private RealtimeTranslationSession? _session;
+    // Owned here rather than by the session, because it outlives a pause and is torn down by the
+    // same two things that tear down the overlays it was built around: going back to edit mode, and
+    // ending the session.
+    private IRealtimeCaptureBackend? _capture;
     private GlobalEscapeHook? _escapeHook;
     private Window? _hiddenShell;
 
@@ -264,6 +269,7 @@ internal sealed class RealtimeSessionController
             _session = null;
         }
 
+        DisposeCapture();
         CloseBlockWindows();
         CloseEditWindow();
 
@@ -305,7 +311,10 @@ internal sealed class RealtimeSessionController
     {
         if (_request is not { } request || _control is not { } control) return;
 
+        // Before the block windows go: a backend built around a set of overlays is only valid while
+        // those overlays are the ones on screen, and edit mode is where the user changes them.
         _session?.Stop();
+        DisposeCapture();
         CloseBlockWindows();
         CloseEditWindow();
 
@@ -382,15 +391,20 @@ internal sealed class RealtimeSessionController
             window.Show();
         }
 
-        // The layers exist and have handles now, which is the earliest this can be answered — and
-        // the last moment before the loop would start reading the screen they are drawn on.
-        if (!OverlaysHiddenFromCapture())
+        // Built here and not in Start: the layers exist and have handles now, which is the earliest
+        // a backend can be asked whether it can keep them out of frame — and the last moment before
+        // the loop would begin reading the screen they are drawn on.
+        var capture = new DesktopGrabCaptureBackend(OverlaysHiddenFromCapture());
+        if (!capture.IsIsolated)
         {
+            capture.Dispose();
             EnterEditMode();
             control.ShowMessage(
                 LocalizationService.Get("S.Realtime.CaptureNotIsolated"), RealtimeMessageKind.Failure);
             return;
         }
+
+        _capture = capture;
 
         // Set before the mode switch renders, so the capsule appears with the pair already in it
         // rather than showing the placeholder for a frame.
@@ -399,7 +413,7 @@ internal sealed class RealtimeSessionController
         control.BringToFront();
         _stayOnTop.Start();
 
-        _session.Start(regions, request.SourceLanguage, request.TargetLanguage, request.Provider);
+        _session.Start(regions, request.SourceLanguage, request.TargetLanguage, request.Provider, capture);
     }
 
     /// <summary>
@@ -546,6 +560,24 @@ internal sealed class RealtimeSessionController
         foreach (var window in _blockWindows.Values)
             CloseWindow(window, nameof(RealtimeBlockWindow));
         _blockWindows.Clear();
+    }
+
+    private void DisposeCapture()
+    {
+        var capture = _capture;
+        _capture = null;
+        if (capture is null) return;
+
+        try
+        {
+            capture.Dispose();
+        }
+        catch (Exception ex)
+        {
+            // A capture source can hold graphics resources whose release can fail on its own; the
+            // rest of the teardown is what puts the user's screen back and must not be stranded.
+            Log.Error(ex, "Failed to dispose the {Backend} capture backend", capture.Name);
+        }
     }
 
     private void DisposeEscapeHook()
