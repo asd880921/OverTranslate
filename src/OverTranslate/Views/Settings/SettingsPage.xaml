@@ -61,7 +61,10 @@
                     </Grid>
                 </Border>
 
-                <!-- ── 一般設定 ── -->
+                <!-- ── 快捷鍵 ──
+                     Order is priority order: a combination claimed by a row above turns the row
+                     below off rather than one of the two silently failing to register. See
+                     Services/HotkeyBindings. -->
                 <Border Style="{StaticResource CardBorder}">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -69,18 +72,19 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.General}" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Hotkeys}" Style="{StaticResource SectionHeader}"/>
 
-                        <!-- Hotkey row -->
+                        <!-- Capture. Its checkbox is ticked and disabled rather than bound to a
+                             setting: this is the feature the application is for, and a stored flag
+                             that must always be true is a way to end up with it false. -->
                         <Grid Grid.Row="1" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -99,22 +103,32 @@
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
-                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2"
+                            <CheckBox  Grid.Column="3" Grid.Row="0"
+                                       Content="{DynamicResource S.Settings.HotkeyEnable}"
+                                       Style="{StaticResource ModernCheckBox}"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0"
+                                       IsChecked="True"
+                                       IsEnabled="False"
+                                       ToolTipService.ShowOnDisabled="True"
+                                       ToolTip="{DynamicResource S.Settings.HotkeyAlwaysOnTip}"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
                                        controls:HighlightedText.Source="{DynamicResource S.Settings.CaptureHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
                         </Grid>
 
-                        <!-- Translation-window hotkey row. Same editing controls as the capture
-                             shortcut above and deliberately nothing else: this one is a shortcut to
-                             a window that is already one tray click away, so it is not announced at
-                             startup and nothing in the interface names it. -->
+                        <!-- Translation window. Same editing controls as the capture shortcut and
+                             deliberately nothing else: this one opens a window that is already one
+                             tray click away, so it is not announced at startup. -->
                         <Grid Grid.Row="2" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
@@ -131,26 +145,81 @@
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
-                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2"
+                            <CheckBox  Grid.Column="3" Grid.Row="0" x:Name="WindowHotkeyEnabledCheckBox"
+                                       Content="{DynamicResource S.Settings.HotkeyEnable}"
+                                       Style="{StaticResource ModernCheckBox}"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0"
+                                       Checked="HotkeyEnabled_Toggled"
+                                       Unchecked="HotkeyEnabled_Toggled"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
                                        controls:HighlightedText.Source="{DynamicResource S.Settings.WindowHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
+                            <TextBlock Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3"
+                                       x:Name="WindowHotkeyShadowHint"
+                                       Style="{StaticResource FieldHint}"
+                                       Visibility="Collapsed"/>
                         </Grid>
 
-                        <!-- Source language row -->
-                        <Grid Grid.Row="3" Margin="0,0,0,10">
+                        <!-- Realtime block. -->
+                        <Grid Grid.Row="3">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SourceLanguage}" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox  Grid.Column="1" x:Name="SourceLangBox"
-                                       Style="{StaticResource ModernComboBox}"
-                                       SelectedValuePath="Code"
-                                       SelectionChanged="SourceLangBox_SelectionChanged"/>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.RealtimeHotkey}"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="RealtimeHotkeyBox"
+                                       Style="{StaticResource ModernTextBox}"
+                                       IsReadOnly="True"
+                                       Margin="0,0,8,0"
+                                       PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                       GotFocus="HotkeyBox_GotFocus"
+                                       LostFocus="HotkeyBox_LostFocus"/>
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RealtimeRecordBtn" Content="{DynamicResource S.Common.Record}"
+                                       Style="{StaticResource FlatButton}"
+                                       Height="34"
+                                       Click="RecordBtn_Click"/>
+                            <CheckBox  Grid.Column="3" Grid.Row="0" x:Name="RealtimeHotkeyEnabledCheckBox"
+                                       Content="{DynamicResource S.Settings.HotkeyEnable}"
+                                       Style="{StaticResource ModernCheckBox}"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0"
+                                       Checked="HotkeyEnabled_Toggled"
+                                       Unchecked="HotkeyEnabled_Toggled"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
+                                       controls:HighlightedText.Source="{DynamicResource S.Settings.RealtimeHotkeyHint}"
+                                       Style="{StaticResource FieldHint}"/>
+                            <TextBlock Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3"
+                                       x:Name="RealtimeHotkeyShadowHint"
+                                       Style="{StaticResource FieldHint}"
+                                       Visibility="Collapsed"/>
                         </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ── 一般設定 ── -->
+                <Border Style="{StaticResource CardBorder}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.General}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- 框選完成自動翻譯 -->
-                        <Grid Grid.Row="4" Margin="0,10,0,0">
+                        <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
@@ -165,7 +234,7 @@
                         </Grid>
 
                         <!-- 開機自動啟動 -->
-                        <Grid Grid.Row="5" Margin="0,10,0,0">
+                        <Grid Grid.Row="2" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
@@ -178,10 +247,50 @@
                                        Checked="Startup_Toggled"
                                        Unchecked="Startup_Toggled"/>
                         </Grid>
+
+                        <!-- 同時儲存到本機. The save-path row travels with this checkbox rather than
+                             staying behind in a card of its own: it is the same decision, and it is
+                             only shown once the box is ticked. -->
+                        <Grid Grid.Row="3" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SaveScreenshot}" Style="{StaticResource FieldLabel}"/>
+                            <CheckBox  Grid.Column="1" x:Name="SaveScreenshotCheckBox"
+                                       Content="{DynamicResource S.Settings.SaveScreenshotCheck}"
+                                       Style="{StaticResource ModernCheckBox}"
+                                       VerticalAlignment="Center"
+                                       Checked="SaveScreenshotCheckBox_Toggled"
+                                       Unchecked="SaveScreenshotCheckBox_Toggled"/>
+                        </Grid>
+
+                        <!-- 儲存位置（僅在開關開啟時顯示） -->
+                        <Grid Grid.Row="4" x:Name="ScreenshotPathRow" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SavePath}" Style="{StaticResource FieldLabel}"/>
+                            <TextBox   Grid.Column="1" x:Name="ScreenshotPathBox"
+                                       Style="{StaticResource ModernTextBox}"
+                                       IsReadOnly="True"
+                                       Cursor="Hand"
+                                       Margin="0,0,4,0"
+                                       ToolTip="{DynamicResource S.Settings.SavePathTip}"
+                                       PreviewMouseLeftButtonDown="ScreenshotPathBox_PreviewMouseLeftButtonDown"/>
+                            <Button    Grid.Column="2" x:Name="OpenScreenshotFolderBtn"
+                                       Content="📂"
+                                       Style="{StaticResource IconButton}"
+                                       Height="34"
+                                       ToolTip="{DynamicResource S.Settings.OpenFolderTip}"
+                                       Click="OpenScreenshotFolderBtn_Click"/>
+                        </Grid>
                     </Grid>
                 </Border>
 
-                <!-- ── 翻譯 API ── -->
+                <!-- ── 翻譯 ── -->
                 <Border Style="{StaticResource CardBorder}">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -189,12 +298,28 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.TranslationApi}" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Translation}" Style="{StaticResource SectionHeader}"/>
+
+                        <!-- Source language, above the service that will translate it: this is what
+                             the screenshot flow reads, so it belongs with the rest of translation
+                             rather than among the general toggles it used to sit with. -->
+                        <Grid Grid.Row="1" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SourceLanguage}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox  Grid.Column="1" x:Name="SourceLangBox"
+                                       Style="{StaticResource ModernComboBox}"
+                                       SelectedValuePath="Code"
+                                       SelectionChanged="SourceLangBox_SelectionChanged"/>
+                        </Grid>
 
                         <!-- Provider row -->
-                        <Grid Grid.Row="1" Margin="0,0,0,10">
+                        <Grid Grid.Row="2" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
@@ -213,7 +338,7 @@
                         </Grid>
 
                         <!-- API Key row (conditionally visible) -->
-                        <Grid Grid.Row="2" x:Name="DeepLApiKeyRow">
+                        <Grid Grid.Row="3" x:Name="DeepLApiKeyRow">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
@@ -225,7 +350,7 @@
                         </Grid>
 
                         <!-- OpenAI Compatible settings (conditionally visible) -->
-                        <Grid Grid.Row="3" x:Name="OpenAiSettingsPanel">
+                        <Grid Grid.Row="4" x:Name="OpenAiSettingsPanel">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
@@ -497,57 +622,6 @@
                                                NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
                                 </TextBlock>
                             </StackPanel>
-                        </Grid>
-                    </Grid>
-                </Border>
-
-                <!-- ── 截圖 ── -->
-                <Border Style="{StaticResource CardBorder}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Screenshot}" Style="{StaticResource SectionHeader}"/>
-
-                        <!-- 同時儲存到本機 -->
-                        <Grid Grid.Row="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SaveScreenshot}" Style="{StaticResource FieldLabel}"/>
-                            <CheckBox  Grid.Column="1" x:Name="SaveScreenshotCheckBox"
-                                       Content="{DynamicResource S.Settings.SaveScreenshotCheck}"
-                                       Style="{StaticResource ModernCheckBox}"
-                                       VerticalAlignment="Center"
-                                       Checked="SaveScreenshotCheckBox_Toggled"
-                                       Unchecked="SaveScreenshotCheckBox_Toggled"/>
-                        </Grid>
-
-                        <!-- 儲存位置（僅在開關開啟時顯示） -->
-                        <Grid Grid.Row="2" x:Name="ScreenshotPathRow" Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.SavePath}" Style="{StaticResource FieldLabel}"/>
-                            <TextBox   Grid.Column="1" x:Name="ScreenshotPathBox"
-                                       Style="{StaticResource ModernTextBox}"
-                                       IsReadOnly="True"
-                                       Cursor="Hand"
-                                       Margin="0,0,4,0"
-                                       ToolTip="{DynamicResource S.Settings.SavePathTip}"
-                                       PreviewMouseLeftButtonDown="ScreenshotPathBox_PreviewMouseLeftButtonDown"/>
-                            <Button    Grid.Column="2" x:Name="OpenScreenshotFolderBtn"
-                                       Content="📂"
-                                       Style="{StaticResource IconButton}"
-                                       Height="34"
-                                       ToolTip="{DynamicResource S.Settings.OpenFolderTip}"
-                                       Click="OpenScreenshotFolderBtn_Click"/>
                         </Grid>
                     </Grid>
                 </Border>

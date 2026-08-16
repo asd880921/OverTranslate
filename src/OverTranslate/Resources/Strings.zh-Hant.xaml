@@ -252,6 +252,13 @@
     <sys:String x:Key="S.Settings.Title">設定</sys:String>
     <sys:String x:Key="S.Settings.Subtitle">管理快捷鍵、翻譯服務、截圖與外觀</sys:String>
 
+    <sys:String x:Key="S.Settings.Hotkeys">快捷鍵</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyEnable">啟用</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyAlwaysOnTip">截圖翻譯是核心功能，快捷鍵無法停用</sys:String>
+    <sys:String x:Key="S.Settings.RealtimeHotkey">即時翻譯區塊</sys:String>
+    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">按下快捷鍵即可新增一個[[即時翻譯]]區塊</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyShadowed">✗ 與上方的「{0}」重複，已停用</sys:String>
+
     <sys:String x:Key="S.Settings.General">一般設定</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkey">截圖翻譯</sys:String>
     <!-- [[…]] 內的字會以主題色強調，見 Views/Controls/HighlightedText。兩種語言的標記數量必須一致，
@@ -265,7 +272,7 @@
     <sys:String x:Key="S.Settings.Startup">開機啟動</sys:String>
     <sys:String x:Key="S.Settings.StartupCheck">開機時自動啟動</sys:String>
 
-    <sys:String x:Key="S.Settings.TranslationApi">翻譯 API</sys:String>
+    <sys:String x:Key="S.Settings.Translation">翻譯</sys:String>
     <sys:String x:Key="S.Settings.Provider">翻譯服務</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API 位址</sys:String>
     <sys:String x:Key="S.Settings.ModelName">模型名稱</sys:String>
@@ -283,7 +290,6 @@
     <sys:String x:Key="S.Settings.TemperatureHint" xml:space="preserve">Temperature 會影響輸出的隨機程度；0 代表盡量降低隨機性，提高數值則會增加輸出變化。
 未啟用時不傳送此參數。不同模型適合的設定不同，建議依模型建議值設定。</sys:String>
 
-    <sys:String x:Key="S.Settings.Screenshot">截圖</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshot">儲存截圖</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshotCheck">截圖時自動儲存</sys:String>
     <sys:String x:Key="S.Settings.SavePath">儲存位置</sys:String>

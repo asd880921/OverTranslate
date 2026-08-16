@@ -25,6 +25,37 @@ public class AppSettings
     public uint TranslationWindowHotkeyVirtualKey { get; set; } = 0x57;
 
     public string TranslationWindowHotkeyDisplay { get; set; } = "Ctrl+Alt+W";
+
+    /// <summary>
+    /// Whether the translation-window shortcut is registered at all.
+    /// </summary>
+    /// <remarks>
+    /// There is no matching field for the capture shortcut, and deliberately not: that one is the
+    /// feature the application exists for, so its checkbox is ticked and disabled rather than backed
+    /// by a value. A stored flag that must always be true is a way to end up with it false.
+    /// </remarks>
+    public bool TranslationWindowHotkeyEnabled { get; set; } = true;
+
+    /// <summary>
+    /// The shortcut that adds an 即時翻譯 block. Ctrl+Alt+S by default.
+    /// </summary>
+    /// <remarks>
+    /// Stored as the same three fields as the two shortcuts above — the modifiers and key Windows is
+    /// given, plus the text the settings page shows — because the display string cannot be derived
+    /// from the other two without a key-name table, and the recorder already has the user's own
+    /// spelling of it at the moment they press the combination.
+    /// </remarks>
+    public uint RealtimeHotkeyModifiers { get; set; } = 3;
+
+    /// <inheritdoc cref="RealtimeHotkeyModifiers"/>
+    public uint RealtimeHotkeyVirtualKey { get; set; } = 0x53;
+
+    /// <inheritdoc cref="RealtimeHotkeyModifiers"/>
+    public string RealtimeHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
+
+    /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
+    public bool RealtimeHotkeyEnabled { get; set; } = true;
+
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;

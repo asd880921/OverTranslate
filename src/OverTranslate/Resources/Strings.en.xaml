@@ -237,6 +237,13 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.Title">Settings</sys:String>
     <sys:String x:Key="S.Settings.Subtitle">Shortcuts, translation services, screenshots and appearance</sys:String>
 
+    <sys:String x:Key="S.Settings.Hotkeys">Shortcuts</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyEnable">Enabled</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyAlwaysOnTip">Capture is the core feature; its shortcut cannot be turned off</sys:String>
+    <sys:String x:Key="S.Settings.RealtimeHotkey">Realtime block</sys:String>
+    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">Press this shortcut to add a [[realtime translation]] block</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyShadowed">✗ Same as "{0}" above, so it is off</sys:String>
+
     <sys:String x:Key="S.Settings.General">General</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkey">Capture</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkeyHint">Press this shortcut to start a screen capture translation; while [[realtime translation]] is running it [[pauses / resumes]] the realtime translation instead</sys:String>
@@ -248,7 +255,7 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.Startup">Startup</sys:String>
     <sys:String x:Key="S.Settings.StartupCheck">Launch when Windows starts</sys:String>
 
-    <sys:String x:Key="S.Settings.TranslationApi">Translation API</sys:String>
+    <sys:String x:Key="S.Settings.Translation">Translation</sys:String>
     <sys:String x:Key="S.Settings.Provider">Provider</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API URL</sys:String>
     <sys:String x:Key="S.Settings.ModelName">Model</sys:String>
@@ -266,7 +273,6 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.TemperatureHint" xml:space="preserve">Temperature controls how random the output is; 0 keeps it as predictable as possible, and higher values allow more variation.
 The parameter is left out of the request when this is off. Models differ — follow whatever the model recommends.</sys:String>
 
-    <sys:String x:Key="S.Settings.Screenshot">Screenshots</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshot">Save</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshotCheck">Save a copy of every capture</sys:String>
     <sys:String x:Key="S.Settings.SavePath">Location</sys:String>

@@ -194,6 +194,11 @@ public class SettingsParsingTests
             SaveScreenshotToDisk = true,
             ScreenshotSavePath = @"D:\shots",
             RealtimeGuidanceExpanded = false,
+            TranslationWindowHotkeyEnabled = false,
+            RealtimeHotkeyModifiers = 5,
+            RealtimeHotkeyVirtualKey = 0x44,
+            RealtimeHotkeyDisplay = "Ctrl+Shift+D",
+            RealtimeHotkeyEnabled = false,
         });
 
         var settings = SettingsService.Parse(written);
@@ -215,6 +220,23 @@ public class SettingsParsingTests
         Assert.True(settings.SaveScreenshotToDisk);
         Assert.Equal(@"D:\shots", settings.ScreenshotSavePath);
         Assert.False(settings.RealtimeGuidanceExpanded);
+        Assert.False(settings.TranslationWindowHotkeyEnabled);
+        Assert.Equal(5u, settings.RealtimeHotkeyModifiers);
+        Assert.Equal(0x44u, settings.RealtimeHotkeyVirtualKey);
+        Assert.Equal("Ctrl+Shift+D", settings.RealtimeHotkeyDisplay);
+        Assert.False(settings.RealtimeHotkeyEnabled);
+    }
+
+    // Written before either shortcut could be switched off: both have to come back on, or upgrading
+    // would silently disable two shortcuts the user still has.
+    [Fact]
+    public void MissingHotkeyEnabledSettings_StartOn()
+    {
+        var settings = SettingsService.Parse("""{"Theme":"Light"}""");
+
+        Assert.True(settings.TranslationWindowHotkeyEnabled);
+        Assert.True(settings.RealtimeHotkeyEnabled);
+        Assert.Equal("Ctrl+Alt+S", settings.RealtimeHotkeyDisplay);
     }
 
     // Expanded on a file written before the setting existed: someone who has never been shown the

@@ -52,21 +52,39 @@ public partial class SettingsPage : UserControl
     private int _promptSegment = PromptAutoSegment;
 
     /// <summary>
-    /// One editable shortcut: the two controls that edit it and the settings it reads and writes.
+    /// One editable shortcut: the controls that edit it and the settings it reads and writes.
     /// </summary>
+    /// <param name="Action">
+    /// Which shortcut this is, so the row can be matched against <see cref="HotkeyBindings.Resolve"/>
+    /// — the one place that decides which of two shortcuts sharing a combination stays on.
+    /// </param>
     /// <param name="AdvertisedInShell">
     /// Whether the shell's nav rail prints this combination beside a button, and so has to be told
     /// when it changes. True for the capture shortcut, which the interface names in three places;
-    /// false for the window one, which it names nowhere.
+    /// false for the other two, which it names nowhere.
+    /// </param>
+    /// <param name="EnabledBox">
+    /// The tick that turns this shortcut off, or null for the capture one — its box is ticked and
+    /// disabled in XAML with no setting behind it, because that shortcut is the feature the
+    /// application is for. Null here is what says "this row cannot be turned off".
+    /// </param>
+    /// <param name="ShadowHint">
+    /// Where to say that a higher-priority shortcut has taken this combination. Null for capture,
+    /// which is the highest priority and so can never be the one shadowed.
     /// </param>
     private sealed record HotkeyField(
+        HotkeyAction Action,
         string NameKey,
         TextBox Box,
         Button Record,
         Func<AppSettings, string> Display,
         Func<AppSettings, (uint Modifiers, uint Key)> Combination,
         Action<AppSettings, uint, uint, string> Apply,
-        bool AdvertisedInShell);
+        bool AdvertisedInShell,
+        // Fully qualified: WinForms is also referenced here and has its own CheckBox.
+        System.Windows.Controls.CheckBox? EnabledBox = null,
+        Action<AppSettings, bool>? SetEnabled = null,
+        TextBlock? ShadowHint = null);
 
     private HotkeyField[] _hotkeyFields = [];
 
@@ -83,6 +101,7 @@ public partial class SettingsPage : UserControl
         _hotkeyFields =
         [
             new HotkeyField(
+                HotkeyAction.Capture,
                 "S.Settings.CaptureHotkey",
                 HotkeyBox, RecordBtn,
                 s => s.HotkeyDisplay,
@@ -95,6 +114,7 @@ public partial class SettingsPage : UserControl
                 },
                 AdvertisedInShell: true),
             new HotkeyField(
+                HotkeyAction.TranslationWindow,
                 "S.Settings.WindowHotkey",
                 WindowHotkeyBox, WindowRecordBtn,
                 s => s.TranslationWindowHotkeyDisplay,
@@ -105,7 +125,26 @@ public partial class SettingsPage : UserControl
                     s.TranslationWindowHotkeyVirtualKey = vk;
                     s.TranslationWindowHotkeyDisplay = display;
                 },
-                AdvertisedInShell: false),
+                AdvertisedInShell: false,
+                WindowHotkeyEnabledCheckBox,
+                (s, on) => s.TranslationWindowHotkeyEnabled = on,
+                WindowHotkeyShadowHint),
+            new HotkeyField(
+                HotkeyAction.Realtime,
+                "S.Settings.RealtimeHotkey",
+                RealtimeHotkeyBox, RealtimeRecordBtn,
+                s => s.RealtimeHotkeyDisplay,
+                s => (s.RealtimeHotkeyModifiers, s.RealtimeHotkeyVirtualKey),
+                (s, mods, vk, display) =>
+                {
+                    s.RealtimeHotkeyModifiers = mods;
+                    s.RealtimeHotkeyVirtualKey = vk;
+                    s.RealtimeHotkeyDisplay = display;
+                },
+                AdvertisedInShell: false,
+                RealtimeHotkeyEnabledCheckBox,
+                (s, on) => s.RealtimeHotkeyEnabled = on,
+                RealtimeHotkeyShadowHint),
         ];
 
         _apiKeyDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
@@ -172,6 +211,13 @@ public partial class SettingsPage : UserControl
             ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
 
             foreach (var field in _hotkeyFields) field.Box.Text = field.Display(s);
+
+            // The ticks, then the "a shortcut above took this" lines the ticks can change.
+            foreach (var binding in HotkeyBindings.Resolve(s))
+                if (FieldFor(binding.Action)?.EnabledBox is { } box)
+                    box.IsChecked = binding.Enabled;
+
+            RefreshHotkeyShadowHints();
             ApiKeyBox.Secret = s.ApiKey;
             OpenAiBaseUrlBox.Text = s.OpenAiBaseUrl;
             OpenAiApiKeyBox.Secret = s.OpenAiApiKey;
@@ -836,6 +882,54 @@ public partial class SettingsPage : UserControl
         _hotkeyFields.FirstOrDefault(
             field => ReferenceEquals(field.Box, sender) || ReferenceEquals(field.Record, sender));
 
+    /// <summary>The row that edits one action.</summary>
+    private HotkeyField? FieldFor(HotkeyAction action) =>
+        _hotkeyFields.FirstOrDefault(field => field.Action == action);
+
+    private void HotkeyEnabled_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+
+        var field = _hotkeyFields.FirstOrDefault(f => ReferenceEquals(f.EnabledBox, sender));
+        if (field?.SetEnabled is not { } setEnabled || field.EnabledBox is not { } box) return;
+
+        Persist(s => setEnabled(s, box.IsChecked == true));
+
+        // Turning one off releases its combination, which can bring a shadowed row back — so the
+        // hints below are re-read from the resolver rather than only cleared for this row.
+        RefreshHotkeyShadowHints();
+    }
+
+    /// <summary>
+    /// Says, per row, that a higher-priority shortcut holds this combination.
+    /// </summary>
+    /// <remarks>
+    /// The recorder refuses to assign a combination another shortcut already holds, so this state
+    /// cannot be reached by editing. It is reached by upgrading: adding the realtime shortcut gave
+    /// every existing installation a Ctrl+Alt+S it never agreed to, and anyone who had already put
+    /// that on the translation window would otherwise have had one of the two stop working with
+    /// nothing said. Priority decides which, and this is where it is said out loud.
+    /// </remarks>
+    private void RefreshHotkeyShadowHints()
+    {
+        foreach (var binding in HotkeyBindings.Resolve(SettingsService.Instance.Current))
+        {
+            if (FieldFor(binding.Action)?.ShadowHint is not { } hint) continue;
+
+            if (binding.ShadowedBy is not { } holder)
+            {
+                hint.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            var holderName = FieldFor(holder)?.NameKey;
+            hint.Text = LocalizationService.Format(
+                "S.Settings.HotkeyShadowed",
+                holderName is null ? "" : LocalizationService.Get(holderName));
+            hint.Visibility = Visibility.Visible;
+        }
+    }
+
     private void StartRecording(HotkeyField field)
     {
         // Only one at a time: two boxes both saying 請按下快捷鍵 would leave the next key press
@@ -915,9 +1009,18 @@ public partial class SettingsPage : UserControl
         // one is simply refused — RegisterHotKey returns false and nothing else happens. Left to
         // itself that reads as a shortcut that stopped working for no reason, so the clash is
         // refused here, where there is something to say about it.
+        // A shortcut that is switched off does not hold its combination — same rule as
+        // HotkeyBindings, so what the page refuses and what actually gets registered agree.
         var settings = SettingsService.Instance.Current;
+        var enabled = HotkeyBindings.Resolve(settings)
+            .Where(binding => binding.Enabled)
+            .Select(binding => binding.Action)
+            .ToHashSet();
+
         var taken = _hotkeyFields.FirstOrDefault(
-            field => !ReferenceEquals(field, recording) && field.Combination(settings) == (mods, vk));
+            field => !ReferenceEquals(field, recording) &&
+                     enabled.Contains(field.Action) &&
+                     field.Combination(settings) == (mods, vk));
 
         if (taken is not null)
         {
@@ -931,6 +1034,10 @@ public partial class SettingsPage : UserControl
 
         // After the write, so the box picks the new combination up out of the settings.
         StopRecording();
+
+        // Recording cannot create a clash — it is refused above — but it can clear one a stored
+        // setting arrived in, so the shadow lines are re-read rather than left as they were.
+        RefreshHotkeyShadowHints();
 
         // The global hook holds the old combination until it is rebound
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
