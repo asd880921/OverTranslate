@@ -57,6 +57,11 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     // and never held, so a deeper pool would only bank staler frames.
     private const int FrameBuffers = 2;
 
+    // How long a new backend is given to produce one frame with something in it before it is judged
+    // unusable. Generous: this is paid once, on a path whose alternative is a session that appears
+    // to work and never translates anything.
+    private static readonly TimeSpan FirstFrameTimeout = TimeSpan.FromMilliseconds(1500);
+
     private readonly Func<IntPtr> _resolveSource;
     private readonly IDirect3DDevice _device;
     private readonly IntPtr _rawDevice;
@@ -139,6 +144,10 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
             device = WgcInterop.CreateDirect3DDevice(out rawDevice);
             backend = new WgcWindowCaptureBackend(resolveSource, device, rawDevice);
             if (!backend.Attach(hwnd)) throw new InvalidOperationException("the window refused capture");
+            if (!backend.WaitForUsableFrame(FirstFrameTimeout))
+                throw new InvalidOperationException(
+                    "the window produced no usable frame — a game in exclusive fullscreen is the usual cause");
+
             return backend;
         }
         catch (Exception ex)
@@ -411,6 +420,77 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
         // overlays are excluded from capture, and arriving at it silently is how a session ends up
         // recognising its own subtitles.
         SourceLost?.Invoke(this, LocalizationService.Get("S.Realtime.CaptureSourceLost"));
+    }
+
+    /// <summary>
+    /// Waits for this backend to produce one frame with something in it, and says whether it did.
+    /// </summary>
+    /// <remarks>
+    /// A game in exclusive fullscreen is why this exists, and the way it fails is the reason it has
+    /// to be checked rather than assumed. The window still has a handle, capture still attaches,
+    /// frames still arrive at around 37 a second — measured — and every one of them is a single flat
+    /// colour, because the game is presenting to the display through its own swap chain and there is
+    /// no composited window surface for DWM to hand over. Nothing in the counters looks wrong:
+    /// <c>received=296 read=36 rebuilds=0</c> is what a healthy capture looks like too.
+    ///
+    /// Left unchecked that becomes a session that starts, reports nothing amiss, and never produces
+    /// a subtitle, with no line in the log a user could be pointed at. Caught here it is one failed
+    /// construction, and the backend policy moves on to the desktop grab — which captures the same
+    /// fullscreen game perfectly well, because the screen is exactly where that content does exist.
+    ///
+    /// The cost of being wrong is a game whose opening frame is genuinely one flat colour being sent
+    /// down the desktop-grab path. That is a frame with nothing to translate in it either, and the
+    /// path it lands on is the one that used to be the only path.
+    /// </remarks>
+    private bool WaitForUsableFrame(TimeSpan timeout)
+    {
+        var started = Stopwatch.GetTimestamp();
+        var sawFrame = false;
+
+        while (Stopwatch.GetElapsedTime(started) < timeout)
+        {
+            // The readback is demand-driven, and nothing has asked yet.
+            Volatile.Write(ref _lastGrabAt, Stopwatch.GetTimestamp());
+
+            lock (_latestLock)
+            {
+                if (_latest is { } latest)
+                {
+                    sawFrame = true;
+                    if (!IsBlank(latest)) return true;
+                }
+            }
+
+            Thread.Sleep(50);
+        }
+
+        Log.Warn(
+            sawFrame
+                ? "Realtime window capture of hwnd={Hwnd:X} produced only blank frames; the window is " +
+                  "not being composited — a game in exclusive fullscreen is the usual cause"
+                : "Realtime window capture of hwnd={Hwnd:X} produced no frame at all",
+            _hwnd);
+        return false;
+    }
+
+    /// <summary>
+    /// Whether a frame is one flat colour, judged from a grid of samples rather than every pixel —
+    /// the answer is either immediate or not worth the whole image.
+    /// </summary>
+    private static bool IsBlank(Bitmap frame)
+    {
+        var first = frame.GetPixel(0, 0).ToArgb();
+
+        for (var y = 1; y < 8; y++)
+        {
+            for (var x = 1; x < 8; x++)
+            {
+                var sample = frame.GetPixel(frame.Width * x / 8, frame.Height * y / 8);
+                if (sample.ToArgb() != first) return false;
+            }
+        }
+
+        return true;
     }
 
     private bool HasFrame()
