@@ -208,8 +208,34 @@ internal static class OcrTextBlockGrouper
         // A much shorter following line is a common natural wrap shape.
         // Similar-width lines without linguistic evidence are kept separate
         // so title/body pairs are not merged just because they align.
-        return previous.Bounds.Width >= current.Bounds.Width * 1.35;
+        //
+        // Guarded by the length test below, because on its own that shape is also what a stack of
+        // menu entries looks like — a longer label above a shorter one, aligned, evenly spaced. It
+        // read 「アビリティ」over「召喚石」and 「캐릭터강화」over「소지품」as wrapped sentences, glued
+        // each pair into one string for the translator, and squeezed both into one bubble. See #75.
+        return IsLongEnoughToHaveWrapped(previous) &&
+               previous.Bounds.Width >= current.Bounds.Width * 1.35;
     }
+
+    /// <summary>
+    /// Whether a line is long enough that running out of room — and so wrapping — is plausible.
+    /// </summary>
+    /// <remarks>
+    /// <para>Measured in line heights rather than characters so that one number serves every script:
+    /// a CJK line runs about one character per line height, a Latin one about two. So this asks for
+    /// roughly eight CJK characters, or sixteen Latin ones.</para>
+    ///
+    /// <para>Across the 329-image corpus the two populations are far apart: every genuinely wrapped
+    /// sentence reached 16.6 and every stacked label stopped at 6.8, with nothing in between. The
+    /// threshold sits at the low end of that empty band on purpose. Letting a label through costs
+    /// two crowded words in one bubble; keeping a real wrapped sentence apart costs the translator
+    /// half a sentence, which is the far worse failure — it is the whole of #74.</para>
+    /// </remarks>
+    private const double WrappedLineMinAspect = 8.0;
+
+    private static bool IsLongEnoughToHaveWrapped(OcrTextBlock line) =>
+        line.Bounds.Height > 0 &&
+        line.Bounds.Width / line.Bounds.Height >= WrappedLineMinAspect;
 
     private static bool HasUnclosedDelimiter(string text) =>
         Count(text, '「') > Count(text, '」') ||
