@@ -673,19 +673,16 @@ public partial class SettingsPage : UserControl
             PromptPlaceholder,
             OpenAiCompatibleProvider.DefaultPromptTemplate(_promptSegment == PromptAutoSegment));
 
-        WritePlaceholderAware(PromptHint, LocalizationService.Get(_promptSegment == PromptAutoSegment
-            ? "S.Settings.PromptHintAuto"
-            : "S.Settings.PromptHintExplicit"));
-
-        // FieldHint hides itself when its Text is empty, and writing runs leaves that property
-        // empty however much is on screen — the hint is built out of inlines, not out of Text. A
-        // local value outranks the style's trigger, which is what keeps this one visible.
-        PromptHint.Visibility = Visibility.Visible;
+        // 自動 has no source language, so the two rows describing one would be listing parameters
+        // that resolve to nothing. Hidden whole rather than left showing an empty example.
+        var showsSource = _promptSegment != PromptAutoSegment;
+        var sourceRows = showsSource ? Visibility.Visible : Visibility.Collapsed;
+        ParamRowSourceName.Visibility = sourceRows;
+        ParamRowSourceCode.Visibility = sourceRows;
     }
 
     /// <summary>
-    /// Writes prose that mentions <c>{source}</c> or <c>{target}</c>, with those two picked out in
-    /// the accent colour.
+    /// Writes prose that mentions the prompt placeholders, with each picked out in the accent colour.
     /// </summary>
     /// <remarks>
     /// They are the only part of the sentence that is machinery rather than words — what the user
@@ -698,9 +695,23 @@ public partial class SettingsPage : UserControl
         target.Inlines.Clear();
         foreach (var (segment, isPlaceholder) in SplitOnPlaceholders(text))
         {
-            var run = new Run(segment);
-            if (isPlaceholder) run.SetResourceReference(TextElement.ForegroundProperty, "AppAccent");
-            target.Inlines.Add(run);
+            if (isPlaceholder)
+            {
+                var placeholder = new Run(segment);
+                placeholder.SetResourceReference(TextElement.ForegroundProperty, "AppAccent");
+                target.Inlines.Add(placeholder);
+                continue;
+            }
+
+            // The prose between placeholders may carry a line break — the explicit hint lists the
+            // source pair and the target pair one per line. Added as a LineBreak rather than left in
+            // a Run, so it does not depend on the block's wrapping to show up.
+            var lines = segment.Split('\n');
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (i > 0) target.Inlines.Add(new LineBreak());
+                if (lines[i].Length > 0) target.Inlines.Add(new Run(lines[i]));
+            }
         }
     }
 
@@ -709,10 +720,15 @@ public partial class SettingsPage : UserControl
     /// </summary>
     private static IEnumerable<(string Text, bool IsPlaceholder)> SplitOnPlaceholders(string text)
     {
+        // All four, or the tag placeholders would be the only machinery in the sentence left looking
+        // like prose. None is a prefix of another once the closing brace is counted, so the
+        // earliest-match loop below cannot pick the wrong one.
         string[] tokens =
         [
             OpenAiCompatibleProvider.SourcePlaceholder,
             OpenAiCompatibleProvider.TargetPlaceholder,
+            OpenAiCompatibleProvider.SourceCodePlaceholder,
+            OpenAiCompatibleProvider.TargetCodePlaceholder,
         ];
 
         var index = 0;

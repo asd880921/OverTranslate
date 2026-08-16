@@ -242,10 +242,42 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     }
 
     /// <summary>The placeholder a template uses for the language being translated out of.</summary>
-    internal const string SourcePlaceholder = "{source}";
+    internal const string SourcePlaceholder = "{source_name}";
 
     /// <summary>The placeholder a template uses for the language being translated into.</summary>
-    internal const string TargetPlaceholder = "{target}";
+    internal const string TargetPlaceholder = "{target_name}";
+
+    /// <summary>
+    /// What the name placeholders were called before the tags gained their own.
+    /// </summary>
+    /// <remarks>
+    /// Still substituted, and deliberately not advertised in the settings hint: a template someone
+    /// wrote before this change is sitting in their settings file, and dropping these would send the
+    /// model a literal "{source}" instead of a language. Nothing writes them any more, so the pair
+    /// only ever shrinks.
+    /// </remarks>
+    internal const string LegacySourcePlaceholder = "{source}";
+
+    /// <inheritdoc cref="LegacySourcePlaceholder"/>
+    internal const string LegacyTargetPlaceholder = "{target}";
+
+    /// <summary>
+    /// The placeholders for the language tags — <c>ja</c> rather than <c>Japanese</c>.
+    /// </summary>
+    /// <remarks>
+    /// Separate from the name rather than fused into it, so a template can put the two wherever its
+    /// model expects them: TranslateGemma wants "Japanese (ja)", another model may want the tag
+    /// alone, and this application cannot know which. The built-in templates compose the pair
+    /// themselves — see <see cref="DefaultPromptTemplate"/> — so the shipped wording is unaffected by
+    /// the split.
+    ///
+    /// The names keep meaning only the name, which is also what they meant before the tags existed:
+    /// a template someone wrote back then still reads the way they wrote it.
+    /// </remarks>
+    internal const string SourceCodePlaceholder = "{source_code}";
+
+    /// <inheritdoc cref="SourceCodePlaceholder"/>
+    internal const string TargetCodePlaceholder = "{target_code}";
 
     /// <summary>
     /// The instruction for one batch: the user's own template when they have written one, otherwise
@@ -290,6 +322,17 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// Both automatic forms deliberately keep the "from … to …" skeleton of the explicit one rather
     /// than restructuring the sentence. Translation-only models are trained on that shape, and one
     /// measurably stopped half-way through a Japanese line when handed the restructured wording.
+    ///
+    /// That is also why TranslateGemma's own documented wording — "You are a professional Japanese
+    /// (ja) to French (fr) translator." — was not adopted, and why the language tags are not here
+    /// either. Both were tried: on the model this ships against, naming the languages alone reads
+    /// better than naming them with their tags, so the shipped default names them alone.
+    ///
+    /// The tags keep their own placeholders all the same — see
+    /// <see cref="SourceCodePlaceholder"/> and <see cref="LanguageData.GetModelLanguageTag"/>.
+    /// This default is tuned for one model, and someone pointing this provider at a different one
+    /// has to be able to write what that model expects; a placeholder nothing ships with is still
+    /// the difference between editing a prompt and not being able to.
     /// </remarks>
     internal static string DefaultPromptTemplate(bool automatic) =>
         UsesChinesePrompt()
@@ -315,19 +358,35 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// A custom template gets those same names: there is no way to tell what language the user's
     /// own prose is in, and the interface's is the best guess available.
     /// </remarks>
+    /// <remarks>
+    /// The code placeholders are replaced before the name ones purely for readability; the two sets
+    /// cannot collide, because <c>{source}</c> is not a prefix of <c>{source_code}</c> once the
+    /// closing brace is counted.
+    ///
+    /// 自動 has no tag to give, so <see cref="SourceCodePlaceholder"/> empties out there. A template
+    /// that wrote its own brackets around it is left with an empty pair, which is the cost of letting
+    /// templates place the tag themselves — the built-in automatic template names no source at all
+    /// and so never shows it.
+    /// </remarks>
     private static string Fill(string template, string sourceLang, string targetLang, bool automatic)
     {
-        var target = LanguageData.GetTargetDisplayName(targetLang);
-
         // Nothing to name when the source is 自動, so a template that asks for one anyway is given
         // the same words the built-in automatic template uses in that position.
         var source = automatic
             ? (UsesChinesePrompt() ? "各種語言" : "any language")
             : LanguageData.GetSourceDisplayName(sourceLang);
 
+        var target = LanguageData.GetTargetDisplayName(targetLang);
+
         return template
+            .Replace(SourceCodePlaceholder, automatic ? "" : LanguageData.GetModelLanguageTag(sourceLang),
+                StringComparison.OrdinalIgnoreCase)
+            .Replace(TargetCodePlaceholder, LanguageData.GetModelLanguageTag(targetLang),
+                StringComparison.OrdinalIgnoreCase)
             .Replace(SourcePlaceholder, source, StringComparison.OrdinalIgnoreCase)
-            .Replace(TargetPlaceholder, target, StringComparison.OrdinalIgnoreCase);
+            .Replace(TargetPlaceholder, target, StringComparison.OrdinalIgnoreCase)
+            .Replace(LegacySourcePlaceholder, source, StringComparison.OrdinalIgnoreCase)
+            .Replace(LegacyTargetPlaceholder, target, StringComparison.OrdinalIgnoreCase);
     }
 
     internal static string StripThinking(string value) => ThinkingBlock.Replace(value, "").Trim();

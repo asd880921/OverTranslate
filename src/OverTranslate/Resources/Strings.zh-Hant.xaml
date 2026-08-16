@@ -281,8 +281,19 @@
     <sys:String x:Key="S.Settings.PromptAuto">自動</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">指定語言</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">還原預設</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintAuto">{target}：目標語言</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source}：來源語言  {target}：目標語言</sys:String>
+    <!-- 例子用的是語言選單裡真正會被代入的名稱（英語 / 日語），不是泛稱 -->
+    <!-- 可用參數表。範例用的是語言選單裡真正會被代入的名稱與代碼，不是泛稱 -->
+    <sys:String x:Key="S.Settings.PromptParams">可用參數</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamsTip">在提示詞中寫入這些參數，送出前會替換成當次實際使用的語言，因此一份提示詞就能套用到所有語言組合。</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol1">參數</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol2">說明</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol3">範例</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceName">來源語言名稱</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceCode">來源語言代碼</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetName">目標語言名稱</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetCode">目標語言代碼</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceNameEg">英語</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetNameEg">日語</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">進階</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">啟用</sys:String>
