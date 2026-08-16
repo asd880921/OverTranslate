@@ -64,9 +64,9 @@ public partial class SettingsPage : UserControl
     /// false for the other two, which it names nowhere.
     /// </param>
     /// <param name="EnabledBox">
-    /// The tick that turns this shortcut off, or null for the capture one — its box is ticked and
-    /// disabled in XAML with no setting behind it, because that shortcut is the feature the
-    /// application is for. Null here is what says "this row cannot be turned off".
+    /// The tick that turns this shortcut off, or null for the capture one, which has no tick at all
+    /// and no setting behind it because that shortcut is the feature the application is for. Null
+    /// here is what says "this row cannot be turned off".
     /// </param>
     /// <param name="ShadowHint">
     /// Where to say that a higher-priority shortcut has taken this combination. Null for capture,

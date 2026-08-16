@@ -238,10 +238,10 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.Subtitle">Shortcuts, translation services, screenshots and appearance</sys:String>
 
     <sys:String x:Key="S.Settings.Hotkeys">Shortcuts</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyEnable">Enabled</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyAlwaysOnTip">Capture is the core feature; its shortcut cannot be turned off</sys:String>
+    <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
+    <sys:String x:Key="S.Settings.HotkeyEnable">Enable this shortcut</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkey">Realtime block</sys:String>
-    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">Press this shortcut to add a [[realtime translation]] block</sys:String>
+    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">Press this shortcut to enter realtime block editing mode</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ Same as "{0}" above, so it is off</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>

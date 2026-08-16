@@ -253,10 +253,10 @@
     <sys:String x:Key="S.Settings.Subtitle">管理快捷鍵、翻譯服務、截圖與外觀</sys:String>
 
     <sys:String x:Key="S.Settings.Hotkeys">快捷鍵</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyEnable">啟用</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyAlwaysOnTip">截圖翻譯是核心功能，快捷鍵無法停用</sys:String>
+    <!-- 勾選框沒有文字，所以這是它的 ToolTip，不是標籤 -->
+    <sys:String x:Key="S.Settings.HotkeyEnable">啟用此快捷鍵</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkey">即時翻譯區塊</sys:String>
-    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">按下快捷鍵即可新增一個[[即時翻譯]]區塊</sys:String>
+    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">按下快捷鍵即可進入即時翻譯區塊編輯模式</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ 與上方的「{0}」重複，已停用</sys:String>
 
     <sys:String x:Key="S.Settings.General">一般設定</sys:String>
