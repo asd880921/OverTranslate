@@ -59,6 +59,11 @@ internal static class Program
                       the layer's rectangle both ways and report how much of the layer each
                       capture saw. The go/no-go test: the desktop grab must see it and the
                       window capture must not. Defaults to 200,200 1200x600.
+
+                  WgcProbe border [x y w h] [outputDir]
+                      Put up a source window, start capturing it, and measure whether the system
+                      draws its capture indicator around it — the cost window capture adds to
+                      every session, and the one this application may not be able to opt out of.
                 """);
             return 0;
         }
@@ -71,6 +76,7 @@ internal static class Program
                 "window" => CaptureWindow(args),
                 "region" => CaptureRegion(args),
                 "overlay" => RunOverlayTest(args),
+                "border" => RunBorderTest(args),
                 _ => Fail($"unknown command '{args[0]}'")
             };
         }
@@ -128,12 +134,21 @@ internal static class Program
     {
         if (!WgcCapability.IsCaptureSupported) return Fail("Windows.Graphics.Capture is not supported here");
 
-        var bounds = args.Length >= 5
+        return OverlayTest.Run(ProbeBounds(args), OutputDirectory(args, args.Length >= 5 ? 5 : 1));
+    }
+
+    private static int RunBorderTest(string[] args)
+    {
+        if (!WgcCapability.IsCaptureSupported) return Fail("Windows.Graphics.Capture is not supported here");
+
+        return BorderTest.Run(ProbeBounds(args), OutputDirectory(args, args.Length >= 5 ? 5 : 1));
+    }
+
+    /// <summary>The rectangle for the self-contained tests, given or defaulted.</summary>
+    private static Rectangle ProbeBounds(string[] args) =>
+        args.Length >= 5
             ? new Rectangle(int.Parse(args[1]), int.Parse(args[2]), int.Parse(args[3]), int.Parse(args[4]))
             : new Rectangle(200, 200, 1200, 600);
-
-        return OverlayTest.Run(bounds, OutputDirectory(args, args.Length >= 5 ? 5 : 1));
-    }
 
     /// <summary>
     /// The measurement everything else rests on: the frame's own size against the two rectangles

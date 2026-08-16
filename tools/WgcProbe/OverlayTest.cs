@@ -34,7 +34,7 @@ internal static class OverlayTest
 {
     // Nothing on a real screen is this colour, so counting it needs no tolerance for compression or
     // blending — the overlay is drawn fully opaque over the region it covers.
-    private static readonly System.Drawing.Color Marker = System.Drawing.Color.FromArgb(255, 255, 0, 255);
+    private static System.Drawing.Color Marker => ProbeWindow.Marker;
 
     public static int Run(Rectangle sourceBounds, string outputDirectory)
     {
@@ -42,10 +42,10 @@ internal static class OverlayTest
         // the result.
         var bounds = Rectangle.Inflate(sourceBounds, -sourceBounds.Width / 4, -sourceBounds.Height / 4);
 
-        using var source = ShowWindow(sourceBounds, opaqueWhite: true, out var sourceHwnd);
+        using var source = ProbeWindow.Show(sourceBounds, opaqueWhite: true, out var sourceHwnd);
         Console.WriteLine($"source window          hwnd={sourceHwnd:X} {sourceBounds.Width}x{sourceBounds.Height} at {sourceBounds.X},{sourceBounds.Y}");
 
-        using var overlay = ShowWindow(bounds, opaqueWhite: false, out _);
+        using var overlay = ProbeWindow.Show(bounds, opaqueWhite: false, out _);
         Console.WriteLine($"overlay                {bounds.Width}x{bounds.Height} at {bounds.X},{bounds.Y}");
 
         using var backend = WgcWindowCaptureBackend.TryCreate(() => sourceHwnd);
@@ -102,75 +102,6 @@ internal static class OverlayTest
         return 0;
     }
 
-    /// <summary>
-    /// One window on its own STA thread with its own dispatcher, because the probe's main thread is
-    /// busy capturing.
-    /// </summary>
-    /// <param name="opaqueWhite">
-    /// The source window, if true — an ordinary opaque window standing in for the application being
-    /// watched. Otherwise the subtitle layer: built exactly the way <c>RealtimeBlockWindow</c> is,
-    /// because an overlay built any other way would not be testing the same thing.
-    /// </param>
-    private static IDisposable ShowWindow(Rectangle bounds, bool opaqueWhite, out IntPtr hwnd)
-    {
-        var ready = new ManualResetEventSlim(false);
-        var handle = IntPtr.Zero;
-        System.Windows.Threading.Dispatcher? dispatcher = null;
-
-        var thread = new Thread(() =>
-        {
-            dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
-
-            var window = new Window
-            {
-                WindowStyle = WindowStyle.None,
-                AllowsTransparency = !opaqueWhite,
-                Background = new SolidColorBrush(opaqueWhite
-                    ? Colors.White
-                    : System.Windows.Media.Color.FromArgb(255, Marker.R, Marker.G, Marker.B)),
-                Topmost = true,
-                ShowActivated = false,
-                ResizeMode = ResizeMode.NoResize,
-                ShowInTaskbar = false,
-                // Content, so ContentRendered actually fires and so the source window has something
-                // in it that a capture can be seen to have caught.
-                Content = new System.Windows.Controls.TextBlock
-                {
-                    Text = opaqueWhite ? "source window" : "subtitle layer",
-                    FontSize = 32,
-                    Foreground = new SolidColorBrush(Colors.Black),
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                }
-            };
-
-            window.SourceInitialized += (_, _) =>
-            {
-                handle = new System.Windows.Interop.WindowInteropHelper(window).Handle;
-                Native.PinPhysicalBounds(handle, bounds);
-                if (!opaqueWhite) Native.MakeClickThrough(handle);
-            };
-
-            window.ContentRendered += (_, _) => ready.Set();
-            window.Show();
-
-            System.Windows.Threading.Dispatcher.Run();
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        if (!ready.Wait(TimeSpan.FromSeconds(5)))
-            Console.Error.WriteLine("warning: a probe window did not report itself rendered");
-
-        // The compositor needs a moment past ContentRendered before the pixels are on the glass.
-        Thread.Sleep(400);
-
-        hwnd = handle;
-        return new Closer(() => dispatcher?.InvokeShutdown());
-    }
-
     private static Bitmap GrabDesktop(Rectangle bounds)
     {
         var bitmap = new Bitmap(
@@ -200,8 +131,4 @@ internal static class OverlayTest
         return total == 0 ? 0 : (double)hits / total;
     }
 
-    private sealed class Closer(Action close) : IDisposable
-    {
-        public void Dispose() => close();
-    }
 }
