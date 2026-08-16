@@ -100,8 +100,8 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     [Fact]
     public void ASmallRegionIsReadAtNativeSizeWithNothingToFallBackTo()
     {
-        // 60px subtitles do not fit in a region this size, so halving could only take small text
-        // further out of range.
+        // 60px subtitles do not fit in a region this size, so any downscale could only take small
+        // text further out of range. See DownscaleMinSide.
         var (primary, fallbacks) = RealtimeDetectorSize.For(400, 120, RealtimeBlockMode.Subtitle);
 
         Assert.Equal(400, primary);
@@ -154,7 +154,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     [Fact]
     public void ARegionTooSmallToDownscaleHasNothingToDrop()
     {
-        // Below HalfScaleMinSide there are no fallbacks at all, so there is nothing here to save
+        // Below DownscaleMinSide there are no fallbacks at all, so there is nothing here to save
         // and nothing to lose either.
         var (_, fallbacks) = RealtimeDetectorSize.For(400, 120, RealtimeBlockMode.Subtitle);
 
@@ -173,10 +173,15 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
         // in that flow (it has no fallback size to fall back to, so a subtitle framed there was
         // simply lost).
         //
-        // Halving is still what a strip is read at, and now for a plain reason rather than a
-        // detector quirk: swept over the same 15 frames, the new detector reads 9 at 0.50 and 9 at
-        // native, for 89ms against 186ms. Same result, half the cost. If a later measurement shows
-        // native reading materially more, this test is where the evidence for changing that starts.
+        // Halving was still what a strip was read at when this was written, on the reasoning that
+        // the new detector read 9 of those same 15 frames at 0.50 and 9 at native, for 89ms against
+        // 186ms — same result, half the cost. That reasoning was unsound: all 15 were frames the
+        // primary size had FAILED to read, and a fraction is never asked there about the frames it
+        // reads WRONGLY rather than not at all. Issue #81 swept the control group instead and found
+        // 0.50 reading a fifth of it wrong, so a strip is now read at 0.85. See RealtimeDetectorSize.
+        //
+        // What this test asserts is unaffected either way: it is about the screenshot size, which
+        // has never downscaled and still does not.
         using var engine = new OcrService();
         using var frame = new Bitmap(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture));
 
