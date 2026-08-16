@@ -15,11 +15,12 @@ namespace OverTranslate.Services.Realtime;
 /// okay?".</item>
 /// </list>
 ///
-/// The glyphs in those frames are around 60px tall; halving puts them near 30px, which is where the
-/// model was trained. That is why a subtitle strip is read at half scale — but only a strip: an
-/// interface panel holds much smaller text and needs the opposite correction. Which of the two a
-/// block is comes from <see cref="RealtimeBlockMode"/>, i.e. from the user; see
-/// <see cref="StripFraction"/> and <see cref="PanelFraction"/>.
+/// The glyphs in those frames are around 60px tall; halving puts them near 30px, which is where that
+/// model was trained. That was why a subtitle strip was read at half scale — but only a strip: an
+/// interface panel holds much smaller text and needs the opposite correction. That last part still
+/// holds, and which of the two a block is comes from <see cref="RealtimeBlockMode"/>, i.e. from the
+/// user; see <see cref="StripFraction"/> and <see cref="PanelFraction"/>. The halving itself is
+/// gone — see the closing paragraph.
 ///
 /// None of this reaches the screenshot flow, which asks for no downscale at all and is right to:
 /// its text is interface-sized, already inside the detector's range, and downscaling it would
@@ -32,21 +33,46 @@ namespace OverTranslate.Services.Realtime;
 /// at 0.40, 4 at 0.50, 6 at 0.55 and 8 at 0.60, while PP-OCRv6_det_tiny reads 9 across that whole
 /// band and 9 at native. There is no dead band left to steer around.
 ///
-/// The fractions below did not change with it, and the reason they are still here changed
-/// completely: they are now a cost decision, not an avoidance. A strip read at 0.50 and at native
-/// reads the same 9 of those 15 frames, for 89ms against 186ms — so halving buys the same answer
-/// for half the work. That is why the numbers stayed put; it is not evidence that they are still
-/// optimal, and a sweep on the control group (frames the primary size already read) is what would
-/// move them.
+/// The fractions did not change when the model did, and for a while the reason given for keeping
+/// them was cost: a strip read at 0.50 and at native read the same 9 of those 15 frames, for 89ms
+/// against 186ms, so halving looked like the same answer for half the work. That reasoning was
+/// unsound, and this type's own remarks said why at the time — every one of those 15 frames was one
+/// the primary size had FAILED to read, and a fraction cannot be judged on those, because it is
+/// never asked about the frames it reads WRONGLY rather than not at all. The note ended: "a sweep on
+/// the control group (frames the primary size already read) is what would move them."
+///
+/// That sweep is issue #81, and it moved them. On 109 frames the primary size did read, 0.50 got 78%
+/// of them right and 0.85 got 94%, so a fifth of what halving read, it read wrong — silently, since
+/// the fallback chain only runs when a read finds NOTHING and a wrong answer is still an answer.
+/// <see cref="StripFraction"/> carries the full table and what the losses looked like.
+///
+/// Two things there are worth keeping in mind before touching these numbers again. Native is not the
+/// answer either — 1.00 reads worse than 0.85, so both directions away from the detector's preferred
+/// scale cost accuracy, which is why these are fractions at all rather than "no downscale, like the
+/// screenshot flow". And the whole corpus is regions about 1820 wide, so fraction and absolute size
+/// cannot be told apart in it; cropping the same frames tight to their text makes every fraction
+/// from 0.40 up read 88–95%, which says the sensitivity comes from the margin around the text rather
+/// than from the block. A rule driven by that would be the better answer, and issue #39 is where the
+/// last attempt at one was reverted.
 /// </remarks>
 internal static class RealtimeDetectorSize
 {
     /// <summary>
-    /// Below this, halving would take the text out of range from the other side, so the region is
-    /// read at native size and only retried at half if that finds nothing. A region this small
-    /// cannot hold 60px subtitles and much text besides.
+    /// Below this, a region is read at native size with no fallbacks at all.
     /// </summary>
-    public const int HalfScaleMinSide = 800;
+    /// <remarks>
+    /// Downscaling only helps text the detector finds too large. A region this small cannot hold
+    /// 60px subtitles and much text besides, so anything in it is already at or below the scale the
+    /// detector wants, and shrinking it further could only take it out of range from the other side
+    /// — which is also why there is nothing to fall back TO here, and why
+    /// <see cref="WhileNothingIsShown"/> has nothing to save.
+    ///
+    /// Was named HalfScaleMinSide, from the era when the downscale was a halving. The 800 itself is
+    /// unchanged and predates PP-OCRv6: it has never been re-measured against this detector, and a
+    /// sweep over small regions — small subtitles, small dialogue boxes, small tooltips — is what
+    /// would move it. Renaming it does not make it measured.
+    /// </remarks>
+    public const int DownscaleMinSide = 800;
 
     /// <summary>
     /// Fraction to read a wide, short block at — a subtitle strip.
@@ -184,7 +210,7 @@ internal static class RealtimeDetectorSize
         var native = Math.Max(width, height);
 
         // ImgResize only ever downscales, so passing the longest side asks for the image as it is.
-        if (native < HalfScaleMinSide)
+        if (native < DownscaleMinSide)
             return (native, []);
 
         // The mode decides where to start; the other mode's fraction is then the first thing to try
