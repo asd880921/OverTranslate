@@ -47,12 +47,15 @@ PASS: the overlay is absent from the window capture
 
 兩個視窗都是 probe 自己的，這是刻意的：第一版拿桌面上的 Edge 當來源，跑到一半視窗被拖到另一個螢幕，量測直接失效。要對真實應用程式測請用 `region`。
 
-### `window` / `region` — 對真實應用程式
+### `list` / `window` / `region` — 對真實應用程式
 
 ```bash
-WgcProbe.exe window "視窗標題片段" [輸出目錄]
+WgcProbe.exe list
+WgcProbe.exe window <標題片段 | handle> [輸出目錄]
 WgcProbe.exe region <x> <y> <w> <h> [輸出目錄]
 ```
+
+**先 `list` 拿 handle，再用 handle 擷取。** 用標題片段找很容易中錯：終端機視窗的標題含有你剛打的命令列，所以搜尋 `"Crab Champions"` 會先命中你自己那個終端機，然後很順利地擷取它自己、印出看起來合理的幾何、寫出一張終端機的截圖。`list` 已經把本行程的主控台排掉，但用 handle 仍然是最不會出錯的方式。
 
 `window` 直接指定視窗；`region` 照 session 的方式（`SourceWindowResolver` 的九點投票）從一塊螢幕矩形反推來源視窗。兩者都會印出幾何比對、以 250ms 節奏量 20 次 `GrabRegion` 的耗時，並寫出一張 PNG。
 
