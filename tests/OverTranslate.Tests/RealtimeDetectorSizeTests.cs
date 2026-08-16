@@ -9,13 +9,13 @@ namespace OverTranslate.Tests;
 public class RealtimeDetectorSizeTests(ITestOutputHelper output)
 {
     [Fact]
-    public void ASubtitleStripIsReadAtHalfScale()
+    public void ASubtitleStripIsReadNearFullScale()
     {
-        // The text fills a strip's height, so the glyphs are large and halving lands them near the
-        // size the model was trained on.
+        // Halving was the old answer and it read a fifth of the control corpus wrongly — words cut
+        // in half, leading words dropped. See RealtimeDetectorSize for the sweep. #81
         var (primary, _) = RealtimeDetectorSize.For(1226, 196, RealtimeBlockMode.Subtitle);
 
-        Assert.Equal(640, primary); // 1226 * 0.5, rounded up onto the detector's grid
+        Assert.Equal(1056, primary); // 1226 * 0.85, rounded up onto the detector's grid
     }
 
     [Fact]
@@ -41,9 +41,15 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
         var strip = RealtimeDetectorSize.For(width, height, RealtimeBlockMode.Subtitle).Primary;
         var panel = RealtimeDetectorSize.For(width, height, RealtimeBlockMode.Panel).Primary;
 
-        Assert.True(strip <= native * 0.55, $"{width}x{height} as 字幕 should read at strip scale");
-        Assert.True(panel >= native * 0.6, $"{width}x{height} as 面板 should read at panel scale");
+        // Stated as the gap between the two answers rather than as a bound on each: what this test
+        // is about is that the same rectangle gets two different sizes depending on what the user
+        // says is in it, and that stays true however the two fractions are later retuned.
+        Assert.NotEqual(strip, panel);
+        Assert.Equal(RoundToStride(native * RealtimeDetectorSize.StripFraction), strip);
+        Assert.Equal(RoundToStride(native * RealtimeDetectorSize.PanelFraction), panel);
     }
+
+    private static int RoundToStride(double size) => Math.Max(320, ((int)size + 31) / 32 * 32);
 
     [Fact]
     public void TheUsersDraggingCannotChangeTheScaleAnyMore()
@@ -58,14 +64,18 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void BothFractionsStayInsideTheRangeSubtitlesSurvive()
+    public void BothFractionsStayInsideTheRangeTheSweepSupports()
     {
-        // The original sweep found 0.37–0.78 of native read both subtitle frames every time, and
-        // 0.84 and above collapsed them into one unreadable box. Either fraction can end up on a
-        // strip — the panel one as a fallback — so both have to stay inside that window. This fails
-        // the moment someone nudges one towards the collapse.
-        Assert.InRange(RealtimeDetectorSize.StripFraction, 0.37, 0.78);
-        Assert.InRange(RealtimeDetectorSize.PanelFraction, 0.37, 0.78);
+        // This used to read 0.37–0.78, the window PP-OCRv5_mobile_det read those subtitle frames in
+        // before collapsing above 0.84. That detector is gone and its collapse went with it — see
+        // the note in RealtimeDetectorSize, and SubtitleFramesTheDetectorCollapsedAreReadAtTheChosenSize
+        // below, which reads the very frames it collapsed on and is the guard that actually holds.
+        //
+        // What replaces it is the floor the control sweep measured: below 0.6 accuracy falls away
+        // (0.5 read 78% of the corpus correctly, 0.4 read 69%), and native is worse than 0.85, so
+        // neither fraction should sit outside that band. #81
+        Assert.InRange(RealtimeDetectorSize.StripFraction, 0.60, 0.95);
+        Assert.InRange(RealtimeDetectorSize.PanelFraction, 0.60, 0.95);
     }
 
     [Fact]

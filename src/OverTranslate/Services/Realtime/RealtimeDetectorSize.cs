@@ -52,11 +52,54 @@ internal static class RealtimeDetectorSize
     /// Fraction to read a wide, short block at — a subtitle strip.
     /// </summary>
     /// <remarks>
-    /// Text in a strip fills most of its height, so the glyphs are large: around 60px in the frames
-    /// swept above, which halving puts near the 30px the model was trained on. Everything in this
-    /// type's remarks about collapse comes from this shape.
+    /// <para>Was 0.5, on the reasoning that a strip's glyphs run around 60px and halving lands them
+    /// near the 30px the model was trained on. The number survived the move to PP-OCRv6 because the
+    /// sweep that checked it only ever looked at frames the primary size had FAILED to read — and a
+    /// fraction cannot be judged on those, because it is never asked about the frames it reads
+    /// wrongly rather than not at all. This type's own remarks said as much: "a sweep on the control
+    /// group (frames the primary size already read) is what would move them."</para>
+    ///
+    /// <para>That sweep, on the 109 primaryok frames of the corpus, comparing each size against what
+    /// the other sizes agreed the frame said:</para>
+    ///
+    /// <code>
+    ///   fraction   reads correctly   detector size   detection
+    ///     0.40        75/109  69%         736             63ms
+    ///     0.50        85/109  78%         928             79ms
+    ///     0.60        93/109  85%        1120            116ms
+    ///     0.68        94/109  86%        1248            122ms
+    ///     0.75        96/109  88%        1376            146ms
+    ///     0.85       102/109  94%        1568            163ms
+    ///     1.00        94/109  86%        1825            189ms
+    /// </code>
+    ///
+    /// <para>So a fifth of what the old size read, it read wrong — silently, because the fallback
+    /// chain only runs when a read finds nothing, and a wrong answer is still an answer. What it
+    /// lost was whole words: "Yay!" as "ay!", "I heard a bunch of experts" as "heard a bunch of
+    /// experts", "エピソードトーク強すぎ" as "エピンドク強すぎ", and the line that opened issue #81,
+    /// "…for a new song are…" as "…for a new so!g are…", cut mid-word and the cut recognised as
+    /// punctuation. Those two dropped leading words are also the symptom issue #69 was closed over
+    /// as a limitation of the detector; it was the size all along.</para>
+    ///
+    /// <para>Native is not the answer either, and that is the useful part: 1.00 reads worse than
+    /// 0.85. There is a scale the detector wants and both directions away from it cost accuracy,
+    /// which is why this is a fraction at all rather than "no downscale, like the screenshot flow".
+    /// PaddleOCR's own guidance is the same shape — a limit on the longest side, 960 by default and
+    /// 1216 when a larger detection scale is wanted, in multiples of 32. Nothing there says half.</para>
+    ///
+    /// <para>The cost is real: detection is about 85% of a pass, so this roughly doubles it, 79ms to
+    /// 163ms measured on the same frames. It is paid for accuracy on the one thing a subtitle
+    /// overlay does.</para>
+    ///
+    /// <para>One caveat worth writing down, because it bounds how far this generalises: the whole
+    /// corpus is regions about 1820 wide, so fraction and absolute size cannot be told apart in it.
+    /// Cropping those same frames tight to their text and sweeping again, every fraction from 0.40
+    /// up reads 88–95% — the size stops mattering. The sensitivity this number is compensating for
+    /// comes from the margin around the text, which is the framing the in-app guidance asks for.
+    /// A rule driven by the margin rather than by the block would be the better answer, and issue
+    /// #39 is where the last attempt at one was reverted.</para>
     /// </remarks>
-    public const double StripFraction = 0.5;
+    public const double StripFraction = 0.85;
 
     /// <summary>
     /// Fraction to read a chunkier block at — an interface panel, a tooltip, a dialogue box.
