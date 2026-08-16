@@ -26,6 +26,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same frame and size, a range of borders around it)");
     Console.Error.WriteLine("       OcrHarness --margin-sweep <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
+    Console.Error.WriteLine("       OcrHarness --margin-scale-grid <wholescreen.png> [more.png ...]");
+    Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (what the confidence filter drops, and what a line would have reclaimed)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
@@ -452,6 +454,170 @@ if (args[0] == "--margin-series")
             Console.WriteLine(
                 $"  +{margins[index],3}px : {totals[index],5} chars ({totals[index] * 100.0 / bestTotal,5:0.0}% of best)  " +
                 $"read best on {perfect[index],3}/{measured} frames");
+    }
+
+    return 0;
+}
+
+// The grid issue #89 needs: the same text, at several margins, each read at every detector scale.
+//
+// --margin-series varies the margin at one size; --scale-sweep varies the size at one margin. Neither
+// can separate the variables, and the corpus cannot either — every region dump is about 1820 wide, so
+// "fraction" and "absolute detector size" move together in it. Cropping a whole screen at a range of
+// margins breaks that tie: the same glyphs, the same fraction, a different absolute size.
+//
+// What it is for: with a fixed fraction the glyph's height in DETECTOR space is (region glyph height x
+// fraction), which does not depend on how the user framed — measured on two real blocks in #39, a
+// tight 1435x146 and a loose 1894x269 both put a 55px glyph at ~28px. So glyph scale cannot be what
+// makes a tight crop read 88-95% at every fraction while the same frames untrimmed peak at 0.85 and
+// fall to 69% at 0.40. Something else moves, and each row here carries the candidates side by side so
+// the answer comes from the data rather than from a story about it.
+//
+// Emitted as CSV on purpose. The other sweeps pad their columns to line up, which is fine to read and
+// treacherous to parse — a right-aligned "chars= 78" silently dropped the lowest-scoring rows out of
+// an analysis during #84, and those are exactly the rows that matter.
+if (args[0] == "--margin-scale-grid")
+{
+    using var gridOcr = new OcrService();
+
+    const double SubtitleBandTop = 0.62;
+    const int MinChars = 8;
+    int[] gridMargins = [8, 24, 60, 120, 200];
+
+    System.Windows.Rect Clamp(System.Windows.Rect area, Bitmap source)
+    {
+        var x = Math.Max(0, area.X);
+        var y = Math.Max(0, area.Y);
+        return new System.Windows.Rect(
+            x, y,
+            Math.Min(source.Width - x, area.Width),
+            Math.Min(source.Height - y, area.Height));
+    }
+
+    async Task<List<OcrTextBlock>> ReadCropAsync(Bitmap source, System.Windows.Rect area, int? size)
+    {
+        var box = Clamp(area, source);
+        if (box.Width <= 1 || box.Height <= 1) return [];
+
+        using var crop = source.Clone(
+            new Rectangle((int)box.X, (int)box.Y, (int)box.Width, (int)box.Height), source.PixelFormat);
+        return await gridOcr.TryRecognizeAsync(crop, harnessLanguage, size) ?? [];
+    }
+
+    static System.Windows.Rect UnionOf(IEnumerable<OcrTextBlock> blocks, double offsetX, double offsetY)
+    {
+        var union = System.Windows.Rect.Empty;
+        foreach (var block in blocks)
+        {
+            var bounds = block.Bounds;
+            bounds.Offset(offsetX, offsetY);
+            union.Union(bounds);
+        }
+
+        return union;
+    }
+
+    static System.Windows.Rect GrowBy(System.Windows.Rect area, int margin) => new(
+        area.X - margin, area.Y - margin, area.Width + margin * 2, area.Height + margin * 2);
+
+    static double Median(List<double> values)
+    {
+        if (values.Count == 0) return 0;
+        values.Sort();
+        return values[values.Count / 2];
+    }
+
+    Console.WriteLine(
+        "image,margin,roiW,roiH,fraction,detect,chars,glyphRegionPx,glyphDetectorPx,occupancyPct");
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.Error.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var name = Path.GetFileName(path);
+
+        // Locating the subtitle is --margin-series' logic, unchanged: read the whole screen, keep the
+        // band low enough to be a subtitle, anchor on the widest line so a row of interface buttons
+        // along the bottom does not get swallowed, then re-read with room around it because the first
+        // box may already be clipped by the very effect under measurement.
+        var whole = await ReadCropAsync(image, new System.Windows.Rect(0, 0, image.Width, image.Height), null);
+        var band = whole
+            .Where(b => b.Bounds.Y + b.Bounds.Height / 2 > image.Height * SubtitleBandTop)
+            .ToList();
+        if (band.Count == 0) { Console.Error.WriteLine($"{name}: no subtitle found, skipped"); continue; }
+
+        var anchor = band.MaxBy(b => b.Bounds.Width)!.Bounds;
+        band = band.Where(b =>
+        {
+            var bounds = b.Bounds;
+            var overlap = Math.Min(bounds.Right, anchor.Right) - Math.Max(bounds.Left, anchor.Left);
+            return Math.Abs(bounds.Y - anchor.Y) < anchor.Height * 2.5 &&
+                   overlap > Math.Min(bounds.Width, anchor.Width) * 0.5;
+        }).ToList();
+
+        var rough = GrowBy(UnionOf(band, 0, 0), 60);
+        var refinedRead = await ReadCropAsync(image, rough, null);
+        var refined = refinedRead.Count > 0
+            ? UnionOf(refinedRead, Math.Max(0, rough.X), Math.Max(0, rough.Y))
+            : UnionOf(band, 0, 0);
+        if (refined.IsEmpty) { Console.Error.WriteLine($"{name}: no text box, skipped"); continue; }
+
+        // A frame not carrying a subtitle produces a grid of noise moving around, which averages into
+        // the summary as though it were signal. Same floor and same reason as --margin-series.
+        var refinedChars = refinedRead.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c)));
+        if (refinedChars < MinChars)
+        {
+            Console.Error.WriteLine($"{name}: only {refinedChars} chars, nothing worth measuring, skipped");
+            continue;
+        }
+
+        foreach (var margin in gridMargins)
+        {
+            var roi = Clamp(GrowBy(refined, margin), image);
+            if (roi.Width <= 1 || roi.Height <= 1) continue;
+
+            using var crop = image.Clone(
+                new Rectangle((int)roi.X, (int)roi.Y, (int)roi.Width, (int)roi.Height), image.PixelFormat);
+            var native = Math.Max(crop.Width, crop.Height);
+            var roiArea = (double)crop.Width * crop.Height;
+
+            for (var percent = 30; percent <= 100; percent += 5)
+            {
+                var fraction = percent / 100.0;
+                var size = fraction >= 1.0
+                    ? native
+                    : Math.Max(320, ((int)(native * fraction) + 31) / 32 * 32);
+
+                var blocks = await gridOcr.TryRecognizeAsync(crop, harnessLanguage, size) ?? [];
+
+                // The same three drops a watched region applies, so a size counts as reading only
+                // what the application would actually have shown.
+                var kept = blocks.Where(block =>
+                    !CollapsedDetection.IsCollapsed(block.Bounds.Height, crop.Height, block.Text) &&
+                    !ShortReadingDetection.IsTooShort(block.Text) &&
+                    !ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence)).ToList();
+
+                var chars = kept.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c)));
+
+                // SourceGlyphHeight is the ink height and is null for CJK, where the box already is
+                // the glyph — taking one or the other rather than both is the #35 mistake, and it is
+                // worth a factor of two on Latin.
+                var glyphRegion = Median(kept.Select(b => b.SourceGlyphHeight ?? b.Bounds.Height).ToList());
+                var glyphDetector = native > 0 ? glyphRegion * size / native : 0;
+
+                var textUnion = UnionOf(kept, 0, 0);
+                var occupancy = textUnion.IsEmpty || roiArea <= 0
+                    ? 0
+                    : textUnion.Width * textUnion.Height * 100.0 / roiArea;
+
+                Console.WriteLine(
+                    $"{name},{margin},{crop.Width},{crop.Height},{fraction:0.00},{size},{chars}," +
+                    $"{glyphRegion:0.0},{glyphDetector:0.0},{occupancy:0.0}");
+            }
+        }
+
+        Console.Error.WriteLine($"{name}: done");
     }
 
     return 0;
