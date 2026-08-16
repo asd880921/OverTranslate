@@ -237,10 +237,18 @@ public partial class RealtimeBlockWindow : Window
         // on its source grows in both directions, so what bounds it is the block, and RealtimeBandPlacement
         // is what keeps it inside. Leaving the scrim's own padding out means the band fits exactly.
         double maxWidth = Math.Max(20, canvasWidth - ScrimPaddingX * 2);
+
+        // This window is exactly the block the user drew, so a band taller than this is not merely
+        // untidy — the part past the edge is not rendered at all. Only the wrapped fallback below
+        // needs it; a single line is bounded by its source's own height long before it gets close.
+        double maxTextHeight = Math.Max(lineHeight, canvasHeight - ScrimPaddingY * 2);
         var typeface = new Typeface(TextFont, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
 
         double textWidth;
         double textHeight;
+        // A grouped block wraps by definition; a single source line only wraps when it has run out
+        // of every other way to stay whole, which the branch below decides.
+        bool wrapped = isGrouped;
         if (isGrouped)
         {
             // Keep the group's own width and let the translation wrap inside it, shrinking only if
@@ -258,16 +266,49 @@ public partial class RealtimeBlockWindow : Window
             // buys legibility with the picture.
             fontSize = Math.Max(MinFontSize, Math.Min(fontSize, lineHeight * MaxHeightOverSource / LineHeightRatio));
 
+            // Kept because the wrapped fallback searches from here, not from whatever the width
+            // shrink below left behind: wrapping buys width back, so a size that was too wide for
+            // one line is often comfortable across two.
+            double sourceMatchedFontSize = fontSize;
+
             var measured = Measure(line.TranslatedText, typeface, fontSize, null);
             if (measured.Width > maxWidth)
             {
                 // Shrink to fit the room to the right of the source, down to the readability floor.
-                // Past that the line is trimmed instead: an unreadable full line helps nobody.
                 fontSize = Math.Max(MinFontSize, fontSize * maxWidth / measured.Width);
                 measured = Measure(line.TranslatedText, typeface, fontSize, null);
             }
-            textWidth = Math.Min(maxWidth, measured.Width);
-            textHeight = measured.Height;
+
+            if (measured.Width > maxWidth)
+            {
+                // At the readability floor and still wider than the block. This used to be where the
+                // line was trimmed, on the reasoning that an unreadable full line helps nobody — but
+                // the line that got trimmed was readable, just too long, and what it turned into was
+                // a sentence that ends early with nothing to say so. Over live video there is no
+                // still to go back to and no way to notice, which makes it the worse of the two.
+                //
+                // So it wraps instead. The band grows, bounded by the block the user drew.
+                wrapped = true;
+                fontSize = FitWrapped(
+                    line.TranslatedText, typeface, sourceMatchedFontSize, maxWidth, maxTextHeight);
+
+                // The band is only as wide as the widest line the wrap actually produced, not the
+                // whole block — the same reason a single line is not stretched to fill it. One pixel
+                // of slack so rounding cannot leave the TextBlock a hair narrower than the measure.
+                var acrossTheBlock = Measure(line.TranslatedText, typeface, fontSize, maxWidth);
+                textWidth = Math.Min(maxWidth, acrossTheBlock.Width + 1);
+
+                // Measured again at the width the TextBlock is actually given. Narrowing the band to
+                // the widest line can change where a line breaks, and a height taken from the wider
+                // measurement would then be one line short — with the box clipping, that is the
+                // trimmed tail back again by another route.
+                textHeight = Measure(line.TranslatedText, typeface, fontSize, textWidth).Height;
+            }
+            else
+            {
+                textWidth = Math.Min(maxWidth, measured.Width);
+                textHeight = measured.Height;
+            }
         }
 
         double scrimWidth = textWidth + ScrimPaddingX * 2;
@@ -306,8 +347,11 @@ public partial class RealtimeBlockWindow : Window
                 FontSize = fontSize,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = _textBrush,
-                TextWrapping = isGrouped ? TextWrapping.Wrap : TextWrapping.NoWrap,
-                TextTrimming = isGrouped ? TextTrimming.None : TextTrimming.CharacterEllipsis,
+                TextWrapping = wrapped ? TextWrapping.Wrap : TextWrapping.NoWrap,
+                // Never trimmed. A line that cannot fit on one line has already been switched to
+                // wrapping above, so getting here without it means the text fits; leaving
+                // CharacterEllipsis on would only mean a measurement a pixel out costs a word.
+                TextTrimming = TextTrimming.None,
                 VerticalAlignment = VerticalAlignment.Center,
             }
         };
@@ -321,8 +365,14 @@ public partial class RealtimeBlockWindow : Window
         return new LineVisual(scrim, text);
     }
 
-    // Largest size at which the wrapped translation still fits the height its source occupied, so a
-    // grouped block does not push its scrim over whatever sits below it.
+    // Largest size at which the wrapped translation still fits the height it is allowed. For a
+    // grouped block that is the height its source occupied, so its scrim does not push over
+    // whatever sits below; for a single line forced to wrap it is the whole block, which is this
+    // window, so anything taller is cut off by the window edge.
+    //
+    // Returning MinFontSize when nothing fits is deliberate. The floor is where text stops being
+    // readable, and going under it to win back a few pixels trades one unreadable result for
+    // another; a band that overflows a block drawn too tight is at least visibly that.
     private double FitWrapped(
         string text, Typeface typeface, double preferredFontSize, double width, double maxHeight)
     {
