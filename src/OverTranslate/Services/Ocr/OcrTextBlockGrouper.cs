@@ -153,9 +153,7 @@ internal static class OcrTextBlockGrouper
     private static bool CanJoinNextLine(OcrTextBlock previous, OcrTextBlock current)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
-        var heightRatio = Math.Min(previous.Bounds.Height, current.Bounds.Height) /
-                          Math.Max(previous.Bounds.Height, current.Bounds.Height);
-        if (heightRatio < 0.88)
+        if (TextSizeRatio(previous, current) < 0.88)
             return false;
 
         // The gap can be negative, for exactly the reason it can horizontally in CanJoinSameLine:
@@ -188,6 +186,41 @@ internal static class OcrTextBlockGrouper
         var isAlignedContinuation =
             overlapRate >= 0.35 || leftDelta <= Math.Max(avgHeight * 0.7, 12);
         return isAlignedContinuation && HasSentenceContinuationEvidence(previous, current);
+    }
+
+    /// <summary>
+    /// How close two lines are in text size, for deciding whether the second can be the first
+    /// wrapping. Glyph heights when both sides carry one, the detection boxes otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <para>Comparing boxes was measuring the wrong thing. A Latin box runs about half again as
+    /// tall as the letters inside it, and how much of that slack there is depends on which letters
+    /// the word happens to contain — "magazine" has no ascender, so its box came back 26px under a
+    /// 30px line it belonged to, a ratio of 0.867 that this gate refused by 0.013. The same
+    /// sentence, re-read as the picture moved, gave anything from 0.68 to 1.00 across eight passes:
+    /// text that merged or did not depending on the frame.</para>
+    ///
+    /// <para>This is the argument <see cref="CanJoinSameLine"/> already makes about its own height
+    /// test — box height is a property of the letters, not of whether they belong together — and the
+    /// answer there was to keep the test tolerant. Here there is a better one available: the engine
+    /// already measures the ink for Latin lines, because both overlays need it to size their font.
+    /// On that number the same pair reads 0.937, and it is steady.</para>
+    ///
+    /// <para>Measured over the corpus, switching the comparison admits three pairs — the sentence
+    /// above and one more wrapped English line — and separates none that were already joined. The
+    /// threshold does not move; it was never the problem. See issue #79.</para>
+    ///
+    /// <para>CJK reports no glyph height because its box already sits on the glyphs, so those keep
+    /// comparing boxes and are unaffected.</para>
+    /// </remarks>
+    private static double TextSizeRatio(OcrTextBlock previous, OcrTextBlock current)
+    {
+        if (previous.SourceGlyphHeight is { } previousGlyph and > 0 &&
+            current.SourceGlyphHeight is { } currentGlyph and > 0)
+            return Math.Min(previousGlyph, currentGlyph) / Math.Max(previousGlyph, currentGlyph);
+
+        return Math.Min(previous.Bounds.Height, current.Bounds.Height) /
+               Math.Max(previous.Bounds.Height, current.Bounds.Height);
     }
 
     private static bool HasSentenceContinuationEvidence(OcrTextBlock previous, OcrTextBlock current)
