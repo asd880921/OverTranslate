@@ -281,8 +281,9 @@
     <sys:String x:Key="S.Settings.PromptAuto">自動</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">指定語言</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">還原預設</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintAuto" xml:space="preserve">{target_name}：目標語言  {target_code}：目標語言代碼</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source_name}：來源語言  {source_code}：來源語言代碼  {target_name}：目標語言  {target_code}：目標語言代碼</sys:String>
+    <!-- 例子用的是語言選單裡真正會被代入的名稱（英語 / 日語），不是泛稱 -->
+    <sys:String x:Key="S.Settings.PromptHintAuto" xml:space="preserve">{target_name}：目標語言(例：日語) | {target_code}：目標語言代號(例：ja)</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source_name}：來源語言(例：英語) | {source_code}：來源語言代號(例：en)&#10;{target_name}：目標語言(例：日語) | {target_code}：目標語言代號(例：ja)</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">進階</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">啟用</sys:String>

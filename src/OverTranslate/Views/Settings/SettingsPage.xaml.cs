@@ -697,9 +697,23 @@ public partial class SettingsPage : UserControl
         target.Inlines.Clear();
         foreach (var (segment, isPlaceholder) in SplitOnPlaceholders(text))
         {
-            var run = new Run(segment);
-            if (isPlaceholder) run.SetResourceReference(TextElement.ForegroundProperty, "AppAccent");
-            target.Inlines.Add(run);
+            if (isPlaceholder)
+            {
+                var placeholder = new Run(segment);
+                placeholder.SetResourceReference(TextElement.ForegroundProperty, "AppAccent");
+                target.Inlines.Add(placeholder);
+                continue;
+            }
+
+            // The prose between placeholders may carry a line break — the explicit hint lists the
+            // source pair and the target pair one per line. Added as a LineBreak rather than left in
+            // a Run, so it does not depend on the block's wrapping to show up.
+            var lines = segment.Split('\n');
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (i > 0) target.Inlines.Add(new LineBreak());
+                if (lines[i].Length > 0) target.Inlines.Add(new Run(lines[i]));
+            }
         }
     }
 
