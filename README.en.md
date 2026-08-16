@@ -65,18 +65,18 @@ After selecting the area you want to translate, the translation is overlaid on t
 ---
 
 ## Real-time Translation
-> The hotkey (default `Ctrl + Alt + S`) enters block selection directly, without opening the main window first;
-> the hotkey (default `Ctrl + Alt + W`) brings up the main window quickly.
 
 Ideal for **video subtitles, game screens**, and other situations that need continuous translation. After selecting the area, the screen content is recognized continuously, and the translation updates automatically in the original position whenever the text changes.
 
-> 1. Currently only Microsoft, OpenAI, and DeepL are recommended for this mode (lower latency).
-> 2. The text color, background color, and background opacity of the translation can be adjusted as needed.
+> Currently only Microsoft, OpenAI, and DeepL are recommended for this mode (lower latency).  
+> The text color, background color, and background opacity of the translation can be adjusted as needed.
 
 ![Real-time translation window preview](docs/images/即時翻譯視窗預覽_en.png)
+
 ### Translation Block Modes (area selection)
-> Real-time translation currently supports a single monitor only, allows up to 3 translation blocks at the same time, and cannot be used together with screenshot translation.
-> The number of blocks is remembered, so the next session — started from the hotkey or the main window — reuses your last setting.
+
+> The hotkey (default `Ctrl + Alt + S`) enters block selection directly.  
+> Real-time translation currently supports a single monitor only, and allows up to 3 translation blocks at the same time.  
 
 Each translation block can be set individually to **Subtitles / Dialogue** or **Game / UI** mode, so the recognition method matches the type of content on screen.
 
@@ -89,7 +89,7 @@ Each translation block can be set individually to **Subtitles / Dialogue** or **
 | ![Real-time translation2 - dialogue game selection](docs/images/即時翻譯2-對話遊戲框.png) | ![Real-time translation2 - dialogue game result](docs/images/即時翻譯2-對話遊戲翻譯.png) |
 
 **Game / UI**: for game menus and prompts, or scenes where the text is spread out and moves around (1 – 2 blocks recommended).
-> While in game, use the hotkey (default Ctrl + Alt + A) to pause / resume translation.
+> While in game, use the hotkey (default Ctrl + Alt + A) to pause / resume translation,
 > When a screen doesn't need translating, pause first and resume later — there's no need to shut down real-time translation.
 
 | Selection | Translation result |
@@ -104,7 +104,6 @@ While translation is running, the floating bar lets you **pause** or **resume tr
 > The hotkey (default `Ctrl + Alt + W`) brings up the main window quickly.
 
 Type text to translate it instantly, swap the source and target languages, and have the translation read aloud. Results from screenshot translation also show up here.
-The source box can be cleared with one click, and when the source language is set to automatic detection, reading the source aloud is disabled because there is no way to tell which voice to use.
 
 ![Translation window preview](docs/images/翻譯視窗預覽_en.png)
 
@@ -126,9 +125,6 @@ Click **Settings** in the left navigation bar, or right-click the tray icon → 
 | Translation service | Choose the translation service; when using OpenAI you can set the API endpoint, model name, translation prompt, and temperature |
 | Theme | Light / Dark |
 | Application logs | Records more complete application information; recommended only while troubleshooting (off by default) |
-
-> 1. The hotkeys for opening the translation window and for realtime blocks can each be turned off (screenshot translation is the core feature and cannot be disabled). Turning one off also disables that row's input box and record button, and the change takes effect immediately — no restart needed.
-> 2. If two features end up on the same combination, it is kept in the order **screenshot translation → open translation window → realtime block**, and the settings page marks the entry that loses out.
 
 > Logs stay on your machine and are never uploaded automatically. Even with **Application logs** enabled, the more detailed information is only stored locally, and you have to send the logs to the developer yourself if you want help investigating an issue.
 
@@ -173,8 +169,8 @@ Prompt parameters (the **Available parameters** block on the settings page lists
 > When the source language is set to automatic detection there is no source language to substitute, so the settings page hides `{source_name}` and `{source_code}`.
 > The built-in prompt uses the language names only; the code parameters are there for models that expect a form like "Japanese (ja)".
 
-> 1. When the API URL, model, or prompt is left empty, the field shows the default it will actually use.
-> 2. Turning temperature off **leaves the parameter out of the request**. Models and APIs differ in whether they accept it and in what they recommend; if the model's documentation says not to send it, turn it off. If the output misbehaves at 0, raise it as the model suggests — start at 0.1 and work up.
+> When the API URL, model, or prompt is left empty, the field shows the default it will actually use.  
+> Turning temperature off **leaves the parameter out of the request**. Models and APIs differ in whether they accept it and in what they recommend; if the model's documentation says not to send it, turn it off. If the output misbehaves at 0, raise it as the model suggests — start at 0.1 and work up.
 
 ## Text to Speech (TTS)
 
