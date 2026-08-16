@@ -284,7 +284,7 @@
     <!-- 例子用的是語言選單裡真正會被代入的名稱（英語 / 日語），不是泛稱 -->
     <!-- 可用參數表。範例用的是語言選單裡真正會被代入的名稱與代碼，不是泛稱 -->
     <sys:String x:Key="S.Settings.PromptParams">可用參數</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamsTip">在提示詞中寫入這些參數，送出前會替換成當次的語言</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamsTip">在提示詞中寫入這些參數，送出前會替換成當次實際使用的語言，因此一份提示詞就能套用到所有語言組合。</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol1">參數</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol2">說明</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol3">範例</sys:String>

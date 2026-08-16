@@ -461,12 +461,23 @@
                                                Style="{StaticResource SectionHeader}"
                                                Margin="0"
                                                VerticalAlignment="Center"/>
+                                    <!-- Background="Transparent", not left null: a TextBlock with no
+                                         background is only hit-testable where the glyph's own strokes
+                                         are, so the tooltip would appear over parts of an 11px "i"
+                                         and nowhere else. Transparent fills the box for hit testing
+                                         without painting anything. Padding widens that box to
+                                         something a mouse can find. -->
                                     <TextBlock Text="&#xE946;"
                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                FontSize="11"
                                                Foreground="{DynamicResource AppTextSecondary}"
-                                               Margin="5,0,0,0"
+                                               Background="Transparent"
+                                               Padding="3,2"
+                                               Margin="3,0,0,0"
                                                VerticalAlignment="Center"
+                                               Cursor="Help"
+                                               ToolTipService.InitialShowDelay="200"
+                                               ToolTipService.ShowDuration="30000"
                                                ToolTip="{DynamicResource S.Settings.PromptParamsTip}"/>
                                 </StackPanel>
 
