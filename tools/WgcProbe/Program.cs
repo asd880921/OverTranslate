@@ -46,9 +46,14 @@ internal static class Program
                   WgcProbe caps
                       Report what capture APIs are available here.
 
-                  WgcProbe window <title substring> [outputDir]
-                      Capture the first visible window whose title contains the text, report its
-                      geometry against the captured frame, time the readback, and write a PNG.
+                  WgcProbe list
+                      Every visible window with a title, with its handle. Start here when
+                      capturing something by name.
+
+                  WgcProbe window <title substring | handle> [outputDir]
+                      Capture the first visible window whose title contains the text, or the
+                      window with that hex handle, report its geometry against the captured
+                      frame, time the readback, and write a PNG.
 
                   WgcProbe region <x> <y> <w> <h> [outputDir]
                       Resolve the window behind a screen rectangle the way a realtime session
@@ -73,6 +78,7 @@ internal static class Program
             return args[0] switch
             {
                 "caps" => ReportCapabilities(),
+                "list" => ListWindows(),
                 "window" => CaptureWindow(args),
                 "region" => CaptureRegion(args),
                 "overlay" => RunOverlayTest(args),
@@ -97,12 +103,24 @@ internal static class Program
         return WgcCapability.IsCaptureSupported ? 0 : 2;
     }
 
+    /// <summary>Every visible window with a title, for picking one to capture.</summary>
+    private static int ListWindows()
+    {
+        foreach (var hwnd in VisibleWindows())
+        {
+            var rect = WindowRect(hwnd);
+            Console.WriteLine($"{hwnd,10:X}  {rect.Width,5}x{rect.Height,-5} at {rect.X,6},{rect.Y,-6}  {WindowTitle(hwnd)}");
+        }
+
+        return 0;
+    }
+
     private static int CaptureWindow(string[] args)
     {
-        if (args.Length < 2) return Fail("window needs a title substring");
+        if (args.Length < 2) return Fail("window needs a title substring or a handle");
 
-        var hwnd = FindWindow(args[1]);
-        if (hwnd == IntPtr.Zero) return Fail($"no visible window matching '{args[1]}'");
+        var hwnd = ParseHandle(args[1]) ?? FindWindow(args[1]);
+        if (hwnd == IntPtr.Zero) return Fail($"no visible window matching '{args[1]}' — try: WgcProbe list");
 
         ReportGeometry(hwnd);
 
@@ -226,21 +244,45 @@ internal static class Program
 
     // ── Window lookup ────────────────────────────────────────────────────────────────────────────
 
-    private static IntPtr FindWindow(string titleSubstring)
+    /// <summary>A window handle given directly, as hex — what <c>list</c> prints.</summary>
+    private static IntPtr? ParseHandle(string argument)
     {
-        var found = IntPtr.Zero;
+        var text = argument.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? argument[2..] : argument;
+        return long.TryParse(text, System.Globalization.NumberStyles.HexNumber, null, out var value)
+            ? new IntPtr(value)
+            : null;
+    }
+
+    private static IntPtr FindWindow(string titleSubstring) =>
+        VisibleWindows().FirstOrDefault(hwnd =>
+            WindowTitle(hwnd).IndexOf(titleSubstring, StringComparison.OrdinalIgnoreCase) >= 0);
+
+    /// <summary>
+    /// Every visible top-level window with a title, except the console this is being run from.
+    /// </summary>
+    /// <remarks>
+    /// That exception is not tidiness. A console window's title contains the command line that
+    /// started the process, so searching for a window called "Crab Champions" matches the very
+    /// terminal the search was typed into — before it ever reaches the game. It then captures the
+    /// terminal, reports plausible-looking geometry, and writes a screenshot of itself.
+    /// </remarks>
+    private static IEnumerable<IntPtr> VisibleWindows()
+    {
+        var console = GetConsoleWindow();
+        var consoleRoot = console == IntPtr.Zero ? IntPtr.Zero : GetAncestor(console, GA_ROOT);
+
+        var windows = new List<IntPtr>();
         EnumWindows((hwnd, _) =>
         {
             if (!IsWindowVisible(hwnd)) return true;
+            if (hwnd == console || hwnd == consoleRoot) return true;
+            if (WindowTitle(hwnd).Length == 0) return true;
 
-            var title = WindowTitle(hwnd);
-            if (title.Length == 0) return true;
-            if (title.IndexOf(titleSubstring, StringComparison.OrdinalIgnoreCase) < 0) return true;
-
-            found = hwnd;
-            return false;
+            windows.Add(hwnd);
+            return true;
         }, IntPtr.Zero);
-        return found;
+
+        return windows;
     }
 
     private static string WindowTitle(IntPtr hwnd)
@@ -271,6 +313,14 @@ internal static class Program
     }
 
     private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+    private const uint GA_ROOT = 2;
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetConsoleWindow();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
 
     [DllImport("user32.dll")]
     private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
