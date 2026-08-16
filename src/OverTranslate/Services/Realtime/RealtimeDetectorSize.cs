@@ -53,17 +53,33 @@ namespace OverTranslate.Services.Realtime;
 /// cannot be told apart in it.
 ///
 /// Issue #89 broke that tie by cropping whole screens at five margins and sweeping every scale on
-/// each — the same glyphs at the same fraction, over a range of absolute sizes. Of the candidates,
-/// the one that predicts whether the text reads is the glyph's height in DETECTOR space
-/// (region glyph height x fraction). Absolute detector size does not (non-monotone, 15 points from
-/// end to end) and neither does how much of the region the text occupies (non-monotone, no signal).
+/// each. Two candidates died there and stay dead: absolute detector size predicts nothing
+/// (non-monotone, 15 points end to end) and neither does how much of the region the text occupies.
 ///
-/// What that variable predicts is a FLOOR, not an optimum: below about 15px reading collapses, and
-/// above about 20–25px it stops mattering. That much holds across both corpora and every success
-/// criterion tried. It is worth being precise here because two tidier stories did not survive —
-/// "the model wants ~30px" is PP-OCRv5 folklore, and "bigger keeps helping, saturating at 40–50px"
-/// is what the strictest criterion alone shows on one corpus; loosen it and the same data turns
-/// down past 40. See OcrHarness --margin-scale-grid.
+/// What survived is that TWO things degrade a read and they compound — how many pixels tall the
+/// glyph is once resized (region glyph height x the actual downscale), and how hard that downscale
+/// was. The second round separated them by shrinking the source images to 70/50/35%, which makes
+/// the glyphs genuinely small without heavily resampling anything, and graded every set against the
+/// full-size reading of the same text:
+///
+/// <code>
+///   glyph px after resize:      0–12   12–16   16–20   20–25
+///   full-size sources            37%     89%     99%     98%
+///   sources shrunk to 35%        76%     91%     91%    100%
+/// </code>
+///
+/// Same glyph pixels, opposite outcomes. Small text read at a mild downscale is fine; big text
+/// crushed to the same pixel height is not. So neither number is a rule on its own, and in
+/// particular there is no floor to enforce: a scale rule derived from glyph height alone would
+/// spend its budget raising the detector size for small text, which is the case that was already
+/// reading well. Issue #89 was closed on this rather than carried into an implementation.
+///
+/// Three stories were tried and did not survive, which is why this note is longer than its
+/// conclusion: "the model wants ~30px" is PP-OCRv5 folklore; "bigger keeps helping, saturating at
+/// 40–50px" is what the strictest success criterion alone shows on one corpus, and the same data
+/// turns down past 40 once it is loosened; and "glyph height is THE predictor, with a floor near
+/// 15px" — written here after the first round — held only while every sample came from one source
+/// scale. See OcrHarness --margin-scale-grid, and grade across source scales, not within one.
 /// </remarks>
 internal static class RealtimeDetectorSize
 {
@@ -127,22 +143,24 @@ internal static class RealtimeDetectorSize
     /// 163ms measured on the same frames. It is paid for accuracy on the one thing a subtitle
     /// overlay does.</para>
     ///
-    /// <para>What this number is really doing, measured in #89: a fraction sets the glyph's height in
-    /// detector space, because that height is (region glyph height x fraction) and the block's size
-    /// cancels out. Reading collapses below about 15px there and stops improving above about 20–25px.
-    /// This corpus runs around 55px glyphs, so 0.85 lands them near 47px — comfortably clear — while
-    /// 0.50 lands them near 27px, at the edge. That is the same result #81 measured as 94% against
-    /// 78%, arrived at from the other side.</para>
+    /// <para>What this number does, measured in #89: a fraction sets both of the things that decide a
+    /// read, because it sets the glyph's height after resizing (region glyph height x fraction, the
+    /// block's size cancelling out) and IS the downscale. On this corpus, around 55px glyphs, 0.85
+    /// leaves 47px after a gentle resize and 0.50 leaves 27px after a harsh one — which is #81's 94%
+    /// against 78%, arrived at from the other side.</para>
     ///
-    /// <para>Which bounds how far this number generalises, and the bound is not the one previously
-    /// written here. It is not about margin — how much of the region the text occupies turned out to
-    /// predict nothing. It is that a FIXED fraction only clears the floor for content whose glyphs
-    /// are as big as this corpus's. Halve the glyph height and 0.85 lands at 23px; halve it again and
-    /// it is under the floor, with no fallback for it, because the chain only runs when a read finds
-    /// nothing and a small-text read comes back partial rather than empty. A rule that derives the
-    /// scale from the measured glyph height would hold the floor for any content — see #89, and note
-    /// that #39 is where an earlier attempt in this area was reverted, for reasons that were about
-    /// cropping to the previous frame rather than about the scale rule itself.</para>
+    /// <para>An earlier version of this note said the glyph height alone was the rule, with a floor
+    /// near 15px, and drew the obvious conclusion: derive the scale from the measured glyph height
+    /// and any content would clear the floor. Both halves were wrong, and #89's second round is why.
+    /// Shrinking the source images makes glyphs genuinely small without a harsh resize, and there the
+    /// floor simply is not there — 0–12px reads 76% on sources shrunk to 35% against 37% at full
+    /// size. The rule would therefore have spent detector time enlarging small text, which is the
+    /// case that was already fine, and it had no way to help the case that is not.</para>
+    ///
+    /// <para>So the honest bound on this number is that it is tuned for THIS content, and what would
+    /// move it is a corpus where subtitles are read badly today — not a formula. #39 is where an
+    /// earlier attempt at a derived scale was reverted, for reasons about cropping to the previous
+    /// frame rather than about the scale rule.</para>
     /// </remarks>
     public const double StripFraction = 0.85;
 
