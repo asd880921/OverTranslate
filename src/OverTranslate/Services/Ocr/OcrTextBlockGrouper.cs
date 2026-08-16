@@ -158,8 +158,22 @@ internal static class OcrTextBlockGrouper
         if (heightRatio < 0.88)
             return false;
 
+        // The gap can be negative, for exactly the reason it can horizontally in CanJoinSameLine:
+        // the detector's unclip expansion grows every box a little past its glyphs, so two lines of
+        // one wrapped sentence routinely come back overlapping by a few pixels. A `< 0` guard threw
+        // those apart, and each half was then translated on its own — which is not a cosmetic
+        // problem, because half a sentence is not half a translation. A game panel reading "Shots
+        // deal more damage for each bullet remaining in the" / "magazine" overlapped by 3px, and
+        // came back as 「每發子彈在」 and 「雜誌」; the whole sentence gives 「彈匣內每發子彈的傷害會增加」.
+        //
+        // Half a line of overlap, from measuring 54 candidate pairs across the logged captures. The
+        // two populations do not touch: wrapped continuations land at -0.4 to -0.1 of a line, while
+        // boxes that share a row (an "E" beside "PICK UP", an "X" beside "HOLD TO SALVAGE") land at
+        // -0.9 to -1.0. Nothing at all falls between, so the threshold sits in empty space rather
+        // than on either edge. Those row-mates are what this really has to keep out; the same-line
+        // merge takes most of them first, and this is the backstop for the rest.
         var verticalGap = current.Bounds.Y - (previous.Bounds.Y + previous.Bounds.Height);
-        if (verticalGap < 0 || verticalGap > Math.Max(avgHeight * 0.8, 10))
+        if (verticalGap < -avgHeight * 0.5 || verticalGap > Math.Max(avgHeight * 0.8, 10))
             return false;
 
         var leftDelta = Math.Abs(previous.Bounds.X - current.Bounds.X);
