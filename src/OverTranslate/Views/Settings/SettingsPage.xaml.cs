@@ -895,6 +895,12 @@ public partial class SettingsPage : UserControl
 
         Persist(s => setEnabled(s, box.IsChecked == true));
 
+        // The global hooks are bound from these settings, so the tick means nothing until they are
+        // rebound — without this the shortcut keeps working until the application is restarted, and
+        // a switch that takes effect later is worse than no switch.
+        if (System.Windows.Application.Current.MainWindow is MainWindow main)
+            main.ReRegisterHotkey();
+
         // Turning one off releases its combination, which can bring a shadowed row back — so the
         // hints below are re-read from the resolver rather than only cleared for this row.
         RefreshHotkeyShadowHints();
