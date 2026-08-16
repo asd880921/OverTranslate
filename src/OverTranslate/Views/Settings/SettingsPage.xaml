@@ -77,33 +77,33 @@
                         <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Hotkeys}" Style="{StaticResource SectionHeader}"/>
 
                         <!-- Capture has no on/off tick at all: this is the feature the application
-                             is for. Its first column is empty and still here, so the three rows'
-                             labels and boxes line up — see SharedSizeGroup. -->
+                             is for. Its last column is empty and still here, so the three rows'
+                             shortcut boxes end at the same place — see SharedSizeGroup. -->
                         <Grid Grid.Row="1" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="1" Grid.Row="0" Text="{DynamicResource S.Settings.CaptureHotkey}"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.CaptureHotkey}"
                                        Style="{StaticResource FieldLabel}"/>
-                            <TextBox   Grid.Column="2" Grid.Row="0" x:Name="HotkeyBox"
+                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="HotkeyBox"
                                        Style="{StaticResource ModernTextBox}"
                                        IsReadOnly="True"
                                        Margin="0,0,8,0"
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="3" Grid.Row="0" x:Name="RecordBtn" Content="{DynamicResource S.Common.Record}"
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RecordBtn" Content="{DynamicResource S.Common.Record}"
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
-                            <TextBlock Grid.Column="2" Grid.Row="1" Grid.ColumnSpan="2"
+                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
                                        controls:HighlightedText.Source="{DynamicResource S.Settings.CaptureHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
                         </Grid>
@@ -113,40 +113,40 @@
                              tray click away, so it is not announced at startup. -->
                         <Grid Grid.Row="2" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <CheckBox  Grid.Column="0" Grid.Row="0" x:Name="WindowHotkeyEnabledCheckBox"
-                                       Style="{StaticResource ModernCheckBox}"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0"
-                                       ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
-                                       Checked="HotkeyEnabled_Toggled"
-                                       Unchecked="HotkeyEnabled_Toggled"/>
-                            <TextBlock Grid.Column="1" Grid.Row="0" Text="{DynamicResource S.Settings.WindowHotkey}"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.WindowHotkey}"
                                        Style="{StaticResource FieldLabel}"/>
-                            <TextBox   Grid.Column="2" Grid.Row="0" x:Name="WindowHotkeyBox"
+                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="WindowHotkeyBox"
                                        Style="{StaticResource ModernTextBox}"
                                        IsReadOnly="True"
                                        Margin="0,0,8,0"
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="3" Grid.Row="0" x:Name="WindowRecordBtn" Content="{DynamicResource S.Common.Record}"
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="WindowRecordBtn" Content="{DynamicResource S.Common.Record}"
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
-                            <TextBlock Grid.Column="2" Grid.Row="1" Grid.ColumnSpan="2"
+                            <CheckBox  Grid.Column="3" Grid.Row="0" x:Name="WindowHotkeyEnabledCheckBox"
+                                       Style="{StaticResource ModernCheckBox}"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0"
+                                       ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                       Checked="HotkeyEnabled_Toggled"
+                                       Unchecked="HotkeyEnabled_Toggled"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
                                        controls:HighlightedText.Source="{DynamicResource S.Settings.WindowHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
-                            <TextBlock Grid.Column="2" Grid.Row="2" Grid.ColumnSpan="2"
+                            <TextBlock Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3"
                                        x:Name="WindowHotkeyShadowHint"
                                        Style="{StaticResource FieldHint}"
                                        Visibility="Collapsed"/>
@@ -155,40 +155,40 @@
                         <!-- Realtime block. -->
                         <Grid Grid.Row="3">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <CheckBox  Grid.Column="0" Grid.Row="0" x:Name="RealtimeHotkeyEnabledCheckBox"
-                                       Style="{StaticResource ModernCheckBox}"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0"
-                                       ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
-                                       Checked="HotkeyEnabled_Toggled"
-                                       Unchecked="HotkeyEnabled_Toggled"/>
-                            <TextBlock Grid.Column="1" Grid.Row="0" Text="{DynamicResource S.Settings.RealtimeHotkey}"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.RealtimeHotkey}"
                                        Style="{StaticResource FieldLabel}"/>
-                            <TextBox   Grid.Column="2" Grid.Row="0" x:Name="RealtimeHotkeyBox"
+                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="RealtimeHotkeyBox"
                                        Style="{StaticResource ModernTextBox}"
                                        IsReadOnly="True"
                                        Margin="0,0,8,0"
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="3" Grid.Row="0" x:Name="RealtimeRecordBtn" Content="{DynamicResource S.Common.Record}"
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RealtimeRecordBtn" Content="{DynamicResource S.Common.Record}"
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
-                            <TextBlock Grid.Column="2" Grid.Row="1" Grid.ColumnSpan="2"
+                            <CheckBox  Grid.Column="3" Grid.Row="0" x:Name="RealtimeHotkeyEnabledCheckBox"
+                                       Style="{StaticResource ModernCheckBox}"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0"
+                                       ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                       Checked="HotkeyEnabled_Toggled"
+                                       Unchecked="HotkeyEnabled_Toggled"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
                                        controls:HighlightedText.Source="{DynamicResource S.Settings.RealtimeHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
-                            <TextBlock Grid.Column="2" Grid.Row="2" Grid.ColumnSpan="2"
+                            <TextBlock Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3"
                                        x:Name="RealtimeHotkeyShadowHint"
                                        Style="{StaticResource FieldHint}"
                                        Visibility="Collapsed"/>

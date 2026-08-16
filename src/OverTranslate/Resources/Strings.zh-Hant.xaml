@@ -256,7 +256,7 @@
     <!-- 勾選框沒有文字，所以這是它的 ToolTip，不是標籤 -->
     <sys:String x:Key="S.Settings.HotkeyEnable">啟用此快捷鍵</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkey">即時翻譯區塊</sys:String>
-    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">按下快捷鍵即可進入即時翻譯區塊編輯模式</sys:String>
+    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">按下快捷鍵即可進入即時[[翻譯區塊選取模式]]</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ 與上方的「{0}」重複，已停用</sys:String>
 
     <sys:String x:Key="S.Settings.General">一般設定</sys:String>
@@ -268,7 +268,7 @@
     <sys:String x:Key="S.Settings.WindowHotkeyHint">[[即時翻譯]]進行中時，改為將[[浮動視窗列]]移至最上層</sys:String>
     <sys:String x:Key="S.Settings.SourceLanguage">來源語言</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslate">自動翻譯</sys:String>
-    <sys:String x:Key="S.Settings.AutoTranslateCheck">截圖翻譯：框選完成後立即翻譯，不需要再手動點擊。</sys:String>
+    <sys:String x:Key="S.Settings.AutoTranslateCheck">截圖翻譯框選完成時立即翻譯，不需要再手動點擊。</sys:String>
     <sys:String x:Key="S.Settings.Startup">開機啟動</sys:String>
     <sys:String x:Key="S.Settings.StartupCheck">開機時自動啟動</sys:String>
 
