@@ -63,16 +63,17 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Theory]
-    [InlineData("ZH-HANT", "繁體中文", "zh-Hant")]
-    [InlineData("ZH-HANS", "簡體中文", "zh-Hans")]
-    public void BuildPrompt_IsWrittenInTheInterfaceLanguage(
-        string targetCode, string targetName, string targetTag)
+    [InlineData("ZH-HANT", "繁體中文")]
+    [InlineData("ZH-HANS", "簡體中文")]
+    public void BuildPrompt_IsWrittenInTheInterfaceLanguage(string targetCode, string targetName)
     {
         WithInterfaceLanguage(LocalizationService.TraditionalChinese, () =>
         {
             var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", targetCode);
 
-            Assert.Contains($"從各種語言翻譯成 {targetName} ({targetTag})", prompt);
+            // Names alone, no tags: the shipped default is tuned for the model this provider ships
+            // against, and the tags are there for a template someone writes themselves.
+            Assert.Contains($"從(各種語言)翻譯成({targetName})", prompt);
             Assert.Contains("只回傳自然、人性化的翻譯結果", prompt);
             Assert.DoesNotContain("JSON", prompt);
             Assert.True(prompt.Length <= 80);
@@ -89,7 +90,7 @@ public class OpenAiCompatibleProviderTests
         {
             var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT");
 
-            Assert.Contains("from Japanese (ja) to Traditional Chinese (zh-Hant)", prompt);
+            Assert.Contains("from (Japanese) to (Traditional Chinese)", prompt);
             Assert.DoesNotContain("繁體中文", prompt);
         });
 
@@ -97,7 +98,7 @@ public class OpenAiCompatibleProviderTests
         {
             var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "EN-US");
 
-            Assert.Contains("從 日語 (ja) 翻譯成 英語 (en)", prompt);
+            Assert.Contains("從(日語)翻譯成(英語)", prompt);
             Assert.DoesNotContain("Translate", prompt);
         });
     }
@@ -127,11 +128,9 @@ public class OpenAiCompatibleProviderTests
         });
     }
 
-    // The tag beside each name is the half a translation-only model keys on — see
-    // OpenAiCompatibleProvider.Name and LanguageData.GetModelLanguageTag.
     [Theory]
-    [InlineData("EN", "JA", "English (en)", "Japanese (ja)")]
-    [InlineData("JA", "KO", "Japanese (ja)", "Korean (ko)")]
+    [InlineData("EN", "JA", "English", "Japanese")]
+    [InlineData("JA", "KO", "Japanese", "Korean")]
     public void BuildPrompt_NamesBothLanguagesInAnEnglishInterface(
         string sourceCode,
         string targetCode,
@@ -142,7 +141,7 @@ public class OpenAiCompatibleProviderTests
         {
             var prompt = OpenAiCompatibleProvider.BuildPrompt(sourceCode, targetCode);
 
-            Assert.Contains($"from {sourceName} to {targetName}", prompt);
+            Assert.Contains($"from ({sourceName}) to ({targetName})", prompt);
             Assert.Contains("Return only a natural, human-sounding translation", prompt);
             Assert.DoesNotContain("只回傳", prompt);
         });
@@ -155,8 +154,7 @@ public class OpenAiCompatibleProviderTests
         {
             var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "EN-US");
 
-            // No tag on the source: 自動 is not a language, so there is none to give.
-            Assert.Contains("from any language to English (en)", prompt);
+            Assert.Contains("from (any language) to (English)", prompt);
             Assert.Contains("Return only a natural, human-sounding translation", prompt);
         });
     }

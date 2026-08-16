@@ -324,29 +324,27 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// measurably stopped half-way through a Japanese line when handed the restructured wording.
     ///
     /// That is also why TranslateGemma's own documented wording — "You are a professional Japanese
-    /// (ja) to French (fr) translator." — was not adopted whole. What was taken from it is the part
-    /// that carries the information: the language tag beside the name. The tag is what a
-    /// translation-only model keys on, and this template named languages in prose alone until now.
-    /// See <see cref="LanguageData.GetModelLanguageTag"/>.
+    /// (ja) to French (fr) translator." — was not adopted, and why the language tags are not here
+    /// either. Both were tried: on the model this ships against, naming the languages alone reads
+    /// better than naming them with their tags, so the shipped default names them alone.
     ///
-    /// The brackets around each tag are written here rather than produced by the substitution, so
-    /// that a template is free to place the tag differently — or leave it out — for a model that
-    /// wants something else. That is the whole reason the tag has its own placeholder instead of
-    /// being fused into the name.
+    /// The tags keep their own placeholders all the same — see
+    /// <see cref="SourceCodePlaceholder"/> and <see cref="LanguageData.GetModelLanguageTag"/>.
+    /// This default is tuned for one model, and someone pointing this provider at a different one
+    /// has to be able to write what that model expects; a placeholder nothing ships with is still
+    /// the difference between editing a prompt and not being able to.
     /// </remarks>
     internal static string DefaultPromptTemplate(bool automatic) =>
         UsesChinesePrompt()
             ? (automatic
-                ? $"從各種語言翻譯成 {TargetPlaceholder} ({TargetCodePlaceholder})。" +
+                ? $"從(各種語言)翻譯成({TargetPlaceholder})。" +
                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。"
-                : $"從 {SourcePlaceholder} ({SourceCodePlaceholder}) " +
-                  $"翻譯成 {TargetPlaceholder} ({TargetCodePlaceholder})。" +
+                : $"從({SourcePlaceholder})翻譯成({TargetPlaceholder})。" +
                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。")
             : (automatic
-                ? $"Translate the input text from any language to {TargetPlaceholder} ({TargetCodePlaceholder}). " +
+                ? $"Translate the input text from (any language) to ({TargetPlaceholder}). " +
                   "Do not think or add extra text. Return only a natural, human-sounding translation."
-                : $"Translate the input text from {SourcePlaceholder} ({SourceCodePlaceholder}) " +
-                  $"to {TargetPlaceholder} ({TargetCodePlaceholder}). " +
+                : $"Translate the input text from ({SourcePlaceholder}) to ({TargetPlaceholder}). " +
                   "Do not think or add extra text. Return only a natural, human-sounding translation.");
 
     private static bool UsesChinesePrompt() =>
