@@ -264,8 +264,17 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.PromptAuto">Automatic</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">Chosen language</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">Reset to default</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintAuto" xml:space="preserve">{target_name}: target language (e.g. Japanese) | {target_code}: target language code (e.g. ja)</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source_name}: source language (e.g. English) | {source_code}: source language code (e.g. en)&#10;{target_name}: target language (e.g. Japanese) | {target_code}: target language code (e.g. ja)</sys:String>
+    <sys:String x:Key="S.Settings.PromptParams">Available parameters</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamsTip">Write these into the prompt; each is replaced with the language in use before it is sent</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol1">Parameter</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol2">Description</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol3">Example</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceName">Source language name</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceCode">Source language code</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetName">Target language name</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetCode">Target language code</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceNameEg">English</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetNameEg">Japanese</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">Advanced</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">Enable</sys:String>

@@ -673,14 +673,12 @@ public partial class SettingsPage : UserControl
             PromptPlaceholder,
             OpenAiCompatibleProvider.DefaultPromptTemplate(_promptSegment == PromptAutoSegment));
 
-        WritePlaceholderAware(PromptHint, LocalizationService.Get(_promptSegment == PromptAutoSegment
-            ? "S.Settings.PromptHintAuto"
-            : "S.Settings.PromptHintExplicit"));
-
-        // FieldHint hides itself when its Text is empty, and writing runs leaves that property
-        // empty however much is on screen — the hint is built out of inlines, not out of Text. A
-        // local value outranks the style's trigger, which is what keeps this one visible.
-        PromptHint.Visibility = Visibility.Visible;
+        // 自動 has no source language, so the two rows describing one would be listing parameters
+        // that resolve to nothing. Hidden whole rather than left showing an empty example.
+        var showsSource = _promptSegment != PromptAutoSegment;
+        var sourceRows = showsSource ? Visibility.Visible : Visibility.Collapsed;
+        ParamRowSourceName.Visibility = sourceRows;
+        ParamRowSourceCode.Visibility = sourceRows;
     }
 
     /// <summary>
