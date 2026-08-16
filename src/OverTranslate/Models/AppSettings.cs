@@ -71,6 +71,17 @@ public class AppSettings
     /// </remarks>
     public string RealtimeSourceLanguage { get; set; } = "";
     public string RealtimeTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
+
+    /// <summary>
+    /// How many blocks a session is set up to frame, 1–3.
+    /// </summary>
+    /// <remarks>
+    /// Kept, unlike everything else about a sitting, because the shortcut has to answer the same
+    /// question the page's stepper does and cannot read it off a page that is not open. Without this
+    /// the shortcut would always offer one block while the button offered three, which is the same
+    /// control giving two different answers.
+    /// </remarks>
+    public int RealtimeBlockCount { get; set; } = 1;
     public TranslationProvider RealtimeProvider { get; set; } = TranslationProvider.Microsoft;
     public string ApiKey { get; set; } = "";
     /// <summary>

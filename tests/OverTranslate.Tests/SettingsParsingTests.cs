@@ -199,6 +199,7 @@ public class SettingsParsingTests
             RealtimeHotkeyVirtualKey = 0x44,
             RealtimeHotkeyDisplay = "Ctrl+Shift+D",
             RealtimeHotkeyEnabled = false,
+            RealtimeBlockCount = 3,
         });
 
         var settings = SettingsService.Parse(written);
@@ -225,6 +226,7 @@ public class SettingsParsingTests
         Assert.Equal(0x44u, settings.RealtimeHotkeyVirtualKey);
         Assert.Equal("Ctrl+Shift+D", settings.RealtimeHotkeyDisplay);
         Assert.False(settings.RealtimeHotkeyEnabled);
+        Assert.Equal(3, settings.RealtimeBlockCount);
     }
 
     // Written before either shortcut could be switched off: both have to come back on, or upgrading

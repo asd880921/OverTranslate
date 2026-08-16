@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private TrayMenuWindow? _trayMenu;
     private GlobalHotkey? _hotkey;
     private GlobalHotkey? _windowHotkey;
+    private GlobalHotkey? _realtimeHotkey;
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
@@ -90,9 +91,9 @@ public partial class MainWindow : Window
     /// default it never agreed to — anyone already using that combination for something else would
     /// have had one of the two go quiet.
     ///
-    /// A shortcut with no action yet is simply absent from the table below rather than registered
-    /// against nothing: claiming a combination globally takes it away from every other application,
-    /// which is a real cost to pay for a key that would do nothing.
+    /// A shortcut with no action would be absent from the table below rather than registered against
+    /// nothing: claiming a combination globally takes it away from every other application, which is
+    /// a real cost to pay for a key that would do nothing.
     /// </remarks>
     private void RegisterHotkey()
     {
@@ -108,10 +109,14 @@ public partial class MainWindow : Window
         _windowHotkey = new GlobalHotkey(GlobalHotkey.TranslationWindowId);
         _windowHotkey.HotkeyPressed += OnTranslationWindowHotkeyPressed;
 
+        _realtimeHotkey = new GlobalHotkey(GlobalHotkey.RealtimeId);
+        _realtimeHotkey.HotkeyPressed += OnRealtimeHotkeyPressed;
+
         var hooks = new Dictionary<HotkeyAction, GlobalHotkey>
         {
             [HotkeyAction.Capture] = _hotkey,
             [HotkeyAction.TranslationWindow] = _windowHotkey,
+            [HotkeyAction.Realtime] = _realtimeHotkey,
         };
 
         foreach (var binding in HotkeyBindings.Resolve(settings))
@@ -182,7 +187,49 @@ public partial class MainWindow : Window
     {
         _hotkey?.Unregister();
         _windowHotkey?.Unregister();
+        _realtimeHotkey?.Unregister();
         RegisterHotkey();
+    }
+
+    /// <summary>
+    /// Drops straight into 即時翻譯 block framing, the thing the page's 開始 button does.
+    /// </summary>
+    /// <remarks>
+    /// Inert once any realtime stage is running — framing or translating. The session covers the
+    /// screen and carries its own controls at that point, so a second press has nothing to mean, and
+    /// the alternative reading (start another one) is refused by the controller anyway.
+    ///
+    /// The refusals are notifications rather than silence because the user pressed a key and is owed
+    /// an answer, and rather than the page's status line because there may be no page open — the
+    /// shortcut's whole point is not needing one. See ShowTrayNotification for why the tray and not
+    /// the application's own toast.
+    /// </remarks>
+    private void OnRealtimeHotkeyPressed(object? sender, EventArgs e)
+    {
+        if (RealtimeSessionController.Instance.IsActive) return;
+
+        // The same rule the page enforces in both directions: one OCR engine, one pool of inference
+        // slots, and neither feature is any use with the other competing for them.
+        if (IsCapturing)
+        {
+            ShowTrayNotification(
+                LocalizationService.Get("S.Realtime.Title"),
+                LocalizationService.Get("S.Realtime.CaptureInProgress"));
+            return;
+        }
+
+        var quickStart = RealtimeQuickStart.From(SettingsService.Instance.Current);
+        if (quickStart.Request is not { } request)
+        {
+            ShowTrayNotification(
+                LocalizationService.Get("S.Realtime.Title"),
+                LocalizationService.Get(quickStart.BlockedReasonKey!));
+            return;
+        }
+
+        // Null when the shell is closed to the tray, which is the common case for a shortcut and
+        // means there is nothing to put away.
+        RealtimeSessionController.Instance.Start(request, ShellWindow.Current);
     }
 
     /// <summary>
@@ -932,6 +979,7 @@ public partial class MainWindow : Window
         DisposeEscapeHook();
         _hotkey?.Dispose();
         _windowHotkey?.Dispose();
+        _realtimeHotkey?.Dispose();
         if (_notifyIcon != null)
         {
             _notifyIcon.Visible = false;
