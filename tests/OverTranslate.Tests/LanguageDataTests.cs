@@ -7,6 +7,30 @@ namespace OverTranslate.Tests;
 
 public class LanguageDataTests
 {
+    // The pickers carry codes chosen for the translation APIs; a local translation model wants BCP 47
+    // instead, and the tag is the half it was trained to key on rather than decoration beside a name.
+    [Theory]
+    [InlineData("JA", "ja")]
+    [InlineData("KO", "ko")]
+    [InlineData("EN", "en")]
+    [InlineData("EN-US", "en")]          // DeepL's regional code; the model wants the plain one
+    [InlineData("ZH", "zh-Hans")]        // 簡體中文 in this application's own OCR picker
+    [InlineData("ZH-HANS", "zh-Hans")]
+    [InlineData("ZH-HANT", "zh-Hant")]
+    [InlineData("PT-BR", "pt-BR")]       // keeps its region, unlike EN-US
+    [InlineData("BG", "bg")]             // no entry in the table; lower-casing is already right
+    public void ModelLanguageTag_IsTheFormATranslationModelExpects(string code, string expected) =>
+        Assert.Equal(expected, LanguageData.GetModelLanguageTag(code));
+
+    [Theory]
+    [InlineData("AUTO")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void ModelLanguageTag_IsEmptyWhenThereIsNoLanguageToName(string? code) =>
+        // 自動 is not a language, so naming one would be inventing it — the prompt says "any
+        // language" in that position and must not gain a tag.
+        Assert.Equal("", LanguageData.GetModelLanguageTag(code));
+
     [Fact]
     public void OpenAiCompatibleProvider_IsAvailableWithoutRequiringAKey()
     {

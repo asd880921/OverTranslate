@@ -251,6 +251,49 @@ public static class LanguageData
         return IsAutomaticSource(resolved) ? DefaultRealtimeSourceLanguage : resolved;
     }
 
+    /// <summary>
+    /// Codes whose model-facing spelling is not just this application's own code in lower case.
+    /// </summary>
+    /// <remarks>
+    /// The pickers carry codes chosen for the translation APIs — DeepL's <c>EN-US</c>, <c>PT-BR</c>,
+    /// <c>ZH-HANT</c> — and a local translation model expects BCP 47 instead. Only the entries that
+    /// actually differ are listed; everything else is a plain two-letter code that lower-casing
+    /// already gets right, and listing those too would be a table to keep in step for no gain.
+    ///
+    /// <c>ZH</c> maps to Simplified rather than bare <c>zh</c> because that is what it means in this
+    /// application's own OCR picker (簡體中文), and a model given <c>zh</c> has to guess between the
+    /// two scripts.
+    /// </remarks>
+    private static readonly Dictionary<string, string> ModelLanguageTags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["EN-US"] = "en",
+        ["ZH"] = "zh-Hans",
+        ["ZH-HANS"] = "zh-Hans",
+        ["ZH-HANT"] = "zh-Hant",
+        ["PT-BR"] = "pt-BR",
+    };
+
+    /// <summary>
+    /// The language tag to name a language by when instructing a translation model, e.g. <c>ja</c>.
+    /// </summary>
+    /// <remarks>
+    /// Translation-only models are trained with the language named as "Japanese (ja)" — the tag is
+    /// not decoration beside the name, it is the part the model was trained to key on. See
+    /// <see cref="Services.Providers.OpenAiCompatibleProvider.DefaultPromptTemplate"/>.
+    ///
+    /// Returns empty for 自動, which has no language to name: the prompt says "any language" there
+    /// and a tag would be inventing one.
+    /// </remarks>
+    public static string GetModelLanguageTag(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code) || IsAutomaticSource(code))
+            return "";
+
+        return ModelLanguageTags.TryGetValue(code, out var mapped)
+            ? mapped
+            : code.ToLowerInvariant();
+    }
+
     public static string GetValidTargetCode(string? targetCode)
     {
         if (string.IsNullOrWhiteSpace(targetCode))

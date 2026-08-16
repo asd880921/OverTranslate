@@ -290,18 +290,27 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// Both automatic forms deliberately keep the "from … to …" skeleton of the explicit one rather
     /// than restructuring the sentence. Translation-only models are trained on that shape, and one
     /// measurably stopped half-way through a Japanese line when handed the restructured wording.
+    ///
+    /// That is also why TranslateGemma's own documented wording — "You are a professional Japanese
+    /// (ja) to French (fr) translator." — was not adopted whole. What was taken from it is the part
+    /// that carries the information: the language tag beside the name. The tag is what a
+    /// translation-only model keys on, and this template named languages in prose alone until now.
+    /// See <see cref="Name"/> and <see cref="LanguageData.GetModelLanguageTag"/>.
+    ///
+    /// The placeholders no longer sit inside literal brackets, because the tag brings its own: with
+    /// both, a filled template read "從(日語 (ja))翻譯成…".
     /// </remarks>
     internal static string DefaultPromptTemplate(bool automatic) =>
         UsesChinesePrompt()
             ? (automatic
-                ? $"從(各種語言)翻譯成({TargetPlaceholder})。" +
+                ? $"從各種語言翻譯成{TargetPlaceholder}。" +
                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。"
-                : $"從({SourcePlaceholder})翻譯成({TargetPlaceholder})。" +
+                : $"從{SourcePlaceholder}翻譯成{TargetPlaceholder}。" +
                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。")
             : (automatic
-                ? $"Translate the input text from (any language) to ({TargetPlaceholder}). " +
+                ? $"Translate the input text from any language to {TargetPlaceholder}. " +
                   "Do not think or add extra text. Return only a natural, human-sounding translation."
-                : $"Translate the input text from ({SourcePlaceholder}) to ({TargetPlaceholder}). " +
+                : $"Translate the input text from {SourcePlaceholder} to {TargetPlaceholder}. " +
                   "Do not think or add extra text. Return only a natural, human-sounding translation.");
 
     private static bool UsesChinesePrompt() =>
@@ -317,17 +326,34 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// </remarks>
     private static string Fill(string template, string sourceLang, string targetLang, bool automatic)
     {
-        var target = LanguageData.GetTargetDisplayName(targetLang);
+        var target = Name(targetLang, LanguageData.GetTargetDisplayName(targetLang));
 
         // Nothing to name when the source is 自動, so a template that asks for one anyway is given
         // the same words the built-in automatic template uses in that position.
         var source = automatic
             ? (UsesChinesePrompt() ? "各種語言" : "any language")
-            : LanguageData.GetSourceDisplayName(sourceLang);
+            : Name(sourceLang, LanguageData.GetSourceDisplayName(sourceLang));
 
         return template
             .Replace(SourcePlaceholder, source, StringComparison.OrdinalIgnoreCase)
             .Replace(TargetPlaceholder, target, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A language as a translation model expects to be told it: the name, then its tag.
+    /// </summary>
+    /// <remarks>
+    /// The tag is what TranslateGemma's documented usage puts there — "Japanese (ja) to French (fr)"
+    /// — and it is the half a translation-only model was trained to key on; the name alone leaves it
+    /// matching prose. Custom templates get the same treatment, since the placeholder means the same
+    /// thing wherever it appears.
+    ///
+    /// Falls back to the name alone for anything with no tag, which is only 自動 today.
+    /// </remarks>
+    private static string Name(string code, string display)
+    {
+        var tag = LanguageData.GetModelLanguageTag(code);
+        return tag.Length == 0 ? display : $"{display} ({tag})";
     }
 
     internal static string StripThinking(string value) => ThinkingBlock.Replace(value, "").Trim();
