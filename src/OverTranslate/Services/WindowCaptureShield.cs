@@ -38,10 +38,32 @@ internal static class WindowCaptureShield
         if (SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE))
             return true;
 
-        // Not fatal, and not worth blocking the feature over: the loop's own guard is that
-        // recognising its own output produces text identical to what it already rendered, so the
-        // region settles instead of looping. Logged once — a per-window warning would repeat for
-        // every block on every session.
+        // This used to be recorded as not worth blocking the feature over, on the reasoning that the
+        // loop guards itself: recognising its own output would produce text identical to what it had
+        // already rendered, so the region would settle instead of looping. That guard is real — see
+        // TextSimilarity.IsSameContent and the Unchanged outcome in RealtimeTranslationSession — but
+        // it never engages here, and a user's log has now shown what happens instead.
+        //
+        // What comes back off the screen is not the translation. It is the translation composited
+        // over whatever the scrim failed to cover, so every reading is a fresh mixture of target and
+        // leftover source text and none of them matches the last. Every pass counts as new, and each
+        // one re-translates the previous translation. The size goes with it: a CJK reading carries no
+        // separate glyph height, so the overlay sizes its font from the detection box and draws about
+        // 1.15x the height it read (MaxHeightOverSource), which the next pass reads back as the new
+        // box. One measured line went 25px to 71px in nine seconds before the region was too blurred
+        // to recognise at all.
+        //
+        // None of that is recoverable after the fact: the scrim physically covers the source, so the
+        // pixels underneath are gone from the grab and no amount of filtering brings them back.
+        //
+        // The cause is this window, not the machine. WPF's AllowsTransparency renders through
+        // UpdateLayeredWindow, and Windows does not support display affinity on that kind of layered
+        // window — error 8 is ERROR_NOT_ENOUGH_MEMORY and has nothing to do with memory. It was
+        // fixed in Windows 11 24H2 (build 26100), so this fails on every earlier Windows and works
+        // on every later one, which is why it survived this long unnoticed. Tracked in #94, together
+        // with the fact that no caller does anything with the value returned below.
+        //
+        // Logged once — a per-window warning would repeat for every block on every session.
         if (!_unsupportedReported)
         {
             _unsupportedReported = true;

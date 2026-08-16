@@ -3,6 +3,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using Microsoft.Win32;
 using NLog;
 using Screen = System.Windows.Forms.Screen;
 
@@ -51,10 +52,14 @@ internal static class DisplayDiagnostics
         if (!Log.IsEnabled(level))
             return;
 
+        // Declared outside the try so a failure part-way through can still report what was gathered
+        // before it. The sections are ordered cheapest and most reliable first for the same reason.
+        var sb = new StringBuilder();
+
         try
         {
-            var sb = new StringBuilder();
             sb.AppendLine($"=== Display diagnostics [{phase}] ===");
+            AppendOsInfo(sb);
             AppendProcessInfo(sb);
             AppendVirtualScreenInfo(sb);
             AppendScreens(sb);
@@ -64,7 +69,61 @@ internal static class DisplayDiagnostics
         }
         catch (Exception ex)
         {
-            Log.Warn(ex, "Display diagnostics failed for phase {Phase}", phase);
+            // The partial snapshot goes out with the failure rather than being dropped with it. The
+            // section most likely to throw is AppendScreens — it enumerates every monitor and
+            // marshals a DEVMODE per display — and an unusual display topology is exactly what this
+            // snapshot exists to describe, so the machine that cannot finish one is the machine
+            // whose first few lines are worth the most.
+            Log.Warn(
+                ex, "Display diagnostics failed for phase {Phase}; partial snapshot:\n{Partial}",
+                phase, sb.ToString().TrimEnd());
+        }
+    }
+
+    // Which Windows this is, down to the build. Several of the capture path's behaviours are decided
+    // by the build number and by nothing else observable from here — SetWindowDisplayAffinity on a
+    // per-pixel-alpha layered window is one, and it fails silently enough that the only trace in a
+    // report is a warning with no way to tell which Windows produced it. Every other line in this
+    // snapshot describes the display topology; this one describes what is interpreting it.
+    private static void AppendOsInfo(StringBuilder sb)
+    {
+        var version = Environment.OSVersion.Version;
+
+        // Windows 11 still reports itself as 10.0, so the build is the only thing separating the
+        // two. Derived rather than read from the registry's ProductName, which says "Windows 10"
+        // on Windows 11 and would put a plain lie in the log.
+        string name = version is { Major: 10, Build: >= 22000 } ? "Windows 11"
+            : version.Major == 10 ? "Windows 10"
+            : $"Windows {version.Major}.{version.Minor}";
+
+        // The marketing release (24H2, 25H2). Worth having next to the build because that is how
+        // both Microsoft's documentation and a user describing their machine refer to it.
+        string? release = ReadCurrentVersion("DisplayVersion");
+
+        // OSVersion stops at the build; the update revision after it lives only in the registry, and
+        // it is what separates two machines that will otherwise report the same build.
+        string build = $"{version.Major}.{version.Minor}.{version.Build}";
+        if (ReadCurrentVersion("UBR") is { } ubr) build += $".{ubr}";
+
+        sb.AppendLine(
+            $"os      : {name}{(string.IsNullOrEmpty(release) ? "" : $" {release}")} build={build} " +
+            $"arch={RuntimeInformation.OSArchitecture} process={RuntimeInformation.ProcessArchitecture}");
+    }
+
+    // Null when the value is missing or unreadable. A diagnostic must not be able to break the flow
+    // it is observing, and a machine whose registry will not answer is exactly the kind this
+    // snapshot is being taken for — so it reports the rest and leaves this field out.
+    private static string? ReadCurrentVersion(string valueName)
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+            return key?.GetValue(valueName)?.ToString();
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
 
