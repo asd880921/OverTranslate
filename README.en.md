@@ -65,16 +65,18 @@ After selecting the area you want to translate, the translation is overlaid on t
 ---
 
 ## Real-time Translation
-> Use the hotkey (default `Ctrl + Alt + W`) to bring up the main window quickly.
+> The hotkey (default `Ctrl + Alt + S`) enters block selection directly, without opening the main window first;
+> the hotkey (default `Ctrl + Alt + W`) brings up the main window quickly.
 
 Ideal for **video subtitles, game screens**, and other situations that need continuous translation. After selecting the area, the screen content is recognized continuously, and the translation updates automatically in the original position whenever the text changes.
 
 > 1. Currently only Microsoft, OpenAI, and DeepL are recommended for this mode (lower latency).
-> 2. The text color and background color of the translation can be adjusted as needed.
+> 2. The text color, background color, and background opacity of the translation can be adjusted as needed.
 
 ![Real-time translation window preview](docs/images/即時翻譯視窗預覽_en.png)
 ### Translation Block Modes (area selection)
 > Real-time translation currently supports a single monitor only, allows up to 3 translation blocks at the same time, and cannot be used together with screenshot translation.
+> The number of blocks is remembered, so the next session — started from the hotkey or the main window — reuses your last setting.
 
 Each translation block can be set individually to **Subtitles / Dialogue** or **Game / UI** mode, so the recognition method matches the type of content on screen.
 
@@ -99,9 +101,10 @@ Each translation block can be set individually to **Subtitles / Dialogue** or **
 While translation is running, the floating bar lets you **pause** or **resume translation**, **capture a screenshot of the current translation**, **re-edit the translation blocks**, or **stop translating**.
 
 ## Text Translation
-> Use the hotkey (default `Ctrl + Alt + W`) to bring up the main window quickly.
+> The hotkey (default `Ctrl + Alt + W`) brings up the main window quickly.
 
 Type text to translate it instantly, swap the source and target languages, and have the translation read aloud. Results from screenshot translation also show up here.
+The source box can be cleared with one click, and when the source language is set to automatic detection, reading the source aloud is disabled because there is no way to tell which voice to use.
 
 ![Translation window preview](docs/images/翻譯視窗預覽_en.png)
 
@@ -113,15 +116,19 @@ Click **Settings** in the left navigation bar, or right-click the tray icon → 
 | Setting | Description |
 |---------|-------------|
 | Interface language | Traditional Chinese / English, applied immediately (on first launch it follows your Windows display language) |
-| Screenshot translation | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`); while real-time translation is running, it pauses / resumes the realtime translation instead |
-| Open translation window | Hotkey to bring up the main window (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
-| Source language | The original language (default Auto) |
+| Screenshot translation (hotkey) | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`); while real-time translation is running, it pauses / resumes the realtime translation instead |
+| Open translation window (hotkey) | Hotkey to bring up the main window (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
+| Realtime block (hotkey) | Enters **real-time translation** block selection directly, without opening the main window (default `Ctrl + Alt + S`) |
 | Auto translate | **Screenshot translation** translates **immediately** once the area is selected, with nothing left to click (off by default) |
 | Run at startup | Launch automatically when Windows starts |
-| Translation service | Choose the translation service; when using OpenAI you can set the API endpoint, model name, translation prompt, and temperature |
 | Save screenshots | Save captures to your machine automatically, with a customizable folder (off by default) |
+| Source language | The original language for **screenshot translation** and **text translation** (default Auto); real-time translation has its own source language |
+| Translation service | Choose the translation service; when using OpenAI you can set the API endpoint, model name, translation prompt, and temperature |
 | Theme | Light / Dark |
 | Application logs | Records more complete application information; recommended only while troubleshooting (off by default) |
+
+> 1. The hotkeys for opening the translation window and for realtime blocks can each be turned off (screenshot translation is the core feature and cannot be disabled). Turning one off also disables that row's input box and record button, and the change takes effect immediately — no restart needed.
+> 2. If two features end up on the same combination, it is kept in the order **screenshot translation → open translation window → realtime block**, and the settings page marks the entry that loses out.
 
 > Logs stay on your machine and are never uploaded automatically. Even with **Application logs** enabled, the more detailed information is only stored locally, and you have to send the logs to the developer yourself if you want help investigating an issue.
 
@@ -151,8 +158,20 @@ when a translation service is unavailable or responds too slowly, the app automa
 |---------|-------------|
 | API URL | Empty uses `http://localhost:11434/v1` (Ollama's local default) |
 | Model | Empty uses `translategemma:4b` |
-| Prompt | Empty uses the built-in prompt; `{source}` and `{target}` are replaced with the source and target languages |
+| Prompt | Empty uses the built-in prompt; the parameters below are replaced with the languages actually in use |
 | Temperature | Under **Advanced**; controls how random the output is, from 0.0 to 2.0 (default 0) |
+
+Prompt parameters (the **Available parameters** block on the settings page lists them with descriptions and examples too):
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `{source_name}` | Source language name | English |
+| `{source_code}` | Source language code | en |
+| `{target_name}` | Target language name | Japanese |
+| `{target_code}` | Target language code | ja |
+
+> When the source language is set to automatic detection there is no source language to substitute, so the settings page hides `{source_name}` and `{source_code}`.
+> The built-in prompt uses the language names only; the code parameters are there for models that expect a form like "Japanese (ja)".
 
 > 1. When the API URL, model, or prompt is left empty, the field shows the default it will actually use.
 > 2. Turning temperature off **leaves the parameter out of the request**. Models and APIs differ in whether they accept it and in what they recommend; if the model's documentation says not to send it, turn it off. If the output misbehaves at 0, raise it as the model suggests — start at 0.1 and work up.
