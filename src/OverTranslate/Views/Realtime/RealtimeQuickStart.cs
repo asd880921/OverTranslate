@@ -11,10 +11,10 @@ namespace OverTranslate.Views.Realtime;
 /// no page — it can be pressed with the shell closed to the tray — so the answers have to come from
 /// the settings file, and the ones that are not stored have to have somewhere to come from.
 ///
-/// The source language is the one that actually stops people: 即時翻譯 deliberately does not offer 自動
-/// (recognition there gets one look at a frame and no retry), so a first run has nothing in it and a
-/// shortcut pressed then would otherwise open a framing layer that cannot translate anything. That is
-/// what <see cref="BlockedReasonKey"/> exists to say, out loud, through a notification.
+/// Only one thing can still refuse, and it is not a setting: with no monitor attached there is
+/// nowhere to frame anything. Everything else resolves to a default rather than stopping the user,
+/// including a source language left blank by a version that had no default for it — see
+/// <see cref="LanguageData.GetValidRealtimeSourceCode"/>.
 /// </remarks>
 internal readonly record struct RealtimeQuickStart(
     RealtimeStartRequest? Request,
@@ -32,17 +32,11 @@ internal readonly record struct RealtimeQuickStart(
     /// Reads the settings and either builds a request or names the first thing that is missing.
     /// </summary>
     /// <remarks>
-    /// Checked in the same order as the button, so the two paths refuse for the same reason when more
-    /// than one thing is wrong. Whether a capture or another session is already running is not asked
-    /// here: those are facts about the moment rather than about the settings, and the caller holds
-    /// them.
+    /// Whether a capture or another session is already running is not asked here: those are facts
+    /// about the moment rather than about the settings, and the caller holds them.
     /// </remarks>
     public static RealtimeQuickStart From(AppSettings settings)
     {
-        var source = LanguageData.GetValidOcrSourceCode(settings.RealtimeSourceLanguage);
-        if (string.IsNullOrWhiteSpace(source) || LanguageData.IsAutomaticSource(source))
-            return new RealtimeQuickStart(null, "S.Realtime.ChooseSourceFirst");
-
         // Primary first, then whatever exists. The page prefers the monitor its own window sits on,
         // which is a better answer and one a shortcut cannot have — there may be no window open.
         var screens = Screen.AllScreens;
@@ -54,7 +48,7 @@ internal readonly record struct RealtimeQuickStart(
             new RealtimeStartRequest(
                 screen.Bounds,
                 Math.Clamp(settings.RealtimeBlockCount, MinBlocks, MaxBlocks),
-                source,
+                LanguageData.GetValidRealtimeSourceCode(settings.RealtimeSourceLanguage),
                 LanguageData.GetValidTargetCode(settings.RealtimeTargetLanguage),
                 settings.RealtimeProvider,
                 settings.RealtimeTextColor,

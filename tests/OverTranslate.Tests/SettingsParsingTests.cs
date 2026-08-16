@@ -34,9 +34,12 @@ public class SettingsParsingTests
         Assert.Equal(LanguageData.DefaultTargetLanguage, settings.RealtimeTargetLanguage);
         Assert.Equal(TranslationProvider.Microsoft, settings.RealtimeProvider);
 
-        // Empty rather than 自動: the realtime picker does not offer that mode, so a default here
-        // would put a value in the box that the user cannot have chosen and cannot see is wrong.
-        Assert.Equal("", settings.RealtimeSourceLanguage);
+        // English rather than 自動, which the realtime picker does not offer. This was empty on
+        // purpose once — a blank asks the question instead of answering it badly — and stopped being
+        // so when the shortcut arrived, because a shortcut has no page on which to ask. What it
+        // must never be is 自動; see LanguageData.GetValidRealtimeSourceCode.
+        Assert.Equal(LanguageData.DefaultRealtimeSourceLanguage, settings.RealtimeSourceLanguage);
+        Assert.False(LanguageData.IsAutomaticSource(settings.RealtimeSourceLanguage));
         Assert.Equal("JA", settings.TargetLanguage);
         Assert.Equal(TranslationProvider.DeepL, settings.Provider);
     }

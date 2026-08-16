@@ -60,16 +60,25 @@ public class AppSettings
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;
     /// <summary>
-    /// The language 即時翻譯 reads from, or empty for "not chosen yet".
+    /// The language 即時翻譯 reads from.
     /// </summary>
     /// <remarks>
-    /// Empty rather than <see cref="LanguageData.DefaultOcrSourceLanguage"/>, which is 自動 — a mode
-    /// the realtime picker deliberately does not offer, because recognition there gets one look at a
-    /// frame and no retry. A blank field asks the question; a default would answer it badly. Only a
-    /// language the user picked themselves is ever written here, so what comes back is always an
-    /// answer they gave once.
+    /// English rather than <see cref="LanguageData.DefaultOcrSourceLanguage"/>, which is 自動: the
+    /// realtime picker does not offer that mode, because recognition there gets one look at a frame
+    /// and no retry.
+    ///
+    /// This was deliberately blank once, on the reasoning that a guessed source language is worse
+    /// than a question — a blank field asks, a default answers badly. It was changed because the
+    /// question had to be asked from somewhere, and the shortcut that opens block framing has no
+    /// page to ask from; the alternative was a notification refusing to start, which is friction on
+    /// every first use to protect against a setting one trip to the page fixes.
+    ///
+    /// The cost is real and worth writing down: someone whose content is not English, who never
+    /// opens the realtime page and starts from the shortcut, gets English recognition over it and
+    /// nothing says why. See <see cref="LanguageData.GetValidRealtimeSourceCode"/>, which is where a
+    /// blank from before this default is resolved.
     /// </remarks>
-    public string RealtimeSourceLanguage { get; set; } = "";
+    public string RealtimeSourceLanguage { get; set; } = LanguageData.DefaultRealtimeSourceLanguage;
     public string RealtimeTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
 
     /// <summary>

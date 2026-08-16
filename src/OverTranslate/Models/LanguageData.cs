@@ -70,6 +70,12 @@ public static class LanguageData
     public const string DefaultOcrSourceLanguage = AutomaticSourceLanguage;
     public const string DefaultTargetLanguage = "ZH-HANT";
 
+    /// <summary>
+    /// What 即時翻譯 reads from until the user says otherwise — see
+    /// <see cref="GetValidRealtimeSourceCode"/> for why it cannot be 自動 like the screenshot flow's.
+    /// </summary>
+    public const string DefaultRealtimeSourceLanguage = "EN";
+
     public static readonly List<LangItem> SourceLanguages =
     [
         new(AutomaticSourceLanguage, "自動", "Automatic"),
@@ -224,6 +230,25 @@ public static class LanguageData
         var match = OcrSourceLanguages.FirstOrDefault(l =>
             l.Code.Equals(sourceCode, StringComparison.OrdinalIgnoreCase));
         return match?.Code ?? DefaultOcrSourceLanguage;
+    }
+
+    /// <summary>
+    /// What 即時翻譯 reads from, for a setting that may be blank, invalid, or 自動.
+    /// </summary>
+    /// <remarks>
+    /// Its own resolver rather than <see cref="GetValidOcrSourceCode"/> because the two fall back to
+    /// different places: 自動 is a fine answer for a screenshot, which can be read again, and not one
+    /// realtime can use — its picker does not offer it, recognition there gets one look at a frame,
+    /// and a mode that guesses per frame makes a subtitle track flicker between languages.
+    ///
+    /// So everything that is not a real language lands on <see cref="DefaultRealtimeSourceLanguage"/>:
+    /// a blank from before this had a default, 自動 from a hand-edited file, and a code retired since.
+    /// One branch covers all three, and the result is always something the session can actually read.
+    /// </remarks>
+    public static string GetValidRealtimeSourceCode(string? sourceCode)
+    {
+        var resolved = GetValidOcrSourceCode(sourceCode);
+        return IsAutomaticSource(resolved) ? DefaultRealtimeSourceLanguage : resolved;
     }
 
     public static string GetValidTargetCode(string? targetCode)

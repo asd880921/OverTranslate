@@ -139,9 +139,11 @@ public partial class RealtimePage : UserControl
     private void ApplyPageDefaults()
     {
         var settings = SettingsService.Instance.Current;
-        var storedSource = LanguageData.GetValidOcrSourceCode(settings.RealtimeSourceLanguage);
+        // Never null any more: the picker used to be left blank so that only a language the user
+        // chose was ever used, and the shortcut has no page on which to ask. Anything unusable —
+        // blank from an older settings file, 自動 from a hand-edited one — resolves to the default.
         SrcLangBox.SelectedValue =
-            LanguageData.IsAutomaticSource(storedSource) ? null : storedSource;
+            LanguageData.GetValidRealtimeSourceCode(settings.RealtimeSourceLanguage);
         TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(
             settings.RealtimeTargetLanguage);
         if (TgtLangBox.SelectedValue == null)

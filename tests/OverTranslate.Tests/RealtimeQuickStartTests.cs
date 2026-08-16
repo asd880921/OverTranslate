@@ -14,28 +14,32 @@ public class RealtimeQuickStartTests
     };
 
     [Fact]
-    public void AFirstRunIsTurnedAwayBecauseNoSourceLanguageHasBeenChosen()
+    public void AFirstRunStartsOnTheDefaultSourceLanguage()
     {
-        // The realtime picker deliberately does not offer 自動, so a fresh install has nothing here
-        // and the shortcut has nothing to translate from. Pressing it must say so rather than open a
-        // framing layer that could never produce a translation.
+        // This used to refuse and send the user to the page to choose one. It answers instead, so
+        // that pressing the shortcut on a fresh install opens block framing rather than a
+        // notification — the trade is recorded on AppSettings.RealtimeSourceLanguage.
         var quickStart = RealtimeQuickStart.From(new AppSettings());
 
-        Assert.False(quickStart.CanStart);
-        Assert.Equal("S.Realtime.ChooseSourceFirst", quickStart.BlockedReasonKey);
+        Assert.True(quickStart.CanStart);
+        Assert.Equal(LanguageData.DefaultRealtimeSourceLanguage, quickStart.Request!.SourceLanguage);
     }
 
-    [Fact]
-    public void AHandEditedAutomaticSourceIsTurnedAwayToo()
+    [Theory]
+    [InlineData("")]                                       // written by a version with no default
+    [InlineData(LanguageData.AutomaticSourceLanguage)]     // hand-edited; the picker never offers it
+    [InlineData("XX")]                                     // a code retired since
+    public void AnUnusableStoredSourceFallsBackRatherThanReachingTheSession(string stored)
     {
-        // Not reachable through the picker, which never offers it — reachable by editing the file.
+        // 自動 is the one that matters: realtime gets one look at a frame, so a mode that guesses per
+        // frame would make a subtitle track flicker between languages.
         var settings = Ready();
-        settings.RealtimeSourceLanguage = LanguageData.AutomaticSourceLanguage;
+        settings.RealtimeSourceLanguage = stored;
 
         var quickStart = RealtimeQuickStart.From(settings);
 
-        Assert.False(quickStart.CanStart);
-        Assert.Equal("S.Realtime.ChooseSourceFirst", quickStart.BlockedReasonKey);
+        Assert.True(quickStart.CanStart);
+        Assert.Equal(LanguageData.DefaultRealtimeSourceLanguage, quickStart.Request!.SourceLanguage);
     }
 
     [Fact]
