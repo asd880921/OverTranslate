@@ -50,10 +50,20 @@ namespace OverTranslate.Services.Realtime;
 /// answer either — 1.00 reads worse than 0.85, so both directions away from the detector's preferred
 /// scale cost accuracy, which is why these are fractions at all rather than "no downscale, like the
 /// screenshot flow". And the whole corpus is regions about 1820 wide, so fraction and absolute size
-/// cannot be told apart in it; cropping the same frames tight to their text makes every fraction
-/// from 0.40 up read 88–95%, which says the sensitivity comes from the margin around the text rather
-/// than from the block. A rule driven by that would be the better answer, and issue #39 is where the
-/// last attempt at one was reverted.
+/// cannot be told apart in it.
+///
+/// Issue #89 broke that tie by cropping whole screens at five margins and sweeping every scale on
+/// each — the same glyphs at the same fraction, over a range of absolute sizes. Of the candidates,
+/// the one that predicts whether the text reads is the glyph's height in DETECTOR space
+/// (region glyph height x fraction). Absolute detector size does not (non-monotone, 15 points from
+/// end to end) and neither does how much of the region the text occupies (non-monotone, no signal).
+///
+/// What that variable predicts is a FLOOR, not an optimum: below about 15px reading collapses, and
+/// above about 20–25px it stops mattering. That much holds across both corpora and every success
+/// criterion tried. It is worth being precise here because two tidier stories did not survive —
+/// "the model wants ~30px" is PP-OCRv5 folklore, and "bigger keeps helping, saturating at 40–50px"
+/// is what the strictest criterion alone shows on one corpus; loosen it and the same data turns
+/// down past 40. See OcrHarness --margin-scale-grid.
 /// </remarks>
 internal static class RealtimeDetectorSize
 {
@@ -117,13 +127,22 @@ internal static class RealtimeDetectorSize
     /// 163ms measured on the same frames. It is paid for accuracy on the one thing a subtitle
     /// overlay does.</para>
     ///
-    /// <para>One caveat worth writing down, because it bounds how far this generalises: the whole
-    /// corpus is regions about 1820 wide, so fraction and absolute size cannot be told apart in it.
-    /// Cropping those same frames tight to their text and sweeping again, every fraction from 0.40
-    /// up reads 88–95% — the size stops mattering. The sensitivity this number is compensating for
-    /// comes from the margin around the text, which is the framing the in-app guidance asks for.
-    /// A rule driven by the margin rather than by the block would be the better answer, and issue
-    /// #39 is where the last attempt at one was reverted.</para>
+    /// <para>What this number is really doing, measured in #89: a fraction sets the glyph's height in
+    /// detector space, because that height is (region glyph height x fraction) and the block's size
+    /// cancels out. Reading collapses below about 15px there and stops improving above about 20–25px.
+    /// This corpus runs around 55px glyphs, so 0.85 lands them near 47px — comfortably clear — while
+    /// 0.50 lands them near 27px, at the edge. That is the same result #81 measured as 94% against
+    /// 78%, arrived at from the other side.</para>
+    ///
+    /// <para>Which bounds how far this number generalises, and the bound is not the one previously
+    /// written here. It is not about margin — how much of the region the text occupies turned out to
+    /// predict nothing. It is that a FIXED fraction only clears the floor for content whose glyphs
+    /// are as big as this corpus's. Halve the glyph height and 0.85 lands at 23px; halve it again and
+    /// it is under the floor, with no fallback for it, because the chain only runs when a read finds
+    /// nothing and a small-text read comes back partial rather than empty. A rule that derives the
+    /// scale from the measured glyph height would hold the floor for any content — see #89, and note
+    /// that #39 is where an earlier attempt in this area was reverted, for reasons that were about
+    /// cropping to the previous frame rather than about the scale rule itself.</para>
     /// </remarks>
     public const double StripFraction = 0.85;
 
