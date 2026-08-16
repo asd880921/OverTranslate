@@ -173,11 +173,53 @@ public class OpenAiCompatibleProviderTests
             var chosen = OpenAiCompatibleProvider.BuildPrompt(
                 "JA", "ZH-HANT", customAuto: "自動用：翻成{target}", customExplicit: "指定用：{source}→{target}");
 
-            // A custom template gets the tagged names too: the placeholder means the same thing
-            // wherever it appears, and the model reading it is the same model.
-            Assert.Equal("自動用：翻成繁體中文 (zh-Hant)", automatic);
-            Assert.Equal("指定用：日語 (ja)→繁體中文 (zh-Hant)", chosen);
+            // The name placeholders still mean the name alone, which is what they meant before the
+            // tags existed — a template written back then reads the way it was written. A template
+            // that wants the tag asks for it with {source_code} / {target_code}.
+            Assert.Equal("自動用：翻成繁體中文", automatic);
+            Assert.Equal("指定用：日語→繁體中文", chosen);
         });
+    }
+
+    // The point of splitting the tag out of the name: a template can place it wherever its own model
+    // expects it, including TranslateGemma's documented wording, which this application does not ship
+    // as its default because restructuring the sentence once cost a model half a Japanese line.
+    [Fact]
+    public void BuildPrompt_LetsATemplatePlaceTheLanguageTagItself()
+    {
+        // The English interface, because the NAME follows the interface language while the tag does
+        // not — see BuildPrompt_FollowsTheInterfaceRatherThanTheTarget.
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt(
+                "JA", "EN-US",
+                customExplicit: "You are a professional {source} ({source_code}) to {target} ({target_code}) translator.");
+
+            Assert.Equal(
+                "You are a professional Japanese (ja) to English (en) translator.",
+                prompt);
+        });
+    }
+
+    [Fact]
+    public void BuildPrompt_LetsATemplateUseTheTagWithoutTheName()
+    {
+        var prompt = OpenAiCompatibleProvider.BuildPrompt(
+            "JA", "ZH-HANT", customExplicit: "{source_code}->{target_code}");
+
+        Assert.Equal("ja->zh-Hant", prompt);
+    }
+
+    // 自動 has no language to name, so it has no tag either. A template that asks for one anyway is
+    // left with whatever brackets it wrote around it rather than a leaked placeholder.
+    [Fact]
+    public void BuildPrompt_EmptiesTheSourceTagWhenTheSourceIsAutomatic()
+    {
+        var prompt = OpenAiCompatibleProvider.BuildPrompt(
+            "AUTO", "ZH-HANT", customAuto: "[{source_code}]{target_code}");
+
+        Assert.Equal("[]zh-Hant", prompt);
+        Assert.DoesNotContain("{source_code}", prompt);
     }
 
     [Theory]
@@ -200,9 +242,7 @@ public class OpenAiCompatibleProviderTests
             var prompt = OpenAiCompatibleProvider.BuildPrompt(
                 "AUTO", "ZH-HANT", customAuto: "從({source})翻譯成({target})");
 
-            // The brackets here are the user's own; the tag brings its own pair, which is why the
-            // built-in templates dropped theirs.
-            Assert.Equal("從(各種語言)翻譯成(繁體中文 (zh-Hant))", prompt);
+            Assert.Equal("從(各種語言)翻譯成(繁體中文)", prompt);
             Assert.DoesNotContain("{source}", prompt);
         });
     }

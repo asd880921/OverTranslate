@@ -281,8 +281,8 @@
     <sys:String x:Key="S.Settings.PromptAuto">自動</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">指定語言</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">還原預設</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintAuto">{target}：目標語言</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source}：來源語言  {target}：目標語言</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintAuto" xml:space="preserve">{target}：目標語言  {target_code}：目標語言代碼</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source}：來源語言  {source_code}：來源語言代碼  {target}：目標語言  {target_code}：目標語言代碼</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">進階</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">啟用</sys:String>

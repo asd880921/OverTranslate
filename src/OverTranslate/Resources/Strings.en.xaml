@@ -264,8 +264,8 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.PromptAuto">Automatic</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">Chosen language</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">Reset to default</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintAuto">{target}: target language</sys:String>
-    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source}: source language  {target}: target language</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintAuto" xml:space="preserve">{target}: target language  {target_code}: target language code</sys:String>
+    <sys:String x:Key="S.Settings.PromptHintExplicit" xml:space="preserve">{source}: source language  {source_code}: source language code  {target}: target language  {target_code}: target language code</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">Advanced</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">Enable</sys:String>
