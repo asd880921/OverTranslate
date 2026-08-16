@@ -90,6 +90,24 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void APanelFallsBackToWhateverTheStripFractionCurrentlyIs()
+    {
+        // The direction issue #84 was opened about. A panel's first fallback is not a number of its
+        // own — it is StripFraction, so #81 moved it from 0.50 to 0.85 while measuring only
+        // subtitles. Stated against the constant rather than against 1568 so that this keeps saying
+        // what it means if the fraction moves again; what it pins is the coupling, which is the part
+        // that changes panel behaviour without anyone editing anything panel-shaped.
+        //
+        // Swept over 24 panel screens for #84, nothing regressed — and nothing could have, because
+        // the primary size read all 24, so no fallback ever ran. See NativeFraction's remarks: the
+        // chain is unharmed but unmeasured, not confirmed good.
+        var native = 1849;
+        var (_, fallbacks) = RealtimeDetectorSize.For(native, 1041, RealtimeBlockMode.Panel);
+
+        Assert.Equal([RoundToStride(native * RealtimeDetectorSize.StripFraction), native], fallbacks);
+    }
+
+    [Fact]
     public void ASizeThatWouldRepeatTheFirstAttemptIsNotTriedAgain()
     {
         var (primary, fallbacks) = RealtimeDetectorSize.For(1226, 196, RealtimeBlockMode.Subtitle);

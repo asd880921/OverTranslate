@@ -188,6 +188,31 @@ internal static class RealtimeDetectorSize
     /// not the whole story — a subtitle block that also caught a line of interface text, say. Native
     /// goes last as the only size that can read text too small to survive any downscale — it
     /// recovered nine lines in a single measured session.
+    ///
+    /// That coupling has a cost worth knowing about: raising <see cref="StripFraction"/> for #81
+    /// silently moved a PANEL's first fallback from 0.50 to 0.85, and #81 measured nothing but
+    /// subtitles. The worry was specific — 0.68 and 0.85 sit on the same side of the primary, so the
+    /// escape route DOWNWARDS disappeared, and <see cref="PanelFraction"/> records that 0.5 read
+    /// only 3 of 9 boxes on the shape it was measured on. If some panel could be read at 0.5 and
+    /// nowhere else, nothing would reach it any more.
+    ///
+    /// Swept for #84 over the panel corpus — 18 Japanese/English screens plus 9 Korean ones, the
+    /// latter cut to 6 after dropping screens whose text never exceeds the harness's 10-character
+    /// noise floor at any size — no such panel exists in it, and the question turns out to be moot
+    /// from one step earlier:
+    ///
+    /// <code>
+    ///   primary (0.68) read nothing, so a fallback ran   0 of 24
+    ///   0.50 read materially more than 0.85              0 of 24
+    /// </code>
+    ///
+    /// One Korean screen looked like the case being hunted (0.50 → 72 characters, 0.85 → 58) until
+    /// its whole sweep was read across: 56–82 characters with no trend, 82 at 0.40 and 56 at 0.55.
+    /// That is jitter with scale, not a fraction the content prefers.
+    ///
+    /// So the chain is unharmed, but note what the sweep actually says — on this corpus a panel's
+    /// fallbacks never run at all, which means their value here is unmeasured rather than confirmed.
+    /// What would move this is a panel the primary size fails on, and the corpus has none.
     /// </remarks>
     public const double NativeFraction = 1.0;
 
