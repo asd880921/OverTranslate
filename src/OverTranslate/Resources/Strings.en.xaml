@@ -204,6 +204,7 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.MovedToFront">Realtime windows brought to the front</sys:String>
     <sys:String x:Key="S.Realtime.TooManyBlocks">{0} blocks at most — remove one first</sys:String>
     <sys:String x:Key="S.Realtime.NeedOneBlock">Drag to create at least one block first</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceLost">The window being translated has closed — realtime translation stopped</sys:String>
     <sys:String x:Key="S.Realtime.CaptureNotIsolated">This system cannot hide the subtitle layers from screen capture, so the loop would read its own output back — not starting</sys:String>
     <sys:String x:Key="S.Realtime.NothingToCapture">No translations to capture yet</sys:String>
     <sys:String x:Key="S.Realtime.CaptureFailed">Could not capture the screen — try again</sys:String>
