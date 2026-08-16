@@ -2,7 +2,19 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <!-- Two separate questions, and they have had the same answer only by accident. The first half
+         is which Windows APIs may be named at all: realtime capture needs Windows.Graphics.Capture
+         as it stood in 1903 (Direct3D11CaptureFramePool.CreateFreeThreaded, GraphicsCaptureSession.
+         IsSupported), so the compile-time surface is 19041 — the projection is backward compatible,
+         and nothing here is bound at load time.
+
+         SupportedOSPlatformVersion is the half that decides who may run this, and it stays where it
+         was: OverTranslate still starts and still translates on Windows 10 1809. Raising it because
+         one feature wanted a newer API would take the whole application away from those users to
+         pay for something only realtime capture uses. The price is that every call newer than 1809
+         must be guarded — CA1416 will say so — which is the right conversation to be forced into. -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
