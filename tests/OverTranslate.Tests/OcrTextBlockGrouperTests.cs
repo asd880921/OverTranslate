@@ -280,4 +280,46 @@ public class OcrTextBlockGrouperTests
         var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
         Assert.Null(merged.Confidence);
     }
+
+    /// <summary>
+    /// The real bounds of a game panel whose description wraps onto a second line. The detector's
+    /// unclip expansion leaves the two boxes overlapping by 3px, and while a `verticalGap &lt; 0`
+    /// guard stood there they were translated apart — "…remaining in the" came back as 「每發子彈在」
+    /// and "magazine" as 「雜誌」. See issue #74.
+    /// </summary>
+    [Fact]
+    public void GroupsAWrappedLineWhoseBoxesOverlapByTheDetectorsExpansion()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Shots deal more damage for each bullet remaining in the", new Rect(700, 280, 570, 34)),
+            new("magazine", new Rect(698, 311, 109, 31)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.Equal(
+            "Shots deal more damage for each bullet remaining in the magazine", merged.Text);
+    }
+
+    /// <summary>
+    /// What the tolerance above must not let through: two boxes sharing a row overlap almost
+    /// completely, and joining them as though the second wrapped from the first would read a button
+    /// as the continuation of its neighbour. Far enough apart that the same-line merge does not take
+    /// them first, so this reaches the next-line test the way the real ones did.
+    /// </summary>
+    [Fact]
+    public void KeepsBoxesThatShareARowOutOfTheNextLineJoin()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("PICK UP", new Rect(10, 360, 67, 25)),
+            new("HOLD TO SALVAGE", new Rect(20, 361, 160, 25)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
+    }
 }
