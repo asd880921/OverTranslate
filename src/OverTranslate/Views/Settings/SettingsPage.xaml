@@ -500,17 +500,23 @@
                                             <Style x:Key="ParamName" TargetType="TextBlock" BasedOn="{StaticResource ParamText}">
                                                 <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
                                             </Style>
-                                            <!-- The header is the one row that is not data: a size up
-                                                 and dimmer, so it reads as the label of the column
-                                                 rather than the first entry in it. -->
+                                            <!-- The header is the one row that is not data, so it is a
+                                                 size up and sits on its own ground. The text itself is
+                                                 left alone — what separates the row is the fill behind
+                                                 it, not a dimmer word. -->
                                             <Style x:Key="ParamHeaderText" TargetType="TextBlock" BasedOn="{StaticResource ParamText}">
                                                 <Setter Property="FontSize" Value="12"/>
-                                                <Setter Property="Opacity" Value="0.6"/>
                                             </Style>
                                         </StackPanel.Resources>
 
-                                        <!-- Header -->
-                                        <Border BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1">
+                                        <!-- Header. AppHeaderBg rather than AppSurfaceBg: the light
+                                             theme paints surface and card the same white, so that one
+                                             would separate nothing there. The corners are one less
+                                             than the outer border's, so the fill sits inside it
+                                             instead of squaring off its top. -->
+                                        <Border Background="{DynamicResource AppHeaderBg}"
+                                                CornerRadius="5,5,0,0"
+                                                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1">
                                             <Grid Style="{StaticResource ParamRow}">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
