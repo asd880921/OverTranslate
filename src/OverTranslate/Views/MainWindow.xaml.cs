@@ -73,6 +73,27 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>
+    /// Binds the shortcuts the settings say should be live, highest priority first.
+    /// </summary>
+    /// <remarks>
+    /// Through <see cref="HotkeyBindings"/> rather than one <c>Register</c> call per shortcut,
+    /// because two of them can want the same combination and Windows resolves that badly: it keys a
+    /// registration by window and combination, so the second claim is refused, <c>RegisterHotKey</c>
+    /// returns false, and nothing else happens — one shortcut stops working and no code here would
+    /// know which. Which one lost would also be whichever happened to be registered second, an
+    /// ordering nobody chose.
+    ///
+    /// The settings page refuses to RECORD a combination another shortcut holds, so this is not
+    /// reachable by editing. It is reachable two other ways, and both are the point: settings.json is
+    /// a text file someone can edit, and shipping a new shortcut hands every existing installation a
+    /// default it never agreed to — anyone already using that combination for something else would
+    /// have had one of the two go quiet.
+    ///
+    /// A shortcut with no action yet is simply absent from the table below rather than registered
+    /// against nothing: claiming a combination globally takes it away from every other application,
+    /// which is a real cost to pay for a key that would do nothing.
+    /// </remarks>
     private void RegisterHotkey()
     {
         var settings = SettingsService.Instance.Current;
@@ -80,17 +101,41 @@ public partial class MainWindow : Window
 
         _hotkey = new GlobalHotkey(GlobalHotkey.CaptureId);
         _hotkey.HotkeyPressed += OnHotkeyPressed;
-        _hotkey.Register(hwnd, settings.HotkeyModifiers, settings.HotkeyVirtualKey);
 
         // Deliberately quiet, unlike the one above: no startup notification and nothing in the
         // interface naming it. It saves a trip to the tray for a user who already knows it is
         // there, and a user who does not loses nothing by never finding it.
         _windowHotkey = new GlobalHotkey(GlobalHotkey.TranslationWindowId);
         _windowHotkey.HotkeyPressed += OnTranslationWindowHotkeyPressed;
-        _windowHotkey.Register(
-            hwnd,
-            settings.TranslationWindowHotkeyModifiers,
-            settings.TranslationWindowHotkeyVirtualKey);
+
+        var hooks = new Dictionary<HotkeyAction, GlobalHotkey>
+        {
+            [HotkeyAction.Capture] = _hotkey,
+            [HotkeyAction.TranslationWindow] = _windowHotkey,
+        };
+
+        foreach (var binding in HotkeyBindings.Resolve(settings))
+        {
+            if (!hooks.TryGetValue(binding.Action, out var hook)) continue;
+
+            if (binding.ShadowedBy is { } holder)
+            {
+                // Warn rather than Debug: the user pressed a key and nothing happened, and this line
+                // is the only place that says why.
+                Log.Warn(
+                    "Hotkey {Action} not registered: {Holder} already claims that combination",
+                    binding.Action, holder);
+                continue;
+            }
+
+            if (!binding.Enabled)
+            {
+                Log.Info("Hotkey {Action} is switched off in settings", binding.Action);
+                continue;
+            }
+
+            hook.Register(hwnd, binding.Modifiers, binding.VirtualKey);
+        }
     }
 
     private void ShowStartupBalloon()
