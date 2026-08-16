@@ -304,6 +304,45 @@ public class OcrTextBlockGrouperTests
     }
 
     /// <summary>
+    /// A stack of menu entries has the shape the width rule looks for — a longer label above a
+    /// shorter one, aligned, evenly spaced — without being a sentence at all. These are the real
+    /// bounds of 「キャラクター強化」over「所持品」in a game menu; joining them handed the translator
+    /// one invented phrase and squeezed both labels into a single bubble. See issue #75.
+    /// </summary>
+    [Fact]
+    public void KeepsStackedMenuLabelsSeparate()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("キャラクター強化", new Rect(166, 476, 233, 36)),
+            new("所持品", new Rect(165, 539, 94, 38)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
+    }
+
+    /// <summary>
+    /// And what that must not cost: a real wrapped sentence, whose first line is long because it
+    /// ran out of room. Real bounds from the same corpus as the menu above.
+    /// </summary>
+    [Fact]
+    public void StillGroupsASentenceLongEnoughToHaveWrapped()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("그랑 사이퍼의 갑판에 있는 연습용 더미를 조사하면", new Rect(354, 427, 564, 30)),
+            new("플레이할 수 있습니다", new Rect(355, 478, 248, 29)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    /// <summary>
     /// What the tolerance above must not let through: two boxes sharing a row overlap almost
     /// completely, and joining them as though the second wrapped from the first would read a button
     /// as the continuation of its neighbour. Far enough apart that the same-line merge does not take
