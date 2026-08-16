@@ -304,6 +304,48 @@ public class OcrTextBlockGrouperTests
     }
 
     /// <summary>
+    /// The real shape of the MAG SHOT panel: "magazine" has no ascender, so its box came back 26px
+    /// under the 30px line it wraps from — 0.867, refused by 0.013 — while the letters themselves
+    /// are all but the same size. Comparing the glyph heights the engine reports instead reads
+    /// 0.937 and the line survives. See issue #79.
+    /// </summary>
+    [Fact]
+    public void GroupsAWrappedLineWhoseBoxIsShortForWantOfAnAscender()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Shots deal more damage for each bullet remaining in the",
+                new Rect(111, 78, 566, 30), SourceGlyphHeight: 16),
+            new("magazine", new Rect(112, 108, 105, 26), SourceGlyphHeight: 15),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.Equal(
+            "Shots deal more damage for each bullet remaining in the magazine", merged.Text);
+    }
+
+    /// <summary>
+    /// And the case that keeps the swap honest: boxes near enough in height to pass the old test,
+    /// holding text of visibly different sizes. A save-slot stamp over a character name did this —
+    /// boxes 0.83 apart, letters 0.58. Reading the glyphs is what tells them apart.
+    /// </summary>
+    [Fact]
+    public void KeepsLinesOfDifferentTextSizesApartEvenWhenTheirBoxesMatch()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("2026/07/24 23:29 AUTO SAVE", new Rect(40, 40, 300, 35), SourceGlyphHeight: 20),
+            new("Narmaya", new Rect(41, 79, 90, 29), SourceGlyphHeight: 11.6),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
+    }
+
+    /// <summary>
     /// A stack of menu entries has the shape the width rule looks for — a longer label above a
     /// shorter one, aligned, evenly spaced — without being a sentence at all. These are the real
     /// bounds of 「キャラクター強化」over「所持品」in a game menu; joining them handed the translator
