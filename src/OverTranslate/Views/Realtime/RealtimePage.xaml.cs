@@ -73,8 +73,9 @@ public partial class RealtimePage : UserControl
     /// </summary>
     private const TranslationProvider DefaultProvider = TranslationProvider.Microsoft;
 
-    private const int MinBlocks = 1;
-    private const int MaxBlocks = 3;
+    // Shared with the shortcut path, which has to offer the same range without this page open.
+    private const int MinBlocks = RealtimeQuickStart.MinBlocks;
+    private const int MaxBlocks = RealtimeQuickStart.MaxBlocks;
 
     private int _blockCount = MinBlocks;
 
@@ -138,9 +139,11 @@ public partial class RealtimePage : UserControl
     private void ApplyPageDefaults()
     {
         var settings = SettingsService.Instance.Current;
-        var storedSource = LanguageData.GetValidOcrSourceCode(settings.RealtimeSourceLanguage);
+        // Never null any more: the picker used to be left blank so that only a language the user
+        // chose was ever used, and the shortcut has no page on which to ask. Anything unusable —
+        // blank from an older settings file, 自動 from a hand-edited one — resolves to the default.
         SrcLangBox.SelectedValue =
-            LanguageData.IsAutomaticSource(storedSource) ? null : storedSource;
+            LanguageData.GetValidRealtimeSourceCode(settings.RealtimeSourceLanguage);
         TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(
             settings.RealtimeTargetLanguage);
         if (TgtLangBox.SelectedValue == null)
@@ -151,6 +154,10 @@ public partial class RealtimePage : UserControl
             ProviderBox.SelectedValue = DefaultProvider;
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
         RenderProviderHint();
+
+        // Clamped rather than trusted: this is a settings-file value and the stepper's range is the
+        // one that has to hold. RenderBlockCount runs later, from Reload.
+        _blockCount = Math.Clamp(settings.RealtimeBlockCount, MinBlocks, MaxBlocks);
     }
 
     /// <summary>
@@ -515,6 +522,10 @@ public partial class RealtimePage : UserControl
         if (next == _blockCount) return;
 
         _blockCount = next;
+
+        // Kept, unlike the rest of a sitting: the shortcut has to offer the same number of blocks as
+        // this stepper and cannot read it off a page that is not open. See AppSettings.
+        SaveTranslationPreference(settings => settings.RealtimeBlockCount = next);
 
         // The blocks kept from the last sitting were drawn to fill a different count, so they are
         // no longer an answer to the question being asked. Dropped as the count moves rather than

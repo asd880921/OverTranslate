@@ -25,21 +25,72 @@ public class AppSettings
     public uint TranslationWindowHotkeyVirtualKey { get; set; } = 0x57;
 
     public string TranslationWindowHotkeyDisplay { get; set; } = "Ctrl+Alt+W";
+
+    /// <summary>
+    /// Whether the translation-window shortcut is registered at all.
+    /// </summary>
+    /// <remarks>
+    /// There is no matching field for the capture shortcut, and deliberately not: that one is the
+    /// feature the application exists for, so its checkbox is ticked and disabled rather than backed
+    /// by a value. A stored flag that must always be true is a way to end up with it false.
+    /// </remarks>
+    public bool TranslationWindowHotkeyEnabled { get; set; } = true;
+
+    /// <summary>
+    /// The shortcut that adds an 即時翻譯 block. Ctrl+Alt+S by default.
+    /// </summary>
+    /// <remarks>
+    /// Stored as the same three fields as the two shortcuts above — the modifiers and key Windows is
+    /// given, plus the text the settings page shows — because the display string cannot be derived
+    /// from the other two without a key-name table, and the recorder already has the user's own
+    /// spelling of it at the moment they press the combination.
+    /// </remarks>
+    public uint RealtimeHotkeyModifiers { get; set; } = 3;
+
+    /// <inheritdoc cref="RealtimeHotkeyModifiers"/>
+    public uint RealtimeHotkeyVirtualKey { get; set; } = 0x53;
+
+    /// <inheritdoc cref="RealtimeHotkeyModifiers"/>
+    public string RealtimeHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
+
+    /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
+    public bool RealtimeHotkeyEnabled { get; set; } = true;
+
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;
     /// <summary>
-    /// The language 即時翻譯 reads from, or empty for "not chosen yet".
+    /// The language 即時翻譯 reads from.
     /// </summary>
     /// <remarks>
-    /// Empty rather than <see cref="LanguageData.DefaultOcrSourceLanguage"/>, which is 自動 — a mode
-    /// the realtime picker deliberately does not offer, because recognition there gets one look at a
-    /// frame and no retry. A blank field asks the question; a default would answer it badly. Only a
-    /// language the user picked themselves is ever written here, so what comes back is always an
-    /// answer they gave once.
+    /// English rather than <see cref="LanguageData.DefaultOcrSourceLanguage"/>, which is 自動: the
+    /// realtime picker does not offer that mode, because recognition there gets one look at a frame
+    /// and no retry.
+    ///
+    /// This was deliberately blank once, on the reasoning that a guessed source language is worse
+    /// than a question — a blank field asks, a default answers badly. It was changed because the
+    /// question had to be asked from somewhere, and the shortcut that opens block framing has no
+    /// page to ask from; the alternative was a notification refusing to start, which is friction on
+    /// every first use to protect against a setting one trip to the page fixes.
+    ///
+    /// The cost is real and worth writing down: someone whose content is not English, who never
+    /// opens the realtime page and starts from the shortcut, gets English recognition over it and
+    /// nothing says why. See <see cref="LanguageData.GetValidRealtimeSourceCode"/>, which is where a
+    /// blank from before this default is resolved.
     /// </remarks>
-    public string RealtimeSourceLanguage { get; set; } = "";
+    public string RealtimeSourceLanguage { get; set; } = LanguageData.DefaultRealtimeSourceLanguage;
     public string RealtimeTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
+
+    /// <summary>
+    /// How many blocks a session is set up to frame, 1–3.
+    /// </summary>
+    /// <remarks>
+    /// Kept, unlike everything else about a sitting, because the shortcut has to answer the same
+    /// question the page's stepper does and cannot read it off a page that is not open. Without this
+    /// the shortcut would always offer one block while the button offered three, which is the same
+    /// control giving two different answers.
+    /// </remarks>
+    public int RealtimeBlockCount { get; set; } = 1;
     public TranslationProvider RealtimeProvider { get; set; } = TranslationProvider.Microsoft;
     public string ApiKey { get; set; } = "";
     /// <summary>

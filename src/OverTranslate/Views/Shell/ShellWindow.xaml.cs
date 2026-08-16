@@ -31,6 +31,17 @@ public partial class ShellWindow : Window
     private static ShellWindow? _instance;
 
     /// <summary>
+    /// The open shell, or null when it is closed to the tray.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="ShowOrActivate"/> this never creates one. A shortcut that starts 即時翻譯
+    /// needs to hand the shell over to be hidden when it happens to be open, and must not conjure a
+    /// window to hide when it is not — the session is about to cover the screen either way.
+    /// Reliable because <see cref="OnClosed"/> clears it.
+    /// </remarks>
+    public static ShellWindow? Current => _instance;
+
+    /// <summary>
     /// The shell's dimensions from the last time it was open, for as long as the process lives.
     /// </summary>
     /// <remarks>

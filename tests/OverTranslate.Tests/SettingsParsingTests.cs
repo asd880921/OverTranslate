@@ -34,9 +34,12 @@ public class SettingsParsingTests
         Assert.Equal(LanguageData.DefaultTargetLanguage, settings.RealtimeTargetLanguage);
         Assert.Equal(TranslationProvider.Microsoft, settings.RealtimeProvider);
 
-        // Empty rather than 自動: the realtime picker does not offer that mode, so a default here
-        // would put a value in the box that the user cannot have chosen and cannot see is wrong.
-        Assert.Equal("", settings.RealtimeSourceLanguage);
+        // English rather than 自動, which the realtime picker does not offer. This was empty on
+        // purpose once — a blank asks the question instead of answering it badly — and stopped being
+        // so when the shortcut arrived, because a shortcut has no page on which to ask. What it
+        // must never be is 自動; see LanguageData.GetValidRealtimeSourceCode.
+        Assert.Equal(LanguageData.DefaultRealtimeSourceLanguage, settings.RealtimeSourceLanguage);
+        Assert.False(LanguageData.IsAutomaticSource(settings.RealtimeSourceLanguage));
         Assert.Equal("JA", settings.TargetLanguage);
         Assert.Equal(TranslationProvider.DeepL, settings.Provider);
     }
@@ -194,6 +197,12 @@ public class SettingsParsingTests
             SaveScreenshotToDisk = true,
             ScreenshotSavePath = @"D:\shots",
             RealtimeGuidanceExpanded = false,
+            TranslationWindowHotkeyEnabled = false,
+            RealtimeHotkeyModifiers = 5,
+            RealtimeHotkeyVirtualKey = 0x44,
+            RealtimeHotkeyDisplay = "Ctrl+Shift+D",
+            RealtimeHotkeyEnabled = false,
+            RealtimeBlockCount = 3,
         });
 
         var settings = SettingsService.Parse(written);
@@ -215,6 +224,24 @@ public class SettingsParsingTests
         Assert.True(settings.SaveScreenshotToDisk);
         Assert.Equal(@"D:\shots", settings.ScreenshotSavePath);
         Assert.False(settings.RealtimeGuidanceExpanded);
+        Assert.False(settings.TranslationWindowHotkeyEnabled);
+        Assert.Equal(5u, settings.RealtimeHotkeyModifiers);
+        Assert.Equal(0x44u, settings.RealtimeHotkeyVirtualKey);
+        Assert.Equal("Ctrl+Shift+D", settings.RealtimeHotkeyDisplay);
+        Assert.False(settings.RealtimeHotkeyEnabled);
+        Assert.Equal(3, settings.RealtimeBlockCount);
+    }
+
+    // Written before either shortcut could be switched off: both have to come back on, or upgrading
+    // would silently disable two shortcuts the user still has.
+    [Fact]
+    public void MissingHotkeyEnabledSettings_StartOn()
+    {
+        var settings = SettingsService.Parse("""{"Theme":"Light"}""");
+
+        Assert.True(settings.TranslationWindowHotkeyEnabled);
+        Assert.True(settings.RealtimeHotkeyEnabled);
+        Assert.Equal("Ctrl+Alt+S", settings.RealtimeHotkeyDisplay);
     }
 
     // Expanded on a file written before the setting existed: someone who has never been shown the
