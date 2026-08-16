@@ -242,10 +242,24 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     }
 
     /// <summary>The placeholder a template uses for the language being translated out of.</summary>
-    internal const string SourcePlaceholder = "{source}";
+    internal const string SourcePlaceholder = "{source_name}";
 
     /// <summary>The placeholder a template uses for the language being translated into.</summary>
-    internal const string TargetPlaceholder = "{target}";
+    internal const string TargetPlaceholder = "{target_name}";
+
+    /// <summary>
+    /// What the name placeholders were called before the tags gained their own.
+    /// </summary>
+    /// <remarks>
+    /// Still substituted, and deliberately not advertised in the settings hint: a template someone
+    /// wrote before this change is sitting in their settings file, and dropping these would send the
+    /// model a literal "{source}" instead of a language. Nothing writes them any more, so the pair
+    /// only ever shrinks.
+    /// </remarks>
+    internal const string LegacySourcePlaceholder = "{source}";
+
+    /// <inheritdoc cref="LegacySourcePlaceholder"/>
+    internal const string LegacyTargetPlaceholder = "{target}";
 
     /// <summary>
     /// The placeholders for the language tags — <c>ja</c> rather than <c>Japanese</c>.
@@ -323,9 +337,10 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     internal static string DefaultPromptTemplate(bool automatic) =>
         UsesChinesePrompt()
             ? (automatic
-                ? $"從各種語言翻譯成{TargetPlaceholder} ({TargetCodePlaceholder})。" +
+                ? $"從各種語言翻譯成 {TargetPlaceholder} ({TargetCodePlaceholder})。" +
                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。"
-                : $"從{SourcePlaceholder} ({SourceCodePlaceholder})翻譯成{TargetPlaceholder} ({TargetCodePlaceholder})。" +
+                : $"從 {SourcePlaceholder} ({SourceCodePlaceholder}) " +
+                  $"翻譯成 {TargetPlaceholder} ({TargetCodePlaceholder})。" +
                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。")
             : (automatic
                 ? $"Translate the input text from any language to {TargetPlaceholder} ({TargetCodePlaceholder}). " +
@@ -363,14 +378,17 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
             ? (UsesChinesePrompt() ? "各種語言" : "any language")
             : LanguageData.GetSourceDisplayName(sourceLang);
 
+        var target = LanguageData.GetTargetDisplayName(targetLang);
+
         return template
             .Replace(SourceCodePlaceholder, automatic ? "" : LanguageData.GetModelLanguageTag(sourceLang),
                 StringComparison.OrdinalIgnoreCase)
             .Replace(TargetCodePlaceholder, LanguageData.GetModelLanguageTag(targetLang),
                 StringComparison.OrdinalIgnoreCase)
             .Replace(SourcePlaceholder, source, StringComparison.OrdinalIgnoreCase)
-            .Replace(TargetPlaceholder, LanguageData.GetTargetDisplayName(targetLang),
-                StringComparison.OrdinalIgnoreCase);
+            .Replace(TargetPlaceholder, target, StringComparison.OrdinalIgnoreCase)
+            .Replace(LegacySourcePlaceholder, source, StringComparison.OrdinalIgnoreCase)
+            .Replace(LegacyTargetPlaceholder, target, StringComparison.OrdinalIgnoreCase);
     }
 
     internal static string StripThinking(string value) => ThinkingBlock.Replace(value, "").Trim();

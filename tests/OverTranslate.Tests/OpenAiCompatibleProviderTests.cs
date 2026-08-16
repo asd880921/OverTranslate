@@ -72,7 +72,7 @@ public class OpenAiCompatibleProviderTests
         {
             var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", targetCode);
 
-            Assert.Contains($"從各種語言翻譯成{targetName} ({targetTag})", prompt);
+            Assert.Contains($"從各種語言翻譯成 {targetName} ({targetTag})", prompt);
             Assert.Contains("只回傳自然、人性化的翻譯結果", prompt);
             Assert.DoesNotContain("JSON", prompt);
             Assert.True(prompt.Length <= 80);
@@ -97,7 +97,7 @@ public class OpenAiCompatibleProviderTests
         {
             var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "EN-US");
 
-            Assert.Contains("從日語 (ja)翻譯成英語 (en)", prompt);
+            Assert.Contains("從 日語 (ja) 翻譯成 英語 (en)", prompt);
             Assert.DoesNotContain("Translate", prompt);
         });
     }
@@ -198,6 +198,21 @@ public class OpenAiCompatibleProviderTests
             Assert.Equal(
                 "You are a professional Japanese (ja) to English (en) translator.",
                 prompt);
+        });
+    }
+
+    // {source} / {target} were the names before the tags gained placeholders of their own. A template
+    // written back then is sitting in someone's settings file, and dropping the pair would send the
+    // model a literal "{source}" instead of a language.
+    [Fact]
+    public void BuildPrompt_StillFillsThePlaceholderNamesItUsedToAdvertise()
+    {
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt(
+                "JA", "EN-US", customExplicit: "from {source} to {target}");
+
+            Assert.Equal("from Japanese to English", prompt);
         });
     }
 

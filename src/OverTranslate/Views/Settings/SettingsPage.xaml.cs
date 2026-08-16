@@ -684,8 +684,7 @@ public partial class SettingsPage : UserControl
     }
 
     /// <summary>
-    /// Writes prose that mentions <c>{source}</c> or <c>{target}</c>, with those two picked out in
-    /// the accent colour.
+    /// Writes prose that mentions the prompt placeholders, with each picked out in the accent colour.
     /// </summary>
     /// <remarks>
     /// They are the only part of the sentence that is machinery rather than words — what the user
@@ -709,10 +708,15 @@ public partial class SettingsPage : UserControl
     /// </summary>
     private static IEnumerable<(string Text, bool IsPlaceholder)> SplitOnPlaceholders(string text)
     {
+        // All four, or the tag placeholders would be the only machinery in the sentence left looking
+        // like prose. None is a prefix of another once the closing brace is counted, so the
+        // earliest-match loop below cannot pick the wrong one.
         string[] tokens =
         [
             OpenAiCompatibleProvider.SourcePlaceholder,
             OpenAiCompatibleProvider.TargetPlaceholder,
+            OpenAiCompatibleProvider.SourceCodePlaceholder,
+            OpenAiCompatibleProvider.TargetCodePlaceholder,
         ];
 
         var index = 0;
