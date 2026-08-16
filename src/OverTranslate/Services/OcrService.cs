@@ -67,6 +67,29 @@ public class OcrService : IDisposable
     // the floor was measured, and where a frame arrives every 250ms so losing a doubtful reading
     // costs nothing. The screenshot path keeps everything — its user framed that capture once and
     // is waiting for it.
+    //
+    // "Costs nothing" is not quite free, and issue #85 is where the exception was measured. When the
+    // detector splits one subtitle line horizontally, the tail fragment can come back short and
+    // unconfident — a real ending, judged by a rule written for scenery — and because this runs
+    // before grouping, MergeSameLineFragments never gets to put it back on its sentence. The line
+    // reaches the screen a few characters short for one pass, then the next read finds it whole.
+    //
+    // The obvious fix is to filter after grouping, and the paragraph above is why that is worse. The
+    // narrower one — keep a doubtful fragment when the grouper would merge it into a line long
+    // enough to be real — was measured instead, with OcrHarness --reject-audit over 163 frames of
+    // the subtitle corpus that read anything:
+    //
+    //   fragments dropped        54
+    //     would have merged       1   conf=0.79, a 5-character tail joining a 19-character line
+    //     isolated               53   noise, and the narrowed rule would still drop every one
+    //
+    // So it would admit no noise here and rescue one fragment in 163 frames — 0.6%, matching the
+    // 2-in-307 measured on a live session in #85. That is not enough to move a rule standing on 45
+    // measured readings (see ShortReadingDetection: everything from 0.60 to 0.79 was scenery, no
+    // exceptions), and the corpus cannot say the carve-out is safe either: it contains no instance
+    // of the failure this ordering exists to prevent, so "no noise admitted" is an absence of the
+    // test case, not a pass. Left alone deliberately. What would reopen it is a corpus with scenery
+    // sitting on a subtitle's own row.
     private static List<OcrTextBlock> RejectUnconvincingBlocks(List<OcrTextBlock> blocks)
     {
         List<OcrTextBlock>? kept = null;

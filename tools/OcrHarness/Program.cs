@@ -26,6 +26,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same frame and size, a range of borders around it)");
     Console.Error.WriteLine("       OcrHarness --margin-sweep <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
+    Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (what the confidence filter drops, and what a line would have reclaimed)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
     Console.Error.WriteLine("       (add --panel / --lang KO / --size N / --det model.onnx:half to any sweep)");
     return 1;
@@ -754,6 +756,82 @@ if (args[0] == "--margin-sweep")
 // how wide the working band is. This is the measurement #22 step 0 asks for, and it only means
 // anything on frames whose contents are known — the dumped "rescued" frames, where the primary
 // size read nothing and a fallback read the subtitle fine.
+// What the confidence filter throws away, and whether any of it belonged to a real line.
+//
+// Issue #85: RejectUnconvincingBlocks runs BEFORE OcrTextBlockGrouper, so a low-confidence tail
+// fragment is gone before MergeSameLineFragments could join it back onto the sentence it came from
+// — the subtitle then reaches the screen a few characters short. Swapping the two is not available;
+// OcrService records why (a scenery box merged into a subtitle takes the subtitle down with it when
+// the merged box is judged a collapse).
+//
+// So the question is whether a narrower rule is worth writing, and that turns on WHAT such a rule
+// would let back in. This mode answers exactly that: for every fragment the filter drops, it runs
+// the real grouper over the UNFILTERED blocks and reports whether the fragment would have landed
+// inside a line long enough to be real. Those are the readings a carve-out would keep; everything
+// else is what it would still drop. Read the two lists before writing the rule, not after.
+if (args[0] == "--reject-audit")
+{
+    using var auditEngine = new OnnxOcrEngine();
+    int framesRead = 0, framesLosing = 0, droppedTotal = 0, wouldMerge = 0, isolated = 0;
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var size = harnessSize
+            ?? RealtimeDetectorSize.For(image.Width, image.Height, harnessMode).Primary;
+
+        // The engine directly, not OcrService: OcrService is where the filter lives, and these are
+        // the blocks as they exist before it runs.
+        var raw = await auditEngine.TryRecognizeAsync(image, harnessLanguage, size);
+        if (raw is null || raw.Count == 0) continue;
+
+        framesRead++;
+
+        var dropped = raw
+            .Where(block => ShortReadingDetection.IsUnconvincingShortText(block.Text, block.Confidence))
+            .ToList();
+        if (dropped.Count == 0) continue;
+
+        framesLosing++;
+        droppedTotal += dropped.Count;
+
+        var groupedUnfiltered = OcrTextBlockGrouper.Group(raw);
+
+        foreach (var block in dropped)
+        {
+            var fragment = block.Text.Trim();
+
+            // Whatever the grouper merged this fragment into is what it would have become. Long
+            // enough to be real is the same floor the filter itself uses, so the two rules are
+            // being compared on one scale rather than two.
+            var host = groupedUnfiltered.FirstOrDefault(group =>
+                group.Text.Contains(fragment, StringComparison.Ordinal) &&
+                group.Text.Trim().Length > fragment.Length &&
+                group.Text.Trim().Length >= ShortReadingDetection.ShortTextLength);
+
+            if (host is null) { isolated++; continue; }
+
+            wouldMerge++;
+            // The fragment itself, because the judgement this mode exists to support cannot be made
+            // from a count: a 3-character reading is either the end of a word or a scrap of scenery,
+            // and only looking at it says which.
+            Console.WriteLine(
+                $"  MERGES  {Path.GetFileName(path)} @{size}  conf={block.Confidence:0.00}  " +
+                $"\"{fragment}\" -> line of {host.Text.Trim().Length}ch");
+        }
+    }
+
+    Console.WriteLine(new string('=', 78));
+    Console.WriteLine($"frames read             : {framesRead}");
+    Console.WriteLine($"frames losing a fragment: {framesLosing}");
+    Console.WriteLine($"fragments dropped       : {droppedTotal}");
+    Console.WriteLine($"  would have merged     : {wouldMerge}   <- what a narrowed rule would keep");
+    Console.WriteLine($"  isolated              : {isolated}   <- what it would still drop");
+    return 0;
+}
+
 if (args[0] == "--scale-sweep")
 {
     var sweepArgs = args.Skip(1).ToList();
