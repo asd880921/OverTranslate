@@ -92,13 +92,15 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
+                                    <!-- Centred against both lines rather than aligned to the first:
+                                         it marks the note, not its opening sentence. -->
                                     <TextBlock Grid.Column="0"
                                                Text="&#xE946;"
                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="15"
+                                               FontSize="17"
                                                Foreground="{DynamicResource AppAccent}"
-                                               VerticalAlignment="Top"
-                                               Margin="0,1,10,0"/>
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,11,0"/>
                                     <StackPanel Grid.Column="1">
                                         <TextBlock Text="{DynamicResource S.Settings.HotkeyKinds}"
                                                    FontFamily="{StaticResource AppFont}"

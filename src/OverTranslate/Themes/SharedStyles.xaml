@@ -100,7 +100,7 @@
     <!--  hold sentences.                            -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="InfoCardBorder" TargetType="Border">
-        <Setter Property="Background"      Value="{DynamicResource AppAccentSubtle}"/>
+        <Setter Property="Background"      Value="{DynamicResource AppInfoBg}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource AppSubtleBorder}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius"    Value="6"/>
