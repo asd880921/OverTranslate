@@ -247,6 +247,8 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.Hotkeys">Shortcuts</sys:String>
     <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
     <sys:String x:Key="S.Settings.HotkeyEnable">Enable this shortcut</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with any key, or be a single function key, the middle mouse button, or an XInput gamepad button.</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+F2, F8, middle mouse. On its own, a key has to be a function key; middle mouse and the gamepad leave the game's own input alone.</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkey">Realtime block</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkeyHint">Press this shortcut to enter realtime [[block selection mode]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>

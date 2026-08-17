@@ -91,6 +91,24 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->
+    <!--  INFO CARD BORDER                           -->
+    <!--  A note the reader is not being asked to    -->
+    <!--  act on. Tinted with the accent rather than -->
+    <!--  outlined like the groups around it, so it  -->
+    <!--  reads as information at a glance instead   -->
+    <!--  of as one more control that happens to     -->
+    <!--  hold sentences.                            -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="InfoCardBorder" TargetType="Border">
+        <Setter Property="Background"      Value="{DynamicResource AppAccentSubtle}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource AppSubtleBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="Padding"         Value="12,10"/>
+        <Setter Property="Margin"          Value="0,0,0,14"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
     <!--  TRANSPARENCY CHECKER                       -->
     <!--  Backdrop for the subtitle preview: it says -->
     <!--  "whatever is behind this" without claiming -->

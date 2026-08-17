@@ -76,7 +76,44 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Hotkeys}" Style="{StaticResource SectionHeader}"/>
+                        <!-- The header and the note travel together in row 0, so the four shortcut
+                             rows below keep the row numbers they already had. -->
+                        <StackPanel Grid.Row="0">
+                            <TextBlock Text="{DynamicResource S.Settings.Hotkeys}" Style="{StaticResource SectionHeader}"/>
+
+                            <!-- What can be bound at all, said once at the top rather than four times
+                                 in the per-row hints. Each row already explains what its shortcut
+                                 does; this explains what a shortcut may be, which is the same answer
+                                 for all of them and is not obvious from a box that only ever shows
+                                 one combination. -->
+                            <Border Style="{StaticResource InfoCardBorder}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="&#xE946;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="15"
+                                               Foreground="{DynamicResource AppAccent}"
+                                               VerticalAlignment="Top"
+                                               Margin="0,1,10,0"/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{DynamicResource S.Settings.HotkeyKinds}"
+                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontSize="{StaticResource AppFontSize}"
+                                                   Foreground="{DynamicResource AppTextPrimary}"
+                                                   TextWrapping="Wrap"
+                                                   LineHeight="18"/>
+                                        <TextBlock Text="{DynamicResource S.Settings.HotkeyKindsExample}"
+                                                   Style="{StaticResource FieldHint}"
+                                                   Margin="0,4,0,0"
+                                                   LineHeight="16"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
 
                         <!-- Capture has no on/off tick at all: this is the feature the application
                              is for. Its last column is empty and still here, so the three rows'
