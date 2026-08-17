@@ -70,6 +70,10 @@ public partial class SettingsPage : UserControl
     /// and no setting behind it because that shortcut is the feature the application is for. Null
     /// here is what says "this row cannot be turned off".
     /// </param>
+    /// <param name="EnabledLabel">
+    /// The word beside the switch saying which way it is set. Null for the capture row, which has
+    /// no switch to describe.
+    /// </param>
     /// <param name="ShadowHint">
     /// Where to say that a higher-priority shortcut has taken this combination. Null for capture,
     /// which is the highest priority and so can never be the one shadowed.
@@ -86,7 +90,8 @@ public partial class SettingsPage : UserControl
         // Fully qualified: WinForms is also referenced here and has its own CheckBox.
         System.Windows.Controls.CheckBox? EnabledBox = null,
         Action<AppSettings, bool>? SetEnabled = null,
-        TextBlock? ShadowHint = null);
+        TextBlock? ShadowHint = null,
+        TextBlock? EnabledLabel = null);
 
     private HotkeyField[] _hotkeyFields = [];
 
@@ -120,7 +125,8 @@ public partial class SettingsPage : UserControl
                 AdvertisedInShell: false,
                 WindowHotkeyEnabledCheckBox,
                 (s, on) => s.TranslationWindowHotkeyEnabled = on,
-                WindowHotkeyShadowHint),
+                WindowHotkeyShadowHint,
+                WindowHotkeyEnabledLabel),
             new HotkeyField(
                 HotkeyAction.Realtime,
                 "S.Settings.RealtimeHotkey",
@@ -131,7 +137,8 @@ public partial class SettingsPage : UserControl
                 AdvertisedInShell: false,
                 RealtimeHotkeyEnabledCheckBox,
                 (s, on) => s.RealtimeHotkeyEnabled = on,
-                RealtimeHotkeyShadowHint),
+                RealtimeHotkeyShadowHint,
+                RealtimeHotkeyEnabledLabel),
             new HotkeyField(
                 HotkeyAction.RealtimePause,
                 "S.Settings.RealtimePauseHotkey",
@@ -142,7 +149,8 @@ public partial class SettingsPage : UserControl
                 AdvertisedInShell: false,
                 RealtimePauseHotkeyEnabledCheckBox,
                 (s, on) => s.RealtimePauseHotkeyEnabled = on,
-                RealtimePauseHotkeyShadowHint),
+                RealtimePauseHotkeyShadowHint,
+                RealtimePauseHotkeyEnabledLabel),
         ];
 
         _apiKeyDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
@@ -930,6 +938,12 @@ public partial class SettingsPage : UserControl
 
         field.Box.IsEnabled = on;
         field.Record.IsEnabled = on;
+
+        // Written here rather than beside the switch, because this is the one place both the load
+        // and the toggle already go through — and a switch whose word disagreed with it would be
+        // worse than no word at all.
+        if (field.EnabledLabel is { } label)
+            label.Text = LocalizationService.Get(on ? "S.Settings.HotkeyOn" : "S.Settings.HotkeyOff");
     }
 
     private void HotkeyEnabled_Toggled(object sender, RoutedEventArgs e)
