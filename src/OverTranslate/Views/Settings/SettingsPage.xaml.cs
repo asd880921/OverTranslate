@@ -1053,6 +1053,8 @@ public partial class SettingsPage : UserControl
 
     private void StartRecording(HotkeyField field)
     {
+        // Only one at a time: two boxes both asking to be pressed would leave the next key press
+        // ambiguous to the user long before it was ambiguous to the code.
         StopRecording();
 
         _recording = field;
@@ -1065,6 +1067,12 @@ public partial class SettingsPage : UserControl
         _hotkeyGamepadRecordTimer.Start();
     }
 
+    /// <summary>Ends recording and puts the stored trigger back in the box.</summary>
+    /// <remarks>
+    /// Reads the setting rather than remembering what was there, so this also serves as the way
+    /// back after a successful capture: the new value has been persisted by then, and restoring
+    /// from the settings shows it.
+    /// </remarks>
     private void StopRecording()
     {
         _hotkeyGamepadRecordTimer.Stop();
@@ -1191,6 +1199,18 @@ public partial class SettingsPage : UserControl
         }
     }
 
+    /// <remarks>
+    /// Windows keys a registration by window and combination, so the second shortcut to claim one is
+    /// simply refused — RegisterHotKey returns false and nothing else happens. Left to itself that
+    /// reads as a shortcut that stopped working for no reason, so the clash is refused here, where
+    /// there is something to say about it. Middle click and the controller are not registered with
+    /// Windows at all, but they go through the same refusal so that one button cannot silently do two
+    /// different things.
+    ///
+    /// A shortcut that is switched off does not hold its trigger — same rule as
+    /// <see cref="HotkeyBindings"/>, so what the page refuses and what actually gets registered
+    /// agree.
+    /// </remarks>
     private void CommitShortcut(HotkeyField recording, ShortcutTrigger trigger, string display)
     {
         var settings = SettingsService.Instance.Current;
@@ -1213,12 +1233,21 @@ public partial class SettingsPage : UserControl
         }
 
         Persist(s => recording.Apply(s, trigger, display));
+
+        // After the write, so the box picks the new trigger up out of the settings.
         StopRecording();
+
+        // Recording cannot create a clash — it is refused above — but it can clear one a stored
+        // setting arrived in, so the shadow lines are re-read rather than left as they were.
         RefreshHotkeyShadowHints();
 
+        // The global hook holds the old trigger until it is rebound.
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();
 
+        // The nav rail advertises the capture shortcut beside 截圖翻譯 and is on screen right now, so
+        // it has to be told; nothing else re-reads it until the shell is next shown or activated. The
+        // other shortcuts are advertised nowhere, so there is nothing to refresh.
         if (recording.AdvertisedInShell && Window.GetWindow(this) is Shell.ShellWindow shell)
             shell.RefreshHotkeyHint();
     }

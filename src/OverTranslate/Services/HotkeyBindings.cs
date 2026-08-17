@@ -59,7 +59,23 @@ public readonly record struct HotkeyBinding(
 /// Keyboard combinations are registered with RegisterHotKey; mouse middle and gamepad buttons are
 /// observed by the application's global input listener. They all share the same conflict resolver so
 /// "mouse middle" cannot silently do two different things, and the same is true of one gamepad
-/// button. Priority remains capture, translation window, realtime, then single-shot.
+/// button.
+///
+/// The keyboard half is where the cost of not resolving it shows. Windows keys a registration by
+/// window and combination, so the second claim on one is simply refused: <c>RegisterHotKey</c>
+/// returns false and nothing else happens. Which of the two loses is then whichever happened to be
+/// registered second, i.e. an ordering nobody chose.
+///
+/// The settings page already refuses to RECORD a trigger another shortcut holds, so a user cannot
+/// create the clash by hand. Stored settings can still arrive in one anyway, and that is what this
+/// exists for: adding <see cref="HotkeyAction.Realtime"/> gave every existing installation a
+/// Ctrl+Alt+S it never agreed to, and anyone who had already put Ctrl+Alt+S on the translation
+/// window would have had one of the two stop working with no explanation.
+/// <see cref="HotkeyAction.SingleShot"/> is the same event again, with Ctrl+Alt+D.
+///
+/// So the order is declared rather than discovered, and it runs from the feature the application is
+/// for down to the most recently added: capture, then the translation window, then realtime, then
+/// single-shot. A shortcut shadowed by a higher one is reported rather than silently dropped.
 /// </remarks>
 public static class HotkeyBindings
 {
@@ -166,6 +182,9 @@ public static class HotkeyBindings
         foreach (var (action, trigger, enabled) in declared)
         {
             HotkeyAction? shadowedBy = null;
+
+            // A disabled shortcut does not claim its trigger, so turning one off hands the trigger to
+            // whatever was shadowed by it rather than leaving it reserved.
             if (enabled)
             {
                 if (claimed.TryGetValue(trigger, out var holder)) shadowedBy = holder;

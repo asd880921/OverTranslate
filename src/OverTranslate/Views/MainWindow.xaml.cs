@@ -130,6 +130,8 @@ public partial class MainWindow : Window
         {
             if (binding.ShadowedBy is { } holder)
             {
+                // Warn rather than Debug: the user pressed a key and nothing happened, and this line
+                // is the only place that says why.
                 Log.Warn(
                     "Hotkey {Action} not registered: {Holder} already claims that trigger",
                     binding.Action, holder);

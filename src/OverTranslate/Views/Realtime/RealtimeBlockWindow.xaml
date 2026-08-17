@@ -10,12 +10,18 @@
         Focusable="False"
         IsHitTestVisible="False">
 
-    <!-- One window per watched block rather than a single desktop-spanning layer. Natural mode
-         refreshes only these small surfaces, so the repaired background can follow video/game
-         motion without redrawing a whole-screen overlay. -->
+    <!-- One window per watched block rather than a single desktop-spanning layer: a translucent
+         window is composed in software, so redrawing a subtitle-sized surface a few times a minute
+         costs nothing, while redrawing the whole desktop for the same change would not. Natural mode
+         leans on that further — it refreshes only these small surfaces, so a repaired background can
+         follow video or game motion without a whole-screen overlay being redrawn behind it. -->
     <Grid x:Name="LayerHost">
-        <!-- Every repaired background is drawn before any translated text, so overlapping source
-             areas can never paint over a translation that has already been laid out. -->
+        <!-- Every background is drawn before any text, so a line whose background overlaps the line
+             above can never cover that line's words. Two overlapping backgrounds sitting on each
+             other is fine — they are only there to hide what is underneath — but text disappearing
+             behind one is the feature failing at the only thing it does. The repaired patches make
+             that sharper than the translucent bands did: a patch is opaque, so it would not merely
+             darken a translation it covered. -->
         <Canvas x:Name="ScrimCanvas"/>
         <Canvas x:Name="TextCanvas"/>
     </Grid>
