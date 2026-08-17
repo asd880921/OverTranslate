@@ -110,18 +110,6 @@ public sealed class RealtimeTranslationSession
     private string _sourceLanguage = "";
     private string _targetLanguage = "";
 
-    // One-shot mode deliberately has its own memory rather than relying only on the translation
-    // cache. OCR of an unchanged game line is not byte-for-byte deterministic; this remembers the
-    // last joined reading and lets TextSimilarity decide that a tiny recognition wobble is still
-    // the same text, so showing the translation again does not hit the provider or visibly change
-    // wording just because one glyph was read differently.
-    private readonly Dictionary<int, SingleShotSnapshot> _singleShotSnapshots = [];
-    private CancellationTokenSource? _singleShotCts;
-
-    private sealed record SingleShotSnapshot(
-        string SourceText,
-        IReadOnlyList<TranslatedBlock> Lines);
-
     public RealtimeTranslationSession(OcrService ocr, TranslationService translation)
     {
         _ocr = ocr;
@@ -146,9 +134,6 @@ public sealed class RealtimeTranslationSession
     /// or ended by <see cref="Stop"/>.
     /// </summary>
     public bool IsPaused { get; private set; }
-
-    /// <summary>True while continuous polling is stopped and the user is toggling frozen one-shot results.</summary>
-    public bool IsSingleShotMode { get; private set; }
 
     public void Start(
         IReadOnlyList<RealtimeRegion> regions,
@@ -234,143 +219,6 @@ public sealed class RealtimeTranslationSession
     }
 
     /// <summary>
-    /// Stops continuous polling and enters the human-paced one-shot mode without releasing the OCR
-    /// model. The cache generation is advanced so a provider reply that belonged to the continuous
-    /// loop cannot arrive after the mode switch and paint stale text over the requested snapshot.
-    /// </summary>
-    /// <returns>The new generation used by one-shot results.</returns>
-    public int EnterSingleShotMode()
-    {
-        if (IsSingleShotMode) return _translationCache.Generation;
-
-        StopLoops();
-        _singleShotCts?.Cancel();
-        _singleShotCts?.Dispose();
-        _singleShotCts = null;
-
-        IsPaused = false;
-        IsSingleShotMode = true;
-        _ocr.SetKeepWarm(true);
-
-        var generation = _translationCache.Invalidate();
-        Log.Info("Realtime one-shot mode entered: continuous region loops stopped");
-        return generation;
-    }
-
-    /// <summary>Returns from one-shot mode to the ordinary continuous watcher.</summary>
-    public int ResumeContinuousFromSingleShot()
-    {
-        if (!IsSingleShotMode) return _translationCache.Generation;
-
-        _singleShotCts?.Cancel();
-        _singleShotCts?.Dispose();
-        _singleShotCts = null;
-
-        // A one-shot request may still be unwinding when the user presses Resume. Move generations
-        // before continuous polling starts so that request cannot paint after the mode changed.
-        var generation = _translationCache.Invalidate();
-        IsSingleShotMode = false;
-
-        Log.Info("Realtime one-shot mode ended: resuming continuous region loops");
-        Start(_regions, _sourceLanguage, _targetLanguage, _provider);
-        return generation;
-    }
-
-    /// <summary>
-    /// Reads every framed region exactly once. A region whose recognised wording is effectively the
-    /// same as the last one-shot uses the previous translated wording immediately; changed text is
-    /// translated normally and replaces that memory.
-    /// </summary>
-    /// <returns>Counts of reused, newly translated and empty regions.</returns>
-    public async Task<(int Reused, int Translated, int Empty)> CaptureSingleShotAsync()
-    {
-        if (!IsSingleShotMode) return (0, 0, 0);
-
-        _singleShotCts?.Cancel();
-        _singleShotCts?.Dispose();
-        _singleShotCts = new CancellationTokenSource();
-        var token = _singleShotCts.Token;
-        var generation = _translationCache.Generation;
-
-        var reusedCount = 0;
-        var translatedCount = 0;
-        var emptyCount = 0;
-
-        foreach (var region in _regions)
-        {
-            token.ThrowIfCancellationRequested();
-
-            try
-            {
-                SetBusy(true);
-                using var frame = GrabRegion(region.Bounds);
-                if (frame is null)
-                {
-                    emptyCount++;
-                    continue;
-                }
-
-                var recognized = await RecognizeSingleShotAsync(
-                    region, frame, _sourceLanguage, token);
-                if (recognized is null)
-                {
-                    // The continuous pass that was cancelled when one-shot mode was entered can
-                    // still own the last OCR slot for a brief moment. The helper retries before
-                    // reaching here; if it is still busy, leave this region alone rather than
-                    // pretending the screen was empty.
-                    continue;
-                }
-
-                var sourceText = string.Join('\n', recognized.Select(block => block.Text));
-                if (recognized.Count == 0 || string.IsNullOrWhiteSpace(sourceText))
-                {
-                    _singleShotSnapshots[region.Id] = new SingleShotSnapshot("", []);
-                    RaiseRegionUpdated(new RealtimeRegionUpdate(region.Id, [], generation));
-                    emptyCount++;
-                    ClearFailure();
-                    continue;
-                }
-
-                if (_singleShotSnapshots.TryGetValue(region.Id, out var previous) &&
-                    previous.Lines.Count == recognized.Count &&
-                    TextSimilarity.IsSameContent(sourceText, previous.SourceText))
-                {
-                    var reused = ReflowSingleShotTranslation(recognized, previous.Lines);
-                    _singleShotSnapshots[region.Id] = new SingleShotSnapshot(sourceText, reused);
-                    RaiseRegionUpdated(new RealtimeRegionUpdate(region.Id, reused, generation));
-                    reusedCount++;
-                    ClearFailure();
-                    continue;
-                }
-
-                var translated = await TranslateAsync(
-                    recognized, _sourceLanguage, _targetLanguage, generation, token);
-                if (translated is null) continue;
-
-                _singleShotSnapshots[region.Id] = new SingleShotSnapshot(sourceText, translated);
-                RaiseRegionUpdated(new RealtimeRegionUpdate(region.Id, translated, generation));
-                translatedCount++;
-                ClearFailure();
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Log.Warn(ex, "Realtime one-shot capture failed for region {Region}", region.Id);
-                ReportFailure(DescribeFailure(ex));
-            }
-            finally
-            {
-                SetBusy(false);
-            }
-        }
-
-        return (reusedCount, translatedCount, emptyCount);
-    }
-
-    /// <summary>
     /// Starts watching again after <see cref="Pause"/>, with the blocks, languages and engine the
     /// session was started with.
     /// </summary>
@@ -390,12 +238,7 @@ public sealed class RealtimeTranslationSession
     public void Stop()
     {
         StopLoops();
-        _singleShotCts?.Cancel();
-        _singleShotCts?.Dispose();
-        _singleShotCts = null;
-        _singleShotSnapshots.Clear();
         IsPaused = false;
-        IsSingleShotMode = false;
     }
 
     private void StopLoops()
@@ -549,68 +392,6 @@ public sealed class RealtimeTranslationSession
     /// Unchanged can be told apart from a genuinely new line that the tolerance swallowed.</param>
     private readonly record struct PassReading(
         PassOutcome Outcome, int OcrMs, int Lines, int SourceLength, int RenderedLength);
-
-    /// <summary>Recognition path used by the explicit one-shot request.</summary>
-    private async Task<List<OcrTextBlock>?> RecognizeSingleShotAsync(
-        RealtimeRegion region,
-        Bitmap frame,
-        string sourceLanguage,
-        CancellationToken token)
-    {
-        var (primarySize, fallbackSizes) =
-            RealtimeDetectorSize.For(frame.Width, frame.Height, region.Mode);
-
-        List<OcrTextBlock>? recognized = null;
-        // A cancelled continuous pass may still be unwinding through native OCR when the hotkey is
-        // pressed. A one-shot request is human-paced, so waiting a few short turns for that slot is
-        // preferable to making the press appear to do nothing.
-        for (var attempt = 0; attempt < 6 && recognized is null; attempt++)
-        {
-            recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, primarySize, token);
-            if (recognized is null) await Task.Delay(70, token);
-        }
-
-        if (recognized is null) return null;
-
-        recognized = RejectCollapsedBlocks(recognized, frame.Height, region.Id);
-        recognized = RejectShortReadings(recognized, region.Id);
-
-        foreach (var retrySize in fallbackSizes)
-        {
-            if (recognized.Count > 0) break;
-
-            var retried = await _ocr.TryRecognizeAsync(frame, sourceLanguage, retrySize, token);
-            if (retried is null) continue;
-
-            retried = RejectCollapsedBlocks(retried, frame.Height, region.Id);
-            retried = RejectShortReadings(retried, region.Id);
-            if (retried.Count > 0) recognized = retried;
-        }
-
-        return recognized;
-    }
-
-    /// <summary>
-    /// Keeps the already-translated wording but attaches it to this fresh OCR pass's rectangles.
-    /// This is why hiding and showing the same line remains natural even when a game nudges its text
-    /// by a pixel between the two key presses.
-    /// </summary>
-    private static List<TranslatedBlock> ReflowSingleShotTranslation(
-        IReadOnlyList<OcrTextBlock> current,
-        IReadOnlyList<TranslatedBlock> previous)
-    {
-        var result = new List<TranslatedBlock>(current.Count);
-        for (var i = 0; i < current.Count; i++)
-        {
-            var block = current[i];
-            var old = previous[i];
-            result.Add(new TranslatedBlock(
-                block.Text, old.TranslatedText, block.Bounds,
-                block.SourceLineBounds, block.SourceGlyphHeight,
-                old.BackgroundColor, old.TextColor));
-        }
-        return result;
-    }
 
     /// <summary>
     /// Reads one frame and decides what the region now shows. Everything here is bounded work the

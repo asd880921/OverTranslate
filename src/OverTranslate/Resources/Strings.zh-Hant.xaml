@@ -208,12 +208,6 @@
     <sys:String x:Key="S.Realtime.StartTranslating">開始翻譯</sys:String>
     <sys:String x:Key="S.Realtime.Running">即時翻譯中</sys:String>
     <sys:String x:Key="S.Realtime.Paused">已暫停</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotShown">單次翻譯 · 已顯示</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotOriginal">單次翻譯 · 原文</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotResume">恢復連續即時翻譯</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotReused">文字未變，沿用上次翻譯</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotNoText">目前區塊沒有辨識到文字</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotOnlyWhileRunning">請先開始即時翻譯，再使用單次翻譯快捷鍵</sys:String>
     <sys:String x:Key="S.Realtime.Pause">暫停即時翻譯</sys:String>
     <sys:String x:Key="S.Realtime.Resume">繼續即時翻譯</sys:String>
     <sys:String x:Key="S.Realtime.CaptureScreenshot">擷取畫面截圖</sys:String>

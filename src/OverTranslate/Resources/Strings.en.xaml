@@ -196,12 +196,6 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.StartTranslating">Start</sys:String>
     <sys:String x:Key="S.Realtime.Running">Translating</sys:String>
     <sys:String x:Key="S.Realtime.Paused">Paused</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotShown">One-shot · translation shown</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotOriginal">One-shot · original</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotResume">Resume continuous realtime translation</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotReused">Text unchanged — reused the previous translation</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotNoText">No readable text was found in the current block</sys:String>
-    <sys:String x:Key="S.Realtime.SingleShotOnlyWhileRunning">Start realtime translation before using the one-shot shortcut</sys:String>
     <sys:String x:Key="S.Realtime.Pause">Pause realtime translation</sys:String>
     <sys:String x:Key="S.Realtime.Resume">Resume realtime translation</sys:String>
     <sys:String x:Key="S.Realtime.CaptureScreenshot">Capture a screenshot</sys:String>

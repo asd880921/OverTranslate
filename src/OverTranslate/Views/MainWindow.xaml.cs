@@ -24,7 +24,6 @@ public partial class MainWindow : Window
     private GlobalHotkey? _hotkey;
     private GlobalHotkey? _windowHotkey;
     private GlobalHotkey? _realtimeHotkey;
-    private GlobalHotkey? _singleShotHotkey;
     private GlobalAuxiliaryHotkeys? _auxiliaryHotkeys;
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
@@ -114,15 +113,11 @@ public partial class MainWindow : Window
         _realtimeHotkey = new GlobalHotkey(GlobalHotkey.RealtimeId);
         _realtimeHotkey.HotkeyPressed += OnRealtimeHotkeyPressed;
 
-        _singleShotHotkey = new GlobalHotkey(GlobalHotkey.SingleShotId);
-        _singleShotHotkey.HotkeyPressed += OnSingleShotHotkeyPressed;
-
         var hooks = new Dictionary<HotkeyAction, GlobalHotkey>
         {
             [HotkeyAction.Capture] = _hotkey,
             [HotkeyAction.TranslationWindow] = _windowHotkey,
             [HotkeyAction.Realtime] = _realtimeHotkey,
-            [HotkeyAction.SingleShot] = _singleShotHotkey,
         };
 
         var resolved = HotkeyBindings.Resolve(settings);
@@ -180,9 +175,6 @@ public partial class MainWindow : Window
             case HotkeyAction.Realtime:
                 OnRealtimeHotkeyPressed(this, EventArgs.Empty);
                 break;
-            case HotkeyAction.SingleShot:
-                OnSingleShotHotkeyPressed(this, EventArgs.Empty);
-                break;
         }
     }
 
@@ -231,7 +223,6 @@ public partial class MainWindow : Window
         _hotkey?.Unregister();
         _windowHotkey?.Unregister();
         _realtimeHotkey?.Unregister();
-        _singleShotHotkey?.Unregister();
         _auxiliaryHotkeys?.Dispose();
         _auxiliaryHotkeys = null;
         RegisterHotkey();
@@ -277,27 +268,6 @@ public partial class MainWindow : Window
         // means there is nothing to put away.
         RealtimeSessionController.Instance.Start(request, ShellWindow.Current);
     }
-
-    /// <summary>
-    /// Toggles one-shot translation while a realtime session is running. The first press stops the
-    /// continuous watcher and translates the already-framed regions once; the next press removes
-    /// the overlay so the original can be read. Later presses OCR once again and reuse the last
-    /// translation when the recognised wording is effectively unchanged.
-    /// </summary>
-    private void OnSingleShotHotkeyPressed(object? sender, EventArgs e) =>
-        Dispatcher.Invoke(async () =>
-        {
-            var realtime = RealtimeSessionController.Instance;
-            if (!realtime.IsTranslating)
-            {
-                ShowTrayNotification(
-                    LocalizationService.Get("S.Realtime.Title"),
-                    LocalizationService.Get("S.Realtime.SingleShotOnlyWhileRunning"));
-                return;
-            }
-
-            await realtime.ToggleSingleShotAsync();
-        });
 
     /// <summary>
     /// Starts a capture, or — during a realtime session — pauses and resumes that session instead.
@@ -1047,7 +1017,6 @@ public partial class MainWindow : Window
         _hotkey?.Dispose();
         _windowHotkey?.Dispose();
         _realtimeHotkey?.Dispose();
-        _singleShotHotkey?.Dispose();
         _auxiliaryHotkeys?.Dispose();
         _auxiliaryHotkeys = null;
         if (_notifyIcon != null)
