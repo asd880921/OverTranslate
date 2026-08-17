@@ -257,7 +257,10 @@ internal sealed class RealtimeSessionController
             _session.RegionUpdated -= OnRegionUpdated;
             _session.Failed -= OnSessionFailed;
             _session.BusyChanged -= OnBusyChanged;
-            _session.Stop();
+
+            // The one press that means "done with this": the recogniser's memory goes back here
+            // rather than on 暫停, which means "not now" and is followed by 繼續 wanting it again.
+            _session.Stop(releaseRecogniser: true);
             _session = null;
         }
 

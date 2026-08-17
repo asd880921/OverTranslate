@@ -181,8 +181,7 @@ public sealed class RealtimeTranslationSession
     }
 
     /// <summary>
-    /// Stops watching the screen without ending the session, and gives the recognition model's
-    /// memory back straight away.
+    /// Stops watching the screen without ending the session.
     /// </summary>
     /// <remarks>
     /// For the scene the user does not want translated: a cutscene they have already read, a menu
@@ -190,10 +189,15 @@ public sealed class RealtimeTranslationSession
     /// the session would work too, and would cost them their blocks and a trip back through the
     /// shell window to draw them again — this keeps the whole arrangement and only stops the work.
     ///
-    /// Everything a running session holds goes: the poll loops are cancelled, and the ONNX runtime
-    /// is released rather than left warm, because a paused session that keeps hundreds of MB alive
-    /// is indistinguishable from one that was never paused. Loading it again is what
-    /// <see cref="Resume"/> pays, and it is paid once at human pace.
+    /// The poll loops are cancelled; the recogniser is not. It used to be handed back here, on the
+    /// reasoning that a paused session holding hundreds of MB is indistinguishable from one that was
+    /// never paused — but the memory is not what the user is waiting for. Loading the model again was
+    /// measured at 575–1027ms against a steady state of 234ms
+    /// (see <see cref="Ocr.OnnxOcrEngine.SetKeepWarm"/>), and every millisecond of it lands inside
+    /// the first poll after 繼續, which is the one moment in a session where somebody is watching the
+    /// screen waiting for words to appear. A pause is "not now", and the arrangement is still framed
+    /// and still theirs; the press that means "done" is the one that ends the session, and that is
+    /// where the memory goes back — see <see cref="Stop"/>.
     ///
     /// What has already been translated does not go with it. An answer still in flight must not land
     /// on screen after the pause — the scene has moved on — but that is a statement about a pass, not
@@ -209,15 +213,16 @@ public sealed class RealtimeTranslationSession
         StopLoops();
         IsPaused = true;
 
-        // Not merely "stop keeping it warm": that leaves the model loaded for the inactivity delay,
-        // and the user has just said they are done with it for now.
-        _ocr.ReleaseModel();
+        // Put back after StopLoops turned it off: a paused session is still a session, and the model
+        // it will want in a moment is the one already loaded. A release queued by that turn-off is
+        // benign — ReleaseIdleRuntime checks this flag before disposing anything.
+        _ocr.SetKeepWarm(true);
 
         var generation = _translationCache.Fence();
 
         // Human-paced, and the first thing to check when a session is reported as having stopped
         // updating — unlike the per-poll traffic, which has to stay at Debug.
-        Log.Info("Realtime session paused: region loops stopped and the OCR model released");
+        Log.Info("Realtime session paused: region loops stopped, recogniser and translations kept");
         return generation;
     }
 
@@ -240,10 +245,18 @@ public sealed class RealtimeTranslationSession
         Start(_regions, _sourceLanguage, _targetLanguage, _provider);
     }
 
-    public void Stop()
+    /// <param name="releaseRecogniser">
+    /// Whether to hand the model's memory back now rather than leaving it to the inactivity timer.
+    /// True when the user has ended the session, false when this is the stop on the way back to block
+    /// framing — that one is nearly always followed by 開始翻譯 within seconds, and it would pay the
+    /// reload the pause above exists to avoid.
+    /// </param>
+    public void Stop(bool releaseRecogniser = false)
     {
         StopLoops();
         IsPaused = false;
+
+        if (releaseRecogniser) _ocr.ReleaseModel();
     }
 
     private void StopLoops()
