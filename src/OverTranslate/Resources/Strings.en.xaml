@@ -13,6 +13,7 @@
     <sys:String x:Key="S.Common.Record">Record</sys:String>
     <sys:String x:Key="S.Common.Cancel">Cancel</sys:String>
     <sys:String x:Key="S.Common.Edit">Edit</sys:String>
+    <sys:String x:Key="S.Common.Reset">Reset</sys:String>
     <sys:String x:Key="S.Common.Close">Close</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API key</sys:String>
 
@@ -167,6 +168,12 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.ScrimOpacity">Background opacity</sys:String>
     <sys:String x:Key="S.Realtime.ResetColors">Reset to defaults</sys:String>
     <sys:String x:Key="S.Realtime.ResetColorsName">Reset appearance</sys:String>
+    <sys:String x:Key="S.Realtime.AdvancedOptions">Advanced options</sys:String>
+    <sys:String x:Key="S.Realtime.NaturalBackground">Blend into the background</sys:String>
+    <sys:String x:Key="S.Realtime.NaturalBackgroundHint">Tries to remove the original text and rebuild the background from the surrounding picture, so the translation sits in the scene.</sys:String>
+    <sys:String x:Key="S.Realtime.SampleTextColor">Keep the original text colour</sys:String>
+    <sys:String x:Key="S.Realtime.SampleTextColorHint">Samples the original text's colour first, and uses the colour you set when recognition is unreliable.</sys:String>
+    <sys:String x:Key="S.Realtime.AdvancedOptionsCost">Advanced options need extra processing, so enabling them may affect performance.</sys:String>
 
     <sys:String x:Key="S.Realtime.HowItWorks">How it works</sys:String>
     <sys:String x:Key="S.Realtime.Step1">1. Click "Select blocks" and drag over the areas you want translated.</sys:String>

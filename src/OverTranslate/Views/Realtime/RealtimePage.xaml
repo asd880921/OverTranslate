@@ -119,144 +119,284 @@
                 <!-- ── 顯示外觀 ── -->
                 <!-- The one card on this page whose values are kept — see the class remarks for the
                      rule that separates these from the session parameters above. -->
-                <!-- The three controls share one row. They are the same kind of thing said three
-                     ways (a colour, a colour, and undo both), and stacking them made a card taller
-                     than the two settings it holds. -->
-                <!-- The two labels sit in a Grid above the row rather than inside each column, so
-                     they line up with their own control no matter how wide the hex text gets. -->
+                <!-- Four groups, one per kind of decision: what it will look like, the two colours,
+                     how heavy the band is, and the two effects that are off until asked for. The
+                     card held all of them in one column before, which read as one long list of
+                     unrelated controls; grouping is what tells the reader that the slider belongs to
+                     the colour above it and not to the switches below. -->
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource S.Realtime.Appearance}" Style="{StaticResource SectionHeader}"/>
 
-                        <!-- Preview first, above the two controls that feed it. A session hides the
-                             shell window, so this is the last moment the user can see the two
-                             colours together — after 選取翻譯區塊 there is no way back to this page
-                             without ending the session. Drawn on a mid-grey so a light scrim and a
-                             dark one are both visibly translucent; the real backdrop is whatever
-                             they are watching, which this cannot know. -->
-                        <TextBlock Text="{DynamicResource S.Realtime.Preview}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                        <!-- A fixed mid-grey in both themes, not a theme brush: the real backdrop is
-                             whatever the user is watching, and a preview that turned white in the
-                             light theme would make a white scrim look invisible and a black one look
-                             far heavier than it is. Grey is the one value that lies about neither. -->
-                        <Border x:Name="PreviewBackdrop"
-                                Height="52"
-                                CornerRadius="6"
-                                Margin="0,0,0,14"
-                                Background="#6E6E6E"
-                                ClipToBounds="True">
-                            <Border x:Name="PreviewScrim"
-                                    CornerRadius="3"
-                                    Padding="10,4"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center">
-                                <TextBlock x:Name="PreviewText"
-                                           Text="{DynamicResource S.Realtime.PreviewText}"
-                                           FontFamily="Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"/>
-                            </Border>
+                        <!-- Preview first, above the controls that feed it. A session hides the
+                             shell window, so this is the last moment the user can see their colours
+                             together — after 選取翻譯區塊 there is no way back to this page without
+                             ending the session. -->
+                        <Border Style="{StaticResource InnerGroupBorder}">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource S.Realtime.Preview}"
+                                           Style="{StaticResource FieldLabel}"
+                                           Margin="0,0,0,8"/>
+                                <!-- Checkered rather than filled: what is behind the band is a game
+                                     or a video this page cannot know, and a chequerboard says that
+                                     where a flat colour quietly claimed to be it. The two greys are
+                                     fixed in both themes — see TransparencyChecker for why. -->
+                                <Border x:Name="PreviewBackdrop"
+                                        Height="72"
+                                        CornerRadius="4"
+                                        Background="{StaticResource TransparencyChecker}"
+                                        ClipToBounds="True">
+                                    <Border x:Name="PreviewScrim"
+                                            CornerRadius="3"
+                                            Padding="14,6"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                        <TextBlock x:Name="PreviewText"
+                                                   Text="{DynamicResource S.Realtime.PreviewText}"
+                                                   FontFamily="Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif"
+                                                   FontSize="15"
+                                                   FontWeight="SemiBold"/>
+                                    </Border>
+                                </Border>
+                            </StackPanel>
                         </Border>
 
-                        <Grid HorizontalAlignment="Left">
+                        <!-- The two colours and the undo that acts on both, on one row: they are the
+                             same kind of thing said three ways, and stacking them made this taller
+                             than the settings it holds. The labels sit above their own control so
+                             they stay put however wide the hex text gets, and the divider says which
+                             label belongs to which swatch without a second border. -->
+                        <Border Style="{StaticResource InnerGroupBorder}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Realtime.TextColor}"
+                                           Style="{StaticResource FieldLabel}" Margin="2,0,0,6"/>
+                                <Button Grid.Column="0" Grid.Row="1"
+                                        x:Name="TextColorBtn"
+                                        Style="{StaticResource FlatButton}"
+                                        Height="34"
+                                        Padding="6,0"
+                                        Click="TextColorBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border x:Name="TextColorSwatch"
+                                                Width="20" Height="20"
+                                                CornerRadius="3"
+                                                BorderThickness="1"
+                                                BorderBrush="{DynamicResource AppBorder}"
+                                                VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TextColorValue"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,6,0"/>
+                                        <TextBlock Text="&#xE70D;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="10"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,2,0"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Border Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
+                                        Width="1"
+                                        Margin="16,2,16,2"
+                                        Background="{DynamicResource AppSubtleBorder}"/>
+
+                                <TextBlock Grid.Column="2" Grid.Row="0" Text="{DynamicResource S.Realtime.ScrimColor}"
+                                           Style="{StaticResource FieldLabel}" Margin="2,0,0,6"/>
+                                <Button Grid.Column="2" Grid.Row="1"
+                                        x:Name="ScrimColorBtn"
+                                        Style="{StaticResource FlatButton}"
+                                        Height="34"
+                                        Padding="6,0"
+                                        Click="ScrimColorBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border x:Name="ScrimColorSwatch"
+                                                Width="20" Height="20"
+                                                CornerRadius="3"
+                                                BorderThickness="1"
+                                                BorderBrush="{DynamicResource AppBorder}"
+                                                VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="ScrimColorValue"
+                                                   VerticalAlignment="Center"
+                                                   Margin="8,0,6,0"/>
+                                        <TextBlock Text="&#xE70D;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="10"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,2,0"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Labelled now rather than icon-only: it sits at the far end of a
+                                     wide row, where a lone glyph is a guess. Still on the controls'
+                                     row rather than under a label of its own, because it acts on
+                                     both of them instead of being a third setting. Available only
+                                     once something has been changed — a reset that would do nothing
+                                     still looks like it might, and the user has to press it to
+                                     find out. -->
+                                <Button Grid.Column="4" Grid.Row="0" Grid.RowSpan="2"
+                                        x:Name="ResetColorsBtn"
+                                        Style="{StaticResource IconButton}"
+                                        Width="Auto"
+                                        Height="32"
+                                        Padding="10,0"
+                                        VerticalAlignment="Center"
+                                        ToolTip="{DynamicResource S.Realtime.ResetColors}"
+                                        AutomationProperties.Name="{DynamicResource S.Realtime.ResetColorsName}"
+                                        Click="ResetColorsBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE72C;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="14"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text="{DynamicResource S.Common.Reset}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="7,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Label, slider and number on one line. The slider is the one control here
+                             the user sets by watching something else — the preview above is what
+                             tells them when the band is right — so it gets the whole width that is
+                             left, and the number keeps a fixed column so the track does not shift
+                             under the thumb as the value goes from 7% to 72%. -->
+                        <Border Style="{StaticResource InnerGroupBorder}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{DynamicResource S.Realtime.ScrimOpacity}"
+                                           Style="{StaticResource FieldLabel}"
+                                           Margin="2,0,16,0"/>
+                                <Slider Grid.Column="1"
+                                        x:Name="ScrimOpacitySlider"
+                                        Style="{StaticResource AppSlider}"
+                                        VerticalAlignment="Center"
+                                        Minimum="0"
+                                        Maximum="100"
+                                        TickFrequency="1"
+                                        IsSnapToTickEnabled="True"
+                                        AutomationProperties.Name="{DynamicResource S.Realtime.ScrimOpacity}"
+                                        ValueChanged="ScrimOpacitySlider_ValueChanged"/>
+                                <TextBlock Grid.Column="2"
+                                           x:Name="ScrimOpacityValue"
+                                           Style="{StaticResource FieldLabel}"
+                                           MinWidth="42"
+                                           TextAlignment="Right"
+                                           Margin="16,0,2,0"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Off until asked for, both of them, which is why they are a group of
+                             their own rather than two more controls above: everything above this
+                             describes a band the user chose the colours of, and everything in here
+                             replaces part of that with something read off the screen. -->
+                        <Border Style="{StaticResource InnerGroupBorder}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource S.Realtime.AdvancedOptions}"
+                                           Style="{StaticResource FieldLabel}"
+                                           Margin="0,0,0,8"/>
+
+                                <Border Style="{StaticResource ToggleRowBorder}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="&#xE91B;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="18"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="2,0,14,0"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{DynamicResource S.Realtime.NaturalBackground}"
+                                                       FontFamily="{StaticResource AppFont}"
+                                                       FontSize="{StaticResource AppFontSize}"
+                                                       Foreground="{DynamicResource AppTextPrimary}"/>
+                                            <TextBlock Text="{DynamicResource S.Realtime.NaturalBackgroundHint}"
+                                                       Style="{StaticResource FieldHint}"
+                                                       Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="2"
+                                                  x:Name="NaturalBackgroundToggle"
+                                                  Style="{StaticResource ToggleSwitch}"
+                                                  Margin="14,0,2,0"
+                                                  AutomationProperties.Name="{DynamicResource S.Realtime.NaturalBackground}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource ToggleRowBorder}" Margin="0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="&#xEF3C;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="18"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="2,0,14,0"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{DynamicResource S.Realtime.SampleTextColor}"
+                                                       FontFamily="{StaticResource AppFont}"
+                                                       FontSize="{StaticResource AppFontSize}"
+                                                       Foreground="{DynamicResource AppTextPrimary}"/>
+                                            <TextBlock Text="{DynamicResource S.Realtime.SampleTextColorHint}"
+                                                       Style="{StaticResource FieldHint}"
+                                                       Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="2"
+                                                  x:Name="SampleTextColorToggle"
+                                                  Style="{StaticResource ToggleSwitch}"
+                                                  Margin="14,0,2,0"
+                                                  AutomationProperties.Name="{DynamicResource S.Realtime.SampleTextColor}"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Outside the group rather than inside it: it is not a third option, it is
+                             what both of the two above cost. -->
+                        <Grid Margin="4,0,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Realtime.TextColor}"
-                                       Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                            <Button Grid.Column="0" Grid.Row="1"
-                                    x:Name="TextColorBtn"
-                                    Style="{StaticResource FlatButton}"
-                                    Height="34"
-                                    Padding="6,0"
-                                    Margin="0,0,10,0"
-                                    Click="TextColorBtn_Click">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border x:Name="TextColorSwatch"
-                                            Width="20" Height="20"
-                                            CornerRadius="3"
-                                            BorderThickness="1"
-                                            BorderBrush="{DynamicResource AppBorder}"
-                                            VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="TextColorValue"
-                                               VerticalAlignment="Center"
-                                               Margin="8,0,4,0"/>
-                                </StackPanel>
-                            </Button>
-
-                            <TextBlock Grid.Column="1" Grid.Row="0" Text="{DynamicResource S.Realtime.ScrimColor}"
-                                       Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                            <Button Grid.Column="1" Grid.Row="1"
-                                    x:Name="ScrimColorBtn"
-                                    Style="{StaticResource FlatButton}"
-                                    Height="34"
-                                    Padding="6,0"
-                                    Margin="0,0,4,0"
-                                    Click="ScrimColorBtn_Click">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border x:Name="ScrimColorSwatch"
-                                            Width="20" Height="20"
-                                            CornerRadius="3"
-                                            BorderThickness="1"
-                                            BorderBrush="{DynamicResource AppBorder}"
-                                            VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="ScrimColorValue"
-                                               VerticalAlignment="Center"
-                                               Margin="8,0,4,0"/>
-                                </StackPanel>
-                            </Button>
-
-                            <!-- Icon-only, so it takes a tooltip: an unlabelled glyph has to say
-                                 what it does somewhere. Sits on the controls' row rather than under
-                                 its own label, because it acts on both of them rather than being a
-                                 third setting. Available only once something has actually been
-                                 changed — a reset that would do nothing still looks like it might,
-                                 and the user has to press it to find out. -->
-                            <Button Grid.Column="2" Grid.Row="1"
-                                    x:Name="ResetColorsBtn"
-                                    Style="{StaticResource IconButton}"
-                                    Height="34"
-                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                    Content="&#xE72C;"
-                                    ToolTip="{DynamicResource S.Realtime.ResetColors}"
-                                    AutomationProperties.Name="{DynamicResource S.Realtime.ResetColorsName}"
-                                    Click="ResetColorsBtn_Click"/>
-                        </Grid>
-
-                        <!-- Full width rather than beside the colours, because it is the one control
-                             here the user sets by watching something else: the preview above is what
-                             tells them when the band is right, and a short slider makes that a
-                             fiddle. It also has a number, since "somewhere near three quarters" is
-                             not a thing anyone can write down and come back to. -->
-                        <Grid Margin="0,16,0,0">
-                            <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0"
-                                       Text="{DynamicResource S.Realtime.ScrimOpacity}"
-                                       Style="{StaticResource FieldLabel}"/>
+                                       Text="&#xE946;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource AppTextSecondary}"
+                                       Margin="0,3,7,0"
+                                       VerticalAlignment="Top"/>
                             <TextBlock Grid.Column="1"
-                                       x:Name="ScrimOpacityValue"
-                                       Style="{StaticResource FieldLabel}"
+                                       Text="{DynamicResource S.Realtime.AdvancedOptionsCost}"
+                                       Style="{StaticResource FieldHint}"
                                        Margin="0"/>
                         </Grid>
-                        <Slider x:Name="ScrimOpacitySlider"
-                                Style="{StaticResource AppSlider}"
-                                Margin="0,4,0,0"
-                                Minimum="0"
-                                Maximum="100"
-                                TickFrequency="1"
-                                IsSnapToTickEnabled="True"
-                                AutomationProperties.Name="{DynamicResource S.Realtime.ScrimOpacity}"
-                                ValueChanged="ScrimOpacitySlider_ValueChanged"/>
                     </StackPanel>
                 </Border>
 

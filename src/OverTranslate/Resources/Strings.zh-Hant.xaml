@@ -10,6 +10,7 @@
     <sys:String x:Key="S.Common.Record">錄製</sys:String>
     <sys:String x:Key="S.Common.Cancel">取消</sys:String>
     <sys:String x:Key="S.Common.Edit">編輯</sys:String>
+    <sys:String x:Key="S.Common.Reset">重設</sys:String>
     <sys:String x:Key="S.Common.Close">關閉</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API Key</sys:String>
 
@@ -174,6 +175,12 @@
     <sys:String x:Key="S.Realtime.ScrimOpacity">底色不透明度</sys:String>
     <sys:String x:Key="S.Realtime.ResetColors">還原預設值</sys:String>
     <sys:String x:Key="S.Realtime.ResetColorsName">還原預設外觀</sys:String>
+    <sys:String x:Key="S.Realtime.AdvancedOptions">進階選項</sys:String>
+    <sys:String x:Key="S.Realtime.NaturalBackground">更符合原背景</sys:String>
+    <sys:String x:Key="S.Realtime.NaturalBackgroundHint">嘗試移除原文並以周圍畫面補背景，讓譯文更自然融入畫面。</sys:String>
+    <sys:String x:Key="S.Realtime.SampleTextColor">沿用原文字顏色</sys:String>
+    <sys:String x:Key="S.Realtime.SampleTextColorHint">優先取樣原文字顏色，若辨識不穩定則改用你設定的文字顏色。</sys:String>
+    <sys:String x:Key="S.Realtime.AdvancedOptionsCost">進階選項需要額外處理資源，啟用後可能影響效能。</sys:String>
 
     <sys:String x:Key="S.Realtime.HowItWorks">運作方式</sys:String>
     <sys:String x:Key="S.Realtime.Step1">1. 點擊「選取翻譯區塊」，在畫面上框選要翻譯的區域。</sys:String>

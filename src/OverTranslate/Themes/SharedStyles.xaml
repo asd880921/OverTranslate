@@ -58,6 +58,125 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->
+    <!--  INNER GROUP BORDER                         -->
+    <!--  A group inside a card: same rounding, no   -->
+    <!--  fill of its own, so nesting one inside a   -->
+    <!--  card reads as grouping rather than as a    -->
+    <!--  second card that happens to be smaller.    -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="InnerGroupBorder" TargetType="Border">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource AppSubtleBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="Padding"         Value="12,10"/>
+        <Setter Property="Margin"          Value="0,0,0,10"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  TOGGLE ROW BORDER                          -->
+    <!--  One switchable option inside a group: an   -->
+    <!--  icon, a name, a line of explanation and a  -->
+    <!--  switch. Filled rather than outlined, so a  -->
+    <!--  row reads as one clickable thing next to   -->
+    <!--  the group that holds it.                   -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="ToggleRowBorder" TargetType="Border">
+        <Setter Property="Background"      Value="{DynamicResource AppSurfaceBg}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource AppSubtleBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="Padding"         Value="12,10"/>
+        <Setter Property="Margin"          Value="0,0,0,8"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  TRANSPARENCY CHECKER                       -->
+    <!--  Backdrop for the subtitle preview: it says -->
+    <!--  "whatever is behind this" without claiming -->
+    <!--  to know what that is.                      -->
+    <!--                                             -->
+    <!--  Two fixed mid-greys in both themes, not    -->
+    <!--  theme brushes. The real backdrop is a game -->
+    <!--  or a video, and a checker that went light  -->
+    <!--  in the light theme would make a white band -->
+    <!--  look invisible and a black one look far    -->
+    <!--  heavier than it is. Mid-grey lies about    -->
+    <!--  neither, which is the same reason the flat -->
+    <!--  grey it replaces was fixed too.            -->
+    <!-- ═══════════════════════════════════════════ -->
+    <DrawingBrush x:Key="TransparencyChecker"
+                  TileMode="Tile"
+                  Viewport="0,0,16,16"
+                  ViewportUnits="Absolute"
+                  Stretch="None">
+        <DrawingBrush.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#6E6E6E">
+                    <GeometryDrawing.Geometry>
+                        <RectangleGeometry Rect="0,0,16,16"/>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#636363">
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <RectangleGeometry Rect="0,0,8,8"/>
+                            <RectangleGeometry Rect="8,8,8,8"/>
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  TOGGLE SWITCH                              -->
+    <!--  For a setting that turns something on, as  -->
+    <!--  opposed to ModernCheckBox's "this box is   -->
+    <!--  ticked". The knob follows the text colour  -->
+    <!--  when off and the accent's foreground when  -->
+    <!--  on, so it stays legible in both themes.    -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="ToggleSwitch" TargetType="CheckBox">
+        <Setter Property="Cursor"             Value="Hand"/>
+        <Setter Property="VerticalAlignment"  Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border x:Name="Track"
+                            Width="44" Height="24"
+                            CornerRadius="12"
+                            Background="{DynamicResource AppButtonBg}"
+                            BorderBrush="{DynamicResource AppButtonBorder}"
+                            BorderThickness="1">
+                        <Border x:Name="Knob"
+                                Width="16" Height="16"
+                                CornerRadius="8"
+                                Background="{DynamicResource AppTextPrimary}"
+                                HorizontalAlignment="Left"
+                                Margin="3,0,0,0"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background"  Value="{DynamicResource AppAccent}"/>
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+                            <Setter TargetName="Knob"  Property="Background"  Value="{DynamicResource AppAccentFg}"/>
+                            <Setter TargetName="Knob"  Property="HorizontalAlignment" Value="Right"/>
+                            <Setter TargetName="Knob"  Property="Margin"      Value="0,0,3,0"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AppInputFocusBorder}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
     <!--  TEXTBOX (single-line)                      -->
     <!--  TextBox applies Padding to its content;    -->
     <!--  don't repeat it on the ScrollViewer.       -->
