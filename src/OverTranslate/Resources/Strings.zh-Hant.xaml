@@ -188,7 +188,7 @@
          浮動控制列與浮動視窗，讀的人無從知道講的是不是同一個東西。 -->
     <sys:String x:Key="S.Realtime.Step2">2. 點擊浮動視窗列的「開始翻譯」，內容變更時會自動重新辨識並更新譯文。</sys:String>
     <sys:String x:Key="S.Realtime.Step3">3. 翻譯中的區域不會影響遊戲或介面操作，如需調整翻譯區塊，請按「編輯」。</sys:String>
-    <sys:String x:Key="S.Realtime.Step4">4. 翻譯中按 {0} 可暫停／繼續，暫停時會清除譯文並釋放辨識模型。</sys:String>
+    <sys:String x:Key="S.Realtime.Step4">4. 翻譯中按 {0} 可暫停／繼續，暫停時會還原畫面原文內容。</sys:String>
 
     <sys:String x:Key="S.Realtime.SelectBlocks">選取翻譯區塊</sys:String>
     <sys:String x:Key="S.Realtime.StopSession">結束即時翻譯</sys:String>
@@ -265,7 +265,7 @@
     <sys:String x:Key="S.Settings.RealtimeHotkey">即時翻譯區塊</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkeyHint">按下快捷鍵即可進入即時[[翻譯區塊選取模式]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">暫停 / 繼續</sys:String>
-    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">[[即時翻譯]]進行中時，按下快捷鍵即可[[暫停 / 繼續]]目前的即時翻譯</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">[[即時翻譯]]進行中時，按下快捷鍵即可[[暫停 / 繼續]]目前的即時翻譯（暫停時會還原畫面原文內容）</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ 與上方的「{0}」重複，已停用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ 單一按鍵只能是 F1–F24、Pause 或 Scroll Lock，其他按鍵請搭配 Ctrl／Alt／Shift</sys:String>
 
@@ -273,7 +273,7 @@
     <sys:String x:Key="S.Settings.CaptureHotkey">截圖翻譯</sys:String>
     <!-- [[…]] 內的字會以主題色強調，見 Views/Controls/HighlightedText。兩種語言的標記數量必須一致，
          StringsParityTests 會擋。 -->
-    <sys:String x:Key="S.Settings.CaptureHotkeyHint">按下快捷鍵即可使用截圖翻譯功能；[[即時翻譯]]進行中時，改為[[暫停 / 繼續]]目前的即時翻譯</sys:String>
+    <sys:String x:Key="S.Settings.CaptureHotkeyHint">按下快捷鍵即可使用[[截圖翻譯]]功能</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkey">開啟翻譯視窗</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkeyHint">[[即時翻譯]]進行中時，改為將[[浮動視窗列]]移至最上層</sys:String>
     <sys:String x:Key="S.Settings.SourceLanguage">來源語言</sys:String>

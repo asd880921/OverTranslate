@@ -1,8 +1,7 @@
 namespace OverTranslate.Services.Realtime;
 
 /// <summary>
-/// The wording that tells the user the capture shortcut pauses and resumes a running realtime
-/// session.
+/// The wording that tells the user which shortcut pauses and resumes a running realtime session.
 /// </summary>
 /// <remarks>
 /// The floating control bar tooltip and 運作方式 both name the key the user actually has bound
@@ -13,8 +12,16 @@ namespace OverTranslate.Services.Realtime;
 /// </remarks>
 public static class RealtimePauseHint
 {
-    /// <summary>The shortcut currently bound to 截圖翻譯, as 設定 displays it.</summary>
-    public static string CurrentHotkey => SettingsService.Instance.Current.HotkeyDisplay;
+    /// <summary>
+    /// The shortcut currently bound to 暫停 / 繼續, as 設定 displays it.
+    /// </summary>
+    /// <remarks>
+    /// This used to read the 截圖翻譯 shortcut, because pausing was a second meaning that key took on
+    /// while a session was running. It has its own now: sharing meant the reader could not choose what
+    /// to press for the thing they reach for most, and a session lasts hours.
+    /// </remarks>
+    public static string CurrentHotkey =>
+        SettingsService.Instance.Current.RealtimePauseHotkeyDisplay;
 
     /// <summary>
     /// For the pause/resume icon in the translating control bar. The button already communicates the
