@@ -63,7 +63,7 @@ public class AppSettings
     public bool RealtimeHotkeyEnabled { get; set; } = true;
 
     /// <summary>
-    /// Pauses and resumes a running realtime session. Ctrl+Alt+P by default.
+    /// Pauses and resumes a running realtime session. Ctrl+Alt+Q by default.
     /// </summary>
     /// <remarks>
     /// Its own shortcut rather than a second meaning for the capture one. Sharing it made a kind of
@@ -74,10 +74,10 @@ public class AppSettings
     public uint RealtimePauseHotkeyModifiers { get; set; } = 3;
 
     /// <inheritdoc cref="RealtimePauseHotkeyModifiers"/>
-    public uint RealtimePauseHotkeyVirtualKey { get; set; } = 0x50;
+    public uint RealtimePauseHotkeyVirtualKey { get; set; } = 0x51;
 
     /// <inheritdoc cref="RealtimePauseHotkeyModifiers"/>
-    public string RealtimePauseHotkeyDisplay { get; set; } = "Ctrl+Alt+P";
+    public string RealtimePauseHotkeyDisplay { get; set; } = "Ctrl+Alt+Q";
     public ShortcutInputKind RealtimePauseHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
     public GamepadShortcutButton RealtimePauseHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 

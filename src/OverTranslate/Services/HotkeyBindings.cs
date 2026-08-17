@@ -71,7 +71,7 @@ public readonly record struct HotkeyBinding(
 /// exists for: adding <see cref="HotkeyAction.Realtime"/> gave every existing installation a
 /// Ctrl+Alt+S it never agreed to, and anyone who had already put Ctrl+Alt+S on the translation
 /// window would have had one of the two stop working with no explanation.
-/// <see cref="HotkeyAction.RealtimePause"/> is the same event again, with Ctrl+Alt+P.
+/// <see cref="HotkeyAction.RealtimePause"/> is the same event again, with Ctrl+Alt+Q.
 ///
 /// So the order is declared rather than discovered, and it runs from the feature the application is
 /// for down to the most recently added: capture, then the translation window, then realtime, then
