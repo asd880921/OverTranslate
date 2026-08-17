@@ -89,6 +89,43 @@ public static class HotkeyBindings
         _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
     };
 
+    // The virtual keys a shortcut may claim on its own, with no Ctrl/Alt/Shift beside them.
+    //
+    // RegisterHotKey does not observe a combination, it takes it: while it is registered the key
+    // never reaches any other application, the foreground game included. That is affordable for a
+    // key nothing else needs and ruinous for one the user types with — bind a bare A and the letter
+    // stops working everywhere, including in the settings box they would have to type into to undo
+    // it. So the offer is limited to keys that produce no text and edit nothing: the function keys,
+    // and the two the rest of the system has no use for.
+    //
+    // The editing pad is deliberately absent. Insert, Delete, Home, End, PageUp and PageDown look
+    // like spare keys and are not: they are how text is edited and pages are read, and losing one
+    // globally is the same class of mistake as losing a letter.
+    private static readonly HashSet<uint> KeysThatMayStandAlone =
+    [
+        .. Enumerable.Range(0x70, 24).Select(vk => (uint)vk), // F1–F24
+        0x13, // Pause
+        0x91, // Scroll Lock
+    ];
+
+    /// <summary>
+    /// Whether a trigger may be bound at all, as opposed to whether anything else has taken it.
+    /// </summary>
+    /// <remarks>
+    /// Only keyboard triggers can fail this: middle click and controller buttons are observed rather
+    /// than claimed, so binding one takes nothing away from anybody — see
+    /// <see cref="GlobalAuxiliaryHotkeys"/>.
+    ///
+    /// Asked in two places on purpose. The settings page refuses to record what this refuses, so the
+    /// interface never offers it; the registration path asks again because settings.json is a text
+    /// file someone can edit, which is the same reason the shadowing above is resolved here rather
+    /// than left to Windows.
+    /// </remarks>
+    public static bool IsBindable(ShortcutTrigger trigger) =>
+        trigger.Kind != ShortcutInputKind.Keyboard ||
+        trigger.Modifiers != 0 ||
+        KeysThatMayStandAlone.Contains(trigger.VirtualKey);
+
     private static ShortcutTrigger BuildTrigger(
         ShortcutInputKind kind,
         uint modifiers,

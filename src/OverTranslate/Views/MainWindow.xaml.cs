@@ -142,6 +142,17 @@ public partial class MainWindow : Window
                 continue;
             }
 
+            // Reachable only through a hand-edited settings.json — the settings page refuses to
+            // record it — and refused here for the reason it is refused there: a bare typing key
+            // registered globally stops working in every other application.
+            if (!HotkeyBindings.IsBindable(binding.Trigger))
+            {
+                Log.Warn(
+                    "Hotkey {Action} not registered: {Display} is a single key that cannot be claimed globally",
+                    binding.Action, binding.Trigger.VirtualKey);
+                continue;
+            }
+
             if (binding.InputKind == OverTranslate.Models.ShortcutInputKind.Keyboard &&
                 hooks.TryGetValue(binding.Action, out var hook))
             {

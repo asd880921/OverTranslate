@@ -1136,9 +1136,20 @@ public partial class SettingsPage : UserControl
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
         if (vk == 0) return;
 
+        var trigger = ShortcutTrigger.Keyboard(mods, vk);
+
+        // A bare key is not merely watched, it is taken from every other application — so only the
+        // keys that can afford to be taken are offered. See HotkeyBindings.IsBindable.
+        if (!HotkeyBindings.IsBindable(trigger))
+        {
+            ShowError(LocalizationService.Get("S.Settings.HotkeyNeedsModifier"));
+            StopRecording();
+            return;
+        }
+
         var prefix = GlobalHotkey.ModifiersToString(mods);
         var display = string.IsNullOrEmpty(prefix) ? key.ToString() : $"{prefix}+{key}";
-        CommitShortcut(recording, ShortcutTrigger.Keyboard(mods, vk), display);
+        CommitShortcut(recording, trigger, display);
     }
 
     private void SettingsPage_PreviewMouseDown(object sender, MouseButtonEventArgs e)

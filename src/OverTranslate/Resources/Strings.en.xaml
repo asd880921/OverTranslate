@@ -249,8 +249,9 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.RealtimeHotkey">Realtime block</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkeyHint">Press this shortcut to enter realtime [[block selection mode]]</sys:String>
     <sys:String x:Key="S.Settings.SingleShotHotkey">One-shot / original</sys:String>
-    <sys:String x:Key="S.Settings.SingleShotHotkeyHint">While [[realtime translation]] is running: press once to [[recognise and translate once]], press again to show the original; unchanged text reuses the previous translation. Supports single keys, middle mouse and XInput gamepad buttons</sys:String>
+    <sys:String x:Key="S.Settings.SingleShotHotkeyHint">While [[realtime translation]] is running: press once to [[recognise and translate once]], press again to show the original; unchanged text reuses the previous translation. Supports key combinations, single function keys, middle mouse and XInput gamepad buttons; middle mouse and the gamepad leave the game's own input alone, the keyboard does not</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ Same as "{0}" above, so it is off</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ A single key can only be F1–F24, Pause or Scroll Lock — other keys need Ctrl/Alt/Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkey">Capture</sys:String>

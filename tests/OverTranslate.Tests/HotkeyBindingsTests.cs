@@ -155,6 +155,41 @@ public class HotkeyBindingsTests
     }
 
     [Fact]
+    public void AFunctionKeyMayStandAlone()
+    {
+        // The point of allowing a bare key at all: one key, reachable with the hand already on the
+        // keyboard, and one nothing else on the machine is waiting for.
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x74))); // F5
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x87))); // F24
+    }
+
+    [Fact]
+    public void ATypingKeyOnItsOwnIsRefused()
+    {
+        // RegisterHotKey takes the key from every other application, so binding a bare A would stop
+        // the letter working everywhere — including in the box the user would have to type into to
+        // change it back.
+        Assert.False(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x41))); // A
+        Assert.False(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x20))); // Space
+        Assert.False(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x2E))); // Delete
+    }
+
+    [Fact]
+    public void TheSameTypingKeyIsFineWithAModifier()
+    {
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(CtrlAlt, 0x41)));
+    }
+
+    [Fact]
+    public void MouseAndGamepadTriggersAreNeverRefused()
+    {
+        // They are observed rather than claimed, so they take nothing away from anybody and the
+        // question this rule answers does not arise.
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.MouseMiddle()));
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Gamepad(GamepadShortcutButton.Y)));
+    }
+
+    [Fact]
     public void KeyboardAndGamepadWithSameNumericCodeDoNotCollide()
     {
         var settings = new AppSettings
