@@ -135,11 +135,17 @@ public sealed class RealtimeTranslationSession
     /// </summary>
     public bool IsPaused { get; private set; }
 
+    /// <param name="readAtOnce">
+    /// Whether each region reads its first frame immediately instead of waiting for a poll and for
+    /// the picture to settle. True for <see cref="Resume"/>; false when a session is starting, where
+    /// both waits are earning their keep — see <see cref="RunRegionAsync"/>.
+    /// </param>
     public void Start(
         IReadOnlyList<RealtimeRegion> regions,
         string sourceLanguage,
         string targetLanguage,
-        Models.TranslationProvider provider)
+        Models.TranslationProvider provider,
+        bool readAtOnce = false)
     {
         Stop();
 
@@ -176,7 +182,9 @@ public sealed class RealtimeTranslationSession
         foreach (var region in regions)
         {
             var watched = region;
-            _ = Task.Run(() => RunRegionAsync(watched, sourceLanguage, targetLanguage, cts.Token), cts.Token);
+            _ = Task.Run(
+                () => RunRegionAsync(watched, sourceLanguage, targetLanguage, readAtOnce, cts.Token),
+                cts.Token);
         }
     }
 
@@ -241,8 +249,8 @@ public sealed class RealtimeTranslationSession
     {
         if (!IsPaused) return;
 
-        Log.Info("Realtime session resuming: every region will be read from scratch");
-        Start(_regions, _sourceLanguage, _targetLanguage, _provider);
+        Log.Info("Realtime session resuming: every region read at once, from scratch");
+        Start(_regions, _sourceLanguage, _targetLanguage, _provider, readAtOnce: true);
     }
 
     /// <param name="releaseRecogniser">
@@ -271,10 +279,22 @@ public sealed class RealtimeTranslationSession
         // for nothing.
     }
 
+    /// <param name="readAtOnce">
+    /// Whether the first look happens before the first tick and without waiting for the picture to
+    /// settle. It is the difference between a poll and a press: an ordinary pass is this loop noticing
+    /// something on its own, where waiting a tick lets a line that is still fading in arrive — but the
+    /// first look after 繼續 is the user asking, and they are watching the screen for words. Two ticks
+    /// and a recognition is most of a second of nothing happening.
+    ///
+    /// Not done when a session starts, deliberately. That press is followed by the framing layer
+    /// coming down and the shell window hiding, so the picture really has not settled yet, and reading
+    /// it early would read those instead of the application underneath.
+    /// </param>
     private async Task RunRegionAsync(
         RealtimeRegion region,
         string sourceLanguage,
         string targetLanguage,
+        bool readAtOnce,
         CancellationToken token)
     {
         var state = new RealtimeRegionState();
@@ -285,9 +305,14 @@ public sealed class RealtimeTranslationSession
             using var timer = new PeriodicTimer(PollInterval);
             var lastScan = Stopwatch.GetTimestamp();
             var skippedPolls = 0;
+            var asked = readAtOnce;
 
-            while (await timer.WaitForNextTickAsync(token))
+            while (asked || await timer.WaitForNextTickAsync(token))
             {
+                // Only the first pass can have been asked for; everything after it is a poll again.
+                var demanded = asked;
+                asked = false;
+
                 token.ThrowIfCancellationRequested();
 
                 // A translation that never reached the screen leaves this region recorded as showing
@@ -304,7 +329,11 @@ public sealed class RealtimeTranslationSession
                 FrameFingerprint Capture(IReadOnlyList<Rectangle>? areas) =>
                     FrameFingerprint.Capture(frame, areas);
 
-                if (!state.Observe(Capture))
+                // Asked for, so not asked about: a demanded pass reads whatever is there rather than
+                // consulting a policy whose whole job is deciding which polls are worth paying for.
+                // A reading caught mid-change is not lost either — the next pass keeps the better of
+                // the two, see RealtimeReadingMerge.
+                if (!demanded && !state.Observe(Capture))
                 {
                     skippedPolls++;
                     continue;
