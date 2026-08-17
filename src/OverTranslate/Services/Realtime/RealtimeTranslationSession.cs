@@ -195,10 +195,13 @@ public sealed class RealtimeTranslationSession
     /// is indistinguishable from one that was never paused. Loading it again is what
     /// <see cref="Resume"/> pays, and it is paid once at human pace.
     ///
-    /// The translation cache goes with it, which is what the generation is for: an answer already
-    /// in flight when this was called must not land in the cache — or on screen — after it. Keeping
-    /// the cache would save a few provider calls on 繼續; publishing a line from before the pause
-    /// into a scene that has since moved on is the more expensive mistake.
+    /// What has already been translated does not go with it. An answer still in flight must not land
+    /// on screen after the pause — the scene has moved on — but that is a statement about a pass, not
+    /// about the wording it was carrying: "this source text translates to that" is still true when the
+    /// user comes back. So the cache is fenced rather than emptied, and 繼續 over content that has not
+    /// changed reads the region once and draws it again without a second trip to the provider. The
+    /// paragraph above is why that trip was the one worth removing: it is the only stage here whose
+    /// duration this application does not control.
     /// </remarks>
     /// <returns>The generation assigned to this pause, for rejecting older queued UI updates.</returns>
     public int Pause()
@@ -210,7 +213,7 @@ public sealed class RealtimeTranslationSession
         // and the user has just said they are done with it for now.
         _ocr.ReleaseModel();
 
-        var generation = _translationCache.Invalidate();
+        var generation = _translationCache.Fence();
 
         // Human-paced, and the first thing to check when a session is reported as having stopped
         // updating — unlike the per-poll traffic, which has to stay at Debug.
@@ -223,9 +226,11 @@ public sealed class RealtimeTranslationSession
     /// session was started with.
     /// </summary>
     /// <remarks>
-    /// Every region begins from an empty view of the screen — new frame state, no cached wording —
-    /// so whatever is on screen now is read and translated rather than compared against a frame
-    /// from before the pause.
+    /// Every region begins from an empty view of the screen, so whatever is on screen now is read
+    /// rather than compared against a frame from before the pause. Read, but not necessarily
+    /// translated again: the reading is looked up in the cache the pause fenced rather than emptied,
+    /// so a scene that has not changed comes back as fast as one recognition pass. A scene that has
+    /// changed pays what it always did.
     /// </remarks>
     public void Resume()
     {
