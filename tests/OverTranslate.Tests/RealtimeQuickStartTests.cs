@@ -53,6 +53,37 @@ public class RealtimeQuickStartTests
         Assert.Equal(2, quickStart.Request.MaxBlocks);
     }
 
+    [Fact]
+    public void TheAdvancedEffectsAreOffOnAnInstallationThatNeverAskedForThem()
+    {
+        // The point of the pair being settings at all: a session built from a stored default must
+        // draw the band the reader chose the colours of, not a repair of the picture underneath.
+        var request = RealtimeQuickStart.From(Ready()).Request!;
+
+        Assert.False(request.NaturalBackground);
+        Assert.False(request.SampleSourceTextColor);
+    }
+
+    [Fact]
+    public void EachAdvancedEffectReachesTheSessionOnItsOwn()
+    {
+        // Independently, because they fail in different places: repairing the background while
+        // keeping a high-contrast colour is a reasonable arrangement, and so is the reverse.
+        var background = Ready();
+        background.RealtimeNaturalBackgroundEnabled = true;
+
+        var colour = Ready();
+        colour.RealtimeSampleSourceTextColor = true;
+
+        var withBackground = RealtimeQuickStart.From(background).Request!;
+        var withColour = RealtimeQuickStart.From(colour).Request!;
+
+        Assert.True(withBackground.NaturalBackground);
+        Assert.False(withBackground.SampleSourceTextColor);
+        Assert.False(withColour.NaturalBackground);
+        Assert.True(withColour.SampleSourceTextColor);
+    }
+
     [Theory]
     [InlineData(0, RealtimeQuickStart.MinBlocks)]
     [InlineData(-4, RealtimeQuickStart.MinBlocks)]

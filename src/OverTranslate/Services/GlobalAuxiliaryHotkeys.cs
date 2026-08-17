@@ -1,0 +1,282 @@
+using System.Runtime.InteropServices;
+using System.Windows.Threading;
+using NLog;
+using OverTranslate.Models;
+
+namespace OverTranslate.Services;
+
+/// <summary>
+/// Observes non-keyboard shortcut inputs. It never swallows the input: middle click and controller
+/// buttons continue to reach the foreground application/game after OverTranslate reacts to them.
+/// </summary>
+/// <remarks>
+/// The hook and the controller poll live on a private message-pumping thread, and the hook callback
+/// does nothing but hand the action over to the interface. Both follow from what a WH_MOUSE_LL
+/// callback costs: Windows holds every mouse event in the system — including the ones the game the
+/// user is playing is waiting for — until the callback returns, and a callback that outstays
+/// <c>LowLevelHooksTimeout</c> is silently dropped from the hook chain, after which the shortcut is
+/// dead for the rest of the session and nothing says why.
+///
+/// Running the action inside the callback is what made that reachable rather than theoretical: the
+/// realtime shortcut builds a control bar and one overlay window per region before it returns.
+/// Posting the action to the dispatcher answers that, but a hook installed FROM the dispatcher is
+/// only serviced while the interface is idle — so a busy UI thread would go on delaying the whole
+/// system's mouse for as long as it was busy, which is exactly the moment this feature exists for.
+/// Its own thread is what decouples the two, and the controller poll comes off the dispatcher with
+/// it.
+/// </remarks>
+internal sealed class GlobalAuxiliaryHotkeys : IDisposable
+{
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
+    private const int WhMouseLl = 14;
+    private const int WmMButtonDown = 0x0207;
+
+    // Fast enough that a button press does not feel late, slow enough to stay invisible beside a
+    // game. On the hook thread, so it neither waits for the interface nor holds it up.
+    private static readonly TimeSpan GamepadPollInterval = TimeSpan.FromMilliseconds(35);
+
+    // How long Dispose waits for the hook thread to finish pumping. Bounded rather than infinite: a
+    // shortcut listener is not worth hanging the application's close on.
+    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
+
+    // Replaced wholesale rather than mutated, so the hook thread can read it without a lock while
+    // the interface is saving new settings.
+    private Dictionary<ShortcutTrigger, HotkeyAction> _bindings = [];
+
+    // Everything below is touched only on the hook thread.
+    private readonly ushort[] _previousGamepadButtons = new ushort[4];
+    private DispatcherTimer? _gamepadTimer;
+    private LowLevelMouseProc? _mouseProc;
+    private IntPtr _mouseHook;
+
+    private Thread? _hookThread;
+    private Dispatcher? _hookDispatcher;
+
+    public event Action<HotkeyAction>? ShortcutPressed;
+
+    public void Register(IEnumerable<HotkeyBinding> bindings)
+    {
+        var map = new Dictionary<ShortcutTrigger, HotkeyAction>();
+        foreach (var binding in bindings)
+        {
+            if (!binding.IsActive || binding.InputKind == ShortcutInputKind.Keyboard) continue;
+            map[binding.Trigger] = binding.Action;
+        }
+
+        Volatile.Write(ref _bindings, map);
+
+        var needsMouse = map.Keys.Any(trigger => trigger.Kind == ShortcutInputKind.MouseMiddle);
+        var needsGamepad = map.Keys.Any(trigger => trigger.Kind == ShortcutInputKind.Gamepad);
+
+        // Nothing to observe: the thread is not merely idled but ended, because a message loop kept
+        // alive for a set of bindings that no longer exists is a thread nobody would think to look
+        // for while wondering what the process is doing.
+        if (!needsMouse && !needsGamepad)
+        {
+            StopHookThread();
+            return;
+        }
+
+        StartHookThread();
+
+        // Invoke rather than BeginInvoke: this runs when settings are saved, at human pace, and the
+        // caller is entitled to have the shortcuts live by the time it returns.
+        _hookDispatcher?.Invoke(() => ApplyOnHookThread(needsMouse, needsGamepad));
+    }
+
+    public void Dispose()
+    {
+        StopHookThread();
+        Volatile.Write(ref _bindings, []);
+    }
+
+    private void StartHookThread()
+    {
+        if (_hookDispatcher is { HasShutdownStarted: false }) return;
+
+        // Waited on rather than assumed: the dispatcher belongs to the new thread and does not exist
+        // until that thread reaches for it, and Register goes on to post work to it immediately.
+        using var ready = new ManualResetEventSlim();
+
+        var thread = new Thread(() =>
+        {
+            _hookDispatcher = Dispatcher.CurrentDispatcher;
+            ready.Set();
+
+            // The message loop the hook needs. A low-level hook is delivered to the thread that
+            // installed it, and only while that thread is pumping messages — without this the
+            // callback would simply never be called.
+            Dispatcher.Run();
+        })
+        {
+            IsBackground = true,
+            Name = "OverTranslate auxiliary shortcuts",
+        };
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        ready.Wait();
+
+        _hookThread = thread;
+    }
+
+    private void StopHookThread()
+    {
+        if (_hookDispatcher is not { } dispatcher) return;
+
+        if (!dispatcher.HasShutdownStarted)
+        {
+            // On the hook thread, because that is where the hook was installed and where the timer
+            // belongs.
+            dispatcher.Invoke(() =>
+            {
+                UninstallMouseHook();
+                _gamepadTimer?.Stop();
+                _gamepadTimer = null;
+                Array.Clear(_previousGamepadButtons, 0, _previousGamepadButtons.Length);
+            });
+
+            dispatcher.InvokeShutdown();
+        }
+
+        _hookThread?.Join(ShutdownTimeout);
+        _hookThread = null;
+        _hookDispatcher = null;
+    }
+
+    /// <summary>Brings the hooks into line with the bindings. Runs on the hook thread.</summary>
+    private void ApplyOnHookThread(bool needsMouse, bool needsGamepad)
+    {
+        if (needsMouse) InstallMouseHook();
+        else UninstallMouseHook();
+
+        // Created here rather than in the constructor: a DispatcherTimer binds to the thread that
+        // makes it, and this one has to tick on the hook thread.
+        _gamepadTimer ??= CreateGamepadTimer();
+
+        if (needsGamepad)
+        {
+            SnapshotGamepads();
+            _gamepadTimer.Start();
+        }
+        else
+        {
+            _gamepadTimer.Stop();
+        }
+    }
+
+    private DispatcherTimer CreateGamepadTimer()
+    {
+        var timer = new DispatcherTimer { Interval = GamepadPollInterval };
+        timer.Tick += (_, _) => PollGamepads();
+        return timer;
+    }
+
+    private void InstallMouseHook()
+    {
+        if (_mouseHook != IntPtr.Zero) return;
+
+        // Kept in a field: Windows holds a raw pointer to this delegate, so letting the GC collect
+        // it would corrupt the hook chain.
+        _mouseProc = MouseHookCallback;
+        _mouseHook = SetWindowsHookEx(WhMouseLl, _mouseProc, GetModuleHandle(null), 0);
+
+        if (_mouseHook == IntPtr.Zero)
+        {
+            // Otherwise the middle-click shortcut is simply inert, which is indistinguishable from
+            // a user who mis-set it — and this line is the only place that can tell them apart.
+            Log.Warn(
+                "Middle-click shortcut hook install failed (win32 error {Error}); that shortcut will not fire",
+                Marshal.GetLastWin32Error());
+            _mouseProc = null;
+        }
+    }
+
+    private void UninstallMouseHook()
+    {
+        if (_mouseHook != IntPtr.Zero)
+        {
+            UnhookWindowsHookEx(_mouseHook);
+            _mouseHook = IntPtr.Zero;
+        }
+
+        _mouseProc = null;
+    }
+
+    private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+    {
+        if (nCode >= 0 && wParam.ToInt32() == WmMButtonDown &&
+            Volatile.Read(ref _bindings).TryGetValue(ShortcutTrigger.MouseMiddle(), out var action))
+        {
+            // Post, never run: see the remarks on this class for what a slow callback costs.
+            Raise(action);
+        }
+
+        return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+    }
+
+    private void SnapshotGamepads()
+    {
+        for (int i = 0; i < _previousGamepadButtons.Length; i++)
+            _previousGamepadButtons[i] = GamepadInput.TryGetButtons(i, out var buttons) ? buttons : (ushort)0;
+    }
+
+    private void PollGamepads()
+    {
+        var bindings = Volatile.Read(ref _bindings);
+
+        for (int i = 0; i < _previousGamepadButtons.Length; i++)
+        {
+            if (!GamepadInput.TryGetButtons(i, out var current))
+            {
+                _previousGamepadButtons[i] = 0;
+                continue;
+            }
+
+            ushort pressed = (ushort)(current & ~_previousGamepadButtons[i]);
+            _previousGamepadButtons[i] = current;
+            if (pressed == 0) continue;
+
+            // More than one physical button may be pressed in one poll. Fire each supported edge;
+            // conflict resolution ensures one button maps to at most one app action.
+            foreach (var button in GamepadInput.SupportedButtons)
+            {
+                if ((pressed & (ushort)button) == 0) continue;
+                if (bindings.TryGetValue(ShortcutTrigger.Gamepad(button), out var action))
+                    Raise(action);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Hands an action to the interface. The subscribers open windows and start sessions, so they
+    /// run on the dispatcher — and asynchronously, so neither the hook callback nor the poll waits
+    /// for any of it.
+    /// </summary>
+    private void Raise(HotkeyAction action) =>
+        System.Windows.Application.Current?.Dispatcher.InvokeAsync(() => ShortcutPressed?.Invoke(action));
+
+    private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetWindowsHookEx(
+        int idHook,
+        LowLevelMouseProc lpfn,
+        IntPtr hMod,
+        uint dwThreadId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CallNextHookEx(
+        IntPtr hhk,
+        int nCode,
+        IntPtr wParam,
+        IntPtr lParam);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern IntPtr GetModuleHandle(string? lpModuleName);
+}

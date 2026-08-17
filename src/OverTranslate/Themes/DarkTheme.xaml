@@ -9,6 +9,13 @@
     <SolidColorBrush x:Key="AppBorder"         Color="#3C3C3C"/>
     <SolidColorBrush x:Key="AppSubtleBorder"   Color="#303030"/>
 
+    <!-- A note the reader is not being asked to act on, laid over AppCardBg. A lift rather than a
+         dip: it has to read as a panel on top of the card, and AppAccentSubtle — which this used
+         first — is darker than the card it sits on and carries far more colour than a sentence
+         needs. The cast that is left says "informational" without competing with the accent that
+         marks things the reader can press. -->
+    <SolidColorBrush x:Key="AppInfoBg"         Color="#2A3037"/>
+
     <!-- Text — two levels, and there is no third. AppTextMuted (#666666) was removed: against the
          surfaces it was used on it reached 2.4:1, under the 4.5:1 any text needs and under even the
          3:1 for non-text, so none of its seven uses were legible — least of all the ones on the
@@ -22,6 +29,11 @@
     <SolidColorBrush x:Key="AppAccentHover"    Color="#7AD7FF"/>
     <SolidColorBrush x:Key="AppAccentPressed"  Color="#4BBFEE"/>
     <SolidColorBrush x:Key="AppAccentFg"       Color="#000000"/>
+
+    <!-- The knob of a switch that is on. White in both themes rather than AppAccentFg,
+         which is what text on the accent needs: the knob is not text on the track, it is the
+         thing that moved, and a dark one reads as a hole in a light track. -->
+    <SolidColorBrush x:Key="AppToggleKnobOn"   Color="#FFFFFF"/>
     <SolidColorBrush x:Key="AppAccentSubtle"   Color="#1A2E3D"/>
 
     <!-- Interaction steps for AppAccentSubtle, for tonal surfaces that stay tonal on hover instead

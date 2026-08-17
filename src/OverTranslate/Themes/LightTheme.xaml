@@ -9,6 +9,10 @@
     <SolidColorBrush x:Key="AppBorder"         Color="#E0E0E0"/>
     <SolidColorBrush x:Key="AppSubtleBorder"   Color="#EBEBEB"/>
 
+    <!-- The light-theme half of AppInfoBg — see DarkTheme.xaml. Tinted rather than lifted here,
+         because the card underneath is already white and there is nothing above it to lift to. -->
+    <SolidColorBrush x:Key="AppInfoBg"         Color="#EDF5FC"/>
+
     <!-- Text — two levels, and there is no third. See DarkTheme for why AppTextMuted was removed;
          its light value (#999999) was 2.75:1, no better. -->
     <SolidColorBrush x:Key="AppTextPrimary"    Color="#1A1A1A"/>
@@ -19,6 +23,11 @@
     <SolidColorBrush x:Key="AppAccentHover"    Color="#106EBE"/>
     <SolidColorBrush x:Key="AppAccentPressed"  Color="#005A9E"/>
     <SolidColorBrush x:Key="AppAccentFg"       Color="#FFFFFF"/>
+
+    <!-- The knob of a switch that is on. White in both themes rather than AppAccentFg,
+         which is what text on the accent needs: the knob is not text on the track, it is the
+         thing that moved, and a dark one reads as a hole in a light track. -->
+    <SolidColorBrush x:Key="AppToggleKnobOn"   Color="#FFFFFF"/>
     <!-- ~13% AppAccent over white. The old #EEF4FF was mixed against #FFFFFF and works there, but
          its heaviest duty is the nav rail's selected row, which sits on AppHeaderBg #F5F5F5 — only
          7 levels of red and 1 of green away from it, so the selection all but vanished. Dark has no

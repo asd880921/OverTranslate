@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using OverTranslate.Layout;
 using OverTranslate.Services;
 using OverTranslate.Services.Realtime;
@@ -16,25 +17,43 @@ using Size = System.Windows.Size;
 namespace OverTranslate.Views.Realtime;
 
 /// <summary>
-/// The live subtitle layer for one watched block: a click-through window pinned over the region,
-/// drawing each translated line as plain text on a black scrim exactly where its source sits.
+/// The live subtitle layer for one watched block: a click-through window pinned over the region.
+/// In natural mode it captures the application underneath, removes the source glyph rectangle with
+/// a lightweight local background repair, then draws the translation back into the same place.
 /// </summary>
 /// <remarks>
-/// No bubbles and no sampled colours here, unlike the screenshot overlay. That overlay produces a
-/// still the user studies, so it is worth matching the page's own background; this one sits over
-/// content that is still moving, where a sampled colour would be wrong a frame later. A fixed black
-/// scrim is only as wide as the text it has to hide, which is what lets the user draw a block
-/// deliberately larger than the text without the surrounding picture being covered up.
+/// The background patch is refreshed while a line is visible. That matters over video/game content:
+/// a one-time screenshot would turn the translated line into a frozen rectangular tile while the
+/// picture behind it kept moving. The overlay itself is excluded from capture, so every refresh sees
+/// the original application rather than recursively photographing its own translation.
+///
+/// That refresh runs off the dispatcher, and only the assignment of the finished brushes comes back
+/// to it. Everything before that — the grab, the repair, the bitmap — is pixel work that does not
+/// need the interface thread, and leaving it there coupled how smooth the shell felt to how much this
+/// layer happened to be doing. It also declines to do the work at all while the picture underneath is
+/// holding still, which over a dialogue box or a menu is nearly all of the time.
 /// </remarks>
 public partial class RealtimeBlockWindow : Window
 {
+    private static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+
     // The scrim exists to hide the source line underneath, so it is sized from the text and not the
     // block: everything outside these paddings stays untouched picture. The vertical padding is the
     // tighter of the two on purpose — a band reaching above and below a subtitle sits in the middle
     // of what the user is watching, while the same slack to its left and right lands on picture they
     // are not reading anyway.
     private const double ScrimPaddingX = 5;
-    private const double ScrimPaddingY = 1;
+    private const double ScrimPaddingY = 3;
+
+    // Only the band is rounded — see where it is applied for why a repaired patch is not.
+    private const double BandCornerRadius = 3;
+
+    // The OCR box can omit detached punctuation/diacritics (especially Japanese dakuten). The
+    // repaired background therefore extends beyond the visible translation band. Pixels in this
+    // guard are copied from the original frame unchanged unless the adaptive eraser identifies them
+    // as part of the source line, so the larger patch does not look like a larger subtitle panel.
+    private const double MinNaturalGuardX = 10;
+    private const double MinNaturalGuardY = 12;
 
     private const double MinFontSize = 8.5;
     private const double LineHeightRatio = 1.22;
@@ -53,6 +72,11 @@ public partial class RealtimeBlockWindow : Window
     private static readonly FontFamily TextFont =
         new("Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif");
 
+    // Natural mode uses a real patch of the application under the source text. Refreshing at the
+    // same cadence as the screen watcher keeps that patch moving with video without adding another
+    // high-frequency rendering loop. No OCR or translation happens here.
+    private static readonly TimeSpan NaturalRefreshInterval = TimeSpan.FromMilliseconds(250);
+
     private readonly System.Drawing.Rectangle _physBounds;
     private readonly bool _latinSourceToCjkTarget;
 
@@ -63,9 +87,31 @@ public partial class RealtimeBlockWindow : Window
     private readonly SolidColorBrush _scrimBrush;
     private readonly SolidColorBrush _textBrush;
 
+    // 顯示外觀 → 進階選項, both off unless the user asked for them. Held per session for the same
+    // reason the colours are: the page that sets them is behind a shell window this session hid.
+    //
+    // With both off nothing here grabs the screen at all — see Rebuild. That is not merely a saving:
+    // the band is the predictable one of the two looks, and a window that does not photograph itself
+    // cannot bake its own translation into what it draws either.
+    private readonly bool _naturalBackground;
+    private readonly bool _sampleTextColor;
+
     private double _dpiX = 1.0;
     private double _dpiY = 1.0;
     private bool _isLoaded;
+
+    // Published by Rebuild on the dispatcher and read by the refresh loop on its own thread, so it is
+    // replaced wholesale rather than mutated. The generation beside it is what a finished batch of
+    // brushes is checked against: a rebuild between the grab and the assignment means those brushes
+    // belong to visuals that are no longer on the canvas.
+    private NaturalPatchVisual[] _naturalPatches = [];
+    private int _patchGeneration;
+
+    private CancellationTokenSource? _naturalRefreshCts;
+
+    // What the patches on screen were painted from. Only the refresh loop reads or writes it, except
+    // for Rebuild clearing it to say the comparison has to start again.
+    private FrameFingerprint? _lastRefreshPrint;
 
     private IReadOnlyList<TranslatedBlock> _lines = [];
 
@@ -76,16 +122,22 @@ public partial class RealtimeBlockWindow : Window
         string targetLanguage,
         string textColor,
         string scrimColor,
-        int scrimOpacity)
+        int scrimOpacity,
+        bool naturalBackground = false,
+        bool sampleTextColor = false)
     {
         InitializeComponent();
 
         RegionId = regionId;
         _physBounds = physBounds;
+        _naturalBackground = naturalBackground;
+        _sampleTextColor = sampleTextColor;
         _latinSourceToCjkTarget = IsLatinToCjk(sourceLanguage, targetLanguage);
         _textBrush = Freeze(new SolidColorBrush(RealtimeSubtitleColors.Text(textColor)));
         _scrimBrush = Freeze(new SolidColorBrush(
             RealtimeSubtitleColors.Scrim(scrimColor, scrimOpacity)));
+
+        Closed += (_, _) => StopNaturalRefresh();
 
         Loaded += (_, _) =>
         {
@@ -96,6 +148,7 @@ public partial class RealtimeBlockWindow : Window
             }
             _isLoaded = true;
             Rebuild();
+            UpdateNaturalRefreshTimer();
         };
     }
 
@@ -157,7 +210,11 @@ public partial class RealtimeBlockWindow : Window
         if (_isLoaded && LooksIdentical(_lines, lines)) return;
 
         _lines = lines;
-        if (_isLoaded) Rebuild();
+        if (_isLoaded)
+        {
+            Rebuild();
+            UpdateNaturalRefreshTimer();
+        }
     }
 
     // A pixel of movement is below what anyone can see and well inside recognition's own precision.
@@ -189,23 +246,50 @@ public partial class RealtimeBlockWindow : Window
         ScrimCanvas.Children.Clear();
         TextCanvas.Children.Clear();
 
+        // Moved on before anything is drawn, so a batch of brushes already in flight for the previous
+        // arrangement can be told it has been overtaken.
+        Interlocked.Increment(ref _patchGeneration);
+        var patches = new List<NaturalPatchVisual>();
+
         double canvasWidth = _physBounds.Width / _dpiX;
         double canvasHeight = _physBounds.Height / _dpiY;
+
+        // Grabbed only if something is going to read it. With 進階選項 off this window draws from the
+        // two colours alone, exactly as it did before those switches existed.
+        using var frame = _naturalBackground || _sampleTextColor
+            ? CaptureUnderlyingRegion()
+            : null;
 
         foreach (var line in _lines)
         {
             if (string.IsNullOrWhiteSpace(line.TranslatedText)) continue;
-            if (BuildLine(line, canvasWidth, canvasHeight) is not { } visual) continue;
+            if (BuildLine(line, canvasWidth, canvasHeight, frame) is not { } visual) continue;
 
-            ScrimCanvas.Children.Add(visual.Scrim);
+            ScrimCanvas.Children.Add(visual.Background);
             TextCanvas.Children.Add(visual.Text);
+
+            // Only the repaired backgrounds are worth revisiting: a band drawn in a fixed colour has
+            // nothing to follow, and recording one here would have the refresh below replace it with
+            // a patch the user never asked for.
+            if (_naturalBackground)
+                patches.Add(new NaturalPatchVisual(visual.Background, line, visual.PatchBounds));
         }
+
+        Volatile.Write(ref _naturalPatches, [.. patches]);
+
+        // A new set of patches has to be painted once before there is anything to compare against.
+        Volatile.Write(ref _lastRefreshPrint, null);
     }
 
-    /// <summary>One line's two halves, drawn into separate layers so text always wins over scrims.</summary>
-    private readonly record struct LineVisual(UIElement Scrim, UIElement Text);
+    /// <summary>One line's background patch and translated text, kept in separate layers.</summary>
+    private readonly record struct LineVisual(
+        Border Background, Border Text, System.Drawing.Rectangle PatchBounds);
 
-    private LineVisual? BuildLine(TranslatedBlock line, double canvasWidth, double canvasHeight)
+    private readonly record struct NaturalPatchVisual(
+        Border Surface, TranslatedBlock Line, System.Drawing.Rectangle PatchBounds);
+
+    private LineVisual? BuildLine(
+        TranslatedBlock line, double canvasWidth, double canvasHeight, System.Drawing.Bitmap? frame)
     {
         double left = line.Bounds.X / _dpiX;
         double top = line.Bounds.Y / _dpiY;
@@ -311,7 +395,7 @@ public partial class RealtimeBlockWindow : Window
             }
         }
 
-        double scrimWidth = textWidth + ScrimPaddingX * 2;
+        double scrimWidth = Math.Min(canvasWidth, Math.Max(textWidth, sourceWidth) + ScrimPaddingX * 2);
 
         // A grouped block's bounds are the union of its lines, which is the area that has to be
         // covered and is not an inflated single box, so it keeps using them.
@@ -324,16 +408,65 @@ public partial class RealtimeBlockWindow : Window
         double scrimTop = Math.Clamp(
             top + sourceHeight / 2 - scrimHeight / 2, 0, Math.Max(0, canvasHeight - scrimHeight));
 
-        var scrim = new Border
+        // The band's own geometry, which is also what the repaired patch falls back to. The guard
+        // below only exists to hold the repair, so with 進階選項 off these stay as they are and the
+        // background is the band this window has always drawn.
+        double patchLeft = scrimLeft;
+        double patchTop = scrimTop;
+        double patchWidth = scrimWidth;
+        double patchHeight = scrimHeight;
+        ImageBrush? naturalBrush = null;
+
+        if (_naturalBackground)
         {
-            Width = scrimWidth,
-            Height = scrimHeight,
-            Background = _scrimBrush,
-            CornerRadius = new CornerRadius(3),
+            double naturalGuardX = Math.Clamp(sourceHeight * 0.20, MinNaturalGuardX, 20);
+            double naturalGuardY = Math.Clamp(sourceHeight * 0.40, MinNaturalGuardY, 26);
+            double guardLeft = Math.Max(0, scrimLeft - naturalGuardX);
+            double guardTop = Math.Max(0, scrimTop - naturalGuardY);
+            double guardRight = Math.Min(canvasWidth, scrimLeft + scrimWidth + naturalGuardX);
+            double guardBottom = Math.Min(canvasHeight, scrimTop + scrimHeight + naturalGuardY);
+            double guardWidth = Math.Max(0, guardRight - guardLeft);
+            double guardHeight = Math.Max(0, guardBottom - guardTop);
+
+            naturalBrush = BuildNaturalBrush(
+                frame, line, ToPhysicalPatchBounds(guardLeft, guardTop, guardWidth, guardHeight));
+
+            // Capture can fail on protected/UAC surfaces. Keep the compact band in that case rather
+            // than painting the much larger guard with a flat colour.
+            if (naturalBrush is not null)
+            {
+                patchLeft = guardLeft;
+                patchTop = guardTop;
+                patchWidth = guardWidth;
+                patchHeight = guardHeight;
+            }
+        }
+
+        var patchBounds = ToPhysicalPatchBounds(patchLeft, patchTop, patchWidth, patchHeight);
+
+        var background = new Border
+        {
+            Width = patchWidth,
+            Height = patchHeight,
+            Background = (System.Windows.Media.Brush?)naturalBrush ?? _scrimBrush,
+            // A repaired patch has to meet the surrounding picture edge-for-edge: rounded corners
+            // would leave four pieces of the source text showing through. A band is the opposite case
+            // — it is visibly a band, and the corners are what stop it looking like a crash — so the
+            // radius belongs to the kind of background being drawn rather than to the window.
+            CornerRadius = new CornerRadius(naturalBrush is null ? BandCornerRadius : 0),
         };
 
+        // Sampling is its own switch: with it off the reader's chosen colour is what gets drawn, and
+        // with it on that colour is still what an unconvincing sample falls back to.
+        var foreground = _textBrush;
+        if (_sampleTextColor && frame is not null)
+        {
+            var sampled = RealtimeNaturalBackground.SampleTextColor(frame, line.Bounds, _textBrush.Color);
+            foreground = Freeze(new SolidColorBrush(sampled));
+        }
+
         // Same geometry, no background: the two are stacked in separate layers, so the text has to
-        // carry its own box to land in exactly the place the scrim covers.
+        // carry its own box to land in exactly the place the repaired background covers.
         var text = new Border
         {
             Width = scrimWidth,
@@ -346,23 +479,201 @@ public partial class RealtimeBlockWindow : Window
                 FontFamily = TextFont,
                 FontSize = fontSize,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = _textBrush,
+                Foreground = foreground,
                 TextWrapping = wrapped ? TextWrapping.Wrap : TextWrapping.NoWrap,
                 // Never trimmed. A line that cannot fit on one line has already been switched to
                 // wrapping above, so getting here without it means the text fits; leaving
                 // CharacterEllipsis on would only mean a measurement a pixel out costs a word.
                 TextTrimming = TextTrimming.None,
                 VerticalAlignment = VerticalAlignment.Center,
+
+                // Centred inside the box, which is what keeps a translation over the middle of the
+                // line it replaces. The box is now as wide as the wider of the two — the background
+                // has to cover the source, and a translation that came back shorter than its source
+                // would otherwise sit against the left edge of a band sized by the source, drifting
+                // away from the words it stands in for by exactly the amount RealtimeBandPlacement
+                // exists to spend evenly.
+                //
+                // One line is centred as text; a wrapped one is centred as a block, with its own
+                // lines still starting at the same left edge. A paragraph with every line centred is
+                // a poster, and this is something the reader has to get through at speed.
+                TextAlignment = wrapped ? TextAlignment.Left : TextAlignment.Center,
+                HorizontalAlignment = wrapped
+                    ? System.Windows.HorizontalAlignment.Center
+                    : System.Windows.HorizontalAlignment.Stretch,
             }
         };
 
-        foreach (var element in (UIElement[])[scrim, text])
-        {
-            Canvas.SetLeft(element, scrimLeft);
-            Canvas.SetTop(element, scrimTop);
-        }
+        Canvas.SetLeft(background, patchLeft);
+        Canvas.SetTop(background, patchTop);
+        Canvas.SetLeft(text, scrimLeft);
+        Canvas.SetTop(text, scrimTop);
 
-        return new LineVisual(scrim, text);
+        return new LineVisual(background, text, patchBounds);
+    }
+
+    private void UpdateNaturalRefreshTimer()
+    {
+        // Never runs with the switch off: the patches it would refresh are only recorded when the
+        // repair is what drew them.
+        if (!_naturalBackground || !_isLoaded || Volatile.Read(ref _naturalPatches).Length == 0)
+            StopNaturalRefresh();
+        else
+            StartNaturalRefresh();
+    }
+
+    private void StartNaturalRefresh()
+    {
+        if (_naturalRefreshCts is not null) return;
+
+        var cts = new CancellationTokenSource();
+        _naturalRefreshCts = cts;
+        _ = Task.Run(() => RefreshNaturalBackgroundsAsync(cts.Token), cts.Token);
+    }
+
+    private void StopNaturalRefresh()
+    {
+        _naturalRefreshCts?.Cancel();
+        _naturalRefreshCts?.Dispose();
+        _naturalRefreshCts = null;
+    }
+
+    /// <summary>
+    /// Keeps the repaired backgrounds following the picture underneath, off the dispatcher.
+    /// </summary>
+    /// <remarks>
+    /// The only step here that needs the interface thread is the last one, so it is the only step that
+    /// goes back to it: the grab is a BitBlt, the repair is pixel arithmetic, and the brush is frozen
+    /// before it leaves this thread. What used to be a DispatcherTimer doing all of it is why a
+    /// session with three blocks made the shell feel heavy.
+    ///
+    /// A tick that finds the picture holding still stops after the fingerprint. That is the ordinary
+    /// case for the content this mode suits best — a dialogue panel, a menu, a paused scene — and the
+    /// patch on screen is still correct for it, so there is nothing to pay for.
+    /// </remarks>
+    private async Task RefreshNaturalBackgroundsAsync(CancellationToken token)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(NaturalRefreshInterval);
+
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                var generation = Volatile.Read(ref _patchGeneration);
+                var patches = Volatile.Read(ref _naturalPatches);
+                if (patches.Length == 0) continue;
+
+                using var frame = CaptureUnderlyingRegion();
+                if (frame is null) continue;
+
+                // Summarised over the patch rectangles rather than the whole block: a change in a
+                // corner of the region the band does not cover is not a reason to repaint it.
+                var print = FrameFingerprint.Capture(
+                    frame, [.. patches.Select(patch => patch.PatchBounds)]);
+                if (print.StillLooksLike(Volatile.Read(ref _lastRefreshPrint))) continue;
+
+                var repainted = new List<(Border Surface, ImageBrush Brush)>(patches.Length);
+                foreach (var patch in patches)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (BuildNaturalBrush(frame, patch.Line, patch.PatchBounds) is { } brush)
+                        repainted.Add((patch.Surface, brush));
+                }
+
+                Volatile.Write(ref _lastRefreshPrint, print);
+                if (repainted.Count == 0) continue;
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    // A rebuild while this batch was being painted means these surfaces are no longer
+                    // the ones on the canvas.
+                    if (Volatile.Read(ref _patchGeneration) != generation) return;
+
+                    foreach (var (surface, brush) in repainted)
+                        surface.Background = brush;
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The window is closing or the arrangement changed; nothing to report.
+        }
+        catch (Exception ex)
+        {
+            // Nothing above is expected to throw, and this loop is nobody's awaited task — so an
+            // exception here would end the refresh silently and leave the patches frozen on the last
+            // picture they saw, which looks like the repair itself having failed.
+            Log.Warn(ex, "Realtime block {Region} stopped refreshing its repaired background", RegionId);
+        }
+    }
+
+    /// <summary>
+    /// The picture the repair is built from: this window's own rectangle, read off the screen.
+    /// </summary>
+    /// <remarks>
+    /// This relies on the overlay being absent from what the screen returns, and that reliance is
+    /// unchecked — <see cref="WindowCaptureShield.Exclude"/> fails on every Windows before 11 24H2, so
+    /// there the repair photographs the translation it drew a moment ago and bakes it in. Tracked in
+    /// #99, with why #96 does not cover this path and why #98 removes the need for it. Not guarded here
+    /// because on those machines the session's own grab is broken first (#94), so nothing about the
+    /// feature works to be protected — the order in which those are fixed is what makes it visible.
+    /// </remarks>
+    private System.Drawing.Bitmap? CaptureUnderlyingRegion()
+    {
+        if (_physBounds.Width <= 0 || _physBounds.Height <= 0) return null;
+
+        System.Drawing.Bitmap? bitmap = null;
+        try
+        {
+            bitmap = new System.Drawing.Bitmap(
+                _physBounds.Width, _physBounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+            graphics.CopyFromScreen(
+                _physBounds.Left, _physBounds.Top, 0, 0, _physBounds.Size,
+                System.Drawing.CopyPixelOperation.SourceCopy);
+            return bitmap;
+        }
+        catch
+        {
+            bitmap?.Dispose();
+            return null;
+        }
+    }
+
+    private System.Drawing.Rectangle ToPhysicalPatchBounds(
+        double left, double top, double width, double height)
+    {
+        int x1 = Math.Clamp((int)Math.Floor(left * _dpiX), 0, _physBounds.Width);
+        int y1 = Math.Clamp((int)Math.Floor(top * _dpiY), 0, _physBounds.Height);
+        int x2 = Math.Clamp((int)Math.Ceiling((left + width) * _dpiX), 0, _physBounds.Width);
+        int y2 = Math.Clamp((int)Math.Ceiling((top + height) * _dpiY), 0, _physBounds.Height);
+        return System.Drawing.Rectangle.FromLTRB(x1, y1, x2, y2);
+    }
+
+    private static ImageBrush? BuildNaturalBrush(
+        System.Drawing.Bitmap? frame,
+        TranslatedBlock line,
+        System.Drawing.Rectangle patchBounds)
+    {
+        if (frame is null || patchBounds.Width <= 0 || patchBounds.Height <= 0) return null;
+
+        var sourceLines = line.SourceLineBounds is { Count: > 0 } lines
+            ? lines
+            : (IReadOnlyList<System.Windows.Rect>)[line.Bounds];
+
+        using var patch = RealtimeNaturalBackground.CreatePatch(frame, patchBounds, sourceLines);
+        if (patch is null) return null;
+
+        var image = BitmapInterop.ToBitmapSource(patch);
+        var brush = new ImageBrush(image)
+        {
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Left,
+            AlignmentY = AlignmentY.Top,
+            TileMode = TileMode.None,
+        };
+        brush.Freeze();
+        return brush;
     }
 
     // Largest size at which the wrapped translation still fits the height it is allowed. For a

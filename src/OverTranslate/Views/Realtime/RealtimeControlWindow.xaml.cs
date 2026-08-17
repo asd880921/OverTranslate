@@ -347,10 +347,9 @@ public partial class RealtimeControlWindow : Window
     private void RestoreText()
     {
         EditHintText.Text = EditHint;
+
         RunStatusText.Text = _isPaused ? PausedStatus : RunStatus;
 
-        // The pair steps aside while paused: it describes work that is not happening, and it is the
-        // one thing on this line long enough to hide the word that says so.
         var showPair = _hasLanguages && !_isPaused;
         LangPairPanel.Visibility = showPair ? Visibility.Visible : Visibility.Collapsed;
         RunStatusText.Visibility = showPair ? Visibility.Collapsed : Visibility.Visible;
@@ -367,7 +366,9 @@ public partial class RealtimeControlWindow : Window
     private void SetDotState(bool failed) =>
         StatusDot.SetResourceReference(
             System.Windows.Shapes.Shape.FillProperty,
-            failed ? "AppError" : _isPaused ? "AppTextSecondary" : "AppAccent");
+            failed
+                ? "AppError"
+                : _isPaused ? "AppTextSecondary" : "AppAccent");
 
     private void ApplyPauseButton()
     {

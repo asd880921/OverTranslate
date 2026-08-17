@@ -25,6 +25,17 @@ namespace OverTranslate.Views.Realtime;
 /// How opaque the band behind the text is, 0–100. Travels with the colours for the same reason and
 /// under the same rule.
 /// </param>
+/// <param name="NaturalBackground">
+/// Whether to repair the picture under the source line instead of drawing the band — 顯示外觀 →
+/// 進階選項. Off unless asked for; see AppSettings for why that is the honest default. Travels here
+/// under the same rule as the colours: the page that sets it is behind the shell window a running
+/// session has hidden.
+/// </param>
+/// <param name="SampleSourceTextColor">
+/// Whether to draw the translation in a colour read off the source line rather than in
+/// <paramref name="TextColor"/>. Independent of <paramref name="NaturalBackground"/> — the two fail
+/// in different places, so either can be had without the other.
+/// </param>
 public sealed record RealtimeStartRequest(
     System.Drawing.Rectangle ScreenBounds,
     int MaxBlocks,
@@ -33,7 +44,9 @@ public sealed record RealtimeStartRequest(
     Models.TranslationProvider Provider,
     string TextColor,
     string ScrimColor,
-    int ScrimOpacity);
+    int ScrimOpacity,
+    bool NaturalBackground,
+    bool SampleSourceTextColor);
 
 /// <summary>
 /// Owns a realtime session end to end: the edit layer, the per-block overlays, the floating control
@@ -216,8 +229,8 @@ internal sealed class RealtimeSessionController
             return true;
         }
 
-        var generation = _session.Pause();
-        Volatile.Write(ref _visibleGeneration, generation);
+        var pauseGeneration = _session.Pause();
+        Volatile.Write(ref _visibleGeneration, pauseGeneration);
 
         // The whole point of the feature: 暫停 takes the words and their scrims off the screen
         // rather than freezing them there, because a frozen translation over a scene that has moved
@@ -244,7 +257,10 @@ internal sealed class RealtimeSessionController
             _session.RegionUpdated -= OnRegionUpdated;
             _session.Failed -= OnSessionFailed;
             _session.BusyChanged -= OnBusyChanged;
-            _session.Stop();
+
+            // The one press that means "done with this": the recogniser's memory goes back here
+            // rather than on 暫停, which means "not now" and is followed by 繼續 wanting it again.
+            _session.Stop(releaseRecogniser: true);
             _session = null;
         }
 
@@ -360,7 +376,8 @@ internal sealed class RealtimeSessionController
         {
             var window = new RealtimeBlockWindow(
                 region.Id, region.Bounds, request.SourceLanguage, request.TargetLanguage,
-                request.TextColor, request.ScrimColor, request.ScrimOpacity);
+                request.TextColor, request.ScrimColor, request.ScrimOpacity,
+                request.NaturalBackground, request.SampleSourceTextColor);
             _blockWindows[region.Id] = window;
             window.Show();
         }

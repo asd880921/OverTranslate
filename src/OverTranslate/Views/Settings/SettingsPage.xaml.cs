@@ -34,6 +34,8 @@ public partial class SettingsPage : UserControl
     private readonly DispatcherTimer _openAiSettingsDebounce;
     private readonly DispatcherTimer _promptDebounce;
     private readonly DispatcherTimer _statusHold;
+    private readonly DispatcherTimer _hotkeyGamepadRecordTimer;
+    private readonly ushort[] _recordGamepadButtons = new ushort[4];
 
     private const int PromptAutoSegment = 0;
     private const int PromptExplicitSegment = 1;
@@ -61,12 +63,16 @@ public partial class SettingsPage : UserControl
     /// <param name="AdvertisedInShell">
     /// Whether the shell's nav rail prints this combination beside a button, and so has to be told
     /// when it changes. True for the capture shortcut, which the interface names in three places;
-    /// false for the other two, which it names nowhere.
+    /// false for the other shortcuts, which it names nowhere.
     /// </param>
     /// <param name="EnabledBox">
     /// The tick that turns this shortcut off, or null for the capture one, which has no tick at all
     /// and no setting behind it because that shortcut is the feature the application is for. Null
     /// here is what says "this row cannot be turned off".
+    /// </param>
+    /// <param name="EnabledLabel">
+    /// The word beside the switch saying which way it is set. Null for the capture row, which has
+    /// no switch to describe.
     /// </param>
     /// <param name="ShadowHint">
     /// Where to say that a higher-priority shortcut has taken this combination. Null for capture,
@@ -78,13 +84,14 @@ public partial class SettingsPage : UserControl
         TextBox Box,
         Button Record,
         Func<AppSettings, string> Display,
-        Func<AppSettings, (uint Modifiers, uint Key)> Combination,
-        Action<AppSettings, uint, uint, string> Apply,
+        Func<AppSettings, ShortcutTrigger> Trigger,
+        Action<AppSettings, ShortcutTrigger, string> Apply,
         bool AdvertisedInShell,
         // Fully qualified: WinForms is also referenced here and has its own CheckBox.
         System.Windows.Controls.CheckBox? EnabledBox = null,
         Action<AppSettings, bool>? SetEnabled = null,
-        TextBlock? ShadowHint = null);
+        TextBlock? ShadowHint = null,
+        TextBlock? EnabledLabel = null);
 
     private HotkeyField[] _hotkeyFields = [];
 
@@ -105,46 +112,45 @@ public partial class SettingsPage : UserControl
                 "S.Settings.CaptureHotkey",
                 HotkeyBox, RecordBtn,
                 s => s.HotkeyDisplay,
-                s => (s.HotkeyModifiers, s.HotkeyVirtualKey),
-                (s, mods, vk, display) =>
-                {
-                    s.HotkeyModifiers = mods;
-                    s.HotkeyVirtualKey = vk;
-                    s.HotkeyDisplay = display;
-                },
+                s => HotkeyBindings.TriggerFor(s, HotkeyAction.Capture),
+                ApplyCaptureTrigger,
                 AdvertisedInShell: true),
             new HotkeyField(
                 HotkeyAction.TranslationWindow,
                 "S.Settings.WindowHotkey",
                 WindowHotkeyBox, WindowRecordBtn,
                 s => s.TranslationWindowHotkeyDisplay,
-                s => (s.TranslationWindowHotkeyModifiers, s.TranslationWindowHotkeyVirtualKey),
-                (s, mods, vk, display) =>
-                {
-                    s.TranslationWindowHotkeyModifiers = mods;
-                    s.TranslationWindowHotkeyVirtualKey = vk;
-                    s.TranslationWindowHotkeyDisplay = display;
-                },
+                s => HotkeyBindings.TriggerFor(s, HotkeyAction.TranslationWindow),
+                ApplyWindowTrigger,
                 AdvertisedInShell: false,
                 WindowHotkeyEnabledCheckBox,
                 (s, on) => s.TranslationWindowHotkeyEnabled = on,
-                WindowHotkeyShadowHint),
+                WindowHotkeyShadowHint,
+                WindowHotkeyEnabledLabel),
             new HotkeyField(
                 HotkeyAction.Realtime,
                 "S.Settings.RealtimeHotkey",
                 RealtimeHotkeyBox, RealtimeRecordBtn,
                 s => s.RealtimeHotkeyDisplay,
-                s => (s.RealtimeHotkeyModifiers, s.RealtimeHotkeyVirtualKey),
-                (s, mods, vk, display) =>
-                {
-                    s.RealtimeHotkeyModifiers = mods;
-                    s.RealtimeHotkeyVirtualKey = vk;
-                    s.RealtimeHotkeyDisplay = display;
-                },
+                s => HotkeyBindings.TriggerFor(s, HotkeyAction.Realtime),
+                ApplyRealtimeTrigger,
                 AdvertisedInShell: false,
                 RealtimeHotkeyEnabledCheckBox,
                 (s, on) => s.RealtimeHotkeyEnabled = on,
-                RealtimeHotkeyShadowHint),
+                RealtimeHotkeyShadowHint,
+                RealtimeHotkeyEnabledLabel),
+            new HotkeyField(
+                HotkeyAction.RealtimePause,
+                "S.Settings.RealtimePauseHotkey",
+                RealtimePauseHotkeyBox, RealtimePauseRecordBtn,
+                s => s.RealtimePauseHotkeyDisplay,
+                s => HotkeyBindings.TriggerFor(s, HotkeyAction.RealtimePause),
+                ApplyRealtimePauseTrigger,
+                AdvertisedInShell: false,
+                RealtimePauseHotkeyEnabledCheckBox,
+                (s, on) => s.RealtimePauseHotkeyEnabled = on,
+                RealtimePauseHotkeyShadowHint,
+                RealtimePauseHotkeyEnabledLabel),
         ];
 
         _apiKeyDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
@@ -174,6 +180,9 @@ public partial class SettingsPage : UserControl
             PersistPrompt();
         };
 
+        _hotkeyGamepadRecordTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(45) };
+        _hotkeyGamepadRecordTimer.Tick += (_, _) => PollRecordingGamepad();
+
         _statusHold = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1600) };
         _statusHold.Tick += (_, _) => { _statusHold.Stop(); FadeStatusOut(); };
 
@@ -183,7 +192,11 @@ public partial class SettingsPage : UserControl
         // user navigated away. A static event holding an instance handler also has to be let go
         // of at some point, which rules out subscribing only once.
         Loaded   += (_, _) => LocalizationService.LanguageChanged += OnLanguageChanged;
-        Unloaded += (_, _) => LocalizationService.LanguageChanged -= OnLanguageChanged;
+        Unloaded += (_, _) =>
+        {
+            LocalizationService.LanguageChanged -= OnLanguageChanged;
+            StopRecording();
+        };
 
         LoadSettings();
     }
@@ -925,6 +938,12 @@ public partial class SettingsPage : UserControl
 
         field.Box.IsEnabled = on;
         field.Record.IsEnabled = on;
+
+        // Written here rather than beside the switch, because this is the one place both the load
+        // and the toggle already go through — and a switch whose word disagreed with it would be
+        // worse than no word at all.
+        if (field.EnabledLabel is { } label)
+            label.Text = LocalizationService.Get(on ? "S.Settings.HotkeyOn" : "S.Settings.HotkeyOff");
     }
 
     private void HotkeyEnabled_Toggled(object sender, RoutedEventArgs e)
@@ -982,19 +1001,87 @@ public partial class SettingsPage : UserControl
         }
     }
 
+    private static void ApplyCaptureTrigger(AppSettings s, ShortcutTrigger trigger, string display)
+    {
+        s.HotkeyInputKind = trigger.Kind;
+        s.HotkeyDisplay = display;
+        if (trigger.Kind == ShortcutInputKind.Keyboard)
+        {
+            s.HotkeyModifiers = trigger.Modifiers;
+            s.HotkeyVirtualKey = trigger.VirtualKey;
+            s.HotkeyGamepadButton = GamepadShortcutButton.None;
+        }
+        else if (trigger.Kind == ShortcutInputKind.Gamepad)
+        {
+            s.HotkeyGamepadButton = trigger.GamepadButton;
+        }
+    }
+
+    private static void ApplyWindowTrigger(AppSettings s, ShortcutTrigger trigger, string display)
+    {
+        s.TranslationWindowHotkeyInputKind = trigger.Kind;
+        s.TranslationWindowHotkeyDisplay = display;
+        if (trigger.Kind == ShortcutInputKind.Keyboard)
+        {
+            s.TranslationWindowHotkeyModifiers = trigger.Modifiers;
+            s.TranslationWindowHotkeyVirtualKey = trigger.VirtualKey;
+            s.TranslationWindowHotkeyGamepadButton = GamepadShortcutButton.None;
+        }
+        else if (trigger.Kind == ShortcutInputKind.Gamepad)
+        {
+            s.TranslationWindowHotkeyGamepadButton = trigger.GamepadButton;
+        }
+    }
+
+    private static void ApplyRealtimeTrigger(AppSettings s, ShortcutTrigger trigger, string display)
+    {
+        s.RealtimeHotkeyInputKind = trigger.Kind;
+        s.RealtimeHotkeyDisplay = display;
+        if (trigger.Kind == ShortcutInputKind.Keyboard)
+        {
+            s.RealtimeHotkeyModifiers = trigger.Modifiers;
+            s.RealtimeHotkeyVirtualKey = trigger.VirtualKey;
+            s.RealtimeHotkeyGamepadButton = GamepadShortcutButton.None;
+        }
+        else if (trigger.Kind == ShortcutInputKind.Gamepad)
+        {
+            s.RealtimeHotkeyGamepadButton = trigger.GamepadButton;
+        }
+    }
+
+    private static void ApplyRealtimePauseTrigger(AppSettings s, ShortcutTrigger trigger, string display)
+    {
+        s.RealtimePauseHotkeyInputKind = trigger.Kind;
+        s.RealtimePauseHotkeyDisplay = display;
+        if (trigger.Kind == ShortcutInputKind.Keyboard)
+        {
+            s.RealtimePauseHotkeyModifiers = trigger.Modifiers;
+            s.RealtimePauseHotkeyVirtualKey = trigger.VirtualKey;
+            s.RealtimePauseHotkeyGamepadButton = GamepadShortcutButton.None;
+        }
+        else if (trigger.Kind == ShortcutInputKind.Gamepad)
+        {
+            s.RealtimePauseHotkeyGamepadButton = trigger.GamepadButton;
+        }
+    }
+
     private void StartRecording(HotkeyField field)
     {
-        // Only one at a time: two boxes both saying 請按下快捷鍵 would leave the next key press
+        // Only one at a time: two boxes both asking to be pressed would leave the next key press
         // ambiguous to the user long before it was ambiguous to the code.
         StopRecording();
 
         _recording = field;
-        field.Box.Text = LocalizationService.Get("S.Settings.HotkeyPrompt");
+        field.Box.Text = LocalizationService.Get("S.Settings.HotkeyPromptAnyInput");
         field.Record.Content = LocalizationService.Get("S.Common.Cancel");
         field.Box.Focus();
+
+        for (int i = 0; i < _recordGamepadButtons.Length; i++)
+            _recordGamepadButtons[i] = GamepadInput.TryGetButtons(i, out var buttons) ? buttons : (ushort)0;
+        _hotkeyGamepadRecordTimer.Start();
     }
 
-    /// <summary>Ends recording and puts the stored combination back in the box.</summary>
+    /// <summary>Ends recording and puts the stored trigger back in the box.</summary>
     /// <remarks>
     /// Reads the setting rather than remembering what was there, so this also serves as the way
     /// back after a successful capture: the new value has been persisted by then, and restoring
@@ -1002,6 +1089,7 @@ public partial class SettingsPage : UserControl
     /// </remarks>
     private void StopRecording()
     {
+        _hotkeyGamepadRecordTimer.Stop();
         if (_recording is not { } field) return;
 
         field.Box.Text = field.Display(SettingsService.Instance.Current);
@@ -1027,10 +1115,19 @@ public partial class SettingsPage : UserControl
     {
         if (FieldOf(sender) is not { } field || !ReferenceEquals(_recording, field)) return;
 
-        // 焦點移到該欄位的錄製鈕時由 Click 事件處理，這裡不介入
-        if (Keyboard.FocusedElement == field.Record) return;
+        // Keep recording while focus moves inside this settings page. This is what lets the user
+        // press middle mouse anywhere on the page after clicking Record instead of having to aim at
+        // the read-only box itself.
+        if (Keyboard.FocusedElement is DependencyObject focused && IsDescendantOfThisPage(focused)) return;
 
         StopRecording();
+    }
+
+    private bool IsDescendantOfThisPage(DependencyObject child)
+    {
+        for (DependencyObject? current = child; current is not null; current = LogicalTreeHelper.GetParent(current))
+            if (ReferenceEquals(current, this)) return true;
+        return false;
     }
 
     private void HotkeyBox_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -1040,6 +1137,12 @@ public partial class SettingsPage : UserControl
 
         bool isSystemKey = e.Key == Key.System;
         var key = isSystemKey ? e.SystemKey : e.Key;
+
+        if (key == Key.Escape)
+        {
+            StopRecording();
+            return;
+        }
 
         if (key == Key.LeftCtrl || key == Key.RightCtrl ||
             key == Key.LeftAlt  || key == Key.RightAlt  ||
@@ -1052,17 +1155,78 @@ public partial class SettingsPage : UserControl
         if (isSystemKey || Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)) mods |= GlobalHotkey.MOD_ALT;
         if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift)) mods |= GlobalHotkey.MOD_SHIFT;
 
-        if (mods == 0) return;
-
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
-        var display = $"{GlobalHotkey.ModifiersToString(mods)}+{key}";
+        if (vk == 0) return;
 
-        // Windows keys a registration by window and combination, so the second shortcut to claim
-        // one is simply refused — RegisterHotKey returns false and nothing else happens. Left to
-        // itself that reads as a shortcut that stopped working for no reason, so the clash is
-        // refused here, where there is something to say about it.
-        // A shortcut that is switched off does not hold its combination — same rule as
-        // HotkeyBindings, so what the page refuses and what actually gets registered agree.
+        var trigger = ShortcutTrigger.Keyboard(mods, vk);
+
+        // A bare key is not merely watched, it is taken from every other application — so only the
+        // keys that can afford to be taken are offered. See HotkeyBindings.IsBindable.
+        if (!HotkeyBindings.IsBindable(trigger))
+        {
+            ShowError(LocalizationService.Get("S.Settings.HotkeyNeedsModifier"));
+            StopRecording();
+            return;
+        }
+
+        var prefix = GlobalHotkey.ModifiersToString(mods);
+        var display = string.IsNullOrEmpty(prefix) ? key.ToString() : $"{prefix}+{key}";
+        CommitShortcut(recording, trigger, display);
+    }
+
+    private void SettingsPage_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_recording is not { } recording || e.ChangedButton != MouseButton.Middle) return;
+        e.Handled = true;
+        CommitShortcut(
+            recording,
+            ShortcutTrigger.MouseMiddle(),
+            LocalizationService.Get("S.Settings.MouseMiddle"));
+    }
+
+    private void PollRecordingGamepad()
+    {
+        if (_recording is not { } recording)
+        {
+            _hotkeyGamepadRecordTimer.Stop();
+            return;
+        }
+
+        for (int i = 0; i < _recordGamepadButtons.Length; i++)
+        {
+            if (!GamepadInput.TryGetButtons(i, out var current))
+            {
+                _recordGamepadButtons[i] = 0;
+                continue;
+            }
+
+            ushort pressed = (ushort)(current & ~_recordGamepadButtons[i]);
+            _recordGamepadButtons[i] = current;
+            var button = GamepadInput.FirstButton(pressed);
+            if (button == GamepadShortcutButton.None) continue;
+
+            var display = LocalizationService.Format(
+                "S.Settings.GamepadButton",
+                GamepadInput.ButtonName(button));
+            CommitShortcut(recording, ShortcutTrigger.Gamepad(button), display);
+            return;
+        }
+    }
+
+    /// <remarks>
+    /// Windows keys a registration by window and combination, so the second shortcut to claim one is
+    /// simply refused — RegisterHotKey returns false and nothing else happens. Left to itself that
+    /// reads as a shortcut that stopped working for no reason, so the clash is refused here, where
+    /// there is something to say about it. Middle click and the controller are not registered with
+    /// Windows at all, but they go through the same refusal so that one button cannot silently do two
+    /// different things.
+    ///
+    /// A shortcut that is switched off does not hold its trigger — same rule as
+    /// <see cref="HotkeyBindings"/>, so what the page refuses and what actually gets registered
+    /// agree.
+    /// </remarks>
+    private void CommitShortcut(HotkeyField recording, ShortcutTrigger trigger, string display)
+    {
         var settings = SettingsService.Instance.Current;
         var enabled = HotkeyBindings.Resolve(settings)
             .Where(binding => binding.Enabled)
@@ -1072,7 +1236,7 @@ public partial class SettingsPage : UserControl
         var taken = _hotkeyFields.FirstOrDefault(
             field => !ReferenceEquals(field, recording) &&
                      enabled.Contains(field.Action) &&
-                     field.Combination(settings) == (mods, vk));
+                     field.Trigger(settings) == trigger);
 
         if (taken is not null)
         {
@@ -1082,23 +1246,24 @@ public partial class SettingsPage : UserControl
             return;
         }
 
-        Persist(s => recording.Apply(s, mods, vk, display));
+        Persist(s => recording.Apply(s, trigger, display));
 
-        // After the write, so the box picks the new combination up out of the settings.
+        // After the write, so the box picks the new trigger up out of the settings.
         StopRecording();
 
         // Recording cannot create a clash — it is refused above — but it can clear one a stored
         // setting arrived in, so the shadow lines are re-read rather than left as they were.
         RefreshHotkeyShadowHints();
 
-        // The global hook holds the old combination until it is rebound
+        // The global hook holds the old trigger until it is rebound.
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();
 
-        // The nav rail advertises the capture shortcut beside 截圖翻譯 and is on screen right now,
-        // so it has to be told; nothing else re-reads it until the shell is next shown or
-        // activated. The window shortcut is advertised nowhere, so there is nothing to refresh.
+        // The nav rail advertises the capture shortcut beside 截圖翻譯 and is on screen right now, so
+        // it has to be told; nothing else re-reads it until the shell is next shown or activated. The
+        // other shortcuts are advertised nowhere, so there is nothing to refresh.
         if (recording.AdvertisedInShell && Window.GetWindow(this) is Shell.ShellWindow shell)
             shell.RefreshHotkeyHint();
     }
+
 }

@@ -28,6 +28,9 @@ public class GlobalHotkey : IDisposable
     /// <summary>The shortcut that drops straight into 即時翻譯 block framing.</summary>
     public const int RealtimeId = 9003;
 
+    /// <summary>The shortcut that pauses and resumes a running 即時翻譯 session.</summary>
+    public const int RealtimePauseId = 9004;
+
     public GlobalHotkey(int id) => _id = id;
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -50,7 +53,12 @@ public class GlobalHotkey : IDisposable
         _source = HwndSource.FromHwnd(hwnd);
         _source?.AddHook(WndProc);
 
-        _registered = RegisterHotKey(hwnd, _id, modifiers, virtualKey);
+        // MOD_NOREPEAT added here rather than stored: it is how the shortcut is registered, not part
+        // of what the user chose, and settings.json should go on saying only what they picked.
+        // Without it Windows repeats WM_HOTKEY at the keyboard's repeat rate while the key is held,
+        // and every one of these shortcuts is a toggle or a session start — held for half a second,
+        // a single key would switch the one-shot view back and forth a dozen times.
+        _registered = RegisterHotKey(hwnd, _id, modifiers | MOD_NOREPEAT, virtualKey);
     }
 
     public void Unregister()
@@ -79,6 +87,9 @@ public class GlobalHotkey : IDisposable
     public const uint MOD_ALT = 0x0001;
     public const uint MOD_CONTROL = 0x0002;
     public const uint MOD_SHIFT = 0x0004;
+
+    // Registration only, never recorded or displayed: see Register.
+    private const uint MOD_NOREPEAT = 0x4000;
 
     public static string ModifiersToString(uint modifiers)
     {

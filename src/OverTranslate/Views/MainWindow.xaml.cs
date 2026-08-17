@@ -24,6 +24,8 @@ public partial class MainWindow : Window
     private GlobalHotkey? _hotkey;
     private GlobalHotkey? _windowHotkey;
     private GlobalHotkey? _realtimeHotkey;
+    private GlobalHotkey? _realtimePauseHotkey;
+    private GlobalAuxiliaryHotkeys? _auxiliaryHotkeys;
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
@@ -112,23 +114,26 @@ public partial class MainWindow : Window
         _realtimeHotkey = new GlobalHotkey(GlobalHotkey.RealtimeId);
         _realtimeHotkey.HotkeyPressed += OnRealtimeHotkeyPressed;
 
+        _realtimePauseHotkey = new GlobalHotkey(GlobalHotkey.RealtimePauseId);
+        _realtimePauseHotkey.HotkeyPressed += OnRealtimePauseHotkeyPressed;
+
         var hooks = new Dictionary<HotkeyAction, GlobalHotkey>
         {
             [HotkeyAction.Capture] = _hotkey,
             [HotkeyAction.TranslationWindow] = _windowHotkey,
             [HotkeyAction.Realtime] = _realtimeHotkey,
+            [HotkeyAction.RealtimePause] = _realtimePauseHotkey,
         };
 
-        foreach (var binding in HotkeyBindings.Resolve(settings))
+        var resolved = HotkeyBindings.Resolve(settings);
+        foreach (var binding in resolved)
         {
-            if (!hooks.TryGetValue(binding.Action, out var hook)) continue;
-
             if (binding.ShadowedBy is { } holder)
             {
                 // Warn rather than Debug: the user pressed a key and nothing happened, and this line
                 // is the only place that says why.
                 Log.Warn(
-                    "Hotkey {Action} not registered: {Holder} already claims that combination",
+                    "Hotkey {Action} not registered: {Holder} already claims that trigger",
                     binding.Action, holder);
                 continue;
             }
@@ -139,7 +144,45 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            hook.Register(hwnd, binding.Modifiers, binding.VirtualKey);
+            // Reachable only through a hand-edited settings.json — the settings page refuses to
+            // record it — and refused here for the reason it is refused there: a bare typing key
+            // registered globally stops working in every other application.
+            if (!HotkeyBindings.IsBindable(binding.Trigger))
+            {
+                Log.Warn(
+                    "Hotkey {Action} not registered: {Display} is a single key that cannot be claimed globally",
+                    binding.Action, binding.Trigger.VirtualKey);
+                continue;
+            }
+
+            if (binding.InputKind == OverTranslate.Models.ShortcutInputKind.Keyboard &&
+                hooks.TryGetValue(binding.Action, out var hook))
+            {
+                hook.Register(hwnd, binding.Modifiers, binding.VirtualKey);
+            }
+        }
+
+        _auxiliaryHotkeys = new GlobalAuxiliaryHotkeys();
+        _auxiliaryHotkeys.ShortcutPressed += OnAuxiliaryHotkeyPressed;
+        _auxiliaryHotkeys.Register(resolved);
+    }
+
+    private void OnAuxiliaryHotkeyPressed(HotkeyAction action)
+    {
+        switch (action)
+        {
+            case HotkeyAction.Capture:
+                OnHotkeyPressed(this, EventArgs.Empty);
+                break;
+            case HotkeyAction.TranslationWindow:
+                OnTranslationWindowHotkeyPressed(this, EventArgs.Empty);
+                break;
+            case HotkeyAction.Realtime:
+                OnRealtimeHotkeyPressed(this, EventArgs.Empty);
+                break;
+            case HotkeyAction.RealtimePause:
+                OnRealtimePauseHotkeyPressed(this, EventArgs.Empty);
+                break;
         }
     }
 
@@ -188,6 +231,9 @@ public partial class MainWindow : Window
         _hotkey?.Unregister();
         _windowHotkey?.Unregister();
         _realtimeHotkey?.Unregister();
+        _realtimePauseHotkey?.Unregister();
+        _auxiliaryHotkeys?.Dispose();
+        _auxiliaryHotkeys = null;
         RegisterHotkey();
     }
 
@@ -233,33 +279,40 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Starts a capture, or — during a realtime session — pauses and resumes that session instead.
+    /// Starts a capture, unless a realtime session has the screen.
     /// </summary>
     /// <remarks>
-    /// A session still rules a capture out, for the reasons on <see cref="RefuseWhileRealtimeRuns"/>,
-    /// which left this shortcut inert for the whole of a session that may run for hours. It is now
-    /// the fastest thing on screen to reach, so it is spent on the one thing a user in front of a
-    /// session keeps needing: turning the overlays off for a scene they do not want translated, and
-    /// back on for the one after it — without hunting for a floating bar over a full-screen game.
-    /// See <see cref="Views.Realtime.RealtimeSessionController.TogglePause"/>.
+    /// This shortcut used to pause and resume a running session, on the reasoning that a session
+    /// rules a capture out anyway — so the key was free for the whole of a session that may run for
+    /// hours, and pausing is what a user in front of one keeps needing. It was still one key with two
+    /// meanings, and the reader could neither choose what to press for the frequent one nor put it
+    /// where their hands are while a game has the screen. 暫停 / 繼續 has its own shortcut now — see
+    /// <see cref="OnRealtimePauseHotkeyPressed"/> — and this key means the one thing it is named after.
     ///
-    /// Silent while blocks are being framed, where there is nothing running to pause and no capture
-    /// to run. The notification this used to raise was right when the shortcut had only one meaning
-    /// and the user had to be told why it had stopped working; now it does something in the mode
-    /// they will be in a second later, and interrupting the framing to say "not yet" is noise.
+    /// Which brings back the refusal: the two features share one OCR engine and one bounded pool of
+    /// inference slots, so a capture during a session is turned away and told why rather than
+    /// competing for them. <see cref="RefuseWhileRealtimeRuns"/> covers block framing too, where a
+    /// capture is equally out of the question.
     /// </remarks>
     private void OnHotkeyPressed(object? sender, EventArgs e) =>
         Dispatcher.Invoke(async () =>
         {
-            var realtime = Views.Realtime.RealtimeSessionController.Instance;
-            if (realtime.IsActive)
-            {
-                realtime.TogglePause();
-                return;
-            }
+            if (RefuseWhileRealtimeRuns()) return;
 
             await RunCaptureSessionAsync();
         });
+
+    /// <summary>
+    /// Pauses a running realtime session, or resumes a paused one.
+    /// </summary>
+    /// <remarks>
+    /// Silent when there is no session, and while blocks are being framed: there is nothing running
+    /// to pause, and a key named after one action has nothing to say about a mode it does not apply
+    /// to. <see cref="Views.Realtime.RealtimeSessionController.TogglePause"/> is what decides that,
+    /// and the bar's own button is the other way in.
+    /// </remarks>
+    private void OnRealtimePauseHotkeyPressed(object? sender, EventArgs e) =>
+        Dispatcher.Invoke(() => Views.Realtime.RealtimeSessionController.Instance.TogglePause());
 
     /// <summary>
     /// Opens the translation window, and during a realtime session brings its layers to the front
@@ -980,6 +1033,9 @@ public partial class MainWindow : Window
         _hotkey?.Dispose();
         _windowHotkey?.Dispose();
         _realtimeHotkey?.Dispose();
+        _realtimePauseHotkey?.Dispose();
+        _auxiliaryHotkeys?.Dispose();
+        _auxiliaryHotkeys = null;
         if (_notifyIcon != null)
         {
             _notifyIcon.Visible = false;

@@ -10,6 +10,8 @@ public class AppSettings
     public uint HotkeyModifiers { get; set; } = 3;
     public uint HotkeyVirtualKey { get; set; } = 0x41;
     public string HotkeyDisplay { get; set; } = "Ctrl+Alt+A";
+    public ShortcutInputKind HotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton HotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 
     /// <summary>
     /// The shortcut that opens the translation window. Ctrl+Alt+W by default.
@@ -25,6 +27,8 @@ public class AppSettings
     public uint TranslationWindowHotkeyVirtualKey { get; set; } = 0x57;
 
     public string TranslationWindowHotkeyDisplay { get; set; } = "Ctrl+Alt+W";
+    public ShortcutInputKind TranslationWindowHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton TranslationWindowHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 
     /// <summary>
     /// Whether the translation-window shortcut is registered at all.
@@ -52,9 +56,33 @@ public class AppSettings
 
     /// <inheritdoc cref="RealtimeHotkeyModifiers"/>
     public string RealtimeHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
+    public ShortcutInputKind RealtimeHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton RealtimeHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 
     /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
     public bool RealtimeHotkeyEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Pauses and resumes a running realtime session. Ctrl+Alt+Q by default.
+    /// </summary>
+    /// <remarks>
+    /// Its own shortcut rather than a second meaning for the capture one. Sharing it made a kind of
+    /// sense — a session hides the page the capture shortcut would otherwise open, so the key was
+    /// free — but it also meant the reader could not choose what to press for the thing they reach for
+    /// most, and could not put it somewhere their hands already are while a game has the screen.
+    /// </remarks>
+    public uint RealtimePauseHotkeyModifiers { get; set; } = 3;
+
+    /// <inheritdoc cref="RealtimePauseHotkeyModifiers"/>
+    public uint RealtimePauseHotkeyVirtualKey { get; set; } = 0x51;
+
+    /// <inheritdoc cref="RealtimePauseHotkeyModifiers"/>
+    public string RealtimePauseHotkeyDisplay { get; set; } = "Ctrl+Alt+Q";
+    public ShortcutInputKind RealtimePauseHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton RealtimePauseHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
+
+    /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
+    public bool RealtimePauseHotkeyEnabled { get; set; } = true;
 
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
@@ -192,6 +220,39 @@ public class AppSettings
     /// </remarks>
     public int RealtimeScrimOpacity { get; set; } =
         Services.Realtime.RealtimeSubtitleColors.DefaultScrimOpacity;
+
+    /// <summary>
+    /// Whether the band behind a subtitle is replaced by a repair of the picture underneath: the
+    /// source line is erased and filled in from the pixels around it, and the translation is drawn
+    /// back where it was.
+    /// </summary>
+    /// <remarks>
+    /// Off by default, and deliberately not because it is new. The repair interpolates from the edges
+    /// of the line it erases, so it is close to invisible over a subtitle's own dark strip or a
+    /// dialogue panel and visibly a smeared patch over texture, a face or a grid — a higher ceiling
+    /// than the band and a lower floor. Which of the two is better is a judgement about the picture
+    /// the user is watching, and only they can see it, so the honest default is the one whose result
+    /// is predictable. It also costs a screen grab several times a second, which the band does not:
+    /// see <see cref="RealtimeSampleSourceTextColor"/> for the other half of the same trade.
+    /// </remarks>
+    public bool RealtimeNaturalBackgroundEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Whether the translation is drawn in a colour sampled from the source line rather than in
+    /// <see cref="RealtimeTextColor"/>.
+    /// </summary>
+    /// <remarks>
+    /// Its own key rather than travelling with <see cref="RealtimeNaturalBackgroundEnabled"/>, because
+    /// the two fail in different places and a reader may well want one without the other: "repair the
+    /// background, but keep my high-contrast yellow" is a reasonable arrangement, and sampling is
+    /// exactly what stops being reliable on the busy pictures where that yellow earns its keep.
+    ///
+    /// Sampling averages the pixels that stand out from the local background, so it has no outline,
+    /// shadow or gradient to give back. Source text that depends on one of those to stay readable
+    /// comes back as a colour that does not, which is what the readability check falls back to this
+    /// setting for.
+    /// </remarks>
+    public bool RealtimeSampleSourceTextColor { get; set; } = false;
 
     /// <summary>
     /// Whether the per-block framing guidance on the edit layer is unfolded. Expanded on a first run,

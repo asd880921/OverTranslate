@@ -105,6 +105,43 @@ public class FrameFingerprintTests
             FrameFingerprint.Capture(frame, bands).Differs(FrameFingerprint.Capture(frame, bands)));
     }
 
+    [Fact]
+    public void ADrawnCopyStillLooksRightWhileNothingMoves()
+    {
+        // What the repaired background asks before repainting: the patch on screen was interpolated
+        // from these pixels, and while they hold still it is still correct.
+        using var frame = CreateFrame();
+
+        Assert.True(
+            FrameFingerprint.Capture(frame, null).StillLooksLike(FrameFingerprint.Capture(frame, null)));
+    }
+
+    [Fact]
+    public void ADriftTooSmallToRecogniseIsStillTooBigToKeepPainted()
+    {
+        // The case the two questions answer differently, and the reason StillLooksLike exists. A
+        // scene brightening by a few levels behind an unchanged line reads no new words — Differs is
+        // tuned to say so — but a patch interpolated from the old shade now sits in the new one.
+        Assert.False(Cells(100).StillLooksLike(Cells(106)));
+        Assert.False(Cells(100).Differs(Cells(106)));
+    }
+
+    [Fact]
+    public void NoiseBelowFourLevelsIsNotWorthRepaintingFor()
+    {
+        // Otherwise a still picture would repaint every tick on dithering alone, which is the cost
+        // this check exists to avoid.
+        Assert.True(Cells(100).StillLooksLike(Cells(103)));
+    }
+
+    [Fact]
+    public void APatchSetWithNothingToCompareAgainstIsRepainted()
+    {
+        // A fresh arrangement of patches has never been painted, so it cannot be left alone.
+        Assert.False(Cells(100).StillLooksLike(null));
+        Assert.False(new FrameFingerprint(new byte[100]).StillLooksLike(new FrameFingerprint(new byte[50])));
+    }
+
     private static FrameFingerprint Cells(byte value)
     {
         var cells = new byte[100];

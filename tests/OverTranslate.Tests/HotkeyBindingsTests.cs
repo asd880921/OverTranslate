@@ -9,12 +9,12 @@ public class HotkeyBindingsTests
     private const uint CtrlAlt = 3;
 
     [Fact]
-    public void ThreeDistinctCombinationsAllStayOn()
+    public void FourDistinctCombinationsAllStayOn()
     {
         var active = HotkeyBindings.Active(new AppSettings()).ToList();
 
         Assert.Equal(
-            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.Realtime],
+            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.Realtime, HotkeyAction.RealtimePause],
             active.Select(binding => binding.Action));
     }
 
@@ -64,6 +64,23 @@ public class HotkeyBindingsTests
     }
 
     [Fact]
+    public void PauseLosesToRealtimeWhenAStoredSettingCollides()
+    {
+        var settings = new AppSettings
+        {
+            RealtimePauseHotkeyModifiers = CtrlAlt,
+            RealtimePauseHotkeyVirtualKey = 0x53,
+            RealtimePauseHotkeyDisplay = "Ctrl+Alt+S",
+        };
+
+        var single = HotkeyBindings.Resolve(settings)
+            .Single(binding => binding.Action == HotkeyAction.RealtimePause);
+
+        Assert.False(single.IsActive);
+        Assert.Equal(HotkeyAction.Realtime, single.ShadowedBy);
+    }
+
+    [Fact]
     public void SwitchingOffTheHolderHandsTheCombinationDown()
     {
         // A shortcut that is off does not reserve its combination. Without this, turning the window
@@ -105,4 +122,86 @@ public class HotkeyBindingsTests
         Assert.True(HotkeyBindings.Resolve(new AppSettings())
             .Single(binding => binding.Action == HotkeyAction.Capture).Enabled);
     }
+    [Fact]
+    public void MiddleMouseUsesTheSamePriorityRulesAsKeyboard()
+    {
+        var settings = new AppSettings
+        {
+            RealtimeHotkeyInputKind = ShortcutInputKind.MouseMiddle,
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.MouseMiddle,
+        };
+
+        var resolved = HotkeyBindings.Resolve(settings);
+        Assert.True(resolved.Single(b => b.Action == HotkeyAction.Realtime).IsActive);
+        Assert.Equal(HotkeyAction.Realtime,
+            resolved.Single(b => b.Action == HotkeyAction.RealtimePause).ShadowedBy);
+    }
+
+    [Fact]
+    public void GamepadButtonCanBeAUniqueShortcut()
+    {
+        var settings = new AppSettings
+        {
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.Gamepad,
+            RealtimePauseHotkeyGamepadButton = GamepadShortcutButton.X,
+        };
+
+        var single = HotkeyBindings.Resolve(settings)
+            .Single(b => b.Action == HotkeyAction.RealtimePause);
+
+        Assert.True(single.IsActive);
+        Assert.Equal(ShortcutInputKind.Gamepad, single.InputKind);
+        Assert.Equal(GamepadShortcutButton.X, single.GamepadButton);
+    }
+
+    [Fact]
+    public void AFunctionKeyMayStandAlone()
+    {
+        // The point of allowing a bare key at all: one key, reachable with the hand already on the
+        // keyboard, and one nothing else on the machine is waiting for.
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x74))); // F5
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x87))); // F24
+    }
+
+    [Fact]
+    public void ATypingKeyOnItsOwnIsRefused()
+    {
+        // RegisterHotKey takes the key from every other application, so binding a bare A would stop
+        // the letter working everywhere — including in the box the user would have to type into to
+        // change it back.
+        Assert.False(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x41))); // A
+        Assert.False(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x20))); // Space
+        Assert.False(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(0, 0x2E))); // Delete
+    }
+
+    [Fact]
+    public void TheSameTypingKeyIsFineWithAModifier()
+    {
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Keyboard(CtrlAlt, 0x41)));
+    }
+
+    [Fact]
+    public void MouseAndGamepadTriggersAreNeverRefused()
+    {
+        // They are observed rather than claimed, so they take nothing away from anybody and the
+        // question this rule answers does not arise.
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.MouseMiddle()));
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Gamepad(GamepadShortcutButton.Y)));
+    }
+
+    [Fact]
+    public void KeyboardAndGamepadWithSameNumericCodeDoNotCollide()
+    {
+        var settings = new AppSettings
+        {
+            RealtimeHotkeyModifiers = 0,
+            RealtimeHotkeyVirtualKey = 0x58,
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.Gamepad,
+            RealtimePauseHotkeyGamepadButton = GamepadShortcutButton.X,
+        };
+
+        Assert.True(HotkeyBindings.Resolve(settings)
+            .Single(b => b.Action == HotkeyAction.RealtimePause).IsActive);
+    }
+
 }

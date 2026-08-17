@@ -13,6 +13,7 @@
     <sys:String x:Key="S.Common.Record">Record</sys:String>
     <sys:String x:Key="S.Common.Cancel">Cancel</sys:String>
     <sys:String x:Key="S.Common.Edit">Edit</sys:String>
+    <sys:String x:Key="S.Common.Reset">Reset</sys:String>
     <sys:String x:Key="S.Common.Close">Close</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API key</sys:String>
 
@@ -167,12 +168,18 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.ScrimOpacity">Background opacity</sys:String>
     <sys:String x:Key="S.Realtime.ResetColors">Reset to defaults</sys:String>
     <sys:String x:Key="S.Realtime.ResetColorsName">Reset appearance</sys:String>
+    <sys:String x:Key="S.Realtime.AdvancedOptions">Advanced options</sys:String>
+    <sys:String x:Key="S.Realtime.NaturalBackground">Blend into the background</sys:String>
+    <sys:String x:Key="S.Realtime.NaturalBackgroundHint">Tries to remove the original text and rebuild the background from the surrounding picture, so the translation sits in the scene.</sys:String>
+    <sys:String x:Key="S.Realtime.SampleTextColor">Keep the original text colour</sys:String>
+    <sys:String x:Key="S.Realtime.SampleTextColorHint">Samples the original text's colour first, and uses the colour you set when recognition is unreliable.</sys:String>
+    <sys:String x:Key="S.Realtime.AdvancedOptionsCost">Advanced options need extra processing, so enabling them may affect performance.</sys:String>
 
     <sys:String x:Key="S.Realtime.HowItWorks">How it works</sys:String>
     <sys:String x:Key="S.Realtime.Step1">1. Click "Select blocks" and drag over the areas you want translated.</sys:String>
     <sys:String x:Key="S.Realtime.Step2">2. Click "Start" on the floating bar. Each block is re-read and updated whenever its content changes.</sys:String>
     <sys:String x:Key="S.Realtime.Step3">3. Translated areas do not intercept clicks, so games and other apps keep working. Click "Edit" to adjust the blocks.</sys:String>
-    <sys:String x:Key="S.Realtime.Step4">4. Press {0} while translating to pause and resume. Pausing clears the translations and releases the recognition model.</sys:String>
+    <sys:String x:Key="S.Realtime.Step4">4. Press {0} while translating to pause and resume. Pausing puts the original text back on screen.</sys:String>
 
     <sys:String x:Key="S.Realtime.SelectBlocks">Select blocks</sys:String>
     <sys:String x:Key="S.Realtime.StopSession">Stop</sys:String>
@@ -240,13 +247,20 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.Hotkeys">Shortcuts</sys:String>
     <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
     <sys:String x:Key="S.Settings.HotkeyEnable">Enable this shortcut</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyOn">Enabled</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyOff">Disabled</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with any key, or be a single function key, the middle mouse button, or a gamepad button.</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+F2, F8, middle mouse. On its own, a key has to be a function key; middle mouse and the gamepad leave the game's own input alone.</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkey">Realtime block</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkeyHint">Press this shortcut to enter realtime [[block selection mode]]</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">While [[realtime translation]] is running, press this shortcut to [[pause / resume]] it (pausing puts the original text back on screen)</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ Same as "{0}" above, so it is off</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ A single key can only be F1–F24, Pause or Scroll Lock — other keys need Ctrl/Alt/Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkey">Capture</sys:String>
-    <sys:String x:Key="S.Settings.CaptureHotkeyHint">Press this shortcut to start a screen capture translation; while [[realtime translation]] is running it [[pauses / resumes]] the realtime translation instead</sys:String>
+    <sys:String x:Key="S.Settings.CaptureHotkeyHint">Press this shortcut to start a [[screen capture translation]]</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkey">Open window</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkeyHint">While [[realtime translation]] is running, brings the [[floating bar]] to the front instead</sys:String>
     <sys:String x:Key="S.Settings.SourceLanguage">Source</sys:String>
@@ -305,7 +319,9 @@ The parameter is left out of the request when this is off. Models differ — fol
 
     <!-- Settings page, composed in code-behind -->
     <sys:String x:Key="S.Settings.Saved">✓ Saved</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyPrompt">Press a shortcut...</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyPromptAnyInput">Press a keyboard key, middle mouse, or gamepad button…</sys:String>
+    <sys:String x:Key="S.Settings.MouseMiddle">Middle Mouse</sys:String>
+    <sys:String x:Key="S.Settings.GamepadButton">Gamepad {0}</sys:String>
     <sys:String x:Key="S.Settings.FolderPickerTitle">Choose where to save screenshots</sys:String>
     <sys:String x:Key="S.Settings.LoggingEnvOverride">The log level is currently set by the OVERTRANSLATE_LOGLEVEL environment variable, so this option has no effect.</sys:String>
     <sys:String x:Key="S.Settings.StartupFailed">✗ Could not change the startup setting: {0}</sys:String>

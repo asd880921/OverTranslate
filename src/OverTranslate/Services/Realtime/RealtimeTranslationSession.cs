@@ -135,11 +135,17 @@ public sealed class RealtimeTranslationSession
     /// </summary>
     public bool IsPaused { get; private set; }
 
+    /// <param name="readAtOnce">
+    /// Whether each region reads its first frame immediately instead of waiting for a poll and for
+    /// the picture to settle. True for <see cref="Resume"/>; false when a session is starting, where
+    /// both waits are earning their keep — see <see cref="RunRegionAsync"/>.
+    /// </param>
     public void Start(
         IReadOnlyList<RealtimeRegion> regions,
         string sourceLanguage,
         string targetLanguage,
-        Models.TranslationProvider provider)
+        Models.TranslationProvider provider,
+        bool readAtOnce = false)
     {
         Stop();
 
@@ -176,13 +182,14 @@ public sealed class RealtimeTranslationSession
         foreach (var region in regions)
         {
             var watched = region;
-            _ = Task.Run(() => RunRegionAsync(watched, sourceLanguage, targetLanguage, cts.Token), cts.Token);
+            _ = Task.Run(
+                () => RunRegionAsync(watched, sourceLanguage, targetLanguage, readAtOnce, cts.Token),
+                cts.Token);
         }
     }
 
     /// <summary>
-    /// Stops watching the screen without ending the session, and gives the recognition model's
-    /// memory back straight away.
+    /// Stops watching the screen without ending the session.
     /// </summary>
     /// <remarks>
     /// For the scene the user does not want translated: a cutscene they have already read, a menu
@@ -190,15 +197,23 @@ public sealed class RealtimeTranslationSession
     /// the session would work too, and would cost them their blocks and a trip back through the
     /// shell window to draw them again — this keeps the whole arrangement and only stops the work.
     ///
-    /// Everything a running session holds goes: the poll loops are cancelled, and the ONNX runtime
-    /// is released rather than left warm, because a paused session that keeps hundreds of MB alive
-    /// is indistinguishable from one that was never paused. Loading it again is what
-    /// <see cref="Resume"/> pays, and it is paid once at human pace.
+    /// The poll loops are cancelled; the recogniser is not. It used to be handed back here, on the
+    /// reasoning that a paused session holding hundreds of MB is indistinguishable from one that was
+    /// never paused — but the memory is not what the user is waiting for. Loading the model again was
+    /// measured at 575–1027ms against a steady state of 234ms
+    /// (see <see cref="Ocr.OnnxOcrEngine.SetKeepWarm"/>), and every millisecond of it lands inside
+    /// the first poll after 繼續, which is the one moment in a session where somebody is watching the
+    /// screen waiting for words to appear. A pause is "not now", and the arrangement is still framed
+    /// and still theirs; the press that means "done" is the one that ends the session, and that is
+    /// where the memory goes back — see <see cref="Stop"/>.
     ///
-    /// The translation cache goes with it, which is what the generation is for: an answer already
-    /// in flight when this was called must not land in the cache — or on screen — after it. Keeping
-    /// the cache would save a few provider calls on 繼續; publishing a line from before the pause
-    /// into a scene that has since moved on is the more expensive mistake.
+    /// What has already been translated does not go with it. An answer still in flight must not land
+    /// on screen after the pause — the scene has moved on — but that is a statement about a pass, not
+    /// about the wording it was carrying: "this source text translates to that" is still true when the
+    /// user comes back. So the cache is fenced rather than emptied, and 繼續 over content that has not
+    /// changed reads the region once and draws it again without a second trip to the provider. The
+    /// paragraph above is why that trip was the one worth removing: it is the only stage here whose
+    /// duration this application does not control.
     /// </remarks>
     /// <returns>The generation assigned to this pause, for rejecting older queued UI updates.</returns>
     public int Pause()
@@ -206,15 +221,16 @@ public sealed class RealtimeTranslationSession
         StopLoops();
         IsPaused = true;
 
-        // Not merely "stop keeping it warm": that leaves the model loaded for the inactivity delay,
-        // and the user has just said they are done with it for now.
-        _ocr.ReleaseModel();
+        // Put back after StopLoops turned it off: a paused session is still a session, and the model
+        // it will want in a moment is the one already loaded. A release queued by that turn-off is
+        // benign — ReleaseIdleRuntime checks this flag before disposing anything.
+        _ocr.SetKeepWarm(true);
 
-        var generation = _translationCache.Invalidate();
+        var generation = _translationCache.Fence();
 
         // Human-paced, and the first thing to check when a session is reported as having stopped
         // updating — unlike the per-poll traffic, which has to stay at Debug.
-        Log.Info("Realtime session paused: region loops stopped and the OCR model released");
+        Log.Info("Realtime session paused: region loops stopped, recogniser and translations kept");
         return generation;
     }
 
@@ -223,22 +239,32 @@ public sealed class RealtimeTranslationSession
     /// session was started with.
     /// </summary>
     /// <remarks>
-    /// Every region begins from an empty view of the screen — new frame state, no cached wording —
-    /// so whatever is on screen now is read and translated rather than compared against a frame
-    /// from before the pause.
+    /// Every region begins from an empty view of the screen, so whatever is on screen now is read
+    /// rather than compared against a frame from before the pause. Read, but not necessarily
+    /// translated again: the reading is looked up in the cache the pause fenced rather than emptied,
+    /// so a scene that has not changed comes back as fast as one recognition pass. A scene that has
+    /// changed pays what it always did.
     /// </remarks>
     public void Resume()
     {
         if (!IsPaused) return;
 
-        Log.Info("Realtime session resuming: every region will be read from scratch");
-        Start(_regions, _sourceLanguage, _targetLanguage, _provider);
+        Log.Info("Realtime session resuming: every region read at once, from scratch");
+        Start(_regions, _sourceLanguage, _targetLanguage, _provider, readAtOnce: true);
     }
 
-    public void Stop()
+    /// <param name="releaseRecogniser">
+    /// Whether to hand the model's memory back now rather than leaving it to the inactivity timer.
+    /// True when the user has ended the session, false when this is the stop on the way back to block
+    /// framing — that one is nearly always followed by 開始翻譯 within seconds, and it would pay the
+    /// reload the pause above exists to avoid.
+    /// </param>
+    public void Stop(bool releaseRecogniser = false)
     {
         StopLoops();
         IsPaused = false;
+
+        if (releaseRecogniser) _ocr.ReleaseModel();
     }
 
     private void StopLoops()
@@ -253,10 +279,22 @@ public sealed class RealtimeTranslationSession
         // for nothing.
     }
 
+    /// <param name="readAtOnce">
+    /// Whether the first look happens before the first tick and without waiting for the picture to
+    /// settle. It is the difference between a poll and a press: an ordinary pass is this loop noticing
+    /// something on its own, where waiting a tick lets a line that is still fading in arrive — but the
+    /// first look after 繼續 is the user asking, and they are watching the screen for words. Two ticks
+    /// and a recognition is most of a second of nothing happening.
+    ///
+    /// Not done when a session starts, deliberately. That press is followed by the framing layer
+    /// coming down and the shell window hiding, so the picture really has not settled yet, and reading
+    /// it early would read those instead of the application underneath.
+    /// </param>
     private async Task RunRegionAsync(
         RealtimeRegion region,
         string sourceLanguage,
         string targetLanguage,
+        bool readAtOnce,
         CancellationToken token)
     {
         var state = new RealtimeRegionState();
@@ -267,9 +305,14 @@ public sealed class RealtimeTranslationSession
             using var timer = new PeriodicTimer(PollInterval);
             var lastScan = Stopwatch.GetTimestamp();
             var skippedPolls = 0;
+            var asked = readAtOnce;
 
-            while (await timer.WaitForNextTickAsync(token))
+            while (asked || await timer.WaitForNextTickAsync(token))
             {
+                // Only the first pass can have been asked for; everything after it is a poll again.
+                var demanded = asked;
+                asked = false;
+
                 token.ThrowIfCancellationRequested();
 
                 // A translation that never reached the screen leaves this region recorded as showing
@@ -286,7 +329,11 @@ public sealed class RealtimeTranslationSession
                 FrameFingerprint Capture(IReadOnlyList<Rectangle>? areas) =>
                     FrameFingerprint.Capture(frame, areas);
 
-                if (!state.Observe(Capture))
+                // Asked for, so not asked about: a demanded pass reads whatever is there rather than
+                // consulting a policy whose whole job is deciding which polls are worth paying for.
+                // A reading caught mid-change is not lost either — the next pass keeps the better of
+                // the two, see RealtimeReadingMerge.
+                if (!demanded && !state.Observe(Capture))
                 {
                     skippedPolls++;
                     continue;

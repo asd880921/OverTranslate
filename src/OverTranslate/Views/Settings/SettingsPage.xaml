@@ -1,7 +1,8 @@
 <UserControl x:Class="OverTranslate.Views.Settings.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="clr-namespace:OverTranslate.Views.Controls">
+             xmlns:controls="clr-namespace:OverTranslate.Views.Controls"
+             PreviewMouseDown="SettingsPage_PreviewMouseDown">
 
     <Grid Margin="28,22,28,20">
         <Grid.RowDefinitions>
@@ -72,9 +73,49 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="{DynamicResource S.Settings.Hotkeys}" Style="{StaticResource SectionHeader}"/>
+                        <!-- The header and the note travel together in row 0, so the four shortcut
+                             rows below keep the row numbers they already had. -->
+                        <StackPanel Grid.Row="0">
+                            <TextBlock Text="{DynamicResource S.Settings.Hotkeys}" Style="{StaticResource SectionHeader}"/>
+
+                            <!-- What can be bound at all, said once at the top rather than four times
+                                 in the per-row hints. Each row already explains what its shortcut
+                                 does; this explains what a shortcut may be, which is the same answer
+                                 for all of them and is not obvious from a box that only ever shows
+                                 one combination. -->
+                            <Border Style="{StaticResource InfoCardBorder}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Centred against both lines rather than aligned to the first:
+                                         it marks the note, not its opening sentence. -->
+                                    <TextBlock Grid.Column="0"
+                                               Text="&#xE946;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="17"
+                                               Foreground="{DynamicResource AppAccent}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,11,0"/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{DynamicResource S.Settings.HotkeyKinds}"
+                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontSize="{StaticResource AppFontSize}"
+                                                   Foreground="{DynamicResource AppTextPrimary}"
+                                                   TextWrapping="Wrap"
+                                                   LineHeight="18"/>
+                                        <TextBlock Text="{DynamicResource S.Settings.HotkeyKindsExample}"
+                                                   Style="{StaticResource FieldHint}"
+                                                   Margin="0,4,0,0"
+                                                   LineHeight="16"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
 
                         <!-- Capture has no on/off tick at all: this is the feature the application
                              is for. Its last column is empty and still here, so the three rows'
@@ -136,13 +177,23 @@
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
-                            <CheckBox  Grid.Column="3" Grid.Row="0" x:Name="WindowHotkeyEnabledCheckBox"
-                                       Style="{StaticResource ModernCheckBox}"
-                                       VerticalAlignment="Center"
-                                       Margin="10,0,0,0"
-                                       ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
-                                       Checked="HotkeyEnabled_Toggled"
-                                       Unchecked="HotkeyEnabled_Toggled"/>
+                            <StackPanel Grid.Column="3" Grid.Row="0"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Margin="10,0,0,0">
+                                <CheckBox x:Name="WindowHotkeyEnabledCheckBox"
+                                          Style="{StaticResource ToggleSwitch}"
+                                          ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                          Checked="HotkeyEnabled_Toggled"
+                                          Unchecked="HotkeyEnabled_Toggled"/>
+                                <!-- Sized for the longer of the two words, so switching one
+                                     row does not move the switches on the rows sharing this
+                                     column's width. -->
+                                <TextBlock x:Name="WindowHotkeyEnabledLabel"
+                                           Style="{StaticResource FieldLabel}"
+                                           MinWidth="56"
+                                           Margin="9,0,0,0"/>
+                            </StackPanel>
                             <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
                                        controls:HighlightedText.Source="{DynamicResource S.Settings.WindowHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
@@ -178,18 +229,80 @@
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
-                            <CheckBox  Grid.Column="3" Grid.Row="0" x:Name="RealtimeHotkeyEnabledCheckBox"
-                                       Style="{StaticResource ModernCheckBox}"
-                                       VerticalAlignment="Center"
-                                       Margin="10,0,0,0"
-                                       ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
-                                       Checked="HotkeyEnabled_Toggled"
-                                       Unchecked="HotkeyEnabled_Toggled"/>
+                            <StackPanel Grid.Column="3" Grid.Row="0"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Margin="10,0,0,0">
+                                <CheckBox x:Name="RealtimeHotkeyEnabledCheckBox"
+                                          Style="{StaticResource ToggleSwitch}"
+                                          ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                          Checked="HotkeyEnabled_Toggled"
+                                          Unchecked="HotkeyEnabled_Toggled"/>
+                                <!-- Sized for the longer of the two words, so switching one
+                                     row does not move the switches on the rows sharing this
+                                     column's width. -->
+                                <TextBlock x:Name="RealtimeHotkeyEnabledLabel"
+                                           Style="{StaticResource FieldLabel}"
+                                           MinWidth="56"
+                                           Margin="9,0,0,0"/>
+                            </StackPanel>
                             <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
                                        controls:HighlightedText.Source="{DynamicResource S.Settings.RealtimeHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
                             <TextBlock Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3"
                                        x:Name="RealtimeHotkeyShadowHint"
+                                       Style="{StaticResource FieldHint}"
+                                       Visibility="Collapsed"/>
+                        </Grid>
+
+                        <!-- One-shot translation. Active only while realtime translation is running. -->
+                        <Grid Grid.Row="4" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.RealtimePauseHotkey}"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="RealtimePauseHotkeyBox"
+                                       Style="{StaticResource ModernTextBox}"
+                                       IsReadOnly="True"
+                                       Margin="0,0,8,0"
+                                       PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                       GotFocus="HotkeyBox_GotFocus"
+                                       LostFocus="HotkeyBox_LostFocus"/>
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RealtimePauseRecordBtn" Content="{DynamicResource S.Common.Record}"
+                                       Style="{StaticResource FlatButton}"
+                                       Height="34"
+                                       Click="RecordBtn_Click"/>
+                            <StackPanel Grid.Column="3" Grid.Row="0"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Margin="10,0,0,0">
+                                <CheckBox x:Name="RealtimePauseHotkeyEnabledCheckBox"
+                                          Style="{StaticResource ToggleSwitch}"
+                                          ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                          Checked="HotkeyEnabled_Toggled"
+                                          Unchecked="HotkeyEnabled_Toggled"/>
+                                <!-- Sized for the longer of the two words, so switching one
+                                     row does not move the switches on the rows sharing this
+                                     column's width. -->
+                                <TextBlock x:Name="RealtimePauseHotkeyEnabledLabel"
+                                           Style="{StaticResource FieldLabel}"
+                                           MinWidth="56"
+                                           Margin="9,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
+                                       controls:HighlightedText.Source="{DynamicResource S.Settings.RealtimePauseHotkeyHint}"
+                                       Style="{StaticResource FieldHint}"/>
+                            <TextBlock Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3"
+                                       x:Name="RealtimePauseHotkeyShadowHint"
                                        Style="{StaticResource FieldHint}"
                                        Visibility="Collapsed"/>
                         </Grid>
