@@ -385,7 +385,9 @@ public partial class RealtimePage : UserControl
             ProviderBox.SelectedValue as TranslationProvider? ?? DefaultProvider,
             settings.RealtimeTextColor,
             settings.RealtimeScrimColor,
-            settings.RealtimeScrimOpacity);
+            settings.RealtimeScrimOpacity,
+            settings.RealtimeNaturalBackgroundEnabled,
+            settings.RealtimeSampleSourceTextColor);
 
         // The shell is handed over to be hidden: it is almost certainly sitting on the screen the
         // user is about to frame blocks on, and it comes back when the session ends.

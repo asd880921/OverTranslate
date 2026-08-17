@@ -76,6 +76,15 @@ public partial class RealtimeBlockWindow : Window
     private readonly SolidColorBrush _scrimBrush;
     private readonly SolidColorBrush _textBrush;
 
+    // 顯示外觀 → 進階選項, both off unless the user asked for them. Held per session for the same
+    // reason the colours are: the page that sets them is behind a shell window this session hid.
+    //
+    // With both off nothing here grabs the screen at all — see Rebuild. That is not merely a saving:
+    // the band is the predictable one of the two looks, and a window that does not photograph itself
+    // cannot bake its own translation into what it draws either.
+    private readonly bool _naturalBackground;
+    private readonly bool _sampleTextColor;
+
     private double _dpiX = 1.0;
     private double _dpiY = 1.0;
     private bool _isLoaded;
@@ -91,12 +100,16 @@ public partial class RealtimeBlockWindow : Window
         string targetLanguage,
         string textColor,
         string scrimColor,
-        int scrimOpacity)
+        int scrimOpacity,
+        bool naturalBackground = false,
+        bool sampleTextColor = false)
     {
         InitializeComponent();
 
         RegionId = regionId;
         _physBounds = physBounds;
+        _naturalBackground = naturalBackground;
+        _sampleTextColor = sampleTextColor;
         _latinSourceToCjkTarget = IsLatinToCjk(sourceLanguage, targetLanguage);
         _textBrush = Freeze(new SolidColorBrush(RealtimeSubtitleColors.Text(textColor)));
         _scrimBrush = Freeze(new SolidColorBrush(
@@ -216,7 +229,12 @@ public partial class RealtimeBlockWindow : Window
         double canvasWidth = _physBounds.Width / _dpiX;
         double canvasHeight = _physBounds.Height / _dpiY;
 
-        using var frame = CaptureUnderlyingRegion();
+        // Grabbed only if something is going to read it. With 進階選項 off this window draws from the
+        // two colours alone, exactly as it did before those switches existed.
+        using var frame = _naturalBackground || _sampleTextColor
+            ? CaptureUnderlyingRegion()
+            : null;
+
         foreach (var line in _lines)
         {
             if (string.IsNullOrWhiteSpace(line.TranslatedText)) continue;
@@ -224,7 +242,12 @@ public partial class RealtimeBlockWindow : Window
 
             ScrimCanvas.Children.Add(visual.Background);
             TextCanvas.Children.Add(visual.Text);
-            _naturalPatches.Add(new NaturalPatchVisual(visual.Background, line, visual.PatchBounds));
+
+            // Only the repaired backgrounds are worth revisiting: a band drawn in a fixed colour has
+            // nothing to follow, and recording one here would have the refresh below replace it with
+            // a patch the user never asked for.
+            if (_naturalBackground)
+                _naturalPatches.Add(new NaturalPatchVisual(visual.Background, line, visual.PatchBounds));
         }
     }
 
@@ -355,27 +378,41 @@ public partial class RealtimeBlockWindow : Window
         double scrimTop = Math.Clamp(
             top + sourceHeight / 2 - scrimHeight / 2, 0, Math.Max(0, canvasHeight - scrimHeight));
 
-        double naturalGuardX = Math.Clamp(sourceHeight * 0.20, MinNaturalGuardX, 20);
-        double naturalGuardY = Math.Clamp(sourceHeight * 0.40, MinNaturalGuardY, 26);
-        double patchLeft = Math.Max(0, scrimLeft - naturalGuardX);
-        double patchTop = Math.Max(0, scrimTop - naturalGuardY);
-        double patchRight = Math.Min(canvasWidth, scrimLeft + scrimWidth + naturalGuardX);
-        double patchBottom = Math.Min(canvasHeight, scrimTop + scrimHeight + naturalGuardY);
-        double patchWidth = Math.Max(0, patchRight - patchLeft);
-        double patchHeight = Math.Max(0, patchBottom - patchTop);
+        // The band's own geometry, which is also what the repaired patch falls back to. The guard
+        // below only exists to hold the repair, so with 進階選項 off these stay as they are and the
+        // background is the band this window has always drawn.
+        double patchLeft = scrimLeft;
+        double patchTop = scrimTop;
+        double patchWidth = scrimWidth;
+        double patchHeight = scrimHeight;
+        ImageBrush? naturalBrush = null;
+
+        if (_naturalBackground)
+        {
+            double naturalGuardX = Math.Clamp(sourceHeight * 0.20, MinNaturalGuardX, 20);
+            double naturalGuardY = Math.Clamp(sourceHeight * 0.40, MinNaturalGuardY, 26);
+            double guardLeft = Math.Max(0, scrimLeft - naturalGuardX);
+            double guardTop = Math.Max(0, scrimTop - naturalGuardY);
+            double guardRight = Math.Min(canvasWidth, scrimLeft + scrimWidth + naturalGuardX);
+            double guardBottom = Math.Min(canvasHeight, scrimTop + scrimHeight + naturalGuardY);
+            double guardWidth = Math.Max(0, guardRight - guardLeft);
+            double guardHeight = Math.Max(0, guardBottom - guardTop);
+
+            naturalBrush = BuildNaturalBrush(
+                frame, line, ToPhysicalPatchBounds(guardLeft, guardTop, guardWidth, guardHeight));
+
+            // Capture can fail on protected/UAC surfaces. Keep the compact band in that case rather
+            // than painting the much larger guard with a flat colour.
+            if (naturalBrush is not null)
+            {
+                patchLeft = guardLeft;
+                patchTop = guardTop;
+                patchWidth = guardWidth;
+                patchHeight = guardHeight;
+            }
+        }
 
         var patchBounds = ToPhysicalPatchBounds(patchLeft, patchTop, patchWidth, patchHeight);
-        var naturalBrush = BuildNaturalBrush(frame, line, patchBounds);
-        if (naturalBrush is null)
-        {
-            // Capture can fail on protected/UAC surfaces. Keep the old compact fallback band in
-            // that case rather than painting the much larger natural-mode guard with a flat colour.
-            patchLeft = scrimLeft;
-            patchTop = scrimTop;
-            patchWidth = scrimWidth;
-            patchHeight = scrimHeight;
-            patchBounds = ToPhysicalPatchBounds(patchLeft, patchTop, patchWidth, patchHeight);
-        }
 
         var background = new Border
         {
@@ -387,8 +424,10 @@ public partial class RealtimeBlockWindow : Window
             CornerRadius = new CornerRadius(0),
         };
 
+        // Sampling is its own switch: with it off the reader's chosen colour is what gets drawn, and
+        // with it on that colour is still what an unconvincing sample falls back to.
         var foreground = _textBrush;
-        if (frame is not null)
+        if (_sampleTextColor && frame is not null)
         {
             var sampled = RealtimeNaturalBackground.SampleTextColor(frame, line.Bounds, _textBrush.Color);
             foreground = Freeze(new SolidColorBrush(sampled));
@@ -428,7 +467,9 @@ public partial class RealtimeBlockWindow : Window
 
     private void UpdateNaturalRefreshTimer()
     {
-        if (!_isLoaded || _naturalPatches.Count == 0)
+        // Never runs with the switch off: the patches it would refresh are only recorded when the
+        // repair is what drew them.
+        if (!_naturalBackground || !_isLoaded || _naturalPatches.Count == 0)
             _naturalRefresh.Stop();
         else if (!_naturalRefresh.IsEnabled)
             _naturalRefresh.Start();

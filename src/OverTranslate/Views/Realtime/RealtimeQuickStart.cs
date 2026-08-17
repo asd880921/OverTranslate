@@ -53,7 +53,9 @@ internal readonly record struct RealtimeQuickStart(
                 settings.RealtimeProvider,
                 settings.RealtimeTextColor,
                 settings.RealtimeScrimColor,
-                settings.RealtimeScrimOpacity),
+                settings.RealtimeScrimOpacity,
+                settings.RealtimeNaturalBackgroundEnabled,
+                settings.RealtimeSampleSourceTextColor),
             null);
     }
 }
