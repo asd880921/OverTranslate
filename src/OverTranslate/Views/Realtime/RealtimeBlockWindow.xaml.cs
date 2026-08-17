@@ -587,6 +587,17 @@ public partial class RealtimeBlockWindow : Window
         }
     }
 
+    /// <summary>
+    /// The picture the repair is built from: this window's own rectangle, read off the screen.
+    /// </summary>
+    /// <remarks>
+    /// This relies on the overlay being absent from what the screen returns, and that reliance is
+    /// unchecked — <see cref="WindowCaptureShield.Exclude"/> fails on every Windows before 11 24H2, so
+    /// there the repair photographs the translation it drew a moment ago and bakes it in. Tracked in
+    /// #99, with why #96 does not cover this path and why #98 removes the need for it. Not guarded here
+    /// because on those machines the session's own grab is broken first (#94), so nothing about the
+    /// feature works to be protected — the order in which those are fixed is what makes it visible.
+    /// </remarks>
     private System.Drawing.Bitmap? CaptureUnderlyingRegion()
     {
         if (_physBounds.Width <= 0 || _physBounds.Height <= 0) return null;
