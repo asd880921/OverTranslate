@@ -9,12 +9,12 @@ public class HotkeyBindingsTests
     private const uint CtrlAlt = 3;
 
     [Fact]
-    public void ThreeDistinctCombinationsAllStayOn()
+    public void FourDistinctCombinationsAllStayOn()
     {
         var active = HotkeyBindings.Active(new AppSettings()).ToList();
 
         Assert.Equal(
-            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.Realtime],
+            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.Realtime, HotkeyAction.SingleShot],
             active.Select(binding => binding.Action));
     }
 
@@ -64,6 +64,23 @@ public class HotkeyBindingsTests
     }
 
     [Fact]
+    public void SingleShotLosesToRealtimeWhenAStoredSettingCollides()
+    {
+        var settings = new AppSettings
+        {
+            SingleShotHotkeyModifiers = CtrlAlt,
+            SingleShotHotkeyVirtualKey = 0x53,
+            SingleShotHotkeyDisplay = "Ctrl+Alt+S",
+        };
+
+        var single = HotkeyBindings.Resolve(settings)
+            .Single(binding => binding.Action == HotkeyAction.SingleShot);
+
+        Assert.False(single.IsActive);
+        Assert.Equal(HotkeyAction.Realtime, single.ShadowedBy);
+    }
+
+    [Fact]
     public void SwitchingOffTheHolderHandsTheCombinationDown()
     {
         // A shortcut that is off does not reserve its combination. Without this, turning the window
@@ -105,4 +122,51 @@ public class HotkeyBindingsTests
         Assert.True(HotkeyBindings.Resolve(new AppSettings())
             .Single(binding => binding.Action == HotkeyAction.Capture).Enabled);
     }
+    [Fact]
+    public void MiddleMouseUsesTheSamePriorityRulesAsKeyboard()
+    {
+        var settings = new AppSettings
+        {
+            RealtimeHotkeyInputKind = ShortcutInputKind.MouseMiddle,
+            SingleShotHotkeyInputKind = ShortcutInputKind.MouseMiddle,
+        };
+
+        var resolved = HotkeyBindings.Resolve(settings);
+        Assert.True(resolved.Single(b => b.Action == HotkeyAction.Realtime).IsActive);
+        Assert.Equal(HotkeyAction.Realtime,
+            resolved.Single(b => b.Action == HotkeyAction.SingleShot).ShadowedBy);
+    }
+
+    [Fact]
+    public void GamepadButtonCanBeAUniqueShortcut()
+    {
+        var settings = new AppSettings
+        {
+            SingleShotHotkeyInputKind = ShortcutInputKind.Gamepad,
+            SingleShotHotkeyGamepadButton = GamepadShortcutButton.X,
+        };
+
+        var single = HotkeyBindings.Resolve(settings)
+            .Single(b => b.Action == HotkeyAction.SingleShot);
+
+        Assert.True(single.IsActive);
+        Assert.Equal(ShortcutInputKind.Gamepad, single.InputKind);
+        Assert.Equal(GamepadShortcutButton.X, single.GamepadButton);
+    }
+
+    [Fact]
+    public void KeyboardAndGamepadWithSameNumericCodeDoNotCollide()
+    {
+        var settings = new AppSettings
+        {
+            RealtimeHotkeyModifiers = 0,
+            RealtimeHotkeyVirtualKey = 0x58,
+            SingleShotHotkeyInputKind = ShortcutInputKind.Gamepad,
+            SingleShotHotkeyGamepadButton = GamepadShortcutButton.X,
+        };
+
+        Assert.True(HotkeyBindings.Resolve(settings)
+            .Single(b => b.Action == HotkeyAction.SingleShot).IsActive);
+    }
+
 }

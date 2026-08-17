@@ -54,8 +54,12 @@ public partial class RealtimeControlWindow : Window
     // like a session with nothing to translate — no words, no scrims, a still screen — so the one
     // thing that separates them has to stay on screen for as long as the state lasts.
     private static string PausedStatus => LocalizationService.Get("S.Realtime.Paused");
+    private static string SingleShotShownStatus => LocalizationService.Get("S.Realtime.SingleShotShown");
+    private static string SingleShotOriginalStatus => LocalizationService.Get("S.Realtime.SingleShotOriginal");
     private bool _hasLanguages;
     private bool _isPaused;
+    private bool _isSingleShot;
+    private bool _singleShotVisible;
 
     // The scale WPF renders this window at, which is the DPI of whatever monitor it currently sits
     // on — not necessarily the one the session runs on. Everything that converts between the window's
@@ -235,6 +239,23 @@ public partial class RealtimeControlWindow : Window
         SetBusy(false);
     }
 
+    /// <summary>
+    /// Shows the running capsule as one-shot mode. In this mode the realtime loops are stopped: the
+    /// hotkey alternates between one frozen translation and the untouched original, while the pause
+    /// button becomes the explicit way back to continuous realtime translation.
+    /// </summary>
+    public void SetSingleShotMode(bool enabled, bool translationVisible)
+    {
+        _isSingleShot = enabled;
+        _singleShotVisible = enabled && translationVisible;
+        if (enabled) _isPaused = false;
+
+        ApplyPauseButton();
+        _messageTimer.Stop();
+        RestoreText();
+        SetBusy(false);
+    }
+
     public void SetMode(RealtimeControlMode mode)
     {
         _mode = mode;
@@ -244,6 +265,8 @@ public partial class RealtimeControlWindow : Window
         // Both modes are entered by the session doing something — framing or starting — and neither
         // is a paused one. Going back to edit mode from a paused session is the case this covers.
         _isPaused = false;
+        _isSingleShot = false;
+        _singleShotVisible = false;
         ApplyPauseButton();
 
         _messageTimer.Stop();
@@ -347,11 +370,16 @@ public partial class RealtimeControlWindow : Window
     private void RestoreText()
     {
         EditHintText.Text = EditHint;
-        RunStatusText.Text = _isPaused ? PausedStatus : RunStatus;
 
-        // The pair steps aside while paused: it describes work that is not happening, and it is the
-        // one thing on this line long enough to hide the word that says so.
-        var showPair = _hasLanguages && !_isPaused;
+        if (_isSingleShot)
+            RunStatusText.Text = _singleShotVisible ? SingleShotShownStatus : SingleShotOriginalStatus;
+        else
+            RunStatusText.Text = _isPaused ? PausedStatus : RunStatus;
+
+        // The language pair describes the continuously-running engine. In one-shot mode the state
+        // itself is more important, because the user needs to know whether they are looking at the
+        // frozen translation or at the untouched original.
+        var showPair = _hasLanguages && !_isPaused && !_isSingleShot;
         LangPairPanel.Visibility = showPair ? Visibility.Visible : Visibility.Collapsed;
         RunStatusText.Visibility = showPair ? Visibility.Collapsed : Visibility.Visible;
 
@@ -367,10 +395,25 @@ public partial class RealtimeControlWindow : Window
     private void SetDotState(bool failed) =>
         StatusDot.SetResourceReference(
             System.Windows.Shapes.Shape.FillProperty,
-            failed ? "AppError" : _isPaused ? "AppTextSecondary" : "AppAccent");
+            failed
+                ? "AppError"
+                : (_isPaused || (_isSingleShot && !_singleShotVisible))
+                    ? "AppTextSecondary"
+                    : "AppAccent");
 
     private void ApplyPauseButton()
     {
+        // In one-shot mode the continuous watcher is stopped, so this button is the explicit route
+        // back to it and therefore uses the same play glyph as Resume.
+        if (_isSingleShot)
+        {
+            PauseBtn.Content = "\uE768";
+            var resume = LocalizationService.Get("S.Realtime.SingleShotResume");
+            PauseBtn.ToolTip = resume;
+            System.Windows.Automation.AutomationProperties.SetName(PauseBtn, resume);
+            return;
+        }
+
         // Segoe Fluent Icons: play to resume, pause to stop. The glyph is what the press does.
         PauseBtn.Content = _isPaused ? "\uE768" : "\uE769";
         PauseBtn.ToolTip = RealtimePauseHint.ForControlTooltip(RealtimePauseHint.CurrentHotkey, _isPaused);

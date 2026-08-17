@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using OverTranslate.Layout;
 using OverTranslate.Services;
 using OverTranslate.Services.Realtime;
@@ -16,15 +17,15 @@ using Size = System.Windows.Size;
 namespace OverTranslate.Views.Realtime;
 
 /// <summary>
-/// The live subtitle layer for one watched block: a click-through window pinned over the region,
-/// drawing each translated line as plain text on a black scrim exactly where its source sits.
+/// The live subtitle layer for one watched block: a click-through window pinned over the region.
+/// In natural mode it captures the application underneath, removes the source glyph rectangle with
+/// a lightweight local background repair, then draws the translation back into the same place.
 /// </summary>
 /// <remarks>
-/// No bubbles and no sampled colours here, unlike the screenshot overlay. That overlay produces a
-/// still the user studies, so it is worth matching the page's own background; this one sits over
-/// content that is still moving, where a sampled colour would be wrong a frame later. A fixed black
-/// scrim is only as wide as the text it has to hide, which is what lets the user draw a block
-/// deliberately larger than the text without the surrounding picture being covered up.
+/// The background patch is refreshed while a line is visible. That matters over video/game content:
+/// a one-time screenshot would turn the translated line into a frozen rectangular tile while the
+/// picture behind it kept moving. The overlay itself is excluded from capture, so every refresh sees
+/// the original application rather than recursively photographing its own translation.
 /// </remarks>
 public partial class RealtimeBlockWindow : Window
 {
@@ -34,7 +35,14 @@ public partial class RealtimeBlockWindow : Window
     // of what the user is watching, while the same slack to its left and right lands on picture they
     // are not reading anyway.
     private const double ScrimPaddingX = 5;
-    private const double ScrimPaddingY = 1;
+    private const double ScrimPaddingY = 3;
+
+    // The OCR box can omit detached punctuation/diacritics (especially Japanese dakuten). The
+    // repaired background therefore extends beyond the visible translation band. Pixels in this
+    // guard are copied from the original frame unchanged unless the adaptive eraser identifies them
+    // as part of the source line, so the larger patch does not look like a larger subtitle panel.
+    private const double MinNaturalGuardX = 10;
+    private const double MinNaturalGuardY = 12;
 
     private const double MinFontSize = 8.5;
     private const double LineHeightRatio = 1.22;
@@ -53,6 +61,11 @@ public partial class RealtimeBlockWindow : Window
     private static readonly FontFamily TextFont =
         new("Microsoft JhengHei, Segoe UI Variable Text, Segoe UI, Sans-Serif");
 
+    // Natural mode uses a real patch of the application under the source text. Refreshing at the
+    // same cadence as the screen watcher keeps that patch moving with video without adding another
+    // high-frequency rendering loop. No OCR or translation happens here.
+    private static readonly TimeSpan NaturalRefreshInterval = TimeSpan.FromMilliseconds(250);
+
     private readonly System.Drawing.Rectangle _physBounds;
     private readonly bool _latinSourceToCjkTarget;
 
@@ -67,6 +80,8 @@ public partial class RealtimeBlockWindow : Window
     private double _dpiY = 1.0;
     private bool _isLoaded;
 
+    private readonly DispatcherTimer _naturalRefresh = new() { Interval = NaturalRefreshInterval };
+    private readonly List<NaturalPatchVisual> _naturalPatches = [];
     private IReadOnlyList<TranslatedBlock> _lines = [];
 
     public RealtimeBlockWindow(
@@ -87,6 +102,9 @@ public partial class RealtimeBlockWindow : Window
         _scrimBrush = Freeze(new SolidColorBrush(
             RealtimeSubtitleColors.Scrim(scrimColor, scrimOpacity)));
 
+        _naturalRefresh.Tick += (_, _) => RefreshNaturalBackgrounds();
+        Closed += (_, _) => _naturalRefresh.Stop();
+
         Loaded += (_, _) =>
         {
             if (PresentationSource.FromVisual(this)?.CompositionTarget is { } target)
@@ -96,6 +114,7 @@ public partial class RealtimeBlockWindow : Window
             }
             _isLoaded = true;
             Rebuild();
+            UpdateNaturalRefreshTimer();
         };
     }
 
@@ -157,7 +176,11 @@ public partial class RealtimeBlockWindow : Window
         if (_isLoaded && LooksIdentical(_lines, lines)) return;
 
         _lines = lines;
-        if (_isLoaded) Rebuild();
+        if (_isLoaded)
+        {
+            Rebuild();
+            UpdateNaturalRefreshTimer();
+        }
     }
 
     // A pixel of movement is below what anyone can see and well inside recognition's own precision.
@@ -188,24 +211,32 @@ public partial class RealtimeBlockWindow : Window
     {
         ScrimCanvas.Children.Clear();
         TextCanvas.Children.Clear();
+        _naturalPatches.Clear();
 
         double canvasWidth = _physBounds.Width / _dpiX;
         double canvasHeight = _physBounds.Height / _dpiY;
 
+        using var frame = CaptureUnderlyingRegion();
         foreach (var line in _lines)
         {
             if (string.IsNullOrWhiteSpace(line.TranslatedText)) continue;
-            if (BuildLine(line, canvasWidth, canvasHeight) is not { } visual) continue;
+            if (BuildLine(line, canvasWidth, canvasHeight, frame) is not { } visual) continue;
 
-            ScrimCanvas.Children.Add(visual.Scrim);
+            ScrimCanvas.Children.Add(visual.Background);
             TextCanvas.Children.Add(visual.Text);
+            _naturalPatches.Add(new NaturalPatchVisual(visual.Background, line, visual.PatchBounds));
         }
     }
 
-    /// <summary>One line's two halves, drawn into separate layers so text always wins over scrims.</summary>
-    private readonly record struct LineVisual(UIElement Scrim, UIElement Text);
+    /// <summary>One line's background patch and translated text, kept in separate layers.</summary>
+    private readonly record struct LineVisual(
+        Border Background, Border Text, System.Drawing.Rectangle PatchBounds);
 
-    private LineVisual? BuildLine(TranslatedBlock line, double canvasWidth, double canvasHeight)
+    private readonly record struct NaturalPatchVisual(
+        Border Surface, TranslatedBlock Line, System.Drawing.Rectangle PatchBounds);
+
+    private LineVisual? BuildLine(
+        TranslatedBlock line, double canvasWidth, double canvasHeight, System.Drawing.Bitmap? frame)
     {
         double left = line.Bounds.X / _dpiX;
         double top = line.Bounds.Y / _dpiY;
@@ -311,7 +342,7 @@ public partial class RealtimeBlockWindow : Window
             }
         }
 
-        double scrimWidth = textWidth + ScrimPaddingX * 2;
+        double scrimWidth = Math.Min(canvasWidth, Math.Max(textWidth, sourceWidth) + ScrimPaddingX * 2);
 
         // A grouped block's bounds are the union of its lines, which is the area that has to be
         // covered and is not an inflated single box, so it keeps using them.
@@ -324,16 +355,47 @@ public partial class RealtimeBlockWindow : Window
         double scrimTop = Math.Clamp(
             top + sourceHeight / 2 - scrimHeight / 2, 0, Math.Max(0, canvasHeight - scrimHeight));
 
-        var scrim = new Border
+        double naturalGuardX = Math.Clamp(sourceHeight * 0.20, MinNaturalGuardX, 20);
+        double naturalGuardY = Math.Clamp(sourceHeight * 0.40, MinNaturalGuardY, 26);
+        double patchLeft = Math.Max(0, scrimLeft - naturalGuardX);
+        double patchTop = Math.Max(0, scrimTop - naturalGuardY);
+        double patchRight = Math.Min(canvasWidth, scrimLeft + scrimWidth + naturalGuardX);
+        double patchBottom = Math.Min(canvasHeight, scrimTop + scrimHeight + naturalGuardY);
+        double patchWidth = Math.Max(0, patchRight - patchLeft);
+        double patchHeight = Math.Max(0, patchBottom - patchTop);
+
+        var patchBounds = ToPhysicalPatchBounds(patchLeft, patchTop, patchWidth, patchHeight);
+        var naturalBrush = BuildNaturalBrush(frame, line, patchBounds);
+        if (naturalBrush is null)
         {
-            Width = scrimWidth,
-            Height = scrimHeight,
-            Background = _scrimBrush,
-            CornerRadius = new CornerRadius(3),
+            // Capture can fail on protected/UAC surfaces. Keep the old compact fallback band in
+            // that case rather than painting the much larger natural-mode guard with a flat colour.
+            patchLeft = scrimLeft;
+            patchTop = scrimTop;
+            patchWidth = scrimWidth;
+            patchHeight = scrimHeight;
+            patchBounds = ToPhysicalPatchBounds(patchLeft, patchTop, patchWidth, patchHeight);
+        }
+
+        var background = new Border
+        {
+            Width = patchWidth,
+            Height = patchHeight,
+            Background = (System.Windows.Media.Brush?)naturalBrush ?? _scrimBrush,
+            // A natural patch should meet the surrounding picture edge-for-edge. Rounded corners
+            // would reveal four pieces of the source text underneath.
+            CornerRadius = new CornerRadius(0),
         };
 
+        var foreground = _textBrush;
+        if (frame is not null)
+        {
+            var sampled = RealtimeNaturalBackground.SampleTextColor(frame, line.Bounds, _textBrush.Color);
+            foreground = Freeze(new SolidColorBrush(sampled));
+        }
+
         // Same geometry, no background: the two are stacked in separate layers, so the text has to
-        // carry its own box to land in exactly the place the scrim covers.
+        // carry its own box to land in exactly the place the repaired background covers.
         var text = new Border
         {
             Width = scrimWidth,
@@ -346,7 +408,7 @@ public partial class RealtimeBlockWindow : Window
                 FontFamily = TextFont,
                 FontSize = fontSize,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = _textBrush,
+                Foreground = foreground,
                 TextWrapping = wrapped ? TextWrapping.Wrap : TextWrapping.NoWrap,
                 // Never trimmed. A line that cannot fit on one line has already been switched to
                 // wrapping above, so getting here without it means the text fits; leaving
@@ -356,13 +418,92 @@ public partial class RealtimeBlockWindow : Window
             }
         };
 
-        foreach (var element in (UIElement[])[scrim, text])
-        {
-            Canvas.SetLeft(element, scrimLeft);
-            Canvas.SetTop(element, scrimTop);
-        }
+        Canvas.SetLeft(background, patchLeft);
+        Canvas.SetTop(background, patchTop);
+        Canvas.SetLeft(text, scrimLeft);
+        Canvas.SetTop(text, scrimTop);
 
-        return new LineVisual(scrim, text);
+        return new LineVisual(background, text, patchBounds);
+    }
+
+    private void UpdateNaturalRefreshTimer()
+    {
+        if (!_isLoaded || _naturalPatches.Count == 0)
+            _naturalRefresh.Stop();
+        else if (!_naturalRefresh.IsEnabled)
+            _naturalRefresh.Start();
+    }
+
+    private void RefreshNaturalBackgrounds()
+    {
+        if (!_isLoaded || _naturalPatches.Count == 0) return;
+
+        using var frame = CaptureUnderlyingRegion();
+        if (frame is null) return;
+
+        foreach (var patch in _naturalPatches)
+        {
+            if (BuildNaturalBrush(frame, patch.Line, patch.PatchBounds) is { } brush)
+                patch.Surface.Background = brush;
+        }
+    }
+
+    private System.Drawing.Bitmap? CaptureUnderlyingRegion()
+    {
+        if (_physBounds.Width <= 0 || _physBounds.Height <= 0) return null;
+
+        System.Drawing.Bitmap? bitmap = null;
+        try
+        {
+            bitmap = new System.Drawing.Bitmap(
+                _physBounds.Width, _physBounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+            graphics.CopyFromScreen(
+                _physBounds.Left, _physBounds.Top, 0, 0, _physBounds.Size,
+                System.Drawing.CopyPixelOperation.SourceCopy);
+            return bitmap;
+        }
+        catch
+        {
+            bitmap?.Dispose();
+            return null;
+        }
+    }
+
+    private System.Drawing.Rectangle ToPhysicalPatchBounds(
+        double left, double top, double width, double height)
+    {
+        int x1 = Math.Clamp((int)Math.Floor(left * _dpiX), 0, _physBounds.Width);
+        int y1 = Math.Clamp((int)Math.Floor(top * _dpiY), 0, _physBounds.Height);
+        int x2 = Math.Clamp((int)Math.Ceiling((left + width) * _dpiX), 0, _physBounds.Width);
+        int y2 = Math.Clamp((int)Math.Ceiling((top + height) * _dpiY), 0, _physBounds.Height);
+        return System.Drawing.Rectangle.FromLTRB(x1, y1, x2, y2);
+    }
+
+    private static ImageBrush? BuildNaturalBrush(
+        System.Drawing.Bitmap? frame,
+        TranslatedBlock line,
+        System.Drawing.Rectangle patchBounds)
+    {
+        if (frame is null || patchBounds.Width <= 0 || patchBounds.Height <= 0) return null;
+
+        var sourceLines = line.SourceLineBounds is { Count: > 0 } lines
+            ? lines
+            : (IReadOnlyList<System.Windows.Rect>)[line.Bounds];
+
+        using var patch = RealtimeNaturalBackground.CreatePatch(frame, patchBounds, sourceLines);
+        if (patch is null) return null;
+
+        var image = BitmapInterop.ToBitmapSource(patch);
+        var brush = new ImageBrush(image)
+        {
+            Stretch = Stretch.Fill,
+            AlignmentX = AlignmentX.Left,
+            AlignmentY = AlignmentY.Top,
+            TileMode = TileMode.None,
+        };
+        brush.Freeze();
+        return brush;
     }
 
     // Largest size at which the wrapped translation still fits the height it is allowed. For a

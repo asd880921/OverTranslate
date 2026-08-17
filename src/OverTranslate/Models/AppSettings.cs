@@ -10,6 +10,8 @@ public class AppSettings
     public uint HotkeyModifiers { get; set; } = 3;
     public uint HotkeyVirtualKey { get; set; } = 0x41;
     public string HotkeyDisplay { get; set; } = "Ctrl+Alt+A";
+    public ShortcutInputKind HotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton HotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 
     /// <summary>
     /// The shortcut that opens the translation window. Ctrl+Alt+W by default.
@@ -25,6 +27,8 @@ public class AppSettings
     public uint TranslationWindowHotkeyVirtualKey { get; set; } = 0x57;
 
     public string TranslationWindowHotkeyDisplay { get; set; } = "Ctrl+Alt+W";
+    public ShortcutInputKind TranslationWindowHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton TranslationWindowHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 
     /// <summary>
     /// Whether the translation-window shortcut is registered at all.
@@ -52,9 +56,25 @@ public class AppSettings
 
     /// <inheritdoc cref="RealtimeHotkeyModifiers"/>
     public string RealtimeHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
+    public ShortcutInputKind RealtimeHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton RealtimeHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 
     /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
     public bool RealtimeHotkeyEnabled { get; set; } = true;
+
+    /// <summary>
+    /// While realtime translation is running, toggles the one-shot translation/original view.
+    /// Ctrl+Alt+D by default.
+    /// </summary>
+    public uint SingleShotHotkeyModifiers { get; set; } = 3;
+
+    public uint SingleShotHotkeyVirtualKey { get; set; } = 0x44;
+
+    public string SingleShotHotkeyDisplay { get; set; } = "Ctrl+Alt+D";
+    public ShortcutInputKind SingleShotHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton SingleShotHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
+
+    public bool SingleShotHotkeyEnabled { get; set; } = true;
 
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";

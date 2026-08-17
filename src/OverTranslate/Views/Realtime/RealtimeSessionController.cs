@@ -64,6 +64,8 @@ internal sealed class RealtimeSessionController
     // UI updates are dispatched asynchronously. Carrying the session's generation here prevents an
     // update queued before a pause from restoring text after the screen was cleared.
     private int _visibleGeneration;
+    private bool _singleShotVisible;
+    private bool _singleShotBusy;
 
     /// <summary>
     /// The layout the last sitting ended with, offered back to the next one.
@@ -146,6 +148,8 @@ internal sealed class RealtimeSessionController
         // second inference runtime could be built by accident.
         _session = new RealtimeTranslationSession(AppServices.Ocr, AppServices.Translation);
         Volatile.Write(ref _visibleGeneration, 0);
+        _singleShotVisible = false;
+        _singleShotBusy = false;
         _session.RegionUpdated += OnRegionUpdated;
         _session.Failed += OnSessionFailed;
         _session.BusyChanged += OnBusyChanged;
@@ -208,6 +212,25 @@ internal sealed class RealtimeSessionController
     {
         if (!IsTranslating || _session is null || _control is not { } control) return false;
 
+        // In one-shot mode the continuous watcher is already stopped. The existing pause/resume
+        // button and capture hotkey become the natural way back to normal realtime translation.
+        if (_session.IsSingleShotMode)
+        {
+            if (_singleShotBusy) return true;
+
+            var resumeGeneration = _session.ResumeContinuousFromSingleShot();
+            Volatile.Write(ref _visibleGeneration, resumeGeneration);
+            _singleShotVisible = false;
+            _singleShotBusy = false;
+
+            foreach (var window in _blockWindows.Values)
+                window.SetLines([]);
+
+            control.SetSingleShotMode(false, false);
+            control.SetPaused(false);
+            return true;
+        }
+
         if (_session.IsPaused)
         {
             // Before the loops start, so the first result cannot arrive to a bar still saying 已暫停.
@@ -216,8 +239,8 @@ internal sealed class RealtimeSessionController
             return true;
         }
 
-        var generation = _session.Pause();
-        Volatile.Write(ref _visibleGeneration, generation);
+        var pauseGeneration = _session.Pause();
+        Volatile.Write(ref _visibleGeneration, pauseGeneration);
 
         // The whole point of the feature: 暫停 takes the words and their scrims off the screen
         // rather than freezing them there, because a frozen translation over a scene that has moved
@@ -230,12 +253,73 @@ internal sealed class RealtimeSessionController
         return true;
     }
 
+    /// <summary>
+    /// Alternates one-shot translation and the untouched original over the already-framed realtime
+    /// regions. The first press also stops continuous polling. Every later "show" press OCRs once;
+    /// the session reuses its previous translation when that reading is effectively unchanged.
+    /// </summary>
+    public async Task<bool> ToggleSingleShotAsync()
+    {
+        if (!IsTranslating || _session is null || _control is not { } control) return false;
+        if (_singleShotBusy) return true;
+
+        if (!_session.IsSingleShotMode)
+        {
+            var generation = _session.EnterSingleShotMode();
+            Volatile.Write(ref _visibleGeneration, generation);
+            _singleShotVisible = false;
+
+            // A continuous result already on screen belongs to the mode we just left. Remove it
+            // before taking the requested snapshot so the first one-shot frame starts from original.
+            foreach (var window in _blockWindows.Values)
+                window.SetLines([]);
+
+            control.SetSingleShotMode(true, false);
+        }
+
+        if (_singleShotVisible)
+        {
+            foreach (var window in _blockWindows.Values)
+                window.SetLines([]);
+
+            _singleShotVisible = false;
+            control.SetSingleShotMode(true, false);
+            return true;
+        }
+
+        _singleShotBusy = true;
+        try
+        {
+            var result = await _session.CaptureSingleShotAsync();
+            var hasResult = result.Translated > 0 || result.Reused > 0;
+            _singleShotVisible = hasResult;
+            control.SetSingleShotMode(true, hasResult);
+
+            if (result.Translated == 0 && result.Reused > 0)
+                control.ShowMessage(LocalizationService.Get("S.Realtime.SingleShotReused"));
+            else if (!hasResult && result.Empty > 0)
+                control.ShowMessage(LocalizationService.Get("S.Realtime.SingleShotNoText"));
+
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return true;
+        }
+        finally
+        {
+            _singleShotBusy = false;
+        }
+    }
+
     public void Stop()
     {
         if (!IsActive) return;
 
         Log.Info("Realtime session ending");
 
+        _singleShotVisible = false;
+        _singleShotBusy = false;
         _stayOnTop.Stop();
         DisposeEscapeHook();
 
@@ -290,6 +374,8 @@ internal sealed class RealtimeSessionController
         if (_request is not { } request || _control is not { } control) return;
 
         _session?.Stop();
+        _singleShotVisible = false;
+        _singleShotBusy = false;
         CloseBlockWindows();
         CloseEditWindow();
 
@@ -372,6 +458,8 @@ internal sealed class RealtimeSessionController
         control.BringToFront();
         _stayOnTop.Start();
 
+        _singleShotVisible = false;
+        _singleShotBusy = false;
         _session.Start(regions, request.SourceLanguage, request.TargetLanguage, request.Provider);
     }
 

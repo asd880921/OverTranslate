@@ -28,6 +28,9 @@ public class GlobalHotkey : IDisposable
     /// <summary>The shortcut that drops straight into 即時翻譯 block framing.</summary>
     public const int RealtimeId = 9003;
 
+    /// <summary>The shortcut that toggles one-shot translation while realtime is running.</summary>
+    public const int SingleShotId = 9004;
+
     public GlobalHotkey(int id) => _id = id;
 
     [DllImport("user32.dll", SetLastError = true)]
