@@ -13,6 +13,14 @@ namespace OverTranslate.Services.Realtime;
 /// outside the OCR rectangle stays exactly as it was on screen. This is intentionally lightweight:
 /// it runs several times per second next to OCR and avoids adding another native/AI dependency.
 /// </summary>
+/// <remarks>
+/// Both halves of this file read a bitmap through one lock and a managed buffer rather than through
+/// GDI+'s per-pixel accessors, because "lightweight" was not true of the first version: erasing a
+/// line locked the whole patch and copied it three times over, and sampling a colour called GetPixel
+/// — which locks and unlocks the bitmap on every call — some fifteen thousand times for one line.
+/// Both ran on the thread drawing the interface. Neither the output nor the algorithm changed with
+/// the buffers; only what it costs to arrive at them.
+/// </remarks>
 internal static class RealtimeNaturalBackground
 {
     // OCR rectangles are often tight around the main glyph body. Japanese dakuten/handakuten,
@@ -44,15 +52,42 @@ internal static class RealtimeNaturalBackground
             return null;
         }
 
-        foreach (var source in sourceLineBounds)
-        {
-            var local = Rectangle.FromLTRB(
-                (int)Math.Floor(source.Left) - clippedPatch.Left,
-                (int)Math.Floor(source.Top) - clippedPatch.Top,
-                (int)Math.Ceiling(source.Right) - clippedPatch.Left,
-                (int)Math.Ceiling(source.Bottom) - clippedPatch.Top);
+        if (sourceLineBounds.Count == 0)
+            return patch;
 
-            EraseSourceText(patch, local);
+        // One lock and one copy each way for the whole patch, however many lines are erased into it.
+        // Every line reads only pixels outside the area it writes — see EraseSourceText — so they can
+        // all work in this one buffer, and each still sees the lines erased before it exactly as it
+        // did when every line locked the bitmap for itself.
+        var data = patch.LockBits(
+            new Rectangle(0, 0, patch.Width, patch.Height),
+            ImageLockMode.ReadWrite,
+            PixelFormat.Format32bppArgb);
+
+        try
+        {
+            int stride = Math.Abs(data.Stride);
+            var pixels = new byte[stride * patch.Height];
+            for (int y = 0; y < patch.Height; y++)
+                Marshal.Copy(IntPtr.Add(data.Scan0, y * data.Stride), pixels, y * stride, stride);
+
+            foreach (var source in sourceLineBounds)
+            {
+                var local = Rectangle.FromLTRB(
+                    (int)Math.Floor(source.Left) - clippedPatch.Left,
+                    (int)Math.Floor(source.Top) - clippedPatch.Top,
+                    (int)Math.Ceiling(source.Right) - clippedPatch.Left,
+                    (int)Math.Ceiling(source.Bottom) - clippedPatch.Top);
+
+                EraseSourceText(pixels, stride, patch.Width, patch.Height, local);
+            }
+
+            for (int y = 0; y < patch.Height; y++)
+                Marshal.Copy(pixels, y * stride, IntPtr.Add(data.Scan0, y * data.Stride), stride);
+        }
+        finally
+        {
+            patch.UnlockBits(data);
         }
 
         return patch;
@@ -68,17 +103,34 @@ internal static class RealtimeNaturalBackground
         if (frame.Width <= 0 || frame.Height <= 0 || bounds.Width <= 0 || bounds.Height <= 0)
             return fallback;
 
-        var bg = SampleDominantBackground(frame, bounds);
-        var area = Clamp(bounds, frame.Width, frame.Height);
-        if (area.Width <= 0 || area.Height <= 0)
+        var inner = Clamp(bounds, frame.Width, frame.Height);
+        if (inner.Width <= 0 || inner.Height <= 0)
             return fallback;
 
+        // The ring the background is read from and the box the glyphs are read from, in one window:
+        // the two passes below and the dominant-background pass all sample inside it, so the bitmap
+        // is locked once for the whole decision.
+        int padX = Math.Max(4, (int)Math.Round(bounds.Height * 0.35));
+        int padY = Math.Max(3, (int)Math.Round(bounds.Height * 0.28));
+        var outer = Rectangle.FromLTRB(
+            Math.Clamp(inner.Left - padX, 0, frame.Width),
+            Math.Clamp(inner.Top - padY, 0, frame.Height),
+            Math.Clamp(inner.Right + padX, 0, frame.Width),
+            Math.Clamp(inner.Bottom + padY, 0, frame.Height));
+        if (outer.Width <= 0 || outer.Height <= 0)
+            return fallback;
+
+        if (PixelWindow.Read(frame, outer) is not { } window)
+            return fallback;
+
+        var bg = SampleDominantBackground(window, outer, inner);
+
         int maxDiff = 0;
-        for (int y = area.Top; y < area.Bottom; y += 2)
+        for (int y = inner.Top; y < inner.Bottom; y += 2)
         {
-            for (int x = area.Left; x < area.Right; x += 2)
+            for (int x = inner.Left; x < inner.Right; x += 2)
             {
-                var c = frame.GetPixel(x, y);
+                var c = window.At(x, y);
                 int diff = Math.Abs(c.R - bg.R) + Math.Abs(c.G - bg.G) + Math.Abs(c.B - bg.B);
                 if (diff > maxDiff) maxDiff = diff;
             }
@@ -89,11 +141,11 @@ internal static class RealtimeNaturalBackground
 
         int threshold = Math.Max(54, (int)Math.Round(maxDiff * 0.58));
         long r = 0, g = 0, b = 0, count = 0;
-        for (int y = area.Top; y < area.Bottom; y += 2)
+        for (int y = inner.Top; y < inner.Bottom; y += 2)
         {
-            for (int x = area.Left; x < area.Right; x += 2)
+            for (int x = inner.Left; x < inner.Right; x += 2)
             {
-                var c = frame.GetPixel(x, y);
+                var c = window.At(x, y);
                 int diff = Math.Abs(c.R - bg.R) + Math.Abs(c.G - bg.G) + Math.Abs(c.B - bg.B);
                 if (diff < threshold) continue;
                 r += c.R;
@@ -110,7 +162,15 @@ internal static class RealtimeNaturalBackground
         return EnsureReadable(sampled, MediaColor.FromRgb(bg.R, bg.G, bg.B), fallback);
     }
 
-    private static void EraseSourceText(Bitmap bitmap, Rectangle source)
+    /// <summary>
+    /// Fills one source line's rectangle with colour interpolated from its surroundings.
+    /// </summary>
+    /// <remarks>
+    /// Reads only outside the rectangle it writes: the row above and below, or the column either
+    /// side, or the ring around it. That is what lets several lines share one buffer — there is no
+    /// order in which one line's fill can be read as though it were the picture underneath.
+    /// </remarks>
+    private static void EraseSourceText(byte[] pixels, int stride, int width, int height, Rectangle source)
     {
         int heightBasis = Math.Clamp(source.Height, 12, 72);
         int padX = Math.Max(MinErasePadX, (int)Math.Ceiling(heightBasis * 0.16));
@@ -122,93 +182,74 @@ internal static class RealtimeNaturalBackground
             source.Top - padTop,
             source.Right + padX,
             source.Bottom + padBottom);
-        var rect = Rectangle.Intersect(new Rectangle(0, 0, bitmap.Width, bitmap.Height), expanded);
+        var rect = Rectangle.Intersect(new Rectangle(0, 0, width, height), expanded);
         if (rect.Width <= 0 || rect.Height <= 0) return;
 
-        var data = bitmap.LockBits(
-            new Rectangle(0, 0, bitmap.Width, bitmap.Height),
-            ImageLockMode.ReadWrite,
-            PixelFormat.Format32bppArgb);
+        bool hasTopBottom = rect.Top > 0 && rect.Bottom < height;
+        bool hasLeftRight = rect.Left > 0 && rect.Right < width;
 
-        try
+        if (hasTopBottom)
         {
-            int stride = Math.Abs(data.Stride);
-            var pixels = new byte[stride * bitmap.Height];
-            for (int y = 0; y < bitmap.Height; y++)
-                Marshal.Copy(IntPtr.Add(data.Scan0, y * data.Stride), pixels, y * stride, stride);
-            var original = (byte[])pixels.Clone();
+            int topRow = (rect.Top - 1) * stride;
+            int bottomRow = rect.Bottom * stride;
 
-            int RowOffset(int y) => y * stride;
-
-            bool hasTopBottom = rect.Top > 0 && rect.Bottom < bitmap.Height;
-            bool hasLeftRight = rect.Left > 0 && rect.Right < bitmap.Width;
-
-            if (hasTopBottom)
+            for (int y = rect.Top; y < rect.Bottom; y++)
             {
-                int topY = rect.Top - 1;
-                int bottomY = rect.Bottom;
-                for (int y = rect.Top; y < rect.Bottom; y++)
-                {
-                    double t = (y - rect.Top + 1.0) / (rect.Height + 1.0);
-                    int dstRow = RowOffset(y);
-                    int topRow = RowOffset(topY);
-                    int bottomRow = RowOffset(bottomY);
+                double t = (y - rect.Top + 1.0) / (rect.Height + 1.0);
+                int dstRow = y * stride;
 
-                    for (int x = rect.Left; x < rect.Right; x++)
-                    {
-                        int dst = dstRow + x * 4;
-                        int a = topRow + x * 4;
-                        int b = bottomRow + x * 4;
-                        pixels[dst] = Lerp(original[a], original[b], t);
-                        pixels[dst + 1] = Lerp(original[a + 1], original[b + 1], t);
-                        pixels[dst + 2] = Lerp(original[a + 2], original[b + 2], t);
-                        pixels[dst + 3] = 255;
-                    }
+                for (int x = rect.Left; x < rect.Right; x++)
+                {
+                    int dst = dstRow + x * 4;
+                    int a = topRow + x * 4;
+                    int b = bottomRow + x * 4;
+                    pixels[dst] = Lerp(pixels[a], pixels[b], t);
+                    pixels[dst + 1] = Lerp(pixels[a + 1], pixels[b + 1], t);
+                    pixels[dst + 2] = Lerp(pixels[a + 2], pixels[b + 2], t);
+                    pixels[dst + 3] = 255;
                 }
             }
-            else if (hasLeftRight)
-            {
-                int leftX = rect.Left - 1;
-                int rightX = rect.Right;
-                for (int y = rect.Top; y < rect.Bottom; y++)
-                {
-                    int row = RowOffset(y);
-                    int left = row + leftX * 4;
-                    int right = row + rightX * 4;
-                    for (int x = rect.Left; x < rect.Right; x++)
-                    {
-                        double t = (x - rect.Left + 1.0) / (rect.Width + 1.0);
-                        int dst = row + x * 4;
-                        pixels[dst] = Lerp(original[left], original[right], t);
-                        pixels[dst + 1] = Lerp(original[left + 1], original[right + 1], t);
-                        pixels[dst + 2] = Lerp(original[left + 2], original[right + 2], t);
-                        pixels[dst + 3] = 255;
-                    }
-                }
-            }
-            else
-            {
-                var fill = BorderAverage(original, stride, bitmap.Width, bitmap.Height, rect, RowOffset);
-                for (int y = rect.Top; y < rect.Bottom; y++)
-                {
-                    int row = RowOffset(y);
-                    for (int x = rect.Left; x < rect.Right; x++)
-                    {
-                        int dst = row + x * 4;
-                        pixels[dst] = fill.B;
-                        pixels[dst + 1] = fill.G;
-                        pixels[dst + 2] = fill.R;
-                        pixels[dst + 3] = 255;
-                    }
-                }
-            }
-
-            for (int y = 0; y < bitmap.Height; y++)
-                Marshal.Copy(pixels, y * stride, IntPtr.Add(data.Scan0, y * data.Stride), stride);
         }
-        finally
+        else if (hasLeftRight)
         {
-            bitmap.UnlockBits(data);
+            int leftX = rect.Left - 1;
+            int rightX = rect.Right;
+
+            for (int y = rect.Top; y < rect.Bottom; y++)
+            {
+                int row = y * stride;
+                int left = row + leftX * 4;
+                int right = row + rightX * 4;
+
+                for (int x = rect.Left; x < rect.Right; x++)
+                {
+                    double t = (x - rect.Left + 1.0) / (rect.Width + 1.0);
+                    int dst = row + x * 4;
+                    pixels[dst] = Lerp(pixels[left], pixels[right], t);
+                    pixels[dst + 1] = Lerp(pixels[left + 1], pixels[right + 1], t);
+                    pixels[dst + 2] = Lerp(pixels[left + 2], pixels[right + 2], t);
+                    pixels[dst + 3] = 255;
+                }
+            }
+        }
+        else
+        {
+            // Taken before anything is written, which is also why it can read the same buffer: every
+            // pixel it averages lies outside the rectangle about to be filled.
+            var fill = BorderAverage(pixels, stride, width, height, rect);
+
+            for (int y = rect.Top; y < rect.Bottom; y++)
+            {
+                int row = y * stride;
+                for (int x = rect.Left; x < rect.Right; x++)
+                {
+                    int dst = row + x * 4;
+                    pixels[dst] = fill.B;
+                    pixels[dst + 1] = fill.G;
+                    pixels[dst + 2] = fill.R;
+                    pixels[dst + 3] = 255;
+                }
+            }
         }
     }
 
@@ -217,15 +258,14 @@ internal static class RealtimeNaturalBackground
         int stride,
         int width,
         int height,
-        Rectangle rect,
-        Func<int, int> rowOffset)
+        Rectangle rect)
     {
         long r = 0, g = 0, b = 0, n = 0;
 
         void Add(int x, int y)
         {
             if (x < 0 || x >= width || y < 0 || y >= height) return;
-            int i = rowOffset(y) + x * 4;
+            int i = y * stride + x * 4;
             b += pixels[i];
             g += pixels[i + 1];
             r += pixels[i + 2];
@@ -248,28 +288,18 @@ internal static class RealtimeNaturalBackground
             : GdiColor.FromArgb(255, (int)(r / n), (int)(g / n), (int)(b / n));
     }
 
-    private static GdiColor SampleDominantBackground(Bitmap frame, WpfRect bounds)
+    private static GdiColor SampleDominantBackground(
+        PixelWindow window, Rectangle outer, Rectangle inner)
     {
-        int padX = Math.Max(4, (int)Math.Round(bounds.Height * 0.35));
-        int padY = Math.Max(3, (int)Math.Round(bounds.Height * 0.28));
-        int x1 = Math.Clamp((int)Math.Floor(bounds.Left) - padX, 0, frame.Width);
-        int y1 = Math.Clamp((int)Math.Floor(bounds.Top) - padY, 0, frame.Height);
-        int x2 = Math.Clamp((int)Math.Ceiling(bounds.Right) + padX, 0, frame.Width);
-        int y2 = Math.Clamp((int)Math.Ceiling(bounds.Bottom) + padY, 0, frame.Height);
-        int innerX1 = Math.Clamp((int)Math.Floor(bounds.Left), 0, frame.Width);
-        int innerY1 = Math.Clamp((int)Math.Floor(bounds.Top), 0, frame.Height);
-        int innerX2 = Math.Clamp((int)Math.Ceiling(bounds.Right), 0, frame.Width);
-        int innerY2 = Math.Clamp((int)Math.Ceiling(bounds.Bottom), 0, frame.Height);
-
         var buckets = new Dictionary<int, (long R, long G, long B, int Count)>();
-        for (int y = y1; y < y2; y += 2)
+        for (int y = outer.Top; y < outer.Bottom; y += 2)
         {
-            for (int x = x1; x < x2; x += 2)
+            for (int x = outer.Left; x < outer.Right; x += 2)
             {
-                bool inside = x >= innerX1 && x < innerX2 && y >= innerY1 && y < innerY2;
-                if (inside) continue;
+                bool insideText = x >= inner.Left && x < inner.Right && y >= inner.Top && y < inner.Bottom;
+                if (insideText) continue;
 
-                var c = frame.GetPixel(x, y);
+                var c = window.At(x, y);
                 int key = ((c.R >> 4) << 8) | ((c.G >> 4) << 4) | (c.B >> 4);
                 var bucket = buckets.GetValueOrDefault(key);
                 buckets[key] = (bucket.R + c.R, bucket.G + c.G, bucket.B + c.B, bucket.Count + 1);
@@ -308,4 +338,47 @@ internal static class RealtimeNaturalBackground
 
     private static byte Lerp(byte a, byte b, double t) =>
         (byte)Math.Clamp((int)Math.Round(a + (b - a) * t), 0, 255);
+
+    /// <summary>
+    /// One rectangle of a bitmap's pixels, read out once so a sampler can index it in the bitmap's
+    /// own coordinates.
+    /// </summary>
+    /// <remarks>
+    /// The alternative is <c>Bitmap.GetPixel</c>, which locks the bitmap, reads four bytes and
+    /// unlocks it again on every call. Sampling one subtitle line asks for around fifteen thousand
+    /// pixels, so this is the difference between one lock and fifteen thousand.
+    /// </remarks>
+    private readonly struct PixelWindow(byte[] pixels, int stride, Rectangle area)
+    {
+        public static PixelWindow? Read(Bitmap frame, Rectangle area)
+        {
+            BitmapData? data = null;
+            try
+            {
+                data = frame.LockBits(area, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+
+                int stride = area.Width * 4;
+                var pixels = new byte[stride * area.Height];
+                for (int y = 0; y < area.Height; y++)
+                    Marshal.Copy(IntPtr.Add(data.Scan0, y * data.Stride), pixels, y * stride, stride);
+
+                return new PixelWindow(pixels, stride, area);
+            }
+            catch
+            {
+                return null;
+            }
+            finally
+            {
+                if (data is not null) frame.UnlockBits(data);
+            }
+        }
+
+        /// <param name="x">In the source bitmap's coordinates, not the window's.</param>
+        public GdiColor At(int x, int y)
+        {
+            int i = (y - area.Top) * stride + (x - area.Left) * 4;
+            return GdiColor.FromArgb(255, pixels[i + 2], pixels[i + 1], pixels[i]);
+        }
+    }
 }

@@ -125,6 +125,34 @@ internal sealed class FrameFingerprint
     }
 
     /// <summary>
+    /// Whether a picture drawn from <paramref name="other"/> would still look right, as opposed to
+    /// whether the words in it have changed.
+    /// </summary>
+    /// <remarks>
+    /// A different question from <see cref="Differs"/>, and deliberately a stricter one.
+    /// <see cref="Differs"/> asks whether recognition would read something new, and
+    /// <see cref="CellTolerance"/> is tuned to say no when a scene merely brightens behind an
+    /// unchanged subtitle — the measured table above is that decision. For a repaired background the
+    /// same drift is exactly what matters: the patch was interpolated from pixels that have since
+    /// moved, so keeping it leaves a rectangle of the old shade sitting in the new scene.
+    ///
+    /// Hence its own pair of thresholds. They are reasoned rather than measured, unlike the ones
+    /// above: 4 levels is above the dithering and compression noise a still picture produces and far
+    /// below anything a reader can see, and one cell in a hundred is enough to catch a change that
+    /// touches only part of the band.
+    /// </remarks>
+    public bool StillLooksLike(FrameFingerprint? other) =>
+        other is not null &&
+        _cells.Length == other._cells.Length &&
+        ChangedShare(other, RepaintTolerance) <= RepaintChangedShare;
+
+    /// <inheritdoc cref="StillLooksLike"/>
+    private const int RepaintTolerance = 4;
+
+    /// <inheritdoc cref="StillLooksLike"/>
+    private const double RepaintChangedShare = 0.01;
+
+    /// <summary>
     /// The share of cells that moved by more than <paramref name="tolerance"/>, which is the number
     /// <see cref="Differs"/> compares against <see cref="ChangedCellPercent"/>. Exposed so the two
     /// thresholds can be chosen against measured margins rather than argued about.

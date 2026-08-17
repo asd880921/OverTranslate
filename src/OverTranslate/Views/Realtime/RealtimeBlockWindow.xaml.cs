@@ -26,9 +26,17 @@ namespace OverTranslate.Views.Realtime;
 /// a one-time screenshot would turn the translated line into a frozen rectangular tile while the
 /// picture behind it kept moving. The overlay itself is excluded from capture, so every refresh sees
 /// the original application rather than recursively photographing its own translation.
+///
+/// That refresh runs off the dispatcher, and only the assignment of the finished brushes comes back
+/// to it. Everything before that — the grab, the repair, the bitmap — is pixel work that does not
+/// need the interface thread, and leaving it there coupled how smooth the shell felt to how much this
+/// layer happened to be doing. It also declines to do the work at all while the picture underneath is
+/// holding still, which over a dialogue box or a menu is nearly all of the time.
 /// </remarks>
 public partial class RealtimeBlockWindow : Window
 {
+    private static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+
     // The scrim exists to hide the source line underneath, so it is sized from the text and not the
     // block: everything outside these paddings stays untouched picture. The vertical padding is the
     // tighter of the two on purpose — a band reaching above and below a subtitle sits in the middle
@@ -89,8 +97,19 @@ public partial class RealtimeBlockWindow : Window
     private double _dpiY = 1.0;
     private bool _isLoaded;
 
-    private readonly DispatcherTimer _naturalRefresh = new() { Interval = NaturalRefreshInterval };
-    private readonly List<NaturalPatchVisual> _naturalPatches = [];
+    // Published by Rebuild on the dispatcher and read by the refresh loop on its own thread, so it is
+    // replaced wholesale rather than mutated. The generation beside it is what a finished batch of
+    // brushes is checked against: a rebuild between the grab and the assignment means those brushes
+    // belong to visuals that are no longer on the canvas.
+    private NaturalPatchVisual[] _naturalPatches = [];
+    private int _patchGeneration;
+
+    private CancellationTokenSource? _naturalRefreshCts;
+
+    // What the patches on screen were painted from. Only the refresh loop reads or writes it, except
+    // for Rebuild clearing it to say the comparison has to start again.
+    private FrameFingerprint? _lastRefreshPrint;
+
     private IReadOnlyList<TranslatedBlock> _lines = [];
 
     public RealtimeBlockWindow(
@@ -115,8 +134,7 @@ public partial class RealtimeBlockWindow : Window
         _scrimBrush = Freeze(new SolidColorBrush(
             RealtimeSubtitleColors.Scrim(scrimColor, scrimOpacity)));
 
-        _naturalRefresh.Tick += (_, _) => RefreshNaturalBackgrounds();
-        Closed += (_, _) => _naturalRefresh.Stop();
+        Closed += (_, _) => StopNaturalRefresh();
 
         Loaded += (_, _) =>
         {
@@ -224,7 +242,11 @@ public partial class RealtimeBlockWindow : Window
     {
         ScrimCanvas.Children.Clear();
         TextCanvas.Children.Clear();
-        _naturalPatches.Clear();
+
+        // Moved on before anything is drawn, so a batch of brushes already in flight for the previous
+        // arrangement can be told it has been overtaken.
+        Interlocked.Increment(ref _patchGeneration);
+        var patches = new List<NaturalPatchVisual>();
 
         double canvasWidth = _physBounds.Width / _dpiX;
         double canvasHeight = _physBounds.Height / _dpiY;
@@ -247,8 +269,13 @@ public partial class RealtimeBlockWindow : Window
             // nothing to follow, and recording one here would have the refresh below replace it with
             // a patch the user never asked for.
             if (_naturalBackground)
-                _naturalPatches.Add(new NaturalPatchVisual(visual.Background, line, visual.PatchBounds));
+                patches.Add(new NaturalPatchVisual(visual.Background, line, visual.PatchBounds));
         }
+
+        Volatile.Write(ref _naturalPatches, [.. patches]);
+
+        // A new set of patches has to be painted once before there is anything to compare against.
+        Volatile.Write(ref _lastRefreshPrint, null);
     }
 
     /// <summary>One line's background patch and translated text, kept in separate layers.</summary>
@@ -469,23 +496,94 @@ public partial class RealtimeBlockWindow : Window
     {
         // Never runs with the switch off: the patches it would refresh are only recorded when the
         // repair is what drew them.
-        if (!_naturalBackground || !_isLoaded || _naturalPatches.Count == 0)
-            _naturalRefresh.Stop();
-        else if (!_naturalRefresh.IsEnabled)
-            _naturalRefresh.Start();
+        if (!_naturalBackground || !_isLoaded || Volatile.Read(ref _naturalPatches).Length == 0)
+            StopNaturalRefresh();
+        else
+            StartNaturalRefresh();
     }
 
-    private void RefreshNaturalBackgrounds()
+    private void StartNaturalRefresh()
     {
-        if (!_isLoaded || _naturalPatches.Count == 0) return;
+        if (_naturalRefreshCts is not null) return;
 
-        using var frame = CaptureUnderlyingRegion();
-        if (frame is null) return;
+        var cts = new CancellationTokenSource();
+        _naturalRefreshCts = cts;
+        _ = Task.Run(() => RefreshNaturalBackgroundsAsync(cts.Token), cts.Token);
+    }
 
-        foreach (var patch in _naturalPatches)
+    private void StopNaturalRefresh()
+    {
+        _naturalRefreshCts?.Cancel();
+        _naturalRefreshCts?.Dispose();
+        _naturalRefreshCts = null;
+    }
+
+    /// <summary>
+    /// Keeps the repaired backgrounds following the picture underneath, off the dispatcher.
+    /// </summary>
+    /// <remarks>
+    /// The only step here that needs the interface thread is the last one, so it is the only step that
+    /// goes back to it: the grab is a BitBlt, the repair is pixel arithmetic, and the brush is frozen
+    /// before it leaves this thread. What used to be a DispatcherTimer doing all of it is why a
+    /// session with three blocks made the shell feel heavy.
+    ///
+    /// A tick that finds the picture holding still stops after the fingerprint. That is the ordinary
+    /// case for the content this mode suits best — a dialogue panel, a menu, a paused scene — and the
+    /// patch on screen is still correct for it, so there is nothing to pay for.
+    /// </remarks>
+    private async Task RefreshNaturalBackgroundsAsync(CancellationToken token)
+    {
+        try
         {
-            if (BuildNaturalBrush(frame, patch.Line, patch.PatchBounds) is { } brush)
-                patch.Surface.Background = brush;
+            using var timer = new PeriodicTimer(NaturalRefreshInterval);
+
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                var generation = Volatile.Read(ref _patchGeneration);
+                var patches = Volatile.Read(ref _naturalPatches);
+                if (patches.Length == 0) continue;
+
+                using var frame = CaptureUnderlyingRegion();
+                if (frame is null) continue;
+
+                // Summarised over the patch rectangles rather than the whole block: a change in a
+                // corner of the region the band does not cover is not a reason to repaint it.
+                var print = FrameFingerprint.Capture(
+                    frame, [.. patches.Select(patch => patch.PatchBounds)]);
+                if (print.StillLooksLike(Volatile.Read(ref _lastRefreshPrint))) continue;
+
+                var repainted = new List<(Border Surface, ImageBrush Brush)>(patches.Length);
+                foreach (var patch in patches)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (BuildNaturalBrush(frame, patch.Line, patch.PatchBounds) is { } brush)
+                        repainted.Add((patch.Surface, brush));
+                }
+
+                Volatile.Write(ref _lastRefreshPrint, print);
+                if (repainted.Count == 0) continue;
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    // A rebuild while this batch was being painted means these surfaces are no longer
+                    // the ones on the canvas.
+                    if (Volatile.Read(ref _patchGeneration) != generation) return;
+
+                    foreach (var (surface, brush) in repainted)
+                        surface.Background = brush;
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The window is closing or the arrangement changed; nothing to report.
+        }
+        catch (Exception ex)
+        {
+            // Nothing above is expected to throw, and this loop is nobody's awaited task — so an
+            // exception here would end the refresh silently and leave the patches frozen on the last
+            // picture they saw, which looks like the repair itself having failed.
+            Log.Warn(ex, "Realtime block {Region} stopped refreshing its repaired background", RegionId);
         }
     }
 
