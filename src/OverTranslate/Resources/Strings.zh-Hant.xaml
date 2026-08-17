@@ -340,7 +340,6 @@
 
     <!-- Settings page, composed in code-behind -->
     <sys:String x:Key="S.Settings.Saved">✓ 已儲存</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyPrompt">請按下快捷鍵...</sys:String>
     <sys:String x:Key="S.Settings.HotkeyPromptAnyInput">請按鍵盤按鍵、滑鼠中鍵或搖桿按鍵…</sys:String>
     <sys:String x:Key="S.Settings.MouseMiddle">滑鼠中鍵</sys:String>
     <sys:String x:Key="S.Settings.GamepadButton">搖桿 {0}</sys:String>

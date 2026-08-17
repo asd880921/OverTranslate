@@ -321,7 +321,6 @@ The parameter is left out of the request when this is off. Models differ — fol
 
     <!-- Settings page, composed in code-behind -->
     <sys:String x:Key="S.Settings.Saved">✓ Saved</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyPrompt">Press a shortcut...</sys:String>
     <sys:String x:Key="S.Settings.HotkeyPromptAnyInput">Press a keyboard key, middle mouse, or gamepad button…</sys:String>
     <sys:String x:Key="S.Settings.MouseMiddle">Middle Mouse</sys:String>
     <sys:String x:Key="S.Settings.GamepadButton">Gamepad {0}</sys:String>
