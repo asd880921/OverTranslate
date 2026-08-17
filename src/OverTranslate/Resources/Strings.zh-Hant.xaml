@@ -264,8 +264,8 @@
     <sys:String x:Key="S.Settings.HotkeyEnable">啟用此快捷鍵</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkey">即時翻譯區塊</sys:String>
     <sys:String x:Key="S.Settings.RealtimeHotkeyHint">按下快捷鍵即可進入即時[[翻譯區塊選取模式]]</sys:String>
-    <sys:String x:Key="S.Settings.SingleShotHotkey">單次翻譯 / 原文</sys:String>
-    <sys:String x:Key="S.Settings.SingleShotHotkeyHint">[[即時翻譯]]進行中使用：第一次按會[[單次辨識並翻譯]]目前區塊，再按一次顯示原文；內容未變時會沿用上次翻譯。可設定組合鍵、單一功能鍵、滑鼠中鍵或 XInput 搖桿按鍵；中鍵與搖桿不會從遊戲手上攔截輸入，鍵盤會</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkey">暫停 / 繼續</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">[[即時翻譯]]進行中時，按下快捷鍵即可[[暫停 / 繼續]]目前的即時翻譯</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ 與上方的「{0}」重複，已停用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ 單一按鍵只能是 F1–F24、Pause 或 Scroll Lock，其他按鍵請搭配 Ctrl／Alt／Shift</sys:String>
 

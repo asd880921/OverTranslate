@@ -209,20 +209,20 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.SingleShotHotkey}"
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.RealtimePauseHotkey}"
                                        Style="{StaticResource FieldLabel}"/>
-                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="SingleShotHotkeyBox"
+                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="RealtimePauseHotkeyBox"
                                        Style="{StaticResource ModernTextBox}"
                                        IsReadOnly="True"
                                        Margin="0,0,8,0"
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="2" Grid.Row="0" x:Name="SingleShotRecordBtn" Content="{DynamicResource S.Common.Record}"
+                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RealtimePauseRecordBtn" Content="{DynamicResource S.Common.Record}"
                                        Style="{StaticResource FlatButton}"
                                        Height="34"
                                        Click="RecordBtn_Click"/>
-                            <CheckBox  Grid.Column="3" Grid.Row="0" x:Name="SingleShotHotkeyEnabledCheckBox"
+                            <CheckBox  Grid.Column="3" Grid.Row="0" x:Name="RealtimePauseHotkeyEnabledCheckBox"
                                        Style="{StaticResource ModernCheckBox}"
                                        VerticalAlignment="Center"
                                        Margin="10,0,0,0"
@@ -230,10 +230,10 @@
                                        Checked="HotkeyEnabled_Toggled"
                                        Unchecked="HotkeyEnabled_Toggled"/>
                             <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="3"
-                                       controls:HighlightedText.Source="{DynamicResource S.Settings.SingleShotHotkeyHint}"
+                                       controls:HighlightedText.Source="{DynamicResource S.Settings.RealtimePauseHotkeyHint}"
                                        Style="{StaticResource FieldHint}"/>
                             <TextBlock Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3"
-                                       x:Name="SingleShotHotkeyShadowHint"
+                                       x:Name="RealtimePauseHotkeyShadowHint"
                                        Style="{StaticResource FieldHint}"
                                        Visibility="Collapsed"/>
                         </Grid>

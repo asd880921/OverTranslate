@@ -133,16 +133,16 @@ public partial class SettingsPage : UserControl
                 (s, on) => s.RealtimeHotkeyEnabled = on,
                 RealtimeHotkeyShadowHint),
             new HotkeyField(
-                HotkeyAction.SingleShot,
-                "S.Settings.SingleShotHotkey",
-                SingleShotHotkeyBox, SingleShotRecordBtn,
-                s => s.SingleShotHotkeyDisplay,
-                s => HotkeyBindings.TriggerFor(s, HotkeyAction.SingleShot),
-                ApplySingleShotTrigger,
+                HotkeyAction.RealtimePause,
+                "S.Settings.RealtimePauseHotkey",
+                RealtimePauseHotkeyBox, RealtimePauseRecordBtn,
+                s => s.RealtimePauseHotkeyDisplay,
+                s => HotkeyBindings.TriggerFor(s, HotkeyAction.RealtimePause),
+                ApplyRealtimePauseTrigger,
                 AdvertisedInShell: false,
-                SingleShotHotkeyEnabledCheckBox,
-                (s, on) => s.SingleShotHotkeyEnabled = on,
-                SingleShotHotkeyShadowHint),
+                RealtimePauseHotkeyEnabledCheckBox,
+                (s, on) => s.RealtimePauseHotkeyEnabled = on,
+                RealtimePauseHotkeyShadowHint),
         ];
 
         _apiKeyDebounce = new DispatcherTimer { Interval = ApiKeyDebounce };
@@ -1035,19 +1035,19 @@ public partial class SettingsPage : UserControl
         }
     }
 
-    private static void ApplySingleShotTrigger(AppSettings s, ShortcutTrigger trigger, string display)
+    private static void ApplyRealtimePauseTrigger(AppSettings s, ShortcutTrigger trigger, string display)
     {
-        s.SingleShotHotkeyInputKind = trigger.Kind;
-        s.SingleShotHotkeyDisplay = display;
+        s.RealtimePauseHotkeyInputKind = trigger.Kind;
+        s.RealtimePauseHotkeyDisplay = display;
         if (trigger.Kind == ShortcutInputKind.Keyboard)
         {
-            s.SingleShotHotkeyModifiers = trigger.Modifiers;
-            s.SingleShotHotkeyVirtualKey = trigger.VirtualKey;
-            s.SingleShotHotkeyGamepadButton = GamepadShortcutButton.None;
+            s.RealtimePauseHotkeyModifiers = trigger.Modifiers;
+            s.RealtimePauseHotkeyVirtualKey = trigger.VirtualKey;
+            s.RealtimePauseHotkeyGamepadButton = GamepadShortcutButton.None;
         }
         else if (trigger.Kind == ShortcutInputKind.Gamepad)
         {
-            s.SingleShotHotkeyGamepadButton = trigger.GamepadButton;
+            s.RealtimePauseHotkeyGamepadButton = trigger.GamepadButton;
         }
     }
 

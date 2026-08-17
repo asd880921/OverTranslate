@@ -63,18 +63,26 @@ public class AppSettings
     public bool RealtimeHotkeyEnabled { get; set; } = true;
 
     /// <summary>
-    /// While realtime translation is running, toggles the one-shot translation/original view.
-    /// Ctrl+Alt+D by default.
+    /// Pauses and resumes a running realtime session. Ctrl+Alt+P by default.
     /// </summary>
-    public uint SingleShotHotkeyModifiers { get; set; } = 3;
+    /// <remarks>
+    /// Its own shortcut rather than a second meaning for the capture one. Sharing it made a kind of
+    /// sense — a session hides the page the capture shortcut would otherwise open, so the key was
+    /// free — but it also meant the reader could not choose what to press for the thing they reach for
+    /// most, and could not put it somewhere their hands already are while a game has the screen.
+    /// </remarks>
+    public uint RealtimePauseHotkeyModifiers { get; set; } = 3;
 
-    public uint SingleShotHotkeyVirtualKey { get; set; } = 0x44;
+    /// <inheritdoc cref="RealtimePauseHotkeyModifiers"/>
+    public uint RealtimePauseHotkeyVirtualKey { get; set; } = 0x50;
 
-    public string SingleShotHotkeyDisplay { get; set; } = "Ctrl+Alt+D";
-    public ShortcutInputKind SingleShotHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
-    public GamepadShortcutButton SingleShotHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
+    /// <inheritdoc cref="RealtimePauseHotkeyModifiers"/>
+    public string RealtimePauseHotkeyDisplay { get; set; } = "Ctrl+Alt+P";
+    public ShortcutInputKind RealtimePauseHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton RealtimePauseHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 
-    public bool SingleShotHotkeyEnabled { get; set; } = true;
+    /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
+    public bool RealtimePauseHotkeyEnabled { get; set; } = true;
 
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";

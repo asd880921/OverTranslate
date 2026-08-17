@@ -14,7 +14,7 @@ public class HotkeyBindingsTests
         var active = HotkeyBindings.Active(new AppSettings()).ToList();
 
         Assert.Equal(
-            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.Realtime, HotkeyAction.SingleShot],
+            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.Realtime, HotkeyAction.RealtimePause],
             active.Select(binding => binding.Action));
     }
 
@@ -64,17 +64,17 @@ public class HotkeyBindingsTests
     }
 
     [Fact]
-    public void SingleShotLosesToRealtimeWhenAStoredSettingCollides()
+    public void PauseLosesToRealtimeWhenAStoredSettingCollides()
     {
         var settings = new AppSettings
         {
-            SingleShotHotkeyModifiers = CtrlAlt,
-            SingleShotHotkeyVirtualKey = 0x53,
-            SingleShotHotkeyDisplay = "Ctrl+Alt+S",
+            RealtimePauseHotkeyModifiers = CtrlAlt,
+            RealtimePauseHotkeyVirtualKey = 0x53,
+            RealtimePauseHotkeyDisplay = "Ctrl+Alt+S",
         };
 
         var single = HotkeyBindings.Resolve(settings)
-            .Single(binding => binding.Action == HotkeyAction.SingleShot);
+            .Single(binding => binding.Action == HotkeyAction.RealtimePause);
 
         Assert.False(single.IsActive);
         Assert.Equal(HotkeyAction.Realtime, single.ShadowedBy);
@@ -128,13 +128,13 @@ public class HotkeyBindingsTests
         var settings = new AppSettings
         {
             RealtimeHotkeyInputKind = ShortcutInputKind.MouseMiddle,
-            SingleShotHotkeyInputKind = ShortcutInputKind.MouseMiddle,
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.MouseMiddle,
         };
 
         var resolved = HotkeyBindings.Resolve(settings);
         Assert.True(resolved.Single(b => b.Action == HotkeyAction.Realtime).IsActive);
         Assert.Equal(HotkeyAction.Realtime,
-            resolved.Single(b => b.Action == HotkeyAction.SingleShot).ShadowedBy);
+            resolved.Single(b => b.Action == HotkeyAction.RealtimePause).ShadowedBy);
     }
 
     [Fact]
@@ -142,12 +142,12 @@ public class HotkeyBindingsTests
     {
         var settings = new AppSettings
         {
-            SingleShotHotkeyInputKind = ShortcutInputKind.Gamepad,
-            SingleShotHotkeyGamepadButton = GamepadShortcutButton.X,
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.Gamepad,
+            RealtimePauseHotkeyGamepadButton = GamepadShortcutButton.X,
         };
 
         var single = HotkeyBindings.Resolve(settings)
-            .Single(b => b.Action == HotkeyAction.SingleShot);
+            .Single(b => b.Action == HotkeyAction.RealtimePause);
 
         Assert.True(single.IsActive);
         Assert.Equal(ShortcutInputKind.Gamepad, single.InputKind);
@@ -196,12 +196,12 @@ public class HotkeyBindingsTests
         {
             RealtimeHotkeyModifiers = 0,
             RealtimeHotkeyVirtualKey = 0x58,
-            SingleShotHotkeyInputKind = ShortcutInputKind.Gamepad,
-            SingleShotHotkeyGamepadButton = GamepadShortcutButton.X,
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.Gamepad,
+            RealtimePauseHotkeyGamepadButton = GamepadShortcutButton.X,
         };
 
         Assert.True(HotkeyBindings.Resolve(settings)
-            .Single(b => b.Action == HotkeyAction.SingleShot).IsActive);
+            .Single(b => b.Action == HotkeyAction.RealtimePause).IsActive);
     }
 
 }

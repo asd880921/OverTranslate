@@ -8,7 +8,7 @@ public enum HotkeyAction
     Capture,
     TranslationWindow,
     Realtime,
-    SingleShot,
+    RealtimePause,
 }
 
 /// <summary>
@@ -71,11 +71,11 @@ public readonly record struct HotkeyBinding(
 /// exists for: adding <see cref="HotkeyAction.Realtime"/> gave every existing installation a
 /// Ctrl+Alt+S it never agreed to, and anyone who had already put Ctrl+Alt+S on the translation
 /// window would have had one of the two stop working with no explanation.
-/// <see cref="HotkeyAction.SingleShot"/> is the same event again, with Ctrl+Alt+D.
+/// <see cref="HotkeyAction.RealtimePause"/> is the same event again, with Ctrl+Alt+P.
 ///
 /// So the order is declared rather than discovered, and it runs from the feature the application is
 /// for down to the most recently added: capture, then the translation window, then realtime, then
-/// single-shot. A shortcut shadowed by a higher one is reported rather than silently dropped.
+/// pausing it. A shortcut shadowed by a higher one is reported rather than silently dropped.
 /// </remarks>
 public static class HotkeyBindings
 {
@@ -97,11 +97,11 @@ public static class HotkeyBindings
             settings.RealtimeHotkeyModifiers,
             settings.RealtimeHotkeyVirtualKey,
             settings.RealtimeHotkeyGamepadButton),
-        HotkeyAction.SingleShot => BuildTrigger(
-            settings.SingleShotHotkeyInputKind,
-            settings.SingleShotHotkeyModifiers,
-            settings.SingleShotHotkeyVirtualKey,
-            settings.SingleShotHotkeyGamepadButton),
+        HotkeyAction.RealtimePause => BuildTrigger(
+            settings.RealtimePauseHotkeyInputKind,
+            settings.RealtimePauseHotkeyModifiers,
+            settings.RealtimePauseHotkeyVirtualKey,
+            settings.RealtimePauseHotkeyGamepadButton),
         _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
     };
 
@@ -171,9 +171,9 @@ public static class HotkeyBindings
             (HotkeyAction.Realtime,
                 TriggerFor(settings, HotkeyAction.Realtime),
                 settings.RealtimeHotkeyEnabled),
-            (HotkeyAction.SingleShot,
-                TriggerFor(settings, HotkeyAction.SingleShot),
-                settings.SingleShotHotkeyEnabled),
+            (HotkeyAction.RealtimePause,
+                TriggerFor(settings, HotkeyAction.RealtimePause),
+                settings.RealtimePauseHotkeyEnabled),
         };
 
         var claimed = new Dictionary<ShortcutTrigger, HotkeyAction>();
