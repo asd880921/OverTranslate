@@ -45,6 +45,9 @@ public partial class RealtimeBlockWindow : Window
     private const double ScrimPaddingX = 5;
     private const double ScrimPaddingY = 3;
 
+    // Only the band is rounded — see where it is applied for why a repaired patch is not.
+    private const double BandCornerRadius = 3;
+
     // The OCR box can omit detached punctuation/diacritics (especially Japanese dakuten). The
     // repaired background therefore extends beyond the visible translation band. Pixels in this
     // guard are copied from the original frame unchanged unless the adaptive eraser identifies them
@@ -446,9 +449,11 @@ public partial class RealtimeBlockWindow : Window
             Width = patchWidth,
             Height = patchHeight,
             Background = (System.Windows.Media.Brush?)naturalBrush ?? _scrimBrush,
-            // A natural patch should meet the surrounding picture edge-for-edge. Rounded corners
-            // would reveal four pieces of the source text underneath.
-            CornerRadius = new CornerRadius(0),
+            // A repaired patch has to meet the surrounding picture edge-for-edge: rounded corners
+            // would leave four pieces of the source text showing through. A band is the opposite case
+            // — it is visibly a band, and the corners are what stop it looking like a crash — so the
+            // radius belongs to the kind of background being drawn rather than to the window.
+            CornerRadius = new CornerRadius(naturalBrush is null ? BandCornerRadius : 0),
         };
 
         // Sampling is its own switch: with it off the reader's chosen colour is what gets drawn, and
@@ -481,6 +486,21 @@ public partial class RealtimeBlockWindow : Window
                 // CharacterEllipsis on would only mean a measurement a pixel out costs a word.
                 TextTrimming = TextTrimming.None,
                 VerticalAlignment = VerticalAlignment.Center,
+
+                // Centred inside the box, which is what keeps a translation over the middle of the
+                // line it replaces. The box is now as wide as the wider of the two — the background
+                // has to cover the source, and a translation that came back shorter than its source
+                // would otherwise sit against the left edge of a band sized by the source, drifting
+                // away from the words it stands in for by exactly the amount RealtimeBandPlacement
+                // exists to spend evenly.
+                //
+                // One line is centred as text; a wrapped one is centred as a block, with its own
+                // lines still starting at the same left edge. A paragraph with every line centred is
+                // a poster, and this is something the reader has to get through at speed.
+                TextAlignment = wrapped ? TextAlignment.Left : TextAlignment.Center,
+                HorizontalAlignment = wrapped
+                    ? System.Windows.HorizontalAlignment.Center
+                    : System.Windows.HorizontalAlignment.Stretch,
             }
         };
 
