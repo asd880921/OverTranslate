@@ -196,7 +196,7 @@
                                     Background="{DynamicResource AppTextPrimary}"/>
                             <Border x:Name="KnobOn"
                                     CornerRadius="8"
-                                    Background="{DynamicResource AppAccentFg}"
+                                    Background="{DynamicResource AppToggleKnobOn}"
                                     Opacity="0"/>
                         </Grid>
                     </Grid>

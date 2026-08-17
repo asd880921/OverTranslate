@@ -29,6 +29,11 @@
     <SolidColorBrush x:Key="AppAccentHover"    Color="#7AD7FF"/>
     <SolidColorBrush x:Key="AppAccentPressed"  Color="#4BBFEE"/>
     <SolidColorBrush x:Key="AppAccentFg"       Color="#000000"/>
+
+    <!-- The knob of a switch that is on. White in both themes rather than AppAccentFg,
+         which is what text on the accent needs: the knob is not text on the track, it is the
+         thing that moved, and a dark one reads as a hole in a light track. -->
+    <SolidColorBrush x:Key="AppToggleKnobOn"   Color="#FFFFFF"/>
     <SolidColorBrush x:Key="AppAccentSubtle"   Color="#1A2E3D"/>
 
     <!-- Interaction steps for AppAccentSubtle, for tonal surfaces that stay tonal on hover instead
