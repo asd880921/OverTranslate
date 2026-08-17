@@ -137,35 +137,145 @@
     <!--  when off and the accent's foreground when  -->
     <!--  on, so it stays legible in both themes.    -->
     <!-- ═══════════════════════════════════════════ -->
+    <!-- The knob slides and the two states cross-fade, which is what a switch is: the same object
+         moving rather than one picture replaced by another. Built as two stacked tracks and two
+         stacked knobs whose opacity is animated, because the colours come from the theme as shared
+         brushes and a ColourAnimation cannot touch those. The knob's travel is the track's width
+         less the knob and its two margins: 44 - 16 - 3 - 3. -->
     <Style x:Key="ToggleSwitch" TargetType="CheckBox">
         <Setter Property="Cursor"             Value="Hand"/>
         <Setter Property="VerticalAlignment"  Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
-                    <Border x:Name="Track"
-                            Width="44" Height="24"
-                            CornerRadius="12"
-                            Background="{DynamicResource AppButtonBg}"
-                            BorderBrush="{DynamicResource AppButtonBorder}"
-                            BorderThickness="1">
-                        <Border x:Name="Knob"
-                                Width="16" Height="16"
-                                CornerRadius="8"
-                                Background="{DynamicResource AppTextPrimary}"
-                                HorizontalAlignment="Left"
-                                Margin="3,0,0,0"/>
-                    </Border>
+                    <Grid Width="44" Height="24" Background="Transparent">
+                        <Border x:Name="TrackOff"
+                                CornerRadius="12"
+                                Background="{DynamicResource AppButtonBg}"
+                                BorderBrush="{DynamicResource AppButtonBorder}"
+                                BorderThickness="1"/>
+                        <Border x:Name="TrackOn"
+                                CornerRadius="12"
+                                Background="{DynamicResource AppAccent}"
+                                BorderBrush="{DynamicResource AppAccent}"
+                                BorderThickness="1"
+                                Opacity="0"/>
+                        <Border x:Name="TrackHover"
+                                CornerRadius="12"
+                                Background="Transparent"
+                                BorderBrush="{DynamicResource AppInputFocusBorder}"
+                                BorderThickness="1"
+                                Opacity="0"/>
+                        <Grid x:Name="KnobHost"
+                              Width="16" Height="16"
+                              HorizontalAlignment="Left"
+                              Margin="3,0,0,0">
+                            <Grid.RenderTransform>
+                                <TranslateTransform x:Name="KnobShift" X="0"/>
+                            </Grid.RenderTransform>
+                            <Border x:Name="KnobOff"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AppTextPrimary}"/>
+                            <Border x:Name="KnobOn"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AppAccentFg}"
+                                    Opacity="0"/>
+                        </Grid>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Track" Property="Background"  Value="{DynamicResource AppAccent}"/>
-                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
-                            <Setter TargetName="Knob"  Property="Background"  Value="{DynamicResource AppAccentFg}"/>
-                            <Setter TargetName="Knob"  Property="HorizontalAlignment" Value="Right"/>
-                            <Setter TargetName="Knob"  Property="Margin"      Value="0,0,3,0"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="KnobShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         To="22" Duration="0:0:0.16">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="TrackOn"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetName="KnobOn"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetName="KnobOff"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0" Duration="0:0:0.16"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="KnobShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         To="0" Duration="0:0:0.16">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="TrackOn"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetName="KnobOn"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetName="KnobOff"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.16"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AppInputFocusBorder}"/>
+                            <Setter TargetName="TrackHover" Property="Opacity" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  ICON + TEXT BUTTON                         -->
+    <!--  A borderless action that sits beside real  -->
+    <!--  controls: no chrome at rest, and a hover   -->
+    <!--  box that wraps its own content rather than -->
+    <!--  the whole cell it happens to occupy.       -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="IconTextButton" TargetType="Button">
+        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"        Value="{StaticResource AppFontSize}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Height"          Value="30"/>
+        <Setter Property="Padding"         Value="10,0"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonPressedBg}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45"/>

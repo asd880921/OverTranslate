@@ -214,6 +214,39 @@ public class AppSettings
         Services.Realtime.RealtimeSubtitleColors.DefaultScrimOpacity;
 
     /// <summary>
+    /// Whether the band behind a subtitle is replaced by a repair of the picture underneath: the
+    /// source line is erased and filled in from the pixels around it, and the translation is drawn
+    /// back where it was.
+    /// </summary>
+    /// <remarks>
+    /// Off by default, and deliberately not because it is new. The repair interpolates from the edges
+    /// of the line it erases, so it is close to invisible over a subtitle's own dark strip or a
+    /// dialogue panel and visibly a smeared patch over texture, a face or a grid — a higher ceiling
+    /// than the band and a lower floor. Which of the two is better is a judgement about the picture
+    /// the user is watching, and only they can see it, so the honest default is the one whose result
+    /// is predictable. It also costs a screen grab several times a second, which the band does not:
+    /// see <see cref="RealtimeSampleSourceTextColor"/> for the other half of the same trade.
+    /// </remarks>
+    public bool RealtimeNaturalBackgroundEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Whether the translation is drawn in a colour sampled from the source line rather than in
+    /// <see cref="RealtimeTextColor"/>.
+    /// </summary>
+    /// <remarks>
+    /// Its own key rather than travelling with <see cref="RealtimeNaturalBackgroundEnabled"/>, because
+    /// the two fail in different places and a reader may well want one without the other: "repair the
+    /// background, but keep my high-contrast yellow" is a reasonable arrangement, and sampling is
+    /// exactly what stops being reliable on the busy pictures where that yellow earns its keep.
+    ///
+    /// Sampling averages the pixels that stand out from the local background, so it has no outline,
+    /// shadow or gradient to give back. Source text that depends on one of those to stay readable
+    /// comes back as a colour that does not, which is what the readability check falls back to this
+    /// setting for.
+    /// </remarks>
+    public bool RealtimeSampleSourceTextColor { get; set; } = false;
+
+    /// <summary>
     /// Whether the per-block framing guidance on the edit layer is unfolded. Expanded on a first run,
     /// because the guidance is what stops a badly framed block.
     /// </summary>

@@ -114,6 +114,16 @@ public partial class RealtimePage : UserControl
                 PersistScrimOpacity();
             }));
 
+        // Set before the handlers go on, for the reason the boxes above give: restoring a stored
+        // value must not read as the user reaching for the switch and write it straight back.
+        var appearance = SettingsService.Instance.Current;
+        NaturalBackgroundToggle.IsChecked = appearance.RealtimeNaturalBackgroundEnabled;
+        SampleTextColorToggle.IsChecked = appearance.RealtimeSampleSourceTextColor;
+        NaturalBackgroundToggle.Checked += NaturalBackgroundToggle_Toggled;
+        NaturalBackgroundToggle.Unchecked += NaturalBackgroundToggle_Toggled;
+        SampleTextColorToggle.Checked += SampleTextColorToggle_Toggled;
+        SampleTextColorToggle.Unchecked += SampleTextColorToggle_Toggled;
+
         SyncScrimOpacity();
         RenderColours();
         RenderPauseHint();
@@ -408,6 +418,17 @@ public partial class RealtimePage : UserControl
         SyncScrimOpacity();
         RenderColours();
     }
+
+    /// <summary>
+    /// The two 進階選項 switches. Written the moment they are flipped — one press is one decision, so
+    /// there is nothing to hold back the way a drag across the opacity track has.
+    /// </summary>
+    private void NaturalBackgroundToggle_Toggled(object sender, RoutedEventArgs e) =>
+        Persist(s => s.RealtimeNaturalBackgroundEnabled = NaturalBackgroundToggle.IsChecked == true);
+
+    /// <inheritdoc cref="NaturalBackgroundToggle_Toggled"/>
+    private void SampleTextColorToggle_Toggled(object sender, RoutedEventArgs e) =>
+        Persist(s => s.RealtimeSampleSourceTextColor = SampleTextColorToggle.IsChecked == true);
 
     /// <summary>
     /// Follows the thumb: the label and the preview on every step, the settings file at the end of a

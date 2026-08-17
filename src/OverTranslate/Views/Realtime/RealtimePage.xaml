@@ -240,18 +240,15 @@
                                 </Button>
 
                                 <!-- Labelled now rather than icon-only: it sits at the far end of a
-                                     wide row, where a lone glyph is a guess. Still on the controls'
-                                     row rather than under a label of its own, because it acts on
-                                     both of them instead of being a third setting. Available only
-                                     once something has been changed — a reset that would do nothing
-                                     still looks like it might, and the user has to press it to
-                                     find out. -->
-                                <Button Grid.Column="4" Grid.Row="0" Grid.RowSpan="2"
+                                     wide row, where a lone glyph is a guess. On the controls' row
+                                     rather than spanning both, so it lines up with the two buttons
+                                     it acts on instead of floating between them and their labels.
+                                     Available only once something has been changed — a reset that
+                                     would do nothing still looks like it might, and the user has to
+                                     press it to find out. -->
+                                <Button Grid.Column="4" Grid.Row="1"
                                         x:Name="ResetColorsBtn"
-                                        Style="{StaticResource IconButton}"
-                                        Width="Auto"
-                                        Height="32"
-                                        Padding="10,0"
+                                        Style="{StaticResource IconTextButton}"
                                         VerticalAlignment="Center"
                                         ToolTip="{DynamicResource S.Realtime.ResetColors}"
                                         AutomationProperties.Name="{DynamicResource S.Realtime.ResetColorsName}"
@@ -259,11 +256,11 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE72C;"
                                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   FontSize="14"
-                                                   VerticalAlignment="Center"/>
-                                        <TextBlock Text="{DynamicResource S.Common.Reset}"
+                                                   FontSize="13"
                                                    VerticalAlignment="Center"
-                                                   Margin="7,0,0,0"/>
+                                                   Margin="0,1,6,0"/>
+                                        <TextBlock Text="{DynamicResource S.Common.Reset}"
+                                                   VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </Grid>
