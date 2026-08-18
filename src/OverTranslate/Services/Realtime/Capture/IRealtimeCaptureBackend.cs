@@ -16,9 +16,10 @@ namespace OverTranslate.Services.Realtime.Capture;
 ///
 /// So a backend is answerable for its own isolation. <see cref="IsIsolated"/> is the promise, made
 /// before a single region is read; a backend that cannot make it is not used. What that costs varies
-/// by source — the desktop grab needs the overlays excluded from capture, a backend that captures
-/// the watched window directly never had them in frame to begin with — and none of that reaches the
-/// session, which asks for a rectangle and gets pixels.
+/// by source — a backend that captures the watched window directly never had the overlays in frame
+/// to begin with, a monitor capture has the session compose the screen without them, and the desktop
+/// grab has to ask the overlays to hide themselves — and none of that reaches the session, which
+/// asks for a rectangle and gets pixels.
 /// </remarks>
 public interface IRealtimeCaptureBackend : IDisposable
 {

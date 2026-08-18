@@ -3,8 +3,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using Windows.Graphics.Capture;
-using Windows.Graphics.DirectX;
 using OverTranslate.Services.Realtime.Capture;
 
 namespace WgcProbe;
@@ -15,24 +13,25 @@ namespace WgcProbe;
 /// black?
 /// </summary>
 /// <remarks>
-/// Everything about that plan turns on this one answer and nothing in the documentation gives it. A
+/// Everything about that path turned on this one answer and nothing in the documentation gave it. A
 /// subtitle layer sits directly over the text it translates, so an exclusion that punches a hole —
 /// leaving black, or the desktop background, or the last thing composed there — removes exactly the
 /// pixels recognition exists to read, and the whole approach is worth nothing. An exclusion that
 /// composes the scene without that window is worth everything: it is structural isolation for the
 /// full-screen path, the same kind the window path already has.
 ///
+/// Measured through <see cref="WgcMonitorCaptureBackend"/> itself rather than a chain assembled
+/// here, so what is being answered for is the code a session runs on — the exclusion list, the
+/// refusal to read a frame composed before it took effect, and the crop from the monitor's origin,
+/// which is the part that goes wrong quietly on a display to the left of the primary.
+///
 /// Built like <see cref="OverlayTest"/> and for the same reason: both windows are the probe's own,
 /// so the measurement cannot be invalidated by whatever the user does to their desktop mid-run. The
 /// source window is filled white with black text, the stand-in subtitle layer is filled a magenta
 /// nothing else on a screen produces, and the region under the layer is then counted three ways —
 /// magenta means the exclusion did not happen, black means it punched a hole, white means the scene
-/// was composed without the overlay.
-///
-/// The frame examined is not simply the next one. The set call returns the configuration iteration
-/// its answer holds from, frames carry the iteration they were composed under, and a frame from
-/// before that number legitimately still contains the overlay. Reading one of those would have this
-/// test report a failure the system did not commit.
+/// was composed without the overlay. The desktop grab of the same rectangle is the control: it must
+/// see the layer, or nothing was proved.
 /// </remarks>
 [SupportedOSPlatform("windows10.0.18362.0")]
 internal static class ExclusionTest
@@ -56,125 +55,67 @@ internal static class ExclusionTest
         using var overlay = ProbeWindow.Show(overlayBounds, opaqueWhite: false, out var overlayHwnd);
         Console.WriteLine($"overlay                hwnd={overlayHwnd:X} {overlayBounds.Width}x{overlayBounds.Height} at {overlayBounds.X},{overlayBounds.Y}");
 
-        var centre = new POINT
-        {
-            X = overlayBounds.X + (overlayBounds.Width / 2),
-            Y = overlayBounds.Y + (overlayBounds.Height / 2)
-        };
-        var monitor = MonitorFromPoint(centre, MONITOR_DEFAULTTONEAREST);
+        var monitor = WgcMonitorCaptureBackend.MonitorFor(overlayBounds);
         if (monitor == IntPtr.Zero) return Fail("no monitor under the overlay");
+        Console.WriteLine($"monitor                hmonitor={monitor:X}");
 
-        var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
-        if (!GetMonitorInfo(monitor, ref info)) return Fail("could not read the monitor's rectangle");
+        // The control, with the overlay up: what anything reading the screen sees today.
+        using var control = new DesktopGrabCaptureBackend(overlaysHiddenFromCapture: true);
+        using var onScreen = control.GrabRegion(overlayBounds);
+        if (onScreen is null) return Fail("the desktop grab produced nothing");
 
-        var monitorOrigin = new Point(info.rcMonitor.Left, info.rcMonitor.Top);
-        Console.WriteLine($"monitor                hmonitor={monitor:X} at {monitorOrigin.X},{monitorOrigin.Y} " +
-                          $"{info.rcMonitor.Right - info.rcMonitor.Left}x{info.rcMonitor.Bottom - info.rcMonitor.Top}");
+        using var backend = WgcMonitorCaptureBackend.TryCreate(() => monitor, () => new[] { overlayHwnd });
+        if (backend is null) return Fail("could not start monitor capture with the overlay excluded");
 
-        var item = WgcInterop.CreateItemForMonitor(monitor);
-        if (item is null) return Fail("the monitor refused capture");
-
-        var device = WgcInterop.CreateDirect3DDevice(out var rawDevice);
-        using var pool = Direct3D11CaptureFramePool.CreateFreeThreaded(
-            device, DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, item.Size);
-        using var session = pool.CreateCaptureSession(item);
-
-        try
+        // The backend has already waited for a frame composed with the exclusion in force, so this
+        // is a poll rather than a wait — but the region is asked for a few times, because a poll can
+        // legitimately come back empty while the chain is settling.
+        Bitmap? captured = null;
+        for (var attempt = 0; attempt < 30 && captured is null; attempt++)
         {
-            // The pointer would otherwise land in the measured region and be counted as neither the
-            // overlay nor the source window.
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041)) session.IsCursorCaptureEnabled = false;
-            session.StartCapture();
-            Console.WriteLine($"itemSize               {item.Size.Width}x{item.Size.Height}");
-
-            // Before: the control. The overlay must be in this one, or the measurement after it
-            // proves nothing at all.
-            using var before = WaitForFrame(pool, minimumIteration: null);
-            if (before is null) return Fail("no frame arrived before the exclusion was set");
-
-            var iteration = WgcWindowExclusion.TrySet(session, [overlayHwnd], out var detail);
-            Console.WriteLine($"exclusion              {detail}");
-            if (iteration is not { } applied) return Fail("the exclusion list was not applied");
-
-            var readBack = WgcWindowExclusion.GetApplied(session);
-            Console.WriteLine($"reported as excluded   {string.Join(", ", readBack.Select(h => h.ToString("X")))}");
-
-            using var after = WaitForFrame(pool, applied);
-            if (after is null) return Fail($"no frame reached configuration iteration {applied}");
-
-            var region = new Rectangle(
-                overlayBounds.X - monitorOrigin.X, overlayBounds.Y - monitorOrigin.Y,
-                overlayBounds.Width, overlayBounds.Height);
-
-            var beforeShare = Share(before, region, Marker);
-            var afterShare = Share(after, region, Marker);
-            var blackShare = Share(after, region, System.Drawing.Color.Black);
-            var whiteShare = Share(after, region, System.Drawing.Color.White);
-
-            Directory.CreateDirectory(outputDirectory);
-            var stamp = DateTime.Now.ToString("HHmmss");
-            before.Save(Path.Combine(outputDirectory, $"exclusion-before-{stamp}.png"), ImageFormat.Png);
-            after.Save(Path.Combine(outputDirectory, $"exclusion-after-{stamp}.png"), ImageFormat.Png);
-
-            Console.WriteLine($"overlay before         {beforeShare:P1}");
-            Console.WriteLine($"overlay after          {afterShare:P1}");
-            Console.WriteLine($"black after            {blackShare:P1}");
-            Console.WriteLine($"source content after   {whiteShare:P1}");
-            Console.WriteLine($"written                {outputDirectory}");
-
-            if (beforeShare < 0.5)
-                return Fail("the overlay never reached the monitor capture — the test proved nothing");
-
-            if (afterShare > 0.001)
-            {
-                Console.Error.WriteLine("NO-GO: the overlay is still in the frame after the exclusion");
-                return 1;
-            }
-
-            if (whiteShare < 0.5)
-            {
-                Console.Error.WriteLine(
-                    $"NO-GO: the excluded region does not show what is under it (black {blackShare:P1})");
-                return 1;
-            }
-
-            Console.WriteLine("GO: the excluded region shows the source window underneath the overlay");
-            return 0;
-        }
-        finally
-        {
-            (device as IDisposable)?.Dispose();
-            if (rawDevice != IntPtr.Zero) Marshal.Release(rawDevice);
-        }
-    }
-
-    /// <summary>
-    /// The next frame composed at or after <paramref name="minimumIteration"/>, read back onto the
-    /// CPU. Null when none arrived in time.
-    /// </summary>
-    private static Bitmap? WaitForFrame(Direct3D11CaptureFramePool pool, ulong? minimumIteration)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (DateTime.UtcNow < deadline)
-        {
-            using var frame = pool.TryGetNextFrame();
-            if (frame is null)
-            {
-                Thread.Sleep(50);
-                continue;
-            }
-
-            var iteration = WgcWindowExclusion.TryGetIteration(frame);
-            if (minimumIteration is { } wanted && (iteration is null || iteration < wanted))
-            {
-                Thread.Sleep(50);
-                continue;
-            }
-
-            return WgcInterop.ReadBack(frame.Surface, frame.ContentSize.Width, frame.ContentSize.Height);
+            captured = backend.GrabRegion(overlayBounds);
+            if (captured is null) Thread.Sleep(100);
         }
 
-        return null;
+        if (captured is null) return Fail("the monitor capture produced no frame for the region");
+
+        var whole = new Rectangle(0, 0, captured.Width, captured.Height);
+        var onScreenShare = Share(onScreen, new Rectangle(0, 0, onScreen.Width, onScreen.Height), Marker);
+        var capturedShare = Share(captured, whole, Marker);
+        var blackShare = Share(captured, whole, System.Drawing.Color.Black);
+        var whiteShare = Share(captured, whole, System.Drawing.Color.White);
+
+        Directory.CreateDirectory(outputDirectory);
+        var stamp = DateTime.Now.ToString("HHmmss");
+        onScreen.Save(Path.Combine(outputDirectory, $"exclusion-onscreen-{stamp}.png"), ImageFormat.Png);
+        captured.Save(Path.Combine(outputDirectory, $"exclusion-captured-{stamp}.png"), ImageFormat.Png);
+        captured.Dispose();
+
+        Console.WriteLine($"overlay on screen      {onScreenShare:P1}");
+        Console.WriteLine($"overlay in capture     {capturedShare:P1}");
+        Console.WriteLine($"black in capture       {blackShare:P1}");
+        Console.WriteLine($"source content         {whiteShare:P1}");
+        Console.WriteLine($"backend                {backend.DescribeActivity()}");
+        Console.WriteLine($"written                {outputDirectory}");
+
+        if (onScreenShare < 0.5)
+            return Fail("the overlay is not on the screen — the test proved nothing");
+
+        if (capturedShare > 0.001)
+        {
+            Console.Error.WriteLine("NO-GO: the overlay is still in the frame after the exclusion");
+            return 1;
+        }
+
+        if (whiteShare < 0.5)
+        {
+            Console.Error.WriteLine(
+                $"NO-GO: the excluded region does not show what is under it (black {blackShare:P1})");
+            return 1;
+        }
+
+        Console.WriteLine("GO: the excluded region shows the source window underneath the overlay");
+        return 0;
     }
 
     /// <summary>How much of one rectangle of a frame is exactly this colour.</summary>
@@ -203,37 +144,4 @@ internal static class ExclusionTest
         Console.Error.WriteLine(message);
         return 2;
     }
-
-    private const uint MONITOR_DEFAULTTONEAREST = 2;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct POINT
-    {
-        public int X;
-        public int Y;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MONITORINFO
-    {
-        public int cbSize;
-        public RECT rcMonitor;
-        public RECT rcWork;
-        public uint dwFlags;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromPoint(POINT point, uint flags);
-
-    [DllImport("user32.dll")]
-    private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
 }

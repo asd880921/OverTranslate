@@ -19,8 +19,10 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- One place only: reading a captured frame back off the GPU hands over a raw pointer and a
-         length, and copying it row by row is what that memory is for. See WgcInterop.ReadBack. -->
+    <!-- Two places, both at the capture ABI. Reading a captured frame back off the GPU hands over a
+         raw pointer and a length, and copying it row by row is what that memory is for (see
+         WgcInterop.ReadBack); the window exclusion list is called through the interface's vtable,
+         because the projection this builds against does not have it (see WgcWindowExclusion). -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>

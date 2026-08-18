@@ -86,6 +86,9 @@ internal sealed class RealtimeSessionController
     private Window? _hiddenShell;
 
     private readonly Dictionary<int, RealtimeBlockWindow> _blockWindows = [];
+    // Every window this session draws, as handles, for a capture backend that has to leave them out
+    // of its frames — see RefreshOverlayHandles. Written on the UI thread, read on the polling one.
+    private IReadOnlyList<IntPtr> _overlayHandles = [];
     private List<RealtimeBlockPlacement> _blocks = [];
     // UI updates are dispatched asynchronously. Carrying the session's generation here prevents an
     // update queued before a pause from restoring text after the screen was cleared.
@@ -196,6 +199,7 @@ internal sealed class RealtimeSessionController
         control.PauseToggleRequested += (_, _) => TogglePause();
         _control = control;
         control.Show();
+        RefreshOverlayHandles();
 
         EnterEditMode();
         StateChanged?.Invoke(this, EventArgs.Empty);
@@ -367,6 +371,7 @@ internal sealed class RealtimeSessionController
             control.ShowMessage(LocalizationService.Format("S.Realtime.TooManyBlocks", request.MaxBlocks));
         _edit = edit;
         edit.Show();
+        RefreshOverlayHandles();
 
         // Ownership, not a Topmost nudge: the edit layer covers the whole screen, so any moment it
         // is above the control the user's clicks on the bar land on the drawing canvas instead —
@@ -417,6 +422,10 @@ internal sealed class RealtimeSessionController
             _blockWindows[region.Id] = window;
             window.Show();
         }
+
+        // Before the backend, which asks for this list as it starts: the overlays are up, and the
+        // first frame it accepts must already be composed without them.
+        RefreshOverlayHandles();
 
         // Built here and not in Start: the layers exist and have handles now, which is the earliest
         // a backend can be asked whether it can keep them out of frame — and the last moment before
@@ -470,11 +479,96 @@ internal sealed class RealtimeSessionController
         if (request.CaptureMode is Models.RealtimeCaptureMode.Window)
             return CreateWindowCapture(request.SourceWindow, out refusal);
 
+        return CreateScreenCapture(request, out refusal);
+    }
+
+    /// <summary>
+    /// The whole screen, isolated the best way this system allows, or null when it allows neither.
+    /// </summary>
+    /// <remarks>
+    /// Two backends, in this order, and the order is the whole of the policy. A monitor capture with
+    /// the overlays in the session's window exclusion list is structural: the system composes the
+    /// screen without them, the set call says from which frame that holds, and frames older than
+    /// that are never read. The desktop grab is the older arrangement, where the overlays are asked
+    /// to hide themselves with <c>WDA_EXCLUDEFROMCAPTURE</c> and the session starts only if every
+    /// one of them agreed — which they cannot do before Windows 11 24H2 (#94).
+    ///
+    /// The exclusion list is far newer than 24H2, so the second is not dead code waiting to be
+    /// removed: it is the only full-screen path on every machine between those two Windows, and
+    /// today that is most of them. Dropping it with the first one in place would take a working
+    /// feature away from that whole band to tidy up a file.
+    ///
+    /// This is not the fallback #96 forbade. That one was silent and changed what the user was
+    /// reading — window capture quietly becoming a screen grab. Both of these <i>are</i> the screen
+    /// the user asked for, both refuse to start unless they can prove their own isolation, and which
+    /// one ran is named in the log.
+    /// </remarks>
+    private IRealtimeCaptureBackend? CreateScreenCapture(RealtimeStartRequest request, out string refusal)
+    {
+        refusal = "S.Realtime.CaptureNotIsolated";
+
+        if (WgcCapability.IsCaptureSupported && CreateMonitorCapture(request.ScreenBounds) is { } monitor)
+            return monitor;
+
         var desktop = new DesktopGrabCaptureBackend(OverlaysHiddenFromCapture());
         if (desktop.IsIsolated) return desktop;
 
         desktop.Dispose();
         return null;
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.18362.0")]
+    private WgcMonitorCaptureBackend? CreateMonitorCapture(System.Drawing.Rectangle screenBounds)
+    {
+        // The monitor is resolved again on every re-attach rather than captured once: a display that
+        // was unplugged and plugged back in, or that changed mode, is a different HMONITOR for the
+        // same rectangle.
+        var backend = WgcMonitorCaptureBackend.TryCreate(
+            () => WgcMonitorCaptureBackend.MonitorFor(screenBounds),
+            () => Volatile.Read(ref _overlayHandles));
+
+        if (backend is null) return null;
+
+        backend.SourceLost += OnCaptureSourceLost;
+        return backend;
+    }
+
+    /// <summary>
+    /// Records the handles of every window this session draws, for the capture backend to keep out
+    /// of its frames.
+    /// </summary>
+    /// <remarks>
+    /// Taken here and handed over as a snapshot because these are WPF windows: their handles may
+    /// only be read on the thread that owns them, and the backend asks from the polling thread. Kept
+    /// in a stable order — blocks by id, then the bar, then the edit layer — so the backend can tell
+    /// "the same windows as last time" from "a window appeared" by comparing the two lists.
+    ///
+    /// Called wherever one of those windows is created or closed, which is every time the answer can
+    /// change. Missing a call is not a silent hazard: the backend compares this list on every poll,
+    /// so a window that appeared without one is still excluded within a poll — and until the frames
+    /// catch up with the new list, nothing is read at all.
+    /// </remarks>
+    private void RefreshOverlayHandles()
+    {
+        var handles = new List<IntPtr>();
+
+        foreach (var id in _blockWindows.Keys.Order())
+            AddHandle(handles, _blockWindows[id]);
+
+        AddHandle(handles, _control);
+        AddHandle(handles, _edit);
+
+        Volatile.Write(ref _overlayHandles, handles);
+
+        static void AddHandle(List<IntPtr> handles, Window? window)
+        {
+            if (window is null) return;
+
+            // Zero until the window has been shown, which is not worth guarding elsewhere: an
+            // unrealised window is drawing nothing for a capture to pick up.
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(window).Handle;
+            if (hwnd != IntPtr.Zero) handles.Add(hwnd);
+        }
     }
 
     /// <summary>
@@ -685,6 +779,7 @@ internal sealed class RealtimeSessionController
 
         CloseWindow(_edit, nameof(RealtimeEditWindow));
         _edit = null;
+        RefreshOverlayHandles();
     }
 
     private void CloseBlockWindows()
@@ -692,6 +787,7 @@ internal sealed class RealtimeSessionController
         foreach (var window in _blockWindows.Values)
             CloseWindow(window, nameof(RealtimeBlockWindow));
         _blockWindows.Clear();
+        RefreshOverlayHandles();
     }
 
     private void DisposeCapture()
