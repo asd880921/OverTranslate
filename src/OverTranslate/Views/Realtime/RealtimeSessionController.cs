@@ -658,40 +658,6 @@ internal sealed class RealtimeSessionController
         });
 
     /// <summary>
-    /// Whether every layer this session draws is absent from anything that reads the screen.
-    /// </summary>
-    /// <remarks>
-    /// The invariant behind this: recognition must never run on a frame that may contain this
-    /// application's own overlays. The loop grabs the composited desktop, so the only thing keeping
-    /// those overlays out of the grab is <see cref="WindowCaptureShield"/> — and that fails on every
-    /// Windows before 11 24H2, because WPF's <c>AllowsTransparency</c> renders through
-    /// <c>UpdateLayeredWindow</c> and display affinity is not supported on that kind of window.
-    ///
-    /// This used to be recorded and ignored. What that cost is in #94: the loop read its own
-    /// translation back composited over whatever the scrim failed to cover, so no two readings
-    /// matched, every pass counted as new, and the drawn line grew about 15% per generation until
-    /// one measured region went from 25px to 71px in nine seconds and the detector could no longer
-    /// find anything at all. There is no recovering from it afterwards either — the scrim physically
-    /// covers the source, so those pixels are gone from the grab.
-    ///
-    /// So a session that cannot isolate itself does not start. Refusing is a worse feature than
-    /// working and a far better one than the above, and the user is left in edit mode with their
-    /// blocks intact rather than watching the screen dissolve.
-    /// </remarks>
-    private bool OverlaysHiddenFromCapture()
-    {
-        var blocked = _blockWindows.Values.Count(window => !window.IsHiddenFromCapture);
-        var barBlocked = _control is { IsHiddenFromCapture: false };
-        if (blocked == 0 && !barBlocked) return true;
-
-        Log.Error(
-            "Realtime session refused to start: {Blocked} of {Total} block overlay(s)" +
-            "{Bar} could not be hidden from screen capture, so the loop would recognise its own output",
-            blocked, _blockWindows.Count, barBlocked ? " and the control bar" : string.Empty);
-        return false;
-    }
-
-    /// <summary>
     /// Builds a picture of the screen with this session's subtitles drawn onto it, and puts it on
     /// the clipboard — the only way to show someone what this feature does, since the layers
     /// themselves are excluded from every form of screen capture.

@@ -169,13 +169,6 @@ public partial class RealtimeBlockWindow : Window
     /// <summary>Where this block sits on the screen, in physical pixels — what it was pinned to.</summary>
     public System.Drawing.Rectangle PhysicalBounds => _physBounds;
 
-    /// <summary>
-    /// Whether this block is hidden from anything that reads the screen — see
-    /// <see cref="WindowCaptureShield"/>. Read by <see cref="RealtimeSessionController"/> before it
-    /// lets the desktop-grab backend start polling.
-    /// </summary>
-    public bool IsHiddenFromCapture { get; private set; }
-
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -187,8 +180,10 @@ public partial class RealtimeBlockWindow : Window
         // Before the DPI is read in Loaded: pinning settles which monitor the window belongs to.
         ScreenGeometry.PinPhysicalBounds(this, _physBounds);
 
-        // Without this the next poll would read this window's own translation back off the screen.
-        IsHiddenFromCapture = WindowCaptureShield.Exclude(this);
+        // Nothing here asks to be hidden from screen capture. This window used to carry
+        // WDA_EXCLUDEFROMCAPTURE so the loop would not read its own translation back; keeping the
+        // overlays out of the frame is now the capture backend's job and only the backend's, which is
+        // why a session cannot start on a source that has not proved it (#105).
     }
 
     /// <summary>
@@ -197,11 +192,11 @@ public partial class RealtimeBlockWindow : Window
     /// nothing to contribute and should leave the grabbed pixels alone.
     /// </summary>
     /// <remarks>
-    /// Rendering the visual tree rather than reading it back off the screen is not a workaround for
-    /// <see cref="WindowCaptureShield"/> — it is the better source. The window is composed with
-    /// per-pixel alpha, so what the compositor put on screen is this layer already blended into
-    /// whatever was behind it, while this is the layer itself, with its translucency intact for the
-    /// caller to blend deliberately.
+    /// Rendering the visual tree rather than reading it back off the screen is not a way around the
+    /// capture backend leaving this window out of its frames — it is the better source. The window
+    /// is composed with per-pixel alpha, so what the compositor put on screen is this layer already
+    /// blended into whatever was behind it, while this is the layer itself, with its translucency
+    /// intact for the caller to blend deliberately.
     /// </remarks>
     public System.Windows.Media.Imaging.BitmapSource? RenderForCapture()
     {

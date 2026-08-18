@@ -81,10 +81,10 @@ internal static class DisplayDiagnostics
     }
 
     // Which Windows this is, down to the build. Several of the capture path's behaviours are decided
-    // by the build number and by nothing else observable from here — SetWindowDisplayAffinity on a
-    // per-pixel-alpha layered window is one, and it fails silently enough that the only trace in a
-    // report is a warning with no way to tell which Windows produced it. Every other line in this
-    // snapshot describes the display topology; this one describes what is interpreting it.
+    // by the build number and by nothing else observable from here — whether a capture session has a
+    // window exclusion list is one, and it decides whether 整個螢幕 exists on this machine at all.
+    // Every other line in this snapshot describes the display topology; this one describes what is
+    // interpreting it.
     private static void AppendOsInfo(StringBuilder sb)
     {
         var version = Environment.OSVersion.Version;
