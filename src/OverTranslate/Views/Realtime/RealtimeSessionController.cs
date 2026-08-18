@@ -338,6 +338,12 @@ internal sealed class RealtimeSessionController
         CloseBlockWindows();
         CloseEditWindow();
 
+        // Before the layer that covers the screen goes up. The user named this window in a list,
+        // which they can do with it buried behind everything else — and then framing over it would
+        // start with them putting away the layer they just asked for to go and find it.
+        if (request.CaptureMode is Models.RealtimeCaptureMode.Window)
+            SourceWindowFocus.Raise(request.SourceWindow);
+
         // Read here rather than carried on the request: the user changes it from inside this layer,
         // and every later trip through edit mode should open on the answer they gave last.
         var settings = SettingsService.Instance;
