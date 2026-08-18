@@ -708,6 +708,14 @@ internal sealed class RealtimeSessionController
     {
         if (_control is not { } control || _request is not { } request) return;
 
+        // The picture is composed onto the backend's frame, so without a backend there is nothing to
+        // compose onto. Only reachable if the button is pressed as a session is being torn down.
+        if (_capture is not { } capture)
+        {
+            control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureFailed"), RealtimeMessageKind.Failure);
+            return;
+        }
+
         try
         {
             var overlays = _blockWindows.Values
@@ -731,7 +739,7 @@ internal sealed class RealtimeSessionController
             if (control.RenderForCapture() is { } bar)
                 overlays.Add(new RealtimeShowcaseCapture.Overlay(control.PhysicalBounds, bar));
 
-            var image = RealtimeShowcaseCapture.Compose(request.ScreenBounds, overlays);
+            var image = RealtimeShowcaseCapture.Compose(capture, request.ScreenBounds, overlays);
             if (image is null)
             {
                 control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureFailed"), RealtimeMessageKind.Failure);

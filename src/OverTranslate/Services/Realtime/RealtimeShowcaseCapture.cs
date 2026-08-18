@@ -1,11 +1,9 @@
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using NLog;
+using OverTranslate.Services.Realtime.Capture;
 using Rect = System.Windows.Rect;
-// Both imaging worlds carry a PixelFormat; this file grabs with GDI+ and composes with WPF.
-using GdiPixelFormat = System.Drawing.Imaging.PixelFormat;
 
 namespace OverTranslate.Services.Realtime;
 
@@ -14,15 +12,19 @@ namespace OverTranslate.Services.Realtime;
 /// sitting at the machine.
 /// </summary>
 /// <remarks>
-/// The subtitle layers carry WDA_EXCLUDEFROMCAPTURE (see <see cref="WindowCaptureShield"/>), so no
-/// screenshot tool, screen recorder or meeting share can see them — and that cannot be relaxed while
-/// a session runs: the scrim covers the source line, so a loop that could capture its own overlay
-/// would be reading a band of its own translation and would never see the original change again.
+/// The picture is composed rather than photographed: the background comes from the session's capture
+/// backend and the subtitle layers are drawn onto it from their own visual trees. That is not a
+/// workaround for the layers being hard to photograph — it is the exact version of the same picture.
+/// The backend's frame is guaranteed to contain no overlay of ours, so there is nothing to subtract,
+/// no double-drawn scrim, and no waiting for the compositor to present a frame without them; and the
+/// layers are drawn with their translucency intact rather than already blended into whatever was
+/// behind them. Nothing has to be paused and no window style is touched.
 ///
-/// Composing the picture here sidesteps that entirely, and the exclusion is what makes it exact
-/// rather than merely close: the grab underneath is guaranteed to contain no overlay of ours, so
-/// there is nothing to subtract, no double-drawn scrim, and no waiting for the compositor to present
-/// a frame without them. Nothing has to be paused and no window style is touched.
+/// It used to grab the screen here with <c>CopyFromScreen</c> and rely on the layers carrying
+/// <c>WDA_EXCLUDEFROMCAPTURE</c> to stay out of that grab — which held only on Windows 11 24H2 and
+/// later, and silently drew every scrim and every line twice on anything older. Asking the backend
+/// removes the version from the question: it is the same source recognition reads, isolated the same
+/// way, on every system that can run a session at all.
 /// </remarks>
 internal static class RealtimeShowcaseCapture
 {
@@ -32,14 +34,26 @@ internal static class RealtimeShowcaseCapture
     public readonly record struct Overlay(Rectangle Bounds, BitmapSource Image);
 
     /// <summary>
-    /// Grabs <paramref name="screenBounds"/> and draws each overlay onto it at its own position.
-    /// Null when the screen cannot be grabbed; an empty <paramref name="overlays"/> is the caller's
-    /// business, not an error here.
+    /// Takes as much of <paramref name="screenBounds"/> as <paramref name="capture"/> can account
+    /// for and draws each overlay onto it at its own position. Null when the backend has no frame to
+    /// give; an empty <paramref name="overlays"/> is the caller's business, not an error here.
     /// </summary>
-    /// <remarks>Must run on the UI thread — the compositing uses WPF drawing objects.</remarks>
-    public static BitmapSource? Compose(Rectangle screenBounds, IReadOnlyList<Overlay> overlays)
+    /// <remarks>
+    /// Must run on the UI thread — the compositing uses WPF drawing objects.
+    ///
+    /// The frame is the requested screen narrowed to
+    /// <see cref="IRealtimeCaptureBackend.SourceBounds"/>, which matters only in 指定視窗: there the
+    /// backend holds one window, and asking it for a whole screen would return that window on a
+    /// field of black. Narrowing makes the picture the window with its subtitles on it, which is what
+    /// the session is. In 整個螢幕 the two rectangles are the same monitor and nothing is narrowed.
+    /// Overlays outside the frame are clipped by the compositing, as they should be — they are not
+    /// over the thing being shown.
+    /// </remarks>
+    public static BitmapSource? Compose(
+        IRealtimeCaptureBackend capture, Rectangle screenBounds, IReadOnlyList<Overlay> overlays)
     {
-        var background = GrabScreen(screenBounds);
+        var frameBounds = Rectangle.Intersect(screenBounds, capture.SourceBounds);
+        var background = GrabFrame(capture, frameBounds);
         if (background is null) return null;
 
         var width = background.PixelWidth;
@@ -52,11 +66,11 @@ internal static class RealtimeShowcaseCapture
 
             foreach (var overlay in overlays)
             {
-                // The block's bounds are absolute screen pixels; the grab starts at the screen's
-                // own origin, which on a secondary monitor is not 0,0.
+                // The block's bounds are absolute screen pixels; the frame starts at its own origin,
+                // which on a secondary monitor — or on a window anywhere — is not 0,0.
                 context.DrawImage(overlay.Image, new Rect(
-                    overlay.Bounds.Left - screenBounds.Left,
-                    overlay.Bounds.Top - screenBounds.Top,
+                    overlay.Bounds.Left - frameBounds.Left,
+                    overlay.Bounds.Top - frameBounds.Top,
                     overlay.Bounds.Width,
                     overlay.Bounds.Height));
             }
@@ -68,27 +82,35 @@ internal static class RealtimeShowcaseCapture
         return composed;
     }
 
-    private static BitmapSource? GrabScreen(Rectangle bounds)
+    private static BitmapSource? GrabFrame(IRealtimeCaptureBackend capture, Rectangle bounds)
     {
-        if (bounds.Width <= 0 || bounds.Height <= 0) return null;
+        if (bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            // The backend has produced no frame yet, or has lost its source and the rectangles no
+            // longer meet. Both read to the user as "the capture failed", which is what the caller
+            // says.
+            Log.Warn("No captured frame to compose a realtime showcase capture from");
+            return null;
+        }
 
         try
         {
-            using var bitmap = new Bitmap(bounds.Width, bounds.Height, GdiPixelFormat.Format32bppArgb);
-            using (var graphics = Graphics.FromImage(bitmap))
+            using var bitmap = capture.GrabRegion(bounds);
+            if (bitmap is null)
             {
-                graphics.CopyFromScreen(
-                    bounds.Left, bounds.Top, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
+                // Between frames. Ordinary for the polling loop, which skips the poll — but this one
+                // was asked for by a user waiting for a picture, so it is worth a line.
+                Log.Warn(
+                    "The {Backend} capture backend had no frame for {Bounds} when a realtime " +
+                    "showcase capture was asked for", capture.Name, bounds);
+                return null;
             }
 
             return BitmapInterop.ToBitmapSource(bitmap);
         }
         catch (Exception ex)
         {
-            // Same transient causes as the session's own grab — a secure desktop, a display being
-            // reconfigured. Worth a line either way: unlike the polling loop, which simply skips the
-            // poll, this one was asked for by a user who is waiting for a picture.
-            Log.Warn(ex, "Could not grab {Bounds} for a realtime showcase capture", bounds);
+            Log.Warn(ex, "Could not read {Bounds} for a realtime showcase capture", bounds);
             return null;
         }
     }
