@@ -247,44 +247,34 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Drops straight into 即時翻譯 block framing, the thing the page's 開始 button does.
+    /// Turned away for now: a session needs an answer this shortcut cannot ask for.
     /// </summary>
     /// <remarks>
-    /// Inert once any realtime stage is running — framing or translating. The session covers the
-    /// screen and carries its own controls at that point, so a second press has nothing to mean, and
-    /// the alternative reading (start another one) is refused by the controller anyway.
+    /// This used to drop straight into block framing, which worked while every session read the
+    /// whole screen — the shortcut could fill in the rest from the settings file (see
+    /// <see cref="RealtimeQuickStart"/>) and there was nothing left to decide. A session now begins
+    /// by naming what it reads, and one of the two answers is a specific window: a live handle,
+    /// chosen from a list of what is open at that moment. That is not a setting, it cannot be
+    /// remembered between sittings, and defaulting it silently to 整個螢幕 would give a user who
+    /// pressed a key the mode they did not pick, on the systems where it is the mode that refuses to
+    /// start at all (#94).
     ///
-    /// The refusals are notifications rather than silence because the user pressed a key and is owed
-    /// an answer, and rather than the page's status line because there may be no page open — the
-    /// shortcut's whole point is not needing one. See ShowTrayNotification for why the tray and not
-    /// the application's own toast.
+    /// So it says so instead of doing something. Everything else is left standing — the shortcut is
+    /// still registered, still recordable in 設定, and this is one <c>return</c> away from working
+    /// again — because whether the shortcut gets its own answer to that question or goes away is a
+    /// product decision that has not been made.
+    ///
+    /// A notification rather than silence, for the reason this file's other refusals are: the user
+    /// pressed a key and is owed an answer, and there may be no page open to put it on — the
+    /// shortcut's whole point is not needing one. See ShowTrayNotification for why the tray.
     /// </remarks>
     private void OnRealtimeHotkeyPressed(object? sender, EventArgs e)
     {
         if (RealtimeSessionController.Instance.IsActive) return;
 
-        // The same rule the page enforces in both directions: one OCR engine, one pool of inference
-        // slots, and neither feature is any use with the other competing for them.
-        if (IsCapturing)
-        {
-            ShowTrayNotification(
-                LocalizationService.Get("S.Realtime.Title"),
-                LocalizationService.Get("S.Realtime.CaptureInProgress"));
-            return;
-        }
-
-        var quickStart = RealtimeQuickStart.From(SettingsService.Instance.Current);
-        if (quickStart.Request is not { } request)
-        {
-            ShowTrayNotification(
-                LocalizationService.Get("S.Realtime.Title"),
-                LocalizationService.Get(quickStart.BlockedReasonKey!));
-            return;
-        }
-
-        // Null when the shell is closed to the tray, which is the common case for a shortcut and
-        // means there is nothing to put away.
-        RealtimeSessionController.Instance.Start(request, ShellWindow.Current);
+        ShowTrayNotification(
+            LocalizationService.Get("S.Realtime.Title"),
+            LocalizationService.Get("S.Realtime.HotkeyNeedsPage"));
     }
 
     /// <summary>
