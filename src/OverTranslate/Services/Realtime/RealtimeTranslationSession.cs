@@ -154,7 +154,11 @@ public sealed class RealtimeTranslationSession
         IRealtimeCaptureBackend capture,
         bool readAtOnce = false)
     {
-        Stop();
+        // Not the public Stop: this one is the tail of the previous run only when there was one,
+        // and 繼續 comes through here with the same backend it is about to keep using. Reporting on
+        // it now would put a partial total in the log every time the user unpauses, and the line is
+        // supposed to be the closing summary of one run of translating.
+        Stop(releaseRecogniser: false, reportCapture: false);
 
         if (!capture.IsIsolated)
             throw new InvalidOperationException(
@@ -270,7 +274,14 @@ public sealed class RealtimeTranslationSession
     /// framing — that one is nearly always followed by 開始翻譯 within seconds, and it would pay the
     /// reload the pause above exists to avoid.
     /// </param>
-    public void Stop(bool releaseRecogniser = false)
+    public void Stop(bool releaseRecogniser = false) =>
+        Stop(releaseRecogniser, reportCapture: true);
+
+    /// <param name="reportCapture">
+    /// Whether this stop ends a run of translating, as opposed to being the restart inside
+    /// <see cref="Start"/>. Only the former writes the closing summary.
+    /// </param>
+    private void Stop(bool releaseRecogniser, bool reportCapture)
     {
         StopLoops();
         IsPaused = false;
@@ -280,7 +291,9 @@ public sealed class RealtimeTranslationSession
         // One line per run of translating, on the way out. Which backend was used and how it fared
         // is the first thing any report about this feature needs and the last thing the log would
         // otherwise carry — the per-poll traffic sits at Debug, and this must survive being off.
-        if (_capture is { } capture)
+        // The counters it reads are cumulative over the backend's life, so a line written anywhere
+        // but at the end is a partial total that reads exactly like a final one.
+        if (reportCapture && _capture is { } capture)
             Log.Info("Realtime capture {Backend}: {Activity}", capture.Name, capture.DescribeActivity());
         _capture = null;
     }
