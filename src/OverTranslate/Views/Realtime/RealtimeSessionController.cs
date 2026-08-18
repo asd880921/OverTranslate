@@ -343,7 +343,7 @@ internal sealed class RealtimeSessionController
         var settings = SettingsService.Instance;
 
         var edit = new RealtimeEditWindow(
-            request.ScreenBounds, _blocks, request.MaxBlocks, settings.Current.RealtimeGuidanceExpanded);
+            request.ScreenBounds, _blocks, request.MaxBlocks, settings.Current.Realtime.GuidanceExpanded);
         edit.BlocksChanged += (_, _) =>
         {
             _blocks = [.. edit.GetPhysicalBlocks()];
@@ -353,8 +353,8 @@ internal sealed class RealtimeSessionController
         // game is as likely to end with the machine being shut down as with 結束即時翻譯.
         edit.GuidanceExpandedChanged += (_, expanded) =>
         {
-            if (settings.Current.RealtimeGuidanceExpanded == expanded) return;
-            settings.Current.RealtimeGuidanceExpanded = expanded;
+            if (settings.Current.Realtime.GuidanceExpanded == expanded) return;
+            settings.Current.Realtime.GuidanceExpanded = expanded;
             settings.Save();
         };
         edit.LimitReached += (_, _) =>

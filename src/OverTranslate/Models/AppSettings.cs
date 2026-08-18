@@ -166,34 +166,6 @@ public class AppSettings
     /// <summary>Off by default: Debug records the recognised text, i.e. the user's screen contents.</summary>
     public bool VerboseLogging { get; set; } = false;
     /// <summary>
-    /// Whether the per-block framing guidance on the edit layer is unfolded. Expanded on a first run,
-    /// because the guidance is what stops a badly framed block.
-    /// </summary>
-    /// <remarks>
-    /// One value for the whole feature rather than one per block: a user who has read the guidance has
-    /// read it, and folding it away on every block of every sitting to say so is the same instruction
-    /// being dismissed over and over. Whichever block's chevron is pressed last writes here, and the
-    /// next edit layer opens every block that way. Deliberately not shown on the settings page — it is
-    /// a state the control sets by being used, not a preference anyone would go looking for.
-    /// </remarks>
-    public bool RealtimeGuidanceExpanded { get; set; } = true;
-
-    /// <summary>
-    /// What 即時翻譯 keeps between sittings, grouped.
-    /// </summary>
-    /// <remarks>
-    /// The first grouped section of this file, and the shape anything added from here on should
-    /// follow — see <see cref="RealtimeSettings"/> for why the flat keys above it stayed flat.
-    ///
-    /// Declared last among 即時翻譯's own keys on purpose. Properties are written in declaration
-    /// order, so this puts the group immediately after the ungrouped keys it belongs with rather
-    /// than at the top of the file: someone reading appsettings.json finds one 即時翻譯 region, part
-    /// of it flat for historical reasons and part of it grouped, instead of the same feature's
-    /// settings appearing twice at opposite ends.
-    /// </remarks>
-    public RealtimeSettings Realtime { get; set; } = new();
-
-    /// <summary>
     /// The newest version the user has told us to stop interrupting them about, or empty for none.
     /// </summary>
     /// <remarks>
@@ -203,4 +175,20 @@ public class AppSettings
     /// the update itself. See <see cref="Services.UpdateNotifier"/>.
     /// </remarks>
     public string SkippedUpdateVersion { get; set; } = "";
+
+    /// <summary>
+    /// What 即時翻譯 keeps between sittings, grouped.
+    /// </summary>
+    /// <remarks>
+    /// The first grouped section of this file, and the shape anything added from here on should
+    /// follow — see <see cref="RealtimeSettings"/> for why the flat keys above it stayed flat.
+    ///
+    /// Declared last, and every later group belongs after it rather than beside the flat keys it
+    /// relates to. Properties are written in declaration order, so this splits appsettings.json into
+    /// two halves a reader can tell apart at a glance: everything that shipped before grouping
+    /// existed, then everything that is grouped. Interleaving them would give the file no readable
+    /// order at all — neither alphabetical, nor by feature, nor by age — and every group added later
+    /// would have to find a home in the middle of the flat keys.
+    /// </remarks>
+    public RealtimeSettings Realtime { get; set; } = new();
 }

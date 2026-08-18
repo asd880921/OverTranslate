@@ -194,7 +194,6 @@ public class SettingsParsingTests
             AutoTranslateAfterSelection = true,
             SaveScreenshotToDisk = true,
             ScreenshotSavePath = @"D:\shots",
-            RealtimeGuidanceExpanded = false,
             TranslationWindowHotkeyEnabled = false,
             RealtimeHotkeyModifiers = 5,
             RealtimeHotkeyVirtualKey = 0x44,
@@ -203,6 +202,7 @@ public class SettingsParsingTests
             Realtime =
             {
                 BlockCount = 3,
+                GuidanceExpanded = false,
                 TargetLanguage = "JA",
                 Provider = TranslationProvider.OpenAI,
                 CaptureMode = RealtimeCaptureMode.Window,
@@ -232,7 +232,7 @@ public class SettingsParsingTests
         Assert.True(settings.AutoTranslateAfterSelection);
         Assert.True(settings.SaveScreenshotToDisk);
         Assert.Equal(@"D:\shots", settings.ScreenshotSavePath);
-        Assert.False(settings.RealtimeGuidanceExpanded);
+        Assert.False(settings.Realtime.GuidanceExpanded);
         Assert.False(settings.TranslationWindowHotkeyEnabled);
         Assert.Equal(5u, settings.RealtimeHotkeyModifiers);
         Assert.Equal(0x44u, settings.RealtimeHotkeyVirtualKey);
@@ -296,20 +296,19 @@ public class SettingsParsingTests
     }
 
     [Fact]
-    public void TheGroupIsWrittenBesideTheKeysItBelongsWith()
+    public void GroupedSettingsAreWrittenAfterEveryFlatOne()
     {
-        // Grouping settings only tidies the file if the group lands next to the ungrouped keys of
-        // the same feature. Properties are written in declaration order, so this holds by where the
-        // group is declared — which is exactly the kind of thing a later edit moves without noticing,
-        // and the reader of appsettings.json is who pays.
+        // The file is meant to read as two halves: everything that shipped before grouping
+        // existed, then everything grouped. Properties are written in declaration order, so that
+        // holds only by where the group is declared — exactly the kind of thing a later edit moves
+        // without noticing, and the reader of appsettings.json is who pays.
         var json = System.Text.Json.JsonSerializer.Serialize(new AppSettings());
 
-        var lastFlatRealtimeKey = json.IndexOf("\"RealtimeGuidanceExpanded\"", StringComparison.Ordinal);
+        var lastFlatKey = json.IndexOf("\"SkippedUpdateVersion\"", StringComparison.Ordinal);
         var group = json.IndexOf("\"Realtime\":", StringComparison.Ordinal);
-        var afterRealtime = json.IndexOf("\"SkippedUpdateVersion\"", StringComparison.Ordinal);
 
-        Assert.True(lastFlatRealtimeKey >= 0 && group >= 0 && afterRealtime >= 0);
-        Assert.InRange(group, lastFlatRealtimeKey, afterRealtime);
+        Assert.True(lastFlatKey >= 0 && group >= 0);
+        Assert.True(group > lastFlatKey, "grouped settings must be written after every flat one");
     }
 
     // Written before either shortcut could be switched off: both have to come back on, or upgrading
@@ -331,6 +330,6 @@ public class SettingsParsingTests
     {
         var settings = SettingsService.Parse("""{"Theme":"Light"}""");
 
-        Assert.True(settings.RealtimeGuidanceExpanded);
+        Assert.True(settings.Realtime.GuidanceExpanded);
     }
 }

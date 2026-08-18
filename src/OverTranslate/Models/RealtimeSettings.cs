@@ -134,6 +134,24 @@ public class RealtimeSettings
     public int BlockCount { get; set; } = 1;
 
     /// <summary>
+    /// Whether the per-block framing guidance on the edit layer is unfolded. Expanded on a first run,
+    /// because the guidance is what stops a badly framed block.
+    /// </summary>
+    /// <remarks>
+    /// One value for the whole feature rather than one per block: a user who has read the guidance has
+    /// read it, and folding it away on every block of every sitting to say so is the same instruction
+    /// being dismissed over and over. Whichever block's chevron is pressed last writes here, and the
+    /// next edit layer opens every block that way. Deliberately not shown on the settings page — it is
+    /// a state the control sets by being used, not a preference anyone would go looking for.
+    ///
+    /// The one value in this group that is not a choice the user came to make. It moves with them
+    /// anyway: it is read and written by 即時翻譯 and nothing else, and a settings file where the rule
+    /// is "which feature owns it" stays sortable, while one where the rule is "which feature owns it,
+    /// except the states" needs the exception explained every time.
+    /// </remarks>
+    public bool GuidanceExpanded { get; set; } = true;
+
+    /// <summary>
     /// Whether the band behind a subtitle is replaced by a repair of the picture underneath: the
     /// source line is erased and filled in from the pixels around it, and the translation is drawn
     /// back where it was.
