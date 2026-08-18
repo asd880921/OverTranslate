@@ -128,18 +128,6 @@ public partial class SettingsPage : UserControl
                 WindowHotkeyShadowHint,
                 WindowHotkeyEnabledLabel),
             new HotkeyField(
-                HotkeyAction.Realtime,
-                "S.Settings.RealtimeHotkey",
-                RealtimeHotkeyBox, RealtimeRecordBtn,
-                s => s.RealtimeHotkeyDisplay,
-                s => HotkeyBindings.TriggerFor(s, HotkeyAction.Realtime),
-                ApplyRealtimeTrigger,
-                AdvertisedInShell: false,
-                RealtimeHotkeyEnabledCheckBox,
-                (s, on) => s.RealtimeHotkeyEnabled = on,
-                RealtimeHotkeyShadowHint,
-                RealtimeHotkeyEnabledLabel),
-            new HotkeyField(
                 HotkeyAction.RealtimePause,
                 "S.Settings.RealtimePauseHotkey",
                 RealtimePauseHotkeyBox, RealtimePauseRecordBtn,
@@ -1030,22 +1018,6 @@ public partial class SettingsPage : UserControl
         else if (trigger.Kind == ShortcutInputKind.Gamepad)
         {
             s.TranslationWindowHotkeyGamepadButton = trigger.GamepadButton;
-        }
-    }
-
-    private static void ApplyRealtimeTrigger(AppSettings s, ShortcutTrigger trigger, string display)
-    {
-        s.RealtimeHotkeyInputKind = trigger.Kind;
-        s.RealtimeHotkeyDisplay = display;
-        if (trigger.Kind == ShortcutInputKind.Keyboard)
-        {
-            s.RealtimeHotkeyModifiers = trigger.Modifiers;
-            s.RealtimeHotkeyVirtualKey = trigger.VirtualKey;
-            s.RealtimeHotkeyGamepadButton = GamepadShortcutButton.None;
-        }
-        else if (trigger.Kind == ShortcutInputKind.Gamepad)
-        {
-            s.RealtimeHotkeyGamepadButton = trigger.GamepadButton;
         }
     }
 

@@ -27,7 +27,7 @@ OnnxOcrEngine（真 ONNX OCR）
 dotnet build tools/OcrHarness/OcrHarness.csproj -c Debug
 
 # 2) 對截圖跑 OCR + 分組 + 翻譯
-tools/OcrHarness/bin/Debug/net8.0-windows10.0.17763.0/win-x64/OcrHarness.exe 圖1.png 圖2.png
+tools/OcrHarness/bin/Debug/net8.0-windows10.0.26100.0/win-x64/OcrHarness.exe 圖1.png 圖2.png
 ```
 
 目前固定以來源語言 `EN`、目標 `ZH-HANT`、Microsoft provider 執行（測英翻中用）。要換語言/provider 直接改 `Program.cs`。

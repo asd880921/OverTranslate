@@ -856,6 +856,180 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->
+    <!--  NUMBERED STEP                              -->
+    <!--  A card that is one step of an ordered set: -->
+    <!--  the badge and what the step is down the    -->
+    <!--  left, the controls for it on the right.    -->
+    <!--  The number is the whole point — a page of  -->
+    <!--  cards says these are settings, a page of   -->
+    <!--  numbered cards says do this one first.     -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="StepBadge" TargetType="Border">
+        <Setter Property="Width"        Value="22"/>
+        <Setter Property="Height"       Value="22"/>
+        <Setter Property="CornerRadius" Value="11"/>
+        <Setter Property="Background"   Value="{DynamicResource AppAccent}"/>
+    </Style>
+
+    <Style x:Key="StepBadgeText" TargetType="TextBlock">
+        <Setter Property="FontFamily"           Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"             Value="12"/>
+        <Setter Property="FontWeight"           Value="SemiBold"/>
+        <Setter Property="Foreground"           Value="{DynamicResource AppAccentFg}"/>
+        <Setter Property="HorizontalAlignment"  Value="Center"/>
+        <Setter Property="VerticalAlignment"    Value="Center"/>
+    </Style>
+
+    <Style x:Key="StepLabel" TargetType="TextBlock">
+        <Setter Property="FontFamily"        Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"          Value="12"/>
+        <Setter Property="Foreground"        Value="{DynamicResource AppAccent}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin"            Value="8,0,0,0"/>
+    </Style>
+
+    <Style x:Key="StepTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"    Value="15"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+        <Setter Property="Foreground"  Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Margin"      Value="0,8,0,0"/>
+    </Style>
+
+    <Style x:Key="StepDescription" TargetType="TextBlock" BasedOn="{StaticResource FieldHint}">
+        <Setter Property="Margin"       Value="0,8,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="LineHeight"   Value="18"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  CHOICE TILE                                -->
+    <!--  One option of a small set, chosen by       -->
+    <!--  looking rather than by reading: an icon in -->
+    <!--  its own tile, the name beside it, a line   -->
+    <!--  under the name saying what it does, and a  -->
+    <!--  radio mark at the far end. All of it is    -->
+    <!--  one press target.                          -->
+    <!--                                             -->
+    <!--  The mark is drawn in both states rather    -->
+    <!--  than appearing on the chosen one: an       -->
+    <!--  empty ring is what tells the reader the    -->
+    <!--  other tile is also selectable, which a     -->
+    <!--  tile with nothing on it does not.          -->
+    <!--                                             -->
+    <!--  Only the icon takes the accent when chosen.-->
+    <!--  The name stays as it was: it is the same   -->
+    <!--  word either way, and recolouring it makes  -->
+    <!--  the two tiles read as different kinds of   -->
+    <!--  thing rather than as one choice.           -->
+    <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="ChoiceTile" TargetType="RadioButton">
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"   Value="{StaticResource AppFontSize}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="Cursor"     Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment"   Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Root"
+                            Background="{DynamicResource AppInputBg}"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="14,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ContentPresenter Grid.Column="0" VerticalAlignment="Center"/>
+
+                            <!-- A ring, thickened into a filled disc when chosen, so the two states
+                                 are the same shape in the same place and only the weight changes. -->
+                            <Border x:Name="Mark"
+                                    Grid.Column="1"
+                                    Width="18" Height="18"
+                                    Margin="12,0,2,0"
+                                    CornerRadius="9"
+                                    BorderThickness="1.5"
+                                    BorderBrush="{DynamicResource AppTextSecondary}"
+                                    Background="Transparent"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush"
+                                    Value="{DynamicResource AppAccent}"/>
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentSubtle}"/>
+                            <Setter TargetName="Mark" Property="BorderBrush"
+                                    Value="{DynamicResource AppAccent}"/>
+                            <Setter TargetName="Mark" Property="BorderThickness" Value="5"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="False"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                            <Setter TargetName="Root" Property="BorderBrush"
+                                    Value="{DynamicResource AppButtonBorder}"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The icon's own tile. Its fill has to follow the tile's state, and it lives in the content
+         rather than the template because each tile draws a different glyph — so it asks the
+         RadioButton above it what state it is in instead of being told. -->
+    <Style x:Key="ChoiceTileIconBox" TargetType="Border">
+        <Setter Property="Width"              Value="40"/>
+        <Setter Property="Height"             Value="40"/>
+        <Setter Property="CornerRadius"       Value="8"/>
+        <Setter Property="Background"         Value="{DynamicResource AppButtonBg}"/>
+        <Setter Property="VerticalAlignment"  Value="Center"/>
+        <Setter Property="Margin"             Value="0,0,14,0"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                         Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppAccentSubtleHover}"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="ChoiceTileGlyph" TargetType="TextBlock">
+        <Setter Property="FontFamily"           Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize"             Value="19"/>
+        <Setter Property="Foreground"           Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="HorizontalAlignment"  Value="Center"/>
+        <Setter Property="VerticalAlignment"    Value="Center"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                         Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="ChoiceTileTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"   Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
     <!--  VERTICAL SEPARATOR (toolbar divider)       -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="VerticalSeparator" TargetType="Separator">

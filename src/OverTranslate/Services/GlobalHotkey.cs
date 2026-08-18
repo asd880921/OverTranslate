@@ -25,9 +25,6 @@ public class GlobalHotkey : IDisposable
     /// <summary>The shortcut that opens the translation window.</summary>
     public const int TranslationWindowId = 9002;
 
-    /// <summary>The shortcut that drops straight into 即時翻譯 block framing.</summary>
-    public const int RealtimeId = 9003;
-
     /// <summary>The shortcut that pauses and resumes a running 即時翻譯 session.</summary>
     public const int RealtimePauseId = 9004;
 

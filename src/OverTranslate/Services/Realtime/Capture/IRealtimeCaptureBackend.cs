@@ -1,0 +1,50 @@
+using System.Drawing;
+
+namespace OverTranslate.Services.Realtime.Capture;
+
+/// <summary>
+/// Where a realtime session's pixels come from. One instance serves a whole run of translating —
+/// every region asks the same backend for its rectangle.
+/// </summary>
+/// <remarks>
+/// This exists to hold one rule in one place: <b>recognition must never run on a frame that may
+/// contain OverTranslate's own overlays.</b> Which is a question about the capture source, not about
+/// the overlays — and for most of this feature's life it was answered in the wrong place, by asking
+/// the subtitle windows to hide themselves from the screen via <c>WDA_EXCLUDEFROMCAPTURE</c>. That
+/// works only where the source is the composited desktop, and it fails outright on every Windows
+/// before 11 24H2 (#94), where it cost users a loop that translated its own output.
+///
+/// So a backend is answerable for its own isolation. <see cref="IsIsolated"/> is the promise, made
+/// before a single region is read; a backend that cannot make it is not used. What that costs varies
+/// by source — the desktop grab needs the overlays excluded from capture, a backend that captures
+/// the watched window directly never had them in frame to begin with — and none of that reaches the
+/// session, which asks for a rectangle and gets pixels.
+/// </remarks>
+public interface IRealtimeCaptureBackend : IDisposable
+{
+    /// <summary>How this backend appears in the log. Short, stable, and one word for the source.</summary>
+    string Name { get; }
+
+    /// <summary>
+    /// Whether this backend's frames are known to be free of OverTranslate's own overlays. Answered
+    /// once the backend is built and before it is used; a false answer means the session must not
+    /// start rather than that its results are merely less good.
+    /// </summary>
+    bool IsIsolated { get; }
+
+    /// <summary>
+    /// The pixels currently inside <paramref name="screenBounds"/>, given in physical screen
+    /// coordinates, as a bitmap the caller owns and disposes.
+    /// </summary>
+    /// <returns>
+    /// Null when this poll produced nothing — a locked screen, a source that has gone away, a
+    /// transient failure. The caller skips the poll; the next one is 250ms behind it.
+    /// </returns>
+    Bitmap? GrabRegion(Rectangle screenBounds);
+
+    /// <summary>
+    /// What this backend did over its lifetime, for the one line logged when the session ends. Free
+    /// text — each source counts different things.
+    /// </summary>
+    string DescribeActivity();
+}

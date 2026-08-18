@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <!-- Follows the application's compile-time Windows API surface — see OverTranslate.csproj. -->
     <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
@@ -10,21 +9,16 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>WgcProbe</AssemblyName>
+    <RootNamespace>WgcProbe</RootNamespace>
+    <!-- Same reason as the application: the manifest is the only DPI mechanism that takes effect
+         here, because ApplicationConfiguration.Initialize is never called. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\OverTranslate\OverTranslate.csproj" />
-  </ItemGroup>
-
-  <!-- Pull the real OCR models next to the harness so OnnxOcrEngine finds them. -->
-  <ItemGroup>
-    <None Include="..\..\src\OverTranslate\ocrmodels\**">
-      <Link>ocrmodels\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="NLog.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

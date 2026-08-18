@@ -7,7 +7,6 @@ public enum HotkeyAction
 {
     Capture,
     TranslationWindow,
-    Realtime,
     RealtimePause,
 }
 
@@ -68,14 +67,13 @@ public readonly record struct HotkeyBinding(
 ///
 /// The settings page already refuses to RECORD a trigger another shortcut holds, so a user cannot
 /// create the clash by hand. Stored settings can still arrive in one anyway, and that is what this
-/// exists for: adding <see cref="HotkeyAction.Realtime"/> gave every existing installation a
+/// exists for: shipping <see cref="HotkeyAction.RealtimePause"/> gave every existing installation a
 /// Ctrl+Alt+S it never agreed to, and anyone who had already put Ctrl+Alt+S on the translation
 /// window would have had one of the two stop working with no explanation.
-/// <see cref="HotkeyAction.RealtimePause"/> is the same event again, with Ctrl+Alt+Q.
 ///
 /// So the order is declared rather than discovered, and it runs from the feature the application is
-/// for down to the most recently added: capture, then the translation window, then realtime, then
-/// pausing it. A shortcut shadowed by a higher one is reported rather than silently dropped.
+/// for down to the most recently added: capture, then the translation window, then pausing a
+/// realtime session. A shortcut shadowed by a higher one is reported rather than silently dropped.
 /// </remarks>
 public static class HotkeyBindings
 {
@@ -92,11 +90,6 @@ public static class HotkeyBindings
             settings.TranslationWindowHotkeyModifiers,
             settings.TranslationWindowHotkeyVirtualKey,
             settings.TranslationWindowHotkeyGamepadButton),
-        HotkeyAction.Realtime => BuildTrigger(
-            settings.RealtimeHotkeyInputKind,
-            settings.RealtimeHotkeyModifiers,
-            settings.RealtimeHotkeyVirtualKey,
-            settings.RealtimeHotkeyGamepadButton),
         HotkeyAction.RealtimePause => BuildTrigger(
             settings.RealtimePauseHotkeyInputKind,
             settings.RealtimePauseHotkeyModifiers,
@@ -168,9 +161,6 @@ public static class HotkeyBindings
             (HotkeyAction.TranslationWindow,
                 TriggerFor(settings, HotkeyAction.TranslationWindow),
                 settings.TranslationWindowHotkeyEnabled),
-            (HotkeyAction.Realtime,
-                TriggerFor(settings, HotkeyAction.Realtime),
-                settings.RealtimeHotkeyEnabled),
             (HotkeyAction.RealtimePause,
                 TriggerFor(settings, HotkeyAction.RealtimePause),
                 settings.RealtimePauseHotkeyEnabled),

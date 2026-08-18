@@ -28,7 +28,7 @@ public sealed record RealtimeRegion(
 /// Whether the framing guidance is folded away is deliberately not here. It is not a property of a
 /// block: it says whether this user still needs the instructions, which is the same answer for every
 /// block they draw — so it lives in the settings file as
-/// <see cref="Models.AppSettings.RealtimeGuidanceExpanded"/> and outlives the session.
+/// <see cref="Models.RealtimeSettings.GuidanceExpanded"/> and outlives the session.
 /// </remarks>
 public sealed record RealtimeBlockPlacement(
     Rectangle Bounds,
