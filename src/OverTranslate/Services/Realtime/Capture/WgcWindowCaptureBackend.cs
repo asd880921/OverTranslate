@@ -457,7 +457,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     ///
     /// Left unchecked that becomes a session that starts, reports nothing amiss, and never produces
     /// a subtitle, with no line in the log a user could be pointed at. Caught here it is one failed
-    /// construction and a refusal that names 整個螢幕 as the answer — which captures the same
+    /// construction and a refusal that names 完整螢幕 as the answer — which captures the same
     /// fullscreen game perfectly well, because the screen is exactly where that content does exist.
     ///
     /// The cost of being wrong is a game whose opening frame is genuinely one flat colour being

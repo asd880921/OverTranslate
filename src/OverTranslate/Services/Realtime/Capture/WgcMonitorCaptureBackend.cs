@@ -32,7 +32,7 @@ namespace OverTranslate.Services.Realtime.Capture;
 /// is no state in which it believes an exclusion that did not happen.
 ///
 /// The cost is who can use it. The exclusion list needs a Windows much newer than 24H2, so a system
-/// without it has no 整個螢幕 at all — this is the only backend for that mode, and
+/// without it has no 完整螢幕 at all — this is the only backend for that mode, and
 /// <c>RealtimeSessionController.CreateScreenCapture</c> refuses rather than offering a second one.
 /// There used to be a second one, grabbing the composited desktop with the overlays asked to hide
 /// themselves; it was dropped in #105 precisely because that arrangement cannot be checked from

@@ -255,7 +255,7 @@
                                            Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="16"/>
                             </StackPanel>
 
-                            <!-- Collapsed rather than disabled in 整個螢幕: a greyed-out window
+                            <!-- Collapsed rather than disabled in 完整螢幕: a greyed-out window
                                  picker invites the reader to work out why it is off, and the answer
                                  is already on the tile they did not press. -->
                             <StackPanel x:Name="WindowPickerPanel" Visibility="Collapsed">

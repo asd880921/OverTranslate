@@ -498,7 +498,7 @@ internal sealed class RealtimeSessionController
     /// checked from inside the program — display affinity fails silently on a layered WPF window, on
     /// every Windows before 11 24H2, which is how #94 went unnoticed for as long as it did.
     ///
-    /// What that costs is the band of systems between 24H2 and the exclusion list, who lose 整個螢幕.
+    /// What that costs is the band of systems between 24H2 and the exclusion list, who lose 完整螢幕.
     /// They are not left without the feature: 指定視窗 needs neither API — its isolation is that the
     /// source is somebody else's window — so it works on every system with WGC at all, and the
     /// refusal below is written to send them there rather than to explain a mechanism they cannot
@@ -599,11 +599,11 @@ internal sealed class RealtimeSessionController
     /// </summary>
     /// <remarks>
     /// Three separate refusals rather than one, because the three have different answers. A system
-    /// without window capture can only ever use 整個螢幕, and should be told that once. A window that
+    /// without window capture can only ever use 完整螢幕, and should be told that once. A window that
     /// closed between the picker and this call needs the list refreshed. A window that refuses
     /// capture — a game in exclusive fullscreen is the usual cause, see
     /// <c>WgcWindowCaptureBackend.WaitForUsableFrame</c> — is a real property of that application,
-    /// and 整個螢幕 does read it.
+    /// and 完整螢幕 does read it.
     /// </remarks>
     private WgcWindowCaptureBackend? CreateWindowCapture(IntPtr hwnd, out string refusal)
     {

@@ -81,7 +81,7 @@ public static class WgcCapability
     public static bool SupportsDisplaySession => DisplaySession.Value;
 
     /// <summary>
-    /// Whether 整個螢幕 can work on this machine at all: a monitor capture that composes the screen
+    /// Whether 完整螢幕 can work on this machine at all: a monitor capture that composes the screen
     /// without this application's overlays, which needs both capture and the exclusion list.
     /// </summary>
     /// <remarks>

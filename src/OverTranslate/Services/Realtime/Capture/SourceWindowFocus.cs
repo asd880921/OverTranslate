@@ -13,7 +13,7 @@ namespace OverTranslate.Services.Realtime.Capture;
 /// then means dismissing this application's own layer to go and find the thing they just named,
 /// which is the sort of step a program should take rather than ask for.
 ///
-/// Only in 指定視窗. 整個螢幕 reads the screen as it is arranged, so rearranging it is precisely the
+/// Only in 指定視窗. 完整螢幕 reads the screen as it is arranged, so rearranging it is precisely the
 /// wrong thing to do — whatever the user left on top is what they meant to translate.
 /// </remarks>
 internal static class SourceWindowFocus

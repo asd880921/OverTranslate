@@ -45,7 +45,7 @@ internal static class RealtimeShowcaseCapture
     /// <see cref="IRealtimeCaptureBackend.SourceBounds"/>, which matters only in 指定視窗: there the
     /// backend holds one window, and asking it for a whole screen would return that window on a
     /// field of black. Narrowing makes the picture the window with its subtitles on it, which is what
-    /// the session is. In 整個螢幕 the two rectangles are the same monitor and nothing is narrowed.
+    /// the session is. In 完整螢幕 the two rectangles are the same monitor and nothing is narrowed.
     /// Overlays outside the frame are clipped by the compositing, as they should be — they are not
     /// over the thing being shown.
     /// </remarks>

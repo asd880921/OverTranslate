@@ -222,7 +222,7 @@ public partial class RealtimePage : UserControl
     /// across the bottom of the step rather than inside the tile, because a disabled tile dims its
     /// own text along with everything else in it.
     ///
-    /// The restore above coerces a saved 整個螢幕 to 指定視窗 on these machines, and deliberately
+    /// The restore above coerces a saved 完整螢幕 to 指定視窗 on these machines, and deliberately
     /// does not write that back: it runs under <see cref="_restoringSource"/>, so the preference
     /// survives in the settings file and comes back if the machine ever gains the API.
     /// </remarks>

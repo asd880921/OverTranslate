@@ -47,15 +47,15 @@ PASS: the overlay is absent from the window capture
 
 兩個視窗都是 probe 自己的，這是刻意的：第一版拿桌面上的 Edge 當來源，跑到一半視窗被拖到另一個螢幕，量測直接失效。要對真實應用程式測請用 `region`。
 
-### `exclusion` — 整個螢幕的 go/no-go
+### `exclusion` — 完整螢幕的 go/no-go
 
 ```bash
 WgcProbe.exe exclusion [x y w h] [輸出目錄]
 ```
 
-跟 `overlay` 同一組視窗，改問另一半的問題：**擷取整個螢幕、並把字幕層放進 session 的 window exclusion list，那塊區域讀回來的是什麼？**
+跟 `overlay` 同一組視窗，改問另一半的問題：**擷取完整螢幕、並把字幕層放進 session 的 window exclusion list，那塊區域讀回來的是什麼？**
 
-這一題沒有文件可查，而整條「整個螢幕」的路成不成立全看它。字幕層本來就蓋在原文上，如果排除之後那塊變成純黑，OCR 讀到的就是黑色，等於什麼都沒解決。
+這一題沒有文件可查，而整條「完整螢幕」的路成不成立全看它。字幕層本來就蓋在原文上，如果排除之後那塊變成純黑，OCR 讀到的就是黑色，等於什麼都沒解決。
 
 ```
 screen edge changed    33.5%
@@ -67,7 +67,7 @@ backend                hmonitor=10073 received=5 read=1 avgReadback=24.7ms disca
 GO: the excluded region shows the source window underneath the overlay
 ```
 
-`screen edge changed` 是**擷取指示框**：整個螢幕擷取會讓 Windows 沿著整片螢幕的邊緣畫一圈黃線，整段 session 都在（視窗擷取只框住那個視窗）。數字只說邊緣有東西變了，判定請看寫出來的 `exclusion-edge-*.png`。
+`screen edge changed` 是**擷取指示框**：完整螢幕擷取會讓 Windows 沿著整片螢幕的邊緣畫一圈黃線，整段 session 都在（視窗擷取只框住那個視窗）。數字只說邊緣有東西變了，判定請看寫出來的 `exclusion-edge-*.png`。
 
 `source content` 是關鍵那一行：**露出來的是底下來源視窗的內容，不是黑洞**（`black` 那 0.6% 是來源視窗自己的黑字）。
 
