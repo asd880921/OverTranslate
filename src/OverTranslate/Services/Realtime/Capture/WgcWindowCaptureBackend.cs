@@ -112,12 +112,6 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     public string Name => "WgcWindow";
 
     /// <summary>
-    /// Always true: this backend's frames come from one external window, and OverTranslate's own
-    /// overlays are not that window. Nothing has to be excluded for it to hold.
-    /// </summary>
-    public bool IsIsolated => true;
-
-    /// <summary>
     /// Builds a backend around the window <paramref name="resolveSource"/> names, or returns null
     /// when this system cannot capture, when there is no source window, or when the window refuses
     /// to be captured.

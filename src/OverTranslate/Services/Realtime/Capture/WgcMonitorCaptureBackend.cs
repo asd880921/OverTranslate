@@ -109,12 +109,6 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
     public string Name => "WgcMonitor";
 
     /// <summary>
-    /// True because this backend does not exist otherwise: construction fails unless the exclusion
-    /// list was accepted, and no frame composed before it was accepted is ever read.
-    /// </summary>
-    public bool IsIsolated => true;
-
-    /// <summary>
     /// Builds a backend over the monitor <paramref name="resolveMonitor"/> names, or returns null
     /// when this system cannot capture, when it has no window exclusion list, when the monitor
     /// refuses capture, or when the exclusion was not accepted.
@@ -469,7 +463,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
 
     /// <summary>
     /// Waits for one frame that was composed with the exclusion list in force, which is what makes
-    /// <see cref="IsIsolated"/> a fact rather than a request.
+    /// this backend's isolation a fact rather than a request.
     /// </summary>
     /// <remarks>
     /// Unlike a window, a monitor is always being composed, so this is not asking whether the source
