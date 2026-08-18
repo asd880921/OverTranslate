@@ -8,9 +8,12 @@ public class RealtimeQuickStartTests
 {
     private static AppSettings Ready() => new()
     {
-        RealtimeSourceLanguage = "JA",
-        RealtimeTargetLanguage = "ZH-HANT",
-        RealtimeBlockCount = 2,
+        Realtime =
+        {
+            SourceLanguage = "JA",
+            TargetLanguage = "ZH-HANT",
+            BlockCount = 2,
+        },
     };
 
     [Fact]
@@ -18,7 +21,7 @@ public class RealtimeQuickStartTests
     {
         // This used to refuse and send the user to the page to choose one. It answers instead, so
         // that pressing the shortcut on a fresh install opens block framing rather than a
-        // notification — the trade is recorded on AppSettings.RealtimeSourceLanguage.
+        // notification — the trade is recorded on AppSettings.Realtime.SourceLanguage.
         var quickStart = RealtimeQuickStart.From(new AppSettings());
 
         Assert.True(quickStart.CanStart);
@@ -34,7 +37,7 @@ public class RealtimeQuickStartTests
         // 自動 is the one that matters: realtime gets one look at a frame, so a mode that guesses per
         // frame would make a subtitle track flicker between languages.
         var settings = Ready();
-        settings.RealtimeSourceLanguage = stored;
+        settings.Realtime.SourceLanguage = stored;
 
         var quickStart = RealtimeQuickStart.From(settings);
 
@@ -70,10 +73,10 @@ public class RealtimeQuickStartTests
         // Independently, because they fail in different places: repairing the background while
         // keeping a high-contrast colour is a reasonable arrangement, and so is the reverse.
         var background = Ready();
-        background.RealtimeNaturalBackgroundEnabled = true;
+        background.Realtime.NaturalBackgroundEnabled = true;
 
         var colour = Ready();
-        colour.RealtimeSampleSourceTextColor = true;
+        colour.Realtime.SampleSourceTextColor = true;
 
         var withBackground = RealtimeQuickStart.From(background).Request!;
         var withColour = RealtimeQuickStart.From(colour).Request!;
@@ -93,7 +96,7 @@ public class RealtimeQuickStartTests
         // The stepper cannot produce these; a text file can, and the framing layer would be asked
         // for a number of blocks it has no way to draw.
         var settings = Ready();
-        settings.RealtimeBlockCount = stored;
+        settings.Realtime.BlockCount = stored;
 
         Assert.Equal(expected, RealtimeQuickStart.From(settings).Request!.MaxBlocks);
     }

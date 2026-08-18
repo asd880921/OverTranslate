@@ -53,15 +53,15 @@ internal readonly record struct RealtimeQuickStart(
         return new RealtimeQuickStart(
             new RealtimeStartRequest(
                 screen.Bounds,
-                Math.Clamp(settings.RealtimeBlockCount, MinBlocks, MaxBlocks),
-                LanguageData.GetValidRealtimeSourceCode(settings.RealtimeSourceLanguage),
-                LanguageData.GetValidTargetCode(settings.RealtimeTargetLanguage),
-                settings.RealtimeProvider,
-                settings.RealtimeTextColor,
-                settings.RealtimeScrimColor,
-                settings.RealtimeScrimOpacity,
-                settings.RealtimeNaturalBackgroundEnabled,
-                settings.RealtimeSampleSourceTextColor),
+                Math.Clamp(settings.Realtime.BlockCount, MinBlocks, MaxBlocks),
+                LanguageData.GetValidRealtimeSourceCode(settings.Realtime.SourceLanguage),
+                LanguageData.GetValidTargetCode(settings.Realtime.TargetLanguage),
+                settings.Realtime.Provider,
+                settings.Realtime.TextColor,
+                settings.Realtime.ScrimColor,
+                settings.Realtime.ScrimOpacity,
+                settings.Realtime.NaturalBackgroundEnabled,
+                settings.Realtime.SampleSourceTextColor),
             null);
     }
 }

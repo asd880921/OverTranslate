@@ -79,30 +79,71 @@ public class SettingsService
         if (root is null)
             return settings;
 
-        foreach (var property in typeof(AppSettings).GetProperties())
+        Apply(settings, root, "");
+        return settings;
+    }
+
+    /// <summary>
+    /// Copies one object's worth of JSON onto <paramref name="target"/>, field by field, descending
+    /// into grouped sections.
+    /// </summary>
+    /// <remarks>
+    /// The descent is what keeps the promise above once settings are grouped. Handing a whole group
+    /// to <c>Deserialize</c> would make it the unit that fails: one unreadable value inside
+    /// <see cref="AppSettings.Realtime"/> would throw, and every other value in that group would go
+    /// back to its default with it. Read one at a time all the way down, and the blast radius stays
+    /// one value however deep it sits.
+    /// </remarks>
+    /// <param name="path">Where in the file this object sits, for the log to name a field properly.</param>
+    private static void Apply(object target, JsonObject source, string path)
+    {
+        foreach (var property in target.GetType().GetProperties())
         {
             if (!property.CanWrite)
                 continue;
 
             // Absent and explicitly-null both leave the property on its initialiser, which keeps a
             // hand-edited "ApiKey": null from turning into a null string the rest of the app trips on.
-            if (!root.TryGetPropertyValue(property.Name, out var node) || node is null)
+            if (!source.TryGetPropertyValue(property.Name, out var node) || node is null)
                 continue;
+
+            var name = path + property.Name;
+
+            if (node is JsonObject group && IsSettingsGroup(property.PropertyType))
+            {
+                // Never null: a group is always initialised by the class that declares it, so there
+                // is something to write onto whatever the file says.
+                if (property.GetValue(target) is { } child)
+                    Apply(child, group, name + ".");
+                continue;
+            }
 
             try
             {
                 var value = node.Deserialize(property.PropertyType);
                 if (value is not null)
-                    property.SetValue(settings, value);
+                    property.SetValue(target, value);
             }
             catch (JsonException ex)
             {
-                Log.Warn(ex, "Ignoring unreadable setting '{0}'; keeping its default", property.Name);
+                Log.Warn(ex, "Ignoring unreadable setting '{0}'; keeping its default", name);
             }
         }
-
-        return settings;
     }
+
+    /// <summary>
+    /// Whether a property is a grouped section of the settings rather than a value.
+    /// </summary>
+    /// <remarks>
+    /// Decided by where the type is declared, not by a list to keep in step: anything this
+    /// application defines alongside <see cref="AppSettings"/> is a group of settings, and anything
+    /// from the framework — string above all, which is a class and would otherwise qualify — is a
+    /// value.
+    /// </remarks>
+    private static bool IsSettingsGroup(Type type) =>
+        type is { IsClass: true, IsArray: false }
+        && type != typeof(string)
+        && type.Namespace == typeof(AppSettings).Namespace;
 
     public void Save()
     {

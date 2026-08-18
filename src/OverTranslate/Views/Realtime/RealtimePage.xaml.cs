@@ -22,7 +22,7 @@ public sealed record ScreenItem(
 /// the list is rebuilt on demand rather than kept, and why the controller checks the handle again
 /// before it builds anything around it.
 /// </remarks>
-public sealed record WindowItem(IntPtr Hwnd, string Display, string Detail);
+public sealed record WindowItem(IntPtr Hwnd, string Display, string Detail, string ProcessName);
 
 /// <summary>
 /// Sets up a realtime session and then gets out of the way — everything after 選取翻譯區塊 happens on
@@ -91,11 +91,13 @@ public partial class RealtimePage : UserControl
 
     private int _blockCount = MinBlocks;
 
-    // Deliberately not stored, and not for the usual reason. The mode could be remembered; the
-    // window it needs cannot — a handle is meaningless in the next sitting — so restoring 指定視窗
-    // would reopen the page in a state that is missing its own answer, which is worse than the one
-    // extra press. See the class remarks for the line this sits on.
     private bool _windowsLoaded;
+
+    // True while this page is filling the capture pickers from stored values rather than the user
+    // choosing. Without it, restoring a monitor that has since been unplugged would write the
+    // fallback straight back over the user's stored choice — the same failure the opacity slider's
+    // flag exists to prevent, one card down.
+    private bool _restoringSource;
 
     // True while this page is writing the opacity slider rather than the user, so that restoring a
     // stored value does not read as a change and write it straight back.
@@ -136,8 +138,8 @@ public partial class RealtimePage : UserControl
         // Set before the handlers go on, for the reason the boxes above give: restoring a stored
         // value must not read as the user reaching for the switch and write it straight back.
         var appearance = SettingsService.Instance.Current;
-        NaturalBackgroundToggle.IsChecked = appearance.RealtimeNaturalBackgroundEnabled;
-        SampleTextColorToggle.IsChecked = appearance.RealtimeSampleSourceTextColor;
+        NaturalBackgroundToggle.IsChecked = appearance.Realtime.NaturalBackgroundEnabled;
+        SampleTextColorToggle.IsChecked = appearance.Realtime.SampleSourceTextColor;
         NaturalBackgroundToggle.Checked += NaturalBackgroundToggle_Toggled;
         NaturalBackgroundToggle.Unchecked += NaturalBackgroundToggle_Toggled;
         SampleTextColorToggle.Checked += SampleTextColorToggle_Toggled;
@@ -172,13 +174,13 @@ public partial class RealtimePage : UserControl
         // chose was ever used, and the shortcut has no page on which to ask. Anything unusable —
         // blank from an older settings file, 自動 from a hand-edited one — resolves to the default.
         SrcLangBox.SelectedValue =
-            LanguageData.GetValidRealtimeSourceCode(settings.RealtimeSourceLanguage);
+            LanguageData.GetValidRealtimeSourceCode(settings.Realtime.SourceLanguage);
         TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(
-            settings.RealtimeTargetLanguage);
+            settings.Realtime.TargetLanguage);
         if (TgtLangBox.SelectedValue == null)
             TgtLangBox.SelectedValue = DefaultTargetLanguage;
 
-        ProviderBox.SelectedValue = settings.RealtimeProvider;
+        ProviderBox.SelectedValue = settings.Realtime.Provider;
         if (ProviderBox.SelectedValue == null)
             ProviderBox.SelectedValue = DefaultProvider;
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
@@ -186,7 +188,18 @@ public partial class RealtimePage : UserControl
 
         // Clamped rather than trusted: this is a settings-file value and the stepper's range is the
         // one that has to hold. RenderBlockCount runs later, from Reload.
-        _blockCount = Math.Clamp(settings.RealtimeBlockCount, MinBlocks, MaxBlocks);
+        _blockCount = Math.Clamp(settings.Realtime.BlockCount, MinBlocks, MaxBlocks);
+
+        // Restored, unlike the screen and the window it implies, because it is the one part of the
+        // arrangement that is a habit rather than a fact about this sitting: someone who watches a
+        // game watches a game. Set while _restoringSource holds, so the radio's own handler does not
+        // read it as the user reaching for the control and write it straight back.
+        _restoringSource = true;
+        if (settings.Realtime.CaptureMode is RealtimeCaptureMode.Window)
+            WindowModeRadio.IsChecked = true;
+        else
+            ScreenModeRadio.IsChecked = true;
+        _restoringSource = false;
     }
 
     /// <summary>
@@ -267,7 +280,7 @@ public partial class RealtimePage : UserControl
     private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ProviderBox.SelectedValue is TranslationProvider provider)
-            SaveTranslationPreference(settings => settings.RealtimeProvider = provider);
+            SaveTranslationPreference(settings => settings.Realtime.Provider = provider);
         RenderProviderHint();
     }
 
@@ -280,7 +293,7 @@ public partial class RealtimePage : UserControl
     {
         if (SrcLangBox.SelectedValue is string sourceLanguage)
             SaveTranslationPreference(settings =>
-                settings.RealtimeSourceLanguage = LanguageData.GetValidOcrSourceCode(sourceLanguage));
+                settings.Realtime.SourceLanguage = LanguageData.GetValidOcrSourceCode(sourceLanguage));
 
         RenderState();
     }
@@ -289,7 +302,7 @@ public partial class RealtimePage : UserControl
     {
         if (TgtLangBox.SelectedValue is not string targetLanguage) return;
         SaveTranslationPreference(settings =>
-            settings.RealtimeTargetLanguage = LanguageData.GetValidTargetCode(targetLanguage));
+            settings.Realtime.TargetLanguage = LanguageData.GetValidTargetCode(targetLanguage));
     }
 
     private static void SaveTranslationPreference(Action<AppSettings> apply)
@@ -327,6 +340,10 @@ public partial class RealtimePage : UserControl
         // Fires during InitializeComponent, before the rest of the card exists.
         if (WindowPickerPanel is null) return;
 
+        if (!_restoringSource)
+            SaveTranslationPreference(settings => settings.Realtime.CaptureMode =
+                WindowMode ? RealtimeCaptureMode.Window : RealtimeCaptureMode.Screen);
+
         ApplyCaptureMode();
     }
 
@@ -363,20 +380,41 @@ public partial class RealtimePage : UserControl
     {
         var previous = (WindowBox.SelectedItem as WindowItem)?.Hwnd ?? IntPtr.Zero;
 
-        var items = CaptureWindowList.Enumerate()
+        var found = CaptureWindowList.Enumerate();
+        var items = found
             .Select(window => new WindowItem(
                 window.Hwnd,
                 window.Title,
                 window.ProcessName.Length > 0
                     ? LocalizationService.Format("S.Realtime.CaptureWindowDetail", window.ProcessName)
-                    : ""))
+                    : "",
+                window.ProcessName))
             .ToList();
 
         WindowBox.ItemsSource = items;
 
-        // Restored by handle rather than by name: two windows of the same application share a title
-        // often enough that picking by name would silently move the user to a different one.
-        WindowBox.SelectedItem = items.FirstOrDefault(item => item.Hwnd == previous);
+        _restoringSource = true;
+        if (previous != IntPtr.Zero)
+        {
+            // Refreshing the list, not arriving at it. Matched by handle: the same window is the
+            // same window whatever it has retitled itself to since.
+            WindowBox.SelectedItem = items.FirstOrDefault(item => item.Hwnd == previous);
+        }
+        else
+        {
+            // First look this sitting, so the stored choice gets to speak. Nothing is written back
+            // when it fails to match — the user is left on 請選擇視窗 with their stored window still
+            // remembered, and only their next pick replaces it. A game that is not running yet is
+            // not a decision to forget it.
+            var realtime = SettingsService.Instance.Current.Realtime;
+            var stored = CaptureWindowList.FindStored(
+                found, realtime.CaptureWindowProcess, realtime.CaptureWindowTitle);
+
+            WindowBox.SelectedItem = stored is { } match
+                ? items.FirstOrDefault(item => item.Hwnd == match.Hwnd)
+                : null;
+        }
+        _restoringSource = false;
 
         RenderWindowChoice(items.Count);
     }
@@ -385,8 +423,24 @@ public partial class RealtimePage : UserControl
     {
         if (WindowHint is null) return;
 
+        if (!_restoringSource && WindowBox.SelectedItem is WindowItem picked)
+        {
+            SaveTranslationPreference(settings =>
+            {
+                settings.Realtime.CaptureWindowProcess = ProcessNameOf(picked.Hwnd);
+                settings.Realtime.CaptureWindowTitle = picked.Display;
+            });
+        }
+
         RenderWindowChoice((WindowBox.ItemsSource as IReadOnlyList<WindowItem>)?.Count ?? 0);
     }
+
+    /// <summary>
+    /// The application a listed window belongs to, taken from the list rather than asked again.
+    /// </summary>
+    private string ProcessNameOf(IntPtr hwnd) =>
+        (WindowBox.ItemsSource as IReadOnlyList<WindowItem>)
+            ?.FirstOrDefault(item => item.Hwnd == hwnd)?.ProcessName ?? "";
 
     /// <summary>
     /// The line under the picker: which monitor the framing will happen on, or why there is nothing
@@ -453,7 +507,8 @@ public partial class RealtimePage : UserControl
 
     private void LoadScreens()
     {
-        var previous = ScreenBox.SelectedValue as string;
+        var stored = SettingsService.Instance.Current.Realtime.CaptureScreenDeviceName;
+        var previous = ScreenBox.SelectedValue as string ?? (stored.Length > 0 ? stored : null);
 
         var screens = Screen.AllScreens;
         var items = screens
@@ -468,12 +523,31 @@ public partial class RealtimePage : UserControl
 
         ScreenBox.ItemsSource = items;
 
-        // Keep the user's pick across a reload, but fall back to the monitor this window is on —
-        // which is the one they are looking at, and not necessarily the primary.
+        // Three cases, and they want different answers. The pick still being there is the easy one.
+        // A stored monitor that is not attached any more falls back to the primary: the user did
+        // choose once, so this is a substitute for their answer rather than a first guess, and the
+        // primary is the one screen that is always there. Nothing stored at all falls back to the
+        // monitor this window is on — the one they are looking at, and not necessarily the primary.
+        _restoringSource = true;
         if (previous != null && items.Any(item => item.DeviceName == previous))
             ScreenBox.SelectedValue = previous;
+        else if (stored.Length > 0)
+            ScreenBox.SelectedValue = items.FirstOrDefault(item => item.IsPrimary)?.DeviceName
+                ?? items.FirstOrDefault()?.DeviceName;
         else
             ScreenBox.SelectedValue = CurrentScreenDeviceName(items);
+        _restoringSource = false;
+    }
+
+    /// <remarks>
+    /// Only a pick the user made is written — see <see cref="LoadScreens"/> for why a monitor that
+    /// has been unplugged must not overwrite the one they chose.
+    /// </remarks>
+    private void ScreenBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_restoringSource || ScreenBox.SelectedValue is not string deviceName) return;
+
+        SaveTranslationPreference(settings => settings.Realtime.CaptureScreenDeviceName = deviceName);
     }
 
     private string? CurrentScreenDeviceName(IReadOnlyList<ScreenItem> items)
@@ -573,11 +647,11 @@ public partial class RealtimePage : UserControl
             LanguageData.GetValidOcrSourceCode(sourceLanguage),
             LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string),
             ProviderBox.SelectedValue as TranslationProvider? ?? DefaultProvider,
-            settings.RealtimeTextColor,
-            settings.RealtimeScrimColor,
-            settings.RealtimeScrimOpacity,
-            settings.RealtimeNaturalBackgroundEnabled,
-            settings.RealtimeSampleSourceTextColor,
+            settings.Realtime.TextColor,
+            settings.Realtime.ScrimColor,
+            settings.Realtime.ScrimOpacity,
+            settings.Realtime.NaturalBackgroundEnabled,
+            settings.Realtime.SampleSourceTextColor,
             WindowMode ? RealtimeCaptureMode.Window : RealtimeCaptureMode.Screen,
             sourceWindow);
 
@@ -590,21 +664,21 @@ public partial class RealtimePage : UserControl
 
     private void TextColorBtn_Click(object sender, RoutedEventArgs e) =>
         PickColour(
-            SettingsService.Instance.Current.RealtimeTextColor,
-            picked => Persist(s => s.RealtimeTextColor = picked));
+            SettingsService.Instance.Current.Realtime.TextColor,
+            picked => Persist(s => s.Realtime.TextColor = picked));
 
     private void ScrimColorBtn_Click(object sender, RoutedEventArgs e) =>
         PickColour(
-            SettingsService.Instance.Current.RealtimeScrimColor,
-            picked => Persist(s => s.RealtimeScrimColor = picked));
+            SettingsService.Instance.Current.Realtime.ScrimColor,
+            picked => Persist(s => s.Realtime.ScrimColor = picked));
 
     private void ResetColorsBtn_Click(object sender, RoutedEventArgs e)
     {
         Persist(s =>
         {
-            s.RealtimeTextColor = RealtimeSubtitleColors.DefaultText;
-            s.RealtimeScrimColor = RealtimeSubtitleColors.DefaultScrim;
-            s.RealtimeScrimOpacity = RealtimeSubtitleColors.DefaultScrimOpacity;
+            s.Realtime.TextColor = RealtimeSubtitleColors.DefaultText;
+            s.Realtime.ScrimColor = RealtimeSubtitleColors.DefaultScrim;
+            s.Realtime.ScrimOpacity = RealtimeSubtitleColors.DefaultScrimOpacity;
         });
 
         // The slider is the one control here that holds its own value rather than reading it back
@@ -618,11 +692,11 @@ public partial class RealtimePage : UserControl
     /// there is nothing to hold back the way a drag across the opacity track has.
     /// </summary>
     private void NaturalBackgroundToggle_Toggled(object sender, RoutedEventArgs e) =>
-        Persist(s => s.RealtimeNaturalBackgroundEnabled = NaturalBackgroundToggle.IsChecked == true);
+        Persist(s => s.Realtime.NaturalBackgroundEnabled = NaturalBackgroundToggle.IsChecked == true);
 
     /// <inheritdoc cref="NaturalBackgroundToggle_Toggled"/>
     private void SampleTextColorToggle_Toggled(object sender, RoutedEventArgs e) =>
-        Persist(s => s.RealtimeSampleSourceTextColor = SampleTextColorToggle.IsChecked == true);
+        Persist(s => s.Realtime.SampleSourceTextColor = SampleTextColorToggle.IsChecked == true);
 
     /// <summary>
     /// Follows the thumb: the label and the preview on every step, the settings file at the end of a
@@ -644,12 +718,12 @@ public partial class RealtimePage : UserControl
     {
         _syncingOpacity = true;
         ScrimOpacitySlider.Value = RealtimeSubtitleColors.ClampOpacity(
-            SettingsService.Instance.Current.RealtimeScrimOpacity);
+            SettingsService.Instance.Current.Realtime.ScrimOpacity);
         _syncingOpacity = false;
     }
 
     private void PersistScrimOpacity() =>
-        Persist(s => s.RealtimeScrimOpacity = CurrentScrimOpacity);
+        Persist(s => s.Realtime.ScrimOpacity = CurrentScrimOpacity);
 
     /// <summary>
     /// What the slider is showing, which is what the preview draws — not what is stored, because
@@ -704,8 +778,8 @@ public partial class RealtimePage : UserControl
     {
         var settings = SettingsService.Instance.Current;
         var opacity = CurrentScrimOpacity;
-        var text = RealtimeSubtitleColors.Text(settings.RealtimeTextColor);
-        var scrim = RealtimeSubtitleColors.Scrim(settings.RealtimeScrimColor, opacity);
+        var text = RealtimeSubtitleColors.Text(settings.Realtime.TextColor);
+        var scrim = RealtimeSubtitleColors.Scrim(settings.Realtime.ScrimColor, opacity);
 
         ScrimOpacityValue.Text = $"{opacity}%";
 
@@ -722,8 +796,8 @@ public partial class RealtimePage : UserControl
         PreviewScrim.Background = new SolidColorBrush(scrim);
 
         ResetColorsBtn.IsEnabled =
-            settings.RealtimeTextColor != RealtimeSubtitleColors.DefaultText ||
-            settings.RealtimeScrimColor != RealtimeSubtitleColors.DefaultScrim ||
+            settings.Realtime.TextColor != RealtimeSubtitleColors.DefaultText ||
+            settings.Realtime.ScrimColor != RealtimeSubtitleColors.DefaultScrim ||
             opacity != RealtimeSubtitleColors.DefaultScrimOpacity;
     }
 
@@ -740,7 +814,7 @@ public partial class RealtimePage : UserControl
 
         // Kept, unlike the rest of a sitting: the shortcut has to offer the same number of blocks as
         // this stepper and cannot read it off a page that is not open. See AppSettings.
-        SaveTranslationPreference(settings => settings.RealtimeBlockCount = next);
+        SaveTranslationPreference(settings => settings.Realtime.BlockCount = next);
 
         // The blocks kept from the last sitting were drawn to fill a different count, so they are
         // no longer an answer to the question being asked. Dropped as the count moves rather than

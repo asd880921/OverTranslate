@@ -198,7 +198,8 @@
                                            Margin="0,4,0,8"/>
                                 <ComboBox x:Name="ScreenBox"
                                           Style="{StaticResource ModernComboBox}"
-                                          SelectedValuePath="DeviceName">
+                                          SelectedValuePath="DeviceName"
+                                          SelectionChanged="ScreenBox_SelectionChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal">

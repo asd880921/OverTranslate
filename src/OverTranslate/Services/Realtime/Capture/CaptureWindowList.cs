@@ -62,6 +62,43 @@ public static class CaptureWindowList
         return found;
     }
 
+    /// <summary>
+    /// The listed window a stored choice refers to, or null when nothing here is recognisably it.
+    /// </summary>
+    /// <remarks>
+    /// A handle cannot be stored, so what comes back is a pair — which application, and what its
+    /// window was called — and neither half is reliable alone. The title is what identifies one
+    /// window of an application among its others, and it is also the half that changes constantly:
+    /// a browser retitles itself with every video, so an exact match would restore almost nothing
+    /// for exactly the case this feature is most used on.
+    ///
+    /// So: the exact pair first, and failing that, the application alone — but only when it has one
+    /// window open. Two windows of the same application and there is no way to tell which was meant,
+    /// and quietly picking one would point a session at the wrong thing while looking like it
+    /// remembered correctly. That case falls back to asking, which is the honest answer.
+    /// </remarks>
+    public static CaptureWindow? FindStored(
+        IReadOnlyList<CaptureWindow> windows, string processName, string title)
+    {
+        if (processName.Length == 0) return null;
+
+        foreach (var window in windows)
+        {
+            if (window.ProcessName == processName && window.Title == title)
+                return window;
+        }
+
+        CaptureWindow? sole = null;
+        foreach (var window in windows)
+        {
+            if (window.ProcessName != processName) continue;
+            if (sole is not null) return null;
+            sole = window;
+        }
+
+        return sole;
+    }
+
     /// <summary>Whether a window from an earlier listing is still there to be captured.</summary>
     public static bool StillAvailable(IntPtr hwnd) =>
         hwnd != IntPtr.Zero && IsWindow(hwnd) && IsWindowVisible(hwnd) && !IsIconic(hwnd);

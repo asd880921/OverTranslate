@@ -31,15 +31,15 @@ public class SettingsParsingTests
         var settings = SettingsService.Parse(
             """{"TargetLanguage":"JA","Provider":"DeepL"}""");
 
-        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.RealtimeTargetLanguage);
-        Assert.Equal(TranslationProvider.Microsoft, settings.RealtimeProvider);
+        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.Realtime.TargetLanguage);
+        Assert.Equal(TranslationProvider.Microsoft, settings.Realtime.Provider);
 
         // English rather than 自動, which the realtime picker does not offer. This was empty on
         // purpose once — a blank asks the question instead of answering it badly — and stopped being
         // so when the shortcut arrived, because a shortcut has no page on which to ask. What it
         // must never be is 自動; see LanguageData.GetValidRealtimeSourceCode.
-        Assert.Equal(LanguageData.DefaultRealtimeSourceLanguage, settings.RealtimeSourceLanguage);
-        Assert.False(LanguageData.IsAutomaticSource(settings.RealtimeSourceLanguage));
+        Assert.Equal(LanguageData.DefaultRealtimeSourceLanguage, settings.Realtime.SourceLanguage);
+        Assert.False(LanguageData.IsAutomaticSource(settings.Realtime.SourceLanguage));
         Assert.Equal("JA", settings.TargetLanguage);
         Assert.Equal(TranslationProvider.DeepL, settings.Provider);
     }
@@ -48,10 +48,10 @@ public class SettingsParsingTests
     public void RealtimeTranslationSettings_DoNotChangeGeneralTranslationSettings()
     {
         var settings = SettingsService.Parse(
-            """{"RealtimeTargetLanguage":"KO","RealtimeProvider":"OpenAI"}""");
+            """{"Realtime":{"TargetLanguage":"KO","Provider":"OpenAI"}}""");
 
-        Assert.Equal("KO", settings.RealtimeTargetLanguage);
-        Assert.Equal(TranslationProvider.OpenAI, settings.RealtimeProvider);
+        Assert.Equal("KO", settings.Realtime.TargetLanguage);
+        Assert.Equal(TranslationProvider.OpenAI, settings.Realtime.Provider);
         Assert.Equal(LanguageData.DefaultTargetLanguage, settings.TargetLanguage);
         Assert.Equal(TranslationProvider.Microsoft, settings.Provider);
     }
@@ -62,9 +62,9 @@ public class SettingsParsingTests
         // 即時翻譯 and 截圖翻譯 read different things at different times, so what one was last pointed
         // at says nothing about the other.
         var settings = SettingsService.Parse(
-            """{"RealtimeSourceLanguage":"JA","SourceLanguage":"EN"}""");
+            """{"Realtime":{"SourceLanguage":"JA"},"SourceLanguage":"EN"}""");
 
-        Assert.Equal("JA", settings.RealtimeSourceLanguage);
+        Assert.Equal("JA", settings.Realtime.SourceLanguage);
         Assert.Equal("EN", settings.SourceLanguage);
     }
 
@@ -73,21 +73,21 @@ public class SettingsParsingTests
     {
         // Every build before this one drew the scrim at a fixed alpha, so a settings file carried
         // across must not arrive at a different-looking overlay.
-        var settings = SettingsService.Parse("""{"RealtimeScrimColor":"#1E3A5F"}""");
+        var settings = SettingsService.Parse("""{"Realtime":{"ScrimColor":"#1E3A5F"}}""");
 
         Assert.Equal(
             OverTranslate.Services.Realtime.RealtimeSubtitleColors.DefaultScrimOpacity,
-            settings.RealtimeScrimOpacity);
+            settings.Realtime.ScrimOpacity);
     }
 
     [Fact]
     public void TheOpacityIsItsOwnKey_AndDoesNotDisturbTheScrimColour()
     {
         var settings = SettingsService.Parse(
-            """{"RealtimeScrimColor":"#1E3A5F","RealtimeScrimOpacity":0}""");
+            """{"Realtime":{"ScrimColor":"#1E3A5F","ScrimOpacity":0}}""");
 
-        Assert.Equal(0, settings.RealtimeScrimOpacity);
-        Assert.Equal("#1E3A5F", settings.RealtimeScrimColor);
+        Assert.Equal(0, settings.Realtime.ScrimOpacity);
+        Assert.Equal("#1E3A5F", settings.Realtime.ScrimColor);
     }
 
     [Fact]
@@ -186,8 +186,6 @@ public class SettingsParsingTests
             SourceLanguage = "KO",
             TargetLanguage = "EN",
             Provider = TranslationProvider.DeepL,
-            RealtimeTargetLanguage = "JA",
-            RealtimeProvider = TranslationProvider.OpenAI,
             ApiKey = "round-trip",
             OpenAiBaseUrl = "http://localhost:1234/v1",
             OpenAiApiKey = "local-key",
@@ -202,7 +200,18 @@ public class SettingsParsingTests
             RealtimeHotkeyVirtualKey = 0x44,
             RealtimeHotkeyDisplay = "Ctrl+Shift+D",
             RealtimeHotkeyEnabled = false,
-            RealtimeBlockCount = 3,
+            Realtime =
+            {
+                BlockCount = 3,
+                TargetLanguage = "JA",
+                Provider = TranslationProvider.OpenAI,
+                CaptureMode = RealtimeCaptureMode.Window,
+                CaptureScreenDeviceName = @"\\.\DISPLAY2",
+                CaptureWindowProcess = "chrome",
+                CaptureWindowTitle = "Something - YouTube",
+                NaturalBackgroundEnabled = true,
+                SampleSourceTextColor = true,
+            },
         });
 
         var settings = SettingsService.Parse(written);
@@ -213,8 +222,8 @@ public class SettingsParsingTests
         Assert.Equal("KO", settings.SourceLanguage);
         Assert.Equal("EN", settings.TargetLanguage);
         Assert.Equal(TranslationProvider.DeepL, settings.Provider);
-        Assert.Equal("JA", settings.RealtimeTargetLanguage);
-        Assert.Equal(TranslationProvider.OpenAI, settings.RealtimeProvider);
+        Assert.Equal("JA", settings.Realtime.TargetLanguage);
+        Assert.Equal(TranslationProvider.OpenAI, settings.Realtime.Provider);
         Assert.Equal("round-trip", settings.ApiKey);
         Assert.Equal("http://localhost:1234/v1", settings.OpenAiBaseUrl);
         Assert.Equal("local-key", settings.OpenAiApiKey);
@@ -229,7 +238,78 @@ public class SettingsParsingTests
         Assert.Equal(0x44u, settings.RealtimeHotkeyVirtualKey);
         Assert.Equal("Ctrl+Shift+D", settings.RealtimeHotkeyDisplay);
         Assert.False(settings.RealtimeHotkeyEnabled);
-        Assert.Equal(3, settings.RealtimeBlockCount);
+        Assert.Equal(3, settings.Realtime.BlockCount);
+        Assert.Equal(RealtimeCaptureMode.Window, settings.Realtime.CaptureMode);
+        Assert.Equal(@"\\.\DISPLAY2", settings.Realtime.CaptureScreenDeviceName);
+        Assert.Equal("chrome", settings.Realtime.CaptureWindowProcess);
+        Assert.Equal("Something - YouTube", settings.Realtime.CaptureWindowTitle);
+        Assert.True(settings.Realtime.NaturalBackgroundEnabled);
+        Assert.True(settings.Realtime.SampleSourceTextColor);
+    }
+
+    [Fact]
+    public void OneUnreadableValueInAGroupCostsOnlyThatValue()
+    {
+        // The reason the reader descends into groups instead of deserialising them whole: handing a
+        // group to the serialiser makes the group the unit that fails, so one hand-edited nonsense
+        // capture mode would take the block count and the switches down with it.
+        var settings = SettingsService.Parse(
+            "{\n"
+            + "  \"Realtime\": {\n"
+            + "    \"CaptureMode\": \"Telepathy\",\n"
+            + "    \"BlockCount\": 3,\n"
+            + "    \"NaturalBackgroundEnabled\": true\n"
+            + "  }\n"
+            + "}");
+
+        Assert.Equal(RealtimeCaptureMode.Screen, settings.Realtime.CaptureMode);
+        Assert.Equal(3, settings.Realtime.BlockCount);
+        Assert.True(settings.Realtime.NaturalBackgroundEnabled);
+    }
+
+    [Fact]
+    public void AFileWrittenBeforeTheGroupExistedKeepsEverythingElse()
+    {
+        // What an upgrading user's file looks like: no Realtime object at all, and everything that
+        // moved into it still written flat. Those values are gone — that was the trade, taken
+        // knowing 即時翻譯's own page sets all of them again in one visit — but nothing outside the
+        // group may go with them.
+        var settings = SettingsService.Parse(
+            "{\n"
+            + "  \"RealtimeBlockCount\": 3,\n"
+            + "  \"RealtimeTargetLanguage\": \"JA\",\n"
+            + "  \"RealtimeScrimOpacity\": 12,\n"
+            + "  \"RealtimeHotkeyDisplay\": \"Ctrl+Shift+D\",\n"
+            + "  \"ApiKey\": \"kept\"\n"
+            + "}");
+
+        // Left where they were, so they still have to survive the move happening around them.
+        Assert.Equal("kept", settings.ApiKey);
+        Assert.Equal("Ctrl+Shift+D", settings.RealtimeHotkeyDisplay);
+
+        // Moved, so a file written before the move no longer says anything about them.
+        Assert.Equal(1, settings.Realtime.BlockCount);
+        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.Realtime.TargetLanguage);
+        Assert.Equal(
+            OverTranslate.Services.Realtime.RealtimeSubtitleColors.DefaultScrimOpacity,
+            settings.Realtime.ScrimOpacity);
+    }
+
+    [Fact]
+    public void TheGroupIsWrittenBesideTheKeysItBelongsWith()
+    {
+        // Grouping settings only tidies the file if the group lands next to the ungrouped keys of
+        // the same feature. Properties are written in declaration order, so this holds by where the
+        // group is declared — which is exactly the kind of thing a later edit moves without noticing,
+        // and the reader of appsettings.json is who pays.
+        var json = System.Text.Json.JsonSerializer.Serialize(new AppSettings());
+
+        var lastFlatRealtimeKey = json.IndexOf("\"RealtimeGuidanceExpanded\"", StringComparison.Ordinal);
+        var group = json.IndexOf("\"Realtime\":", StringComparison.Ordinal);
+        var afterRealtime = json.IndexOf("\"SkippedUpdateVersion\"", StringComparison.Ordinal);
+
+        Assert.True(lastFlatRealtimeKey >= 0 && group >= 0 && afterRealtime >= 0);
+        Assert.InRange(group, lastFlatRealtimeKey, afterRealtime);
     }
 
     // Written before either shortcut could be switched off: both have to come back on, or upgrading

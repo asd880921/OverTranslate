@@ -37,23 +37,6 @@ namespace OverTranslate.Views.Realtime;
 /// <paramref name="TextColor"/>. Independent of <paramref name="NaturalBackground"/> — the two fail
 /// in different places, so either can be had without the other.
 /// </param>
-/// <summary>Where a session reads its pixels from, as the user chose on the page.</summary>
-/// <remarks>
-/// Asked rather than inferred. <see cref="SourceWindowResolver"/> used to work this out from where
-/// the blocks landed, which is invisible to the user and gives them nothing to correct when it lands
-/// somewhere they did not mean — and the two answers are not interchangeable: one reads a window and
-/// keeps working when something covers it, the other reads the screen and needs this application's
-/// own overlays excluded from capture to be safe at all.
-/// </remarks>
-public enum RealtimeCaptureMode
-{
-    /// <summary>The whole screen, as composited. Needs the overlays excluded — see #94.</summary>
-    Screen,
-
-    /// <summary>One window the user named, read directly. Isolated by construction.</summary>
-    Window,
-}
-
 /// <param name="CaptureMode">Which of the two sources this session reads.</param>
 /// <param name="SourceWindow">
 /// The window to read in <see cref="RealtimeCaptureMode.Window"/>, and
@@ -71,7 +54,7 @@ public sealed record RealtimeStartRequest(
     int ScrimOpacity,
     bool NaturalBackground,
     bool SampleSourceTextColor,
-    RealtimeCaptureMode CaptureMode = RealtimeCaptureMode.Screen,
+    Models.RealtimeCaptureMode CaptureMode = Models.RealtimeCaptureMode.Screen,
     IntPtr SourceWindow = default);
 
 /// <summary>
@@ -478,7 +461,7 @@ internal sealed class RealtimeSessionController
 
         refusal = "S.Realtime.CaptureNotIsolated";
 
-        if (request.CaptureMode is RealtimeCaptureMode.Window)
+        if (request.CaptureMode is Models.RealtimeCaptureMode.Window)
             return CreateWindowCapture(request.SourceWindow, out refusal);
 
         var desktop = new DesktopGrabCaptureBackend(OverlaysHiddenFromCapture());
