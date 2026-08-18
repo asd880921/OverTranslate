@@ -6,7 +6,10 @@ namespace OverTranslate.Services.Realtime.Capture;
 
 /// <summary>
 /// Copies each region straight off the composited desktop with <see cref="Graphics.CopyFromScreen"/>
-/// — the original capture path, kept for systems where nothing better is available.
+/// — the original capture path, and now the second choice for the whole screen, behind
+/// <see cref="WgcMonitorCaptureBackend"/>. It is what serves every machine new enough for
+/// <c>WDA_EXCLUDEFROMCAPTURE</c> to work (Windows 11 24H2) and not new enough to have the window
+/// exclusion list, which today is most of them.
 /// </summary>
 /// <remarks>
 /// The source is what the user is looking at, which includes this application's own subtitle layers.

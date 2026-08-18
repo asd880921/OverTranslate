@@ -42,8 +42,10 @@ public static class WgcCapability
 
     /// <summary>
     /// Whether a capture session can be told to leave specific windows out of its frames — the 2026
-    /// API that would let a monitor capture exclude OverTranslate's own overlays and so keep the
-    /// "frame any part of the screen" interface with none of the WDA problem.
+    /// API that lets a monitor capture exclude OverTranslate's own overlays, and so keeps the "frame
+    /// any part of the screen" interface with none of the WDA problem. What
+    /// <see cref="WgcMonitorCaptureBackend"/> is built on, and the reason it is offered only on some
+    /// machines.
     /// </summary>
     /// <remarks>
     /// Asked of both places it could live. The documentation puts it on the display-capture session,

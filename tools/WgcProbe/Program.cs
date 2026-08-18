@@ -65,6 +65,13 @@ internal static class Program
                       capture saw. The go/no-go test: the desktop grab must see it and the
                       window capture must not. Defaults to 200,200 1200x600.
 
+                  WgcProbe exclusion [x y w h] [outputDir]
+                      Capture the whole monitor with a stand-in subtitle layer excluded from the
+                      frame, and report what the excluded region came back as: the layer still
+                      there, black, or the source window underneath it. The go/no-go for
+                      capturing the screen without needing the overlays hidden. Defaults to
+                      200,200 1200x600.
+
                   WgcProbe border [x y w h] [outputDir]
                       Put up a source window, start capturing it, and measure whether the system
                       draws its capture indicator around it — the cost window capture adds to
@@ -82,6 +89,7 @@ internal static class Program
                 "window" => CaptureWindow(args),
                 "region" => CaptureRegion(args),
                 "overlay" => RunOverlayTest(args),
+                "exclusion" => RunExclusionTest(args),
                 "border" => RunBorderTest(args),
                 _ => Fail($"unknown command '{args[0]}'")
             };
@@ -153,6 +161,13 @@ internal static class Program
         if (!WgcCapability.IsCaptureSupported) return Fail("Windows.Graphics.Capture is not supported here");
 
         return OverlayTest.Run(ProbeBounds(args), OutputDirectory(args, args.Length >= 5 ? 5 : 1));
+    }
+
+    private static int RunExclusionTest(string[] args)
+    {
+        if (!WgcCapability.IsCaptureSupported) return Fail("Windows.Graphics.Capture is not supported here");
+
+        return ExclusionTest.Run(ProbeBounds(args), OutputDirectory(args, args.Length >= 5 ? 5 : 1));
     }
 
     private static int RunBorderTest(string[] args)
