@@ -60,6 +60,7 @@ internal static class DisplayDiagnostics
         {
             sb.AppendLine($"=== Display diagnostics [{phase}] ===");
             AppendOsInfo(sb);
+            AppendCaptureCapability(sb);
             AppendProcessInfo(sb);
             AppendVirtualScreenInfo(sb);
             AppendScreens(sb);
@@ -109,6 +110,18 @@ internal static class DisplayDiagnostics
             $"os      : {name}{(string.IsNullOrEmpty(release) ? "" : $" {release}")} build={build} " +
             $"arch={RuntimeInformation.OSArchitecture} process={RuntimeInformation.ProcessArchitecture}");
     }
+
+    // What Windows.Graphics.Capture will do on this machine, next to the build number that decides
+    // it. These are the facts that settle which realtime capture modes exist here at all — a system
+    // without the window exclusion list has no 整個螢幕 (#105) and one without capture at all has no
+    // realtime translation — and they are the first thing to read in any report about the feature.
+    //
+    // Recorded here rather than only when a session starts, which is where it used to live. A user
+    // who is refused the mode they wanted, or who never reaches 開始翻譯 at all, produced no line
+    // saying why; now every log has one whether or not they got that far. Static facts about the
+    // machine, so once at launch is enough.
+    private static void AppendCaptureCapability(StringBuilder sb) =>
+        sb.AppendLine($"capture : {Realtime.Capture.WgcCapability.Describe()}");
 
     // Null when the value is missing or unreadable. A diagnostic must not be able to break the flow
     // it is observing, and a machine whose registry will not answer is exactly the kind this
