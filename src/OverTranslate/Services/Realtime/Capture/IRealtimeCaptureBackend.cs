@@ -45,7 +45,7 @@ public interface IRealtimeCaptureBackend : IDisposable
     /// Asked by whoever has to <i>frame</i> a picture rather than read a region out of one — the
     /// showcase capture, which needs to know how much of the screen this source can actually
     /// account for. A monitor capture answers with that monitor; a window capture answers with the
-    /// window, which is why a showcase taken in 指定視窗 is a picture of the window rather than a
+    /// window, which is why a showcase taken in 視窗擷取 is a picture of the window rather than a
     /// screen with a hole in it.
     ///
     /// Re-read each time rather than cached: a window moves, and a monitor's origin changes when

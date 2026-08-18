@@ -7,13 +7,13 @@ namespace OverTranslate.Services.Realtime.Capture;
 /// Puts the window a session is about to read in front of everything else.
 /// </summary>
 /// <remarks>
-/// 指定視窗 asks the user to draw blocks over a window, and gives them a full-screen layer to draw on.
+/// 視窗擷取 asks the user to draw blocks over a window, and gives them a full-screen layer to draw on.
 /// Nothing about that arrangement guarantees the window is visible: they chose it from a list, which
 /// they could reach with the window buried behind the shell, a browser and a file manager. Framing
 /// then means dismissing this application's own layer to go and find the thing they just named,
 /// which is the sort of step a program should take rather than ask for.
 ///
-/// Only in 指定視窗. 完整螢幕 reads the screen as it is arranged, so rearranging it is precisely the
+/// Only in 視窗擷取. 螢幕擷取 reads the screen as it is arranged, so rearranging it is precisely the
 /// wrong thing to do — whatever the user left on top is what they meant to translate.
 /// </remarks>
 internal static class SourceWindowFocus

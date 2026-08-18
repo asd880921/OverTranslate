@@ -81,7 +81,7 @@ public static class WgcCapability
     public static bool SupportsDisplaySession => DisplaySession.Value;
 
     /// <summary>
-    /// Whether 完整螢幕 can work on this machine at all: a monitor capture that composes the screen
+    /// Whether 螢幕擷取 can work on this machine at all: a monitor capture that composes the screen
     /// without this application's overlays, which needs both capture and the exclusion list.
     /// </summary>
     /// <remarks>
@@ -98,7 +98,7 @@ public static class WgcCapability
     public static bool SupportsScreenMode => IsCaptureSupported && SupportsWindowExclusion;
 
     /// <summary>
-    /// Whether 指定視窗 can work on this machine at all. Window capture asks nothing of the overlays
+    /// Whether 視窗擷取 can work on this machine at all. Window capture asks nothing of the overlays
     /// — the source is somebody else's window — so capture existing is the whole requirement, which
     /// is why this is the mode a machine without the exclusion list is sent to.
     /// </summary>

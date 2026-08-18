@@ -223,7 +223,7 @@
                             <!-- One screen per session, chosen here rather than assumed: the primary
                                  monitor is not where the game or the video necessarily is.
 
-                                 Hidden in 指定視窗, where it is not a choice: the blocks have to be
+                                 Hidden in 視窗擷取, where it is not a choice: the blocks have to be
                                  drawn over the chosen window, so the monitor is wherever that window
                                  is, and offering the other one would only let the user build a
                                  session whose framing layer is on a screen the source is not on. -->
@@ -255,7 +255,7 @@
                                            Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="16"/>
                             </StackPanel>
 
-                            <!-- Collapsed rather than disabled in 完整螢幕: a greyed-out window
+                            <!-- Collapsed rather than disabled in 螢幕擷取: a greyed-out window
                                  picker invites the reader to work out why it is off, and the answer
                                  is already on the tile they did not press. -->
                             <StackPanel x:Name="WindowPickerPanel" Visibility="Collapsed">

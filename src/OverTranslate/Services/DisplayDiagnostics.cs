@@ -83,7 +83,7 @@ internal static class DisplayDiagnostics
 
     // Which Windows this is, down to the build. Several of the capture path's behaviours are decided
     // by the build number and by nothing else observable from here — whether a capture session has a
-    // window exclusion list is one, and it decides whether 完整螢幕 exists on this machine at all.
+    // window exclusion list is one, and it decides whether 螢幕擷取 exists on this machine at all.
     // Every other line in this snapshot describes the display topology; this one describes what is
     // interpreting it.
     private static void AppendOsInfo(StringBuilder sb)
@@ -113,7 +113,7 @@ internal static class DisplayDiagnostics
 
     // What Windows.Graphics.Capture will do on this machine, next to the build number that decides
     // it. These are the facts that settle which realtime capture modes exist here at all — a system
-    // without the window exclusion list has no 完整螢幕 (#105) and one without capture at all has no
+    // without the window exclusion list has no 螢幕擷取 (#105) and one without capture at all has no
     // realtime translation — and they are the first thing to read in any report about the feature.
     //
     // Recorded here rather than only when a session starts, which is where it used to live. A user

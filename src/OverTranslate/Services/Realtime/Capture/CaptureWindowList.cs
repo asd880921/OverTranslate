@@ -121,7 +121,7 @@ public static class CaptureWindowList
     /// the user could not frame blocks over one anyway.</item>
     /// <item>This process's own windows, for the reason the whole feature exists.</item>
     /// <item>The desktop, which has no application behind it. A user who wants the wallpaper wants
-    /// 完整螢幕.</item>
+    /// 螢幕擷取.</item>
     /// </list>
     /// </remarks>
     private static CaptureWindow? Describe(IntPtr hwnd)

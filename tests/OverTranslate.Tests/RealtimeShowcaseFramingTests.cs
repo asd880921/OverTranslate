@@ -14,7 +14,7 @@ namespace OverTranslate.Tests;
 /// <para>The picture used to be a <c>CopyFromScreen</c> of the session's screen, and the overlays
 /// were placed relative to that same screen — one rectangle, so the arithmetic could not disagree
 /// with itself. It now comes from the capture backend and is narrowed to what that backend can
-/// actually account for (#105), which in 指定視窗 is the window rather than the screen. That
+/// actually account for (#105), which in 視窗擷取 is the window rather than the screen. That
 /// introduces a second rectangle and therefore an offset that can be wrong, and wrong here does not
 /// throw: it produces a picture with the subtitles slid off their source by the distance between the
 /// window and the screen corner.</para>
@@ -43,7 +43,7 @@ public class RealtimeShowcaseFramingTests
     [Fact]
     public void AWindowSourceNarrowsThePictureToTheWindow()
     {
-        // What 指定視窗 looks like: the backend holds one window somewhere on the screen, and asking
+        // What 視窗擷取 looks like: the backend holds one window somewhere on the screen, and asking
         // it for the whole screen would return that window on a field of black.
         var window = new System.Drawing.Rectangle(300, 200, 800, 600);
         using var backend = new StubBackend(window);

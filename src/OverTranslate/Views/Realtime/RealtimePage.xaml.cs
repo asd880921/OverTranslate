@@ -34,7 +34,7 @@ public sealed record WindowItem(IntPtr Hwnd, string Display, string Detail, stri
 /// <para><b>Parameters of one sitting</b> — capture source, screen and block count — are not read
 /// from or written to the settings file. Reopening the window must not restore a screen that may
 /// have been unplugged, or blocks that no longer frame the same content. The capture source is the
-/// clearest case of the rule: 指定視窗 is a live window handle, which does not survive the window
+/// clearest case of the rule: 視窗擷取 is a live window handle, which does not survive the window
 /// being closed, let alone the next launch, so storing the mode alone would reopen the page in a
 /// state missing its own answer.</para>
 ///
@@ -222,7 +222,7 @@ public partial class RealtimePage : UserControl
     /// across the bottom of the step rather than inside the tile, because a disabled tile dims its
     /// own text along with everything else in it.
     ///
-    /// The restore above coerces a saved 完整螢幕 to 指定視窗 on these machines, and deliberately
+    /// The restore above coerces a saved 螢幕擷取 to 視窗擷取 on these machines, and deliberately
     /// does not write that back: it runs under <see cref="_restoringSource"/>, so the preference
     /// survives in the settings file and comes back if the machine ever gains the API.
     /// </remarks>
@@ -388,7 +388,7 @@ public partial class RealtimePage : UserControl
     /// longer the user's to answer.
     /// </summary>
     /// <remarks>
-    /// The window list is built the first time 指定視窗 is chosen rather than when the page loads:
+    /// The window list is built the first time 視窗擷取 is chosen rather than when the page loads:
     /// enumerating every open window costs a pass over the desktop, and the common case — a user who
     /// wants the whole screen — never needs it. After that it is only rebuilt on request, because a
     /// list that reshuffles itself while the user is reading it is worse than one that is a few

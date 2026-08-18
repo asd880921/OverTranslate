@@ -215,11 +215,11 @@
     <sys:String x:Key="S.Realtime.TooManyBlocks">最多同時 {0} 個區塊，請先移除一個</sys:String>
     <sys:String x:Key="S.Realtime.NeedOneBlock">請先拖曳建立至少一個區塊</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceLost">被翻譯的視窗已關閉，即時翻譯已停止</sys:String>
-    <sys:String x:Key="S.Realtime.ScreenCaptureUnavailable">這台機器無法用「完整螢幕」做即時翻譯。請改用「指定視窗」，選擇要翻譯的那個視窗</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureSourceScreen">完整螢幕</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureSourceWindow">指定視窗</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenCaptureUnavailable">這台機器無法用「螢幕擷取」做即時翻譯。請改用「視窗擷取」，選擇要翻譯的那個視窗</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceScreen">螢幕擷取</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceWindow">視窗擷取</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">擷取完整螢幕畫面上的所有內容。</sys:String>
-    <sys:String x:Key="S.Realtime.ScreenModeUnsupported">此系統目前不支援「完整螢幕」擷取。</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenModeUnsupported">此系統目前不支援「螢幕擷取」。</sys:String>
     <sys:String x:Key="S.Realtime.RealtimeUnsupported">即時翻譯需要畫面擷取功能，這台 Windows 沒有提供</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindowHint">擷取指定視窗內的內容。</sys:String>
     <sys:String x:Key="S.Realtime.Step1Label">步驟 1</sys:String>
@@ -240,9 +240,9 @@
     <sys:String x:Key="S.Realtime.CaptureWindowOnScreen">字幕框選會在{0}上進行。</sys:String>
     <sys:String x:Key="S.Realtime.RefreshWindows">重新整理</sys:String>
     <sys:String x:Key="S.Realtime.ChooseWindowFirst">請先選擇要翻譯的視窗</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureUnsupported">這台電腦不支援視窗擷取（需要 Windows 10 1903 以上），請改用完整螢幕</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureUnsupported">這台電腦不支援「視窗擷取」（需要 Windows 10 1903 以上），請改用「螢幕擷取」</sys:String>
     <sys:String x:Key="S.Realtime.WindowCaptureGone">選定的視窗已經關閉或最小化，請按重新整理後再選一次</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureFailed">無法擷取選定的視窗，獨佔全螢幕的遊戲通常是這個原因。請改用完整螢幕</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFailed">無法擷取選定的視窗，獨佔全螢幕的遊戲通常是這個原因。請改用「螢幕擷取」</sys:String>
     <sys:String x:Key="S.Realtime.SessionEndedTitle">即時翻譯已結束</sys:String>
     <sys:String x:Key="S.Realtime.NothingToCapture">目前還沒有譯文可以擷取</sys:String>
     <sys:String x:Key="S.Realtime.CaptureFailed">擷取畫面失敗，請再試一次</sys:String>

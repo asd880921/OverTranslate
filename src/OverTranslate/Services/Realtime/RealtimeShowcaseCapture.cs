@@ -42,10 +42,10 @@ internal static class RealtimeShowcaseCapture
     /// Must run on the UI thread — the compositing uses WPF drawing objects.
     ///
     /// The frame is the requested screen narrowed to
-    /// <see cref="IRealtimeCaptureBackend.SourceBounds"/>, which matters only in 指定視窗: there the
+    /// <see cref="IRealtimeCaptureBackend.SourceBounds"/>, which matters only in 視窗擷取: there the
     /// backend holds one window, and asking it for a whole screen would return that window on a
     /// field of black. Narrowing makes the picture the window with its subtitles on it, which is what
-    /// the session is. In 完整螢幕 the two rectangles are the same monitor and nothing is narrowed.
+    /// the session is. In 螢幕擷取 the two rectangles are the same monitor and nothing is narrowed.
     /// Overlays outside the frame are clipped by the compositing, as they should be — they are not
     /// over the thing being shown.
     /// </remarks>
