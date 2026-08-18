@@ -1,8 +1,8 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Windows.Forms;
 using OverTranslate.Services.Realtime.Capture;
 
 namespace WgcProbe;
@@ -68,9 +68,24 @@ internal static class ExclusionTest
         // it starts with the one overlay and gains a second one further down.
         var overlays = new List<IntPtr> { overlayHwnd };
 
+        // What the screen looks like around its own edge before anything is captured, for the
+        // indicator measurement below.
+        using var ringBefore = GrabScreenRing(overlayBounds);
+
         using var backend = WgcMonitorCaptureBackend.TryCreate(
             () => monitor, () => Volatile.Read(ref overlays).ToArray());
         if (backend is null) return Fail("could not start monitor capture with the overlay excluded");
+
+        // Windows draws a coloured frame around anything being captured. Around one window that is a
+        // cost; around the whole screen it is a border the user stares at for the length of a
+        // session, so it is measured here rather than discovered by them. Reported, not judged — the
+        // numbers only say something changed, and the written PNGs are what to look at.
+        using var ringAfter = GrabScreenRing(overlayBounds);
+        Console.WriteLine($"screen edge changed    {RingChange(ringBefore, ringAfter):P1}");
+        Directory.CreateDirectory(outputDirectory);
+        var ringStamp = DateTime.Now.ToString("HHmmss");
+        ringBefore.Save(Path.Combine(outputDirectory, $"exclusion-edge-before-{ringStamp}.png"), ImageFormat.Png);
+        ringAfter.Save(Path.Combine(outputDirectory, $"exclusion-edge-after-{ringStamp}.png"), ImageFormat.Png);
 
         // The backend has already waited for a frame composed with the exclusion in force, so this
         // is a poll rather than a wait — but the region is asked for a few times, because a poll can
@@ -161,6 +176,42 @@ internal static class ExclusionTest
 
         Console.WriteLine("GO: the excluded region shows the source window underneath the overlay");
         return 0;
+    }
+
+    /// <summary>
+    /// A band just inside the monitor's own edge, off the screen. Inset because the capture
+    /// indicator is drawn on the edge itself rather than outside it — a comparison of the pixels
+    /// beyond the screen measures nothing at all.
+    /// </summary>
+    private static Bitmap GrabScreenRing(Rectangle onThatMonitor)
+    {
+        var bounds = Screen.FromRectangle(onThatMonitor).Bounds;
+        var band = new Rectangle(bounds.X, bounds.Y, bounds.Width, 12);
+
+        var bitmap = new Bitmap(band.Width, band.Height, PixelFormat.Format32bppArgb);
+        using var graphics = Graphics.FromImage(bitmap);
+        graphics.CopyFromScreen(band.Left, band.Top, 0, 0, band.Size, CopyPixelOperation.SourceCopy);
+        return bitmap;
+    }
+
+    /// <summary>How many of two bands' pixels differ.</summary>
+    private static double RingChange(Bitmap before, Bitmap after)
+    {
+        var width = Math.Min(before.Width, after.Width);
+        var height = Math.Min(before.Height, after.Height);
+
+        var changed = 0;
+        var total = 0;
+        for (var y = 0; y < height; y += 2)
+        {
+            for (var x = 0; x < width; x += 2)
+            {
+                total++;
+                if (before.GetPixel(x, y).ToArgb() != after.GetPixel(x, y).ToArgb()) changed++;
+            }
+        }
+
+        return total == 0 ? 0 : (double)changed / total;
     }
 
     /// <summary>How much of one rectangle of a frame is exactly this colour.</summary>
