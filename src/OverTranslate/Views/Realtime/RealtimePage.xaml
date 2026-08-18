@@ -132,10 +132,22 @@
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceScreen}"
                                                    Style="{StaticResource ChoiceTileTitle}"/>
-                                        <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceScreenHint}"
+                                        <TextBlock x:Name="ScreenModeHint"
+                                                   Text="{DynamicResource S.Realtime.CaptureSourceScreenHint}"
                                                    Style="{StaticResource FieldHint}"
                                                    Margin="0,3,0,0"
                                                    TextTrimming="CharacterEllipsis"/>
+                                        <!-- Swapped in for the hint above when this machine cannot
+                                             run the mode. A second TextBlock rather than a rewrite
+                                             of the first: both keep their DynamicResource, so
+                                             switching interface language still updates whichever
+                                             one is showing without a line of code. -->
+                                        <TextBlock x:Name="ScreenModeUnavailableHint"
+                                                   Text="{DynamicResource S.Realtime.ScreenModeUnavailable}"
+                                                   Style="{StaticResource FieldHint}"
+                                                   Margin="0,3,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Visibility="Collapsed"/>
                                     </StackPanel>
                                 </StackPanel>
                             </RadioButton>

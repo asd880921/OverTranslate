@@ -57,6 +57,12 @@ public partial class RealtimeControlWindow : Window
     private bool _hasLanguages;
     private bool _isPaused;
 
+    // Whether a message is standing in for the bar's own text. Kept explicitly rather than read off
+    // the timer, which stopped being the same question once a message could be sticky: a sticky one
+    // is showing with no timer running, and the timer check would have quietly restored the bar
+    // underneath it.
+    private bool _messageShowing;
+
     // The scale WPF renders this window at, which is the DPI of whatever monitor it currently sits
     // on — not necessarily the one the session runs on. Everything that converts between the window's
     // DIP and screen pixels has to use this one, and it has to be re-read whenever Windows rescales
@@ -210,7 +216,7 @@ public partial class RealtimeControlWindow : Window
         TargetLangText.Text = Models.LanguageData.GetTargetDisplayName(targetCode);
         _hasLanguages = SourceLangText.Text.Length > 0 && TargetLangText.Text.Length > 0;
 
-        if (!_messageTimer.IsEnabled) RestoreText();
+        if (!_messageShowing) RestoreText();
     }
 
     /// <summary>
@@ -282,10 +288,19 @@ public partial class RealtimeControlWindow : Window
     }
 
     /// <summary>
-    /// Replaces the bar's own text for a moment. Transient by design: these are answers to something
-    /// the user just did (a refused drag, an engine that failed), not state worth keeping on screen.
+    /// Replaces the bar's own text. Transient by default: these are answers to something the user
+    /// just did (a refused drag, an engine that failed), not state worth keeping on screen.
     /// </summary>
-    public void ShowMessage(string message, RealtimeMessageKind kind = RealtimeMessageKind.Info)
+    /// <param name="sticky">
+    /// Keeps the message up until something else replaces it, for the one kind that is not an answer
+    /// but an instruction: a session that could not start and names what to do instead. That
+    /// instruction is 結束即時翻譯 and then change 擷取來源 — a page this session has hidden behind
+    /// the shell window — so the user cannot act on it without first leaving the screen the message
+    /// is on. Timed out after a couple of seconds it would be gone before they got back, with
+    /// nothing left on screen to say why nothing happened.
+    /// </param>
+    public void ShowMessage(
+        string message, RealtimeMessageKind kind = RealtimeMessageKind.Info, bool sticky = false)
     {
         if (_mode == RealtimeControlMode.Edit)
         {
@@ -304,8 +319,9 @@ public partial class RealtimeControlWindow : Window
             SetDotState(kind == RealtimeMessageKind.Failure);
         }
 
+        _messageShowing = true;
         _messageTimer.Stop();
-        _messageTimer.Start();
+        if (!sticky) _messageTimer.Start();
     }
 
     /// <summary>Where the bar sits on screen, in physical pixels.</summary>
@@ -347,6 +363,7 @@ public partial class RealtimeControlWindow : Window
 
     private void RestoreText()
     {
+        _messageShowing = false;
         EditHintText.Text = EditHint;
 
         RunStatusText.Text = _isPaused ? PausedStatus : RunStatus;

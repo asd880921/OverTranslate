@@ -219,6 +219,8 @@
     <sys:String x:Key="S.Realtime.CaptureSourceScreen">整個螢幕</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindow">指定視窗</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">擷取整個螢幕畫面上的所有內容。</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenModeUnavailable">這台 Windows 擷取整個螢幕時無法排除字幕，請改用「指定視窗」</sys:String>
+    <sys:String x:Key="S.Realtime.RealtimeUnsupported">即時翻譯需要畫面擷取功能，這台 Windows 沒有提供</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindowHint">擷取指定視窗內的內容。</sys:String>
     <sys:String x:Key="S.Realtime.Step1Label">步驟 1</sys:String>
     <sys:String x:Key="S.Realtime.Step1Name">選擇擷取方式</sys:String>

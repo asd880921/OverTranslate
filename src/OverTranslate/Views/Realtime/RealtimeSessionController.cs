@@ -434,7 +434,11 @@ internal sealed class RealtimeSessionController
         if (capture is null)
         {
             EnterEditMode();
-            control.ShowMessage(LocalizationService.Get(refusal), RealtimeMessageKind.Failure);
+
+            // Sticky: this one names an action the user has to leave this screen to take, so it has
+            // to still be there when they come back to it. See RealtimeControlWindow.ShowMessage.
+            control.ShowMessage(
+                LocalizationService.Get(refusal), RealtimeMessageKind.Failure, sticky: true);
             return;
         }
 
@@ -504,9 +508,13 @@ internal sealed class RealtimeSessionController
     {
         refusal = "S.Realtime.ScreenCaptureUnavailable";
 
-        if (!WgcCapability.IsCaptureSupported)
+        // Normally unreachable: 擷取來源 does not offer this mode on a machine that answers false,
+        // so arriving here means a settings file that named it, or a capability that changed under a
+        // page left open. Kept because the interface offering a mode is not what makes it safe.
+        if (!WgcCapability.SupportsScreenMode)
         {
-            Log.Info("Realtime screen capture unavailable: this system does not support it");
+            Log.Info(
+                "Realtime screen capture unavailable: {Capability}", WgcCapability.Describe());
             return null;
         }
 
