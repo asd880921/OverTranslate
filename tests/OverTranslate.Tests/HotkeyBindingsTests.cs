@@ -9,19 +9,19 @@ public class HotkeyBindingsTests
     private const uint CtrlAlt = 3;
 
     [Fact]
-    public void FourDistinctCombinationsAllStayOn()
+    public void ThreeDistinctCombinationsAllStayOn()
     {
         var active = HotkeyBindings.Active(new AppSettings()).ToList();
 
         Assert.Equal(
-            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.Realtime, HotkeyAction.RealtimePause],
+            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.RealtimePause],
             active.Select(binding => binding.Action));
     }
 
     [Fact]
     public void TheShortcutAddedLastLosesToOneSomebodyAlreadyChose()
     {
-        // The upgrade this whole type exists for. Realtime defaults to Ctrl+Alt+S, and an existing
+        // The upgrade this whole type exists for. 暫停 / 繼續 defaults to Ctrl+Alt+S, and an existing
         // installation may already have put Ctrl+Alt+S on the translation window — a combination its
         // owner picked, against one they have never seen. Left to Windows, whichever registered
         // second would simply fail and the user would be told nothing.
@@ -34,11 +34,11 @@ public class HotkeyBindingsTests
 
         var resolved = HotkeyBindings.Resolve(settings);
         var window = resolved.Single(b => b.Action == HotkeyAction.TranslationWindow);
-        var realtime = resolved.Single(b => b.Action == HotkeyAction.Realtime);
+        var pause = resolved.Single(b => b.Action == HotkeyAction.RealtimePause);
 
         Assert.True(window.IsActive);
-        Assert.False(realtime.IsActive);
-        Assert.Equal(HotkeyAction.TranslationWindow, realtime.ShadowedBy);
+        Assert.False(pause.IsActive);
+        Assert.Equal(HotkeyAction.TranslationWindow, pause.ShadowedBy);
     }
 
     [Fact]
@@ -48,8 +48,8 @@ public class HotkeyBindingsTests
         {
             TranslationWindowHotkeyModifiers = CtrlAlt,
             TranslationWindowHotkeyVirtualKey = 0x41, // the capture default
-            RealtimeHotkeyModifiers = CtrlAlt,
-            RealtimeHotkeyVirtualKey = 0x41,
+            RealtimePauseHotkeyModifiers = CtrlAlt,
+            RealtimePauseHotkeyVirtualKey = 0x41,
         };
 
         var resolved = HotkeyBindings.Resolve(settings);
@@ -60,31 +60,14 @@ public class HotkeyBindingsTests
             resolved.Single(b => b.Action == HotkeyAction.TranslationWindow).ShadowedBy);
         Assert.Equal(
             HotkeyAction.Capture,
-            resolved.Single(b => b.Action == HotkeyAction.Realtime).ShadowedBy);
-    }
-
-    [Fact]
-    public void PauseLosesToRealtimeWhenAStoredSettingCollides()
-    {
-        var settings = new AppSettings
-        {
-            RealtimePauseHotkeyModifiers = CtrlAlt,
-            RealtimePauseHotkeyVirtualKey = 0x53,
-            RealtimePauseHotkeyDisplay = "Ctrl+Alt+S",
-        };
-
-        var single = HotkeyBindings.Resolve(settings)
-            .Single(binding => binding.Action == HotkeyAction.RealtimePause);
-
-        Assert.False(single.IsActive);
-        Assert.Equal(HotkeyAction.Realtime, single.ShadowedBy);
+            resolved.Single(b => b.Action == HotkeyAction.RealtimePause).ShadowedBy);
     }
 
     [Fact]
     public void SwitchingOffTheHolderHandsTheCombinationDown()
     {
         // A shortcut that is off does not reserve its combination. Without this, turning the window
-        // shortcut off would leave the realtime one still shadowed by something no longer running,
+        // shortcut off would leave the pause one still shadowed by something no longer running,
         // which is the kind of state a user cannot reason their way out of.
         var settings = new AppSettings
         {
@@ -93,25 +76,25 @@ public class HotkeyBindingsTests
             TranslationWindowHotkeyEnabled = false,
         };
 
-        var realtime = HotkeyBindings.Resolve(settings)
-            .Single(binding => binding.Action == HotkeyAction.Realtime);
+        var pause = HotkeyBindings.Resolve(settings)
+            .Single(binding => binding.Action == HotkeyAction.RealtimePause);
 
-        Assert.True(realtime.IsActive);
-        Assert.Null(realtime.ShadowedBy);
+        Assert.True(pause.IsActive);
+        Assert.Null(pause.ShadowedBy);
     }
 
     [Fact]
     public void ASwitchedOffShortcutIsNotRegisteredEvenWithNothingInItsWay()
     {
-        var settings = new AppSettings { RealtimeHotkeyEnabled = false };
+        var settings = new AppSettings { RealtimePauseHotkeyEnabled = false };
 
-        var realtime = HotkeyBindings.Resolve(settings)
-            .Single(binding => binding.Action == HotkeyAction.Realtime);
+        var pause = HotkeyBindings.Resolve(settings)
+            .Single(binding => binding.Action == HotkeyAction.RealtimePause);
 
-        Assert.False(realtime.IsActive);
-        Assert.Null(realtime.ShadowedBy); // off by choice, not because something took it
+        Assert.False(pause.IsActive);
+        Assert.Null(pause.ShadowedBy); // off by choice, not because something took it
         Assert.DoesNotContain(
-            HotkeyBindings.Active(settings), binding => binding.Action == HotkeyAction.Realtime);
+            HotkeyBindings.Active(settings), binding => binding.Action == HotkeyAction.RealtimePause);
     }
 
     [Fact]
@@ -122,18 +105,19 @@ public class HotkeyBindingsTests
         Assert.True(HotkeyBindings.Resolve(new AppSettings())
             .Single(binding => binding.Action == HotkeyAction.Capture).Enabled);
     }
+
     [Fact]
     public void MiddleMouseUsesTheSamePriorityRulesAsKeyboard()
     {
         var settings = new AppSettings
         {
-            RealtimeHotkeyInputKind = ShortcutInputKind.MouseMiddle,
+            TranslationWindowHotkeyInputKind = ShortcutInputKind.MouseMiddle,
             RealtimePauseHotkeyInputKind = ShortcutInputKind.MouseMiddle,
         };
 
         var resolved = HotkeyBindings.Resolve(settings);
-        Assert.True(resolved.Single(b => b.Action == HotkeyAction.Realtime).IsActive);
-        Assert.Equal(HotkeyAction.Realtime,
+        Assert.True(resolved.Single(b => b.Action == HotkeyAction.TranslationWindow).IsActive);
+        Assert.Equal(HotkeyAction.TranslationWindow,
             resolved.Single(b => b.Action == HotkeyAction.RealtimePause).ShadowedBy);
     }
 
@@ -194,8 +178,8 @@ public class HotkeyBindingsTests
     {
         var settings = new AppSettings
         {
-            RealtimeHotkeyModifiers = 0,
-            RealtimeHotkeyVirtualKey = 0x58,
+            TranslationWindowHotkeyModifiers = 0,
+            TranslationWindowHotkeyVirtualKey = 0x58,
             RealtimePauseHotkeyInputKind = ShortcutInputKind.Gamepad,
             RealtimePauseHotkeyGamepadButton = GamepadShortcutButton.X,
         };
@@ -203,5 +187,4 @@ public class HotkeyBindingsTests
         Assert.True(HotkeyBindings.Resolve(settings)
             .Single(b => b.Action == HotkeyAction.RealtimePause).IsActive);
     }
-
 }

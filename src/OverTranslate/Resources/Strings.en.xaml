@@ -230,7 +230,6 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.WindowCaptureGone">That window has closed or been minimised - refresh the list and pick it again</sys:String>
     <sys:String x:Key="S.Realtime.WindowCaptureFailed">That window cannot be captured, which usually means a game in exclusive fullscreen. Use the whole screen instead</sys:String>
     <sys:String x:Key="S.Realtime.SessionEndedTitle">Realtime translation ended</sys:String>
-    <sys:String x:Key="S.Realtime.HotkeyNeedsPage">Realtime translation now starts by choosing a capture source - open the Realtime page first</sys:String>
     <sys:String x:Key="S.Realtime.NothingToCapture">No translations to capture yet</sys:String>
     <sys:String x:Key="S.Realtime.CaptureFailed">Could not capture the screen — try again</sys:String>
     <sys:String x:Key="S.Realtime.CaptureCopied">Screenshot copied to the clipboard</sys:String>
@@ -278,8 +277,6 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.HotkeyOff">Disabled</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with any key, or be a single function key, the middle mouse button, or a gamepad button.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+F2, F8, middle mouse. On its own, a key has to be a function key; middle mouse and the gamepad leave the game's own input alone.</sys:String>
-    <sys:String x:Key="S.Settings.RealtimeHotkey">Realtime block</sys:String>
-    <sys:String x:Key="S.Settings.RealtimeHotkeyHint">Press this shortcut to enter realtime [[block selection mode]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">While [[realtime translation]] is running, press this shortcut to [[pause / resume]] it (pausing puts the original text back on screen)</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ Same as "{0}" above, so it is off</sys:String>

@@ -195,10 +195,10 @@ public class SettingsParsingTests
             SaveScreenshotToDisk = true,
             ScreenshotSavePath = @"D:\shots",
             TranslationWindowHotkeyEnabled = false,
-            RealtimeHotkeyModifiers = 5,
-            RealtimeHotkeyVirtualKey = 0x44,
-            RealtimeHotkeyDisplay = "Ctrl+Shift+D",
-            RealtimeHotkeyEnabled = false,
+            RealtimePauseHotkeyModifiers = 5,
+            RealtimePauseHotkeyVirtualKey = 0x44,
+            RealtimePauseHotkeyDisplay = "Ctrl+Shift+D",
+            RealtimePauseHotkeyEnabled = false,
             Realtime =
             {
                 BlockCount = 3,
@@ -234,10 +234,10 @@ public class SettingsParsingTests
         Assert.Equal(@"D:\shots", settings.ScreenshotSavePath);
         Assert.False(settings.Realtime.GuidanceExpanded);
         Assert.False(settings.TranslationWindowHotkeyEnabled);
-        Assert.Equal(5u, settings.RealtimeHotkeyModifiers);
-        Assert.Equal(0x44u, settings.RealtimeHotkeyVirtualKey);
-        Assert.Equal("Ctrl+Shift+D", settings.RealtimeHotkeyDisplay);
-        Assert.False(settings.RealtimeHotkeyEnabled);
+        Assert.Equal(5u, settings.RealtimePauseHotkeyModifiers);
+        Assert.Equal(0x44u, settings.RealtimePauseHotkeyVirtualKey);
+        Assert.Equal("Ctrl+Shift+D", settings.RealtimePauseHotkeyDisplay);
+        Assert.False(settings.RealtimePauseHotkeyEnabled);
         Assert.Equal(3, settings.Realtime.BlockCount);
         Assert.Equal(RealtimeCaptureMode.Window, settings.Realtime.CaptureMode);
         Assert.Equal(@"\\.\DISPLAY2", settings.Realtime.CaptureScreenDeviceName);
@@ -279,13 +279,13 @@ public class SettingsParsingTests
             + "  \"RealtimeBlockCount\": 3,\n"
             + "  \"RealtimeTargetLanguage\": \"JA\",\n"
             + "  \"RealtimeScrimOpacity\": 12,\n"
-            + "  \"RealtimeHotkeyDisplay\": \"Ctrl+Shift+D\",\n"
+            + "  \"RealtimePauseHotkeyDisplay\": \"Ctrl+Shift+D\",\n"
             + "  \"ApiKey\": \"kept\"\n"
             + "}");
 
         // Left where they were, so they still have to survive the move happening around them.
         Assert.Equal("kept", settings.ApiKey);
-        Assert.Equal("Ctrl+Shift+D", settings.RealtimeHotkeyDisplay);
+        Assert.Equal("Ctrl+Shift+D", settings.RealtimePauseHotkeyDisplay);
 
         // Moved, so a file written before the move no longer says anything about them.
         Assert.Equal(1, settings.Realtime.BlockCount);
@@ -319,8 +319,21 @@ public class SettingsParsingTests
         var settings = SettingsService.Parse("""{"Theme":"Light"}""");
 
         Assert.True(settings.TranslationWindowHotkeyEnabled);
-        Assert.True(settings.RealtimeHotkeyEnabled);
-        Assert.Equal("Ctrl+Alt+S", settings.RealtimeHotkeyDisplay);
+        Assert.True(settings.RealtimePauseHotkeyEnabled);
+    }
+
+    // Ctrl+Alt+S belonged to block framing until that shortcut was removed. A file written while it
+    // did says nothing about 暫停 / 繼續, so that one arrives on its new default rather than on the
+    // Ctrl+Alt+Q it used to have — and a user who had recorded their own keeps theirs.
+    [Fact]
+    public void TheKeyLeftBehindByBlockFramingBecomesThePauseDefault()
+    {
+        Assert.Equal("Ctrl+Alt+S", SettingsService.Parse("""{"Theme":"Light"}""")
+            .RealtimePauseHotkeyDisplay);
+
+        Assert.Equal("Ctrl+Alt+Q", SettingsService
+            .Parse("""{"RealtimePauseHotkeyDisplay":"Ctrl+Alt+Q","RealtimePauseHotkeyVirtualKey":81}""")
+            .RealtimePauseHotkeyDisplay);
     }
 
     // Expanded on a file written before the setting existed: someone who has never been shown the

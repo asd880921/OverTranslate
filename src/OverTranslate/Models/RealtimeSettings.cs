@@ -121,6 +121,12 @@ public class RealtimeSettings
     /// <inheritdoc cref="CaptureWindowProcess"/>
     public string CaptureWindowTitle { get; set; } = "";
 
+    /// <summary>Fewest and most blocks a session may frame — the page's stepper obeys this pair.</summary>
+    public const int MinBlockCount = 1;
+
+    /// <inheritdoc cref="MinBlockCount"/>
+    public const int MaxBlockCount = 3;
+
     /// <summary>
     /// How many blocks a session is set up to frame, 1–3. Step 3 on the page.
     /// </summary>
@@ -131,7 +137,7 @@ public class RealtimeSettings
     /// One of the values that moved out of a shipped flat key: everyone updating gets 1 back once,
     /// and 1 is both the default and one press away from anything else.
     /// </remarks>
-    public int BlockCount { get; set; } = 1;
+    public int BlockCount { get; set; } = MinBlockCount;
 
     /// <summary>
     /// Whether the per-block framing guidance on the edit layer is unfolded. Expanded on a first run,

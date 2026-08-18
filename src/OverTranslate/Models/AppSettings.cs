@@ -41,43 +41,27 @@ public class AppSettings
     public bool TranslationWindowHotkeyEnabled { get; set; } = true;
 
     /// <summary>
-    /// The shortcut that adds an 即時翻譯 block. Ctrl+Alt+S by default.
+    /// Pauses and resumes a running realtime session. Ctrl+Alt+S by default.
     /// </summary>
     /// <remarks>
-    /// Stored as the same three fields as the two shortcuts above — the modifiers and key Windows is
-    /// given, plus the text the settings page shows — because the display string cannot be derived
-    /// from the other two without a key-name table, and the recorder already has the user's own
-    /// spelling of it at the moment they press the combination.
-    /// </remarks>
-    public uint RealtimeHotkeyModifiers { get; set; } = 3;
-
-    /// <inheritdoc cref="RealtimeHotkeyModifiers"/>
-    public uint RealtimeHotkeyVirtualKey { get; set; } = 0x53;
-
-    /// <inheritdoc cref="RealtimeHotkeyModifiers"/>
-    public string RealtimeHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
-    public ShortcutInputKind RealtimeHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
-    public GamepadShortcutButton RealtimeHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
-
-    /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
-    public bool RealtimeHotkeyEnabled { get; set; } = true;
-
-    /// <summary>
-    /// Pauses and resumes a running realtime session. Ctrl+Alt+Q by default.
-    /// </summary>
-    /// <remarks>
-    /// Its own shortcut rather than a second meaning for the capture one. Sharing it made a kind of
-    /// sense — a session hides the page the capture shortcut would otherwise open, so the key was
-    /// free — but it also meant the reader could not choose what to press for the thing they reach for
-    /// most, and could not put it somewhere their hands already are while a game has the screen.
+    /// Stored as three fields — the modifiers and key Windows is given, plus the text the settings
+    /// page shows — because the display string cannot be derived from the other two without a
+    /// key-name table, and the recorder already has the user's own spelling of it at the moment they
+    /// press the combination.
+    ///
+    /// Ctrl+Alt+S was the block-framing shortcut's default until that shortcut was removed: a session
+    /// now begins by naming what it reads, which is a live window handle chosen from what is open,
+    /// and no settings file can answer that. The key it left behind goes to the one realtime shortcut
+    /// there still is. Anyone who had already recorded their own combination keeps it — a default
+    /// only fills in what nobody has answered.
     /// </remarks>
     public uint RealtimePauseHotkeyModifiers { get; set; } = 3;
 
     /// <inheritdoc cref="RealtimePauseHotkeyModifiers"/>
-    public uint RealtimePauseHotkeyVirtualKey { get; set; } = 0x51;
+    public uint RealtimePauseHotkeyVirtualKey { get; set; } = 0x53;
 
     /// <inheritdoc cref="RealtimePauseHotkeyModifiers"/>
-    public string RealtimePauseHotkeyDisplay { get; set; } = "Ctrl+Alt+Q";
+    public string RealtimePauseHotkeyDisplay { get; set; } = "Ctrl+Alt+S";
     public ShortcutInputKind RealtimePauseHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
     public GamepadShortcutButton RealtimePauseHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
 

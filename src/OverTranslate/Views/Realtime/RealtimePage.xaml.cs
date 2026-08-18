@@ -85,9 +85,8 @@ public partial class RealtimePage : UserControl
     /// </summary>
     private const TranslationProvider DefaultProvider = TranslationProvider.Microsoft;
 
-    // Shared with the shortcut path, which has to offer the same range without this page open.
-    private const int MinBlocks = RealtimeQuickStart.MinBlocks;
-    private const int MaxBlocks = RealtimeQuickStart.MaxBlocks;
+    private const int MinBlocks = RealtimeSettings.MinBlockCount;
+    private const int MaxBlocks = RealtimeSettings.MaxBlockCount;
 
     private int _blockCount = MinBlocks;
 

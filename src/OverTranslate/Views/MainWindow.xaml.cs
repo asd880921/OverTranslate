@@ -23,7 +23,6 @@ public partial class MainWindow : Window
     private TrayMenuWindow? _trayMenu;
     private GlobalHotkey? _hotkey;
     private GlobalHotkey? _windowHotkey;
-    private GlobalHotkey? _realtimeHotkey;
     private GlobalHotkey? _realtimePauseHotkey;
     private GlobalAuxiliaryHotkeys? _auxiliaryHotkeys;
     private OverlayWindow? _overlayWindow;
@@ -120,9 +119,6 @@ public partial class MainWindow : Window
         _windowHotkey = new GlobalHotkey(GlobalHotkey.TranslationWindowId);
         _windowHotkey.HotkeyPressed += OnTranslationWindowHotkeyPressed;
 
-        _realtimeHotkey = new GlobalHotkey(GlobalHotkey.RealtimeId);
-        _realtimeHotkey.HotkeyPressed += OnRealtimeHotkeyPressed;
-
         _realtimePauseHotkey = new GlobalHotkey(GlobalHotkey.RealtimePauseId);
         _realtimePauseHotkey.HotkeyPressed += OnRealtimePauseHotkeyPressed;
 
@@ -130,7 +126,6 @@ public partial class MainWindow : Window
         {
             [HotkeyAction.Capture] = _hotkey,
             [HotkeyAction.TranslationWindow] = _windowHotkey,
-            [HotkeyAction.Realtime] = _realtimeHotkey,
             [HotkeyAction.RealtimePause] = _realtimePauseHotkey,
         };
 
@@ -186,9 +181,6 @@ public partial class MainWindow : Window
             case HotkeyAction.TranslationWindow:
                 OnTranslationWindowHotkeyPressed(this, EventArgs.Empty);
                 break;
-            case HotkeyAction.Realtime:
-                OnRealtimeHotkeyPressed(this, EventArgs.Empty);
-                break;
             case HotkeyAction.RealtimePause:
                 OnRealtimePauseHotkeyPressed(this, EventArgs.Empty);
                 break;
@@ -239,42 +231,10 @@ public partial class MainWindow : Window
     {
         _hotkey?.Unregister();
         _windowHotkey?.Unregister();
-        _realtimeHotkey?.Unregister();
         _realtimePauseHotkey?.Unregister();
         _auxiliaryHotkeys?.Dispose();
         _auxiliaryHotkeys = null;
         RegisterHotkey();
-    }
-
-    /// <summary>
-    /// Turned away for now: a session needs an answer this shortcut cannot ask for.
-    /// </summary>
-    /// <remarks>
-    /// This used to drop straight into block framing, which worked while every session read the
-    /// whole screen — the shortcut could fill in the rest from the settings file (see
-    /// <see cref="RealtimeQuickStart"/>) and there was nothing left to decide. A session now begins
-    /// by naming what it reads, and one of the two answers is a specific window: a live handle,
-    /// chosen from a list of what is open at that moment. That is not a setting, it cannot be
-    /// remembered between sittings, and defaulting it silently to 整個螢幕 would give a user who
-    /// pressed a key the mode they did not pick, on the systems where it is the mode that refuses to
-    /// start at all (#94).
-    ///
-    /// So it says so instead of doing something. Everything else is left standing — the shortcut is
-    /// still registered, still recordable in 設定, and this is one <c>return</c> away from working
-    /// again — because whether the shortcut gets its own answer to that question or goes away is a
-    /// product decision that has not been made.
-    ///
-    /// A notification rather than silence, for the reason this file's other refusals are: the user
-    /// pressed a key and is owed an answer, and there may be no page open to put it on — the
-    /// shortcut's whole point is not needing one. See ShowTrayNotification for why the tray.
-    /// </remarks>
-    private void OnRealtimeHotkeyPressed(object? sender, EventArgs e)
-    {
-        if (RealtimeSessionController.Instance.IsActive) return;
-
-        ShowTrayNotification(
-            LocalizationService.Get("S.Realtime.Title"),
-            LocalizationService.Get("S.Realtime.HotkeyNeedsPage"));
     }
 
     /// <summary>
@@ -1031,7 +991,6 @@ public partial class MainWindow : Window
         DisposeEscapeHook();
         _hotkey?.Dispose();
         _windowHotkey?.Dispose();
-        _realtimeHotkey?.Dispose();
         _realtimePauseHotkey?.Dispose();
         _auxiliaryHotkeys?.Dispose();
         _auxiliaryHotkeys = null;
