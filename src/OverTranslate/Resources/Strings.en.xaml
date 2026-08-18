@@ -196,7 +196,6 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.Paused">Paused</sys:String>
     <sys:String x:Key="S.Realtime.Pause">Pause realtime translation</sys:String>
     <sys:String x:Key="S.Realtime.Resume">Resume realtime translation</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureScreenshot">Capture a screenshot</sys:String>
 
     <!-- Control bar and edit window messages -->
     <sys:String x:Key="S.Realtime.MovedToFront">Realtime windows brought to the front</sys:String>
@@ -232,11 +231,6 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.WindowCaptureGone">That window has closed or been minimised - refresh the list and pick it again</sys:String>
     <sys:String x:Key="S.Realtime.WindowCaptureFailed">That window cannot be captured, which usually means a game in exclusive fullscreen. Use the whole screen instead</sys:String>
     <sys:String x:Key="S.Realtime.SessionEndedTitle">Realtime translation ended</sys:String>
-    <sys:String x:Key="S.Realtime.NothingToCapture">No translations to capture yet</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureFailed">Could not capture the screen — try again</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureCopied">Screenshot copied to the clipboard</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureCopiedAndSaved">Screenshot copied to the clipboard and saved</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureError">Capture failed: {0}</sys:String>
     <sys:String x:Key="S.Realtime.RemoveBlock">Remove this block</sys:String>
 
     <!-- Block mode picker -->

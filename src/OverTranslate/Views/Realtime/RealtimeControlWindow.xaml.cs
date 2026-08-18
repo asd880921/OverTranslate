@@ -34,9 +34,9 @@ public enum RealtimeMessageKind
 /// <remarks>
 /// It is one window across both modes rather than two, so its position survives the switch — a user
 /// who moved it out of the way of a subtitle should not find it back in the middle after pressing
-/// 編輯. Like the other realtime windows it never takes activation and is excluded from screen
-/// capture, so it can neither pull focus from a full-screen game nor end up inside a watched block's
-/// own grab.
+/// 編輯. Like the other realtime windows it never takes activation, so it cannot pull focus from a
+/// full-screen game; and the capture backend leaves it out of its frames, so it never ends up inside
+/// a watched block's own reading.
 /// </remarks>
 public partial class RealtimeControlWindow : Window
 {
@@ -130,7 +130,6 @@ public partial class RealtimeControlWindow : Window
     public event EventHandler? StartRequested;
     public event EventHandler? EditRequested;
     public event EventHandler? CloseRequested;
-    public event EventHandler? ShotRequested;
     public event EventHandler? PauseToggleRequested;
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -324,36 +323,6 @@ public partial class RealtimeControlWindow : Window
         if (!sticky) _messageTimer.Start();
     }
 
-    /// <summary>Where the bar sits on screen, in physical pixels.</summary>
-    public System.Drawing.Rectangle PhysicalBounds =>
-        new(_position.X, _position.Y, PhysicalWidth, PhysicalHeight);
-
-    /// <summary>
-    /// The bar as an image at physical resolution, so a showcase capture can include it — the
-    /// capture backend leaves this window out of its frames, so it would otherwise be missing from
-    /// the one picture meant to show what this feature looks like.
-    /// </summary>
-    /// <remarks>
-    /// Renders the window rather than its content. <see cref="RootChrome"/> carries the mixed-DPI
-    /// LayoutTransform, and a visual's own layout transform is not part of what Render draws — only
-    /// its descendants' are. Taken from the window, RootChrome is a descendant and the transform
-    /// applies, which is also what makes <see cref="PhysicalWidth"/> the right size for the bitmap.
-    /// </remarks>
-    public System.Windows.Media.Imaging.BitmapSource? RenderForCapture()
-    {
-        if (!IsLoaded) return null;
-
-        var width = Math.Max(1, PhysicalWidth);
-        var height = Math.Max(1, PhysicalHeight);
-
-        var rendered = new System.Windows.Media.Imaging.RenderTargetBitmap(
-            width, height, 96 * _windowScale, 96 * _windowScale,
-            System.Windows.Media.PixelFormats.Pbgra32);
-        rendered.Render(this);
-        rendered.Freeze();
-        return rendered;
-    }
-
     /// <summary>Re-asserts the bar above a window created after it — the edit layer, on re-entry.</summary>
     public void BringToFront()
     {
@@ -483,8 +452,6 @@ public partial class RealtimeControlWindow : Window
     private void StartBtn_Click(object sender, RoutedEventArgs e) => StartRequested?.Invoke(this, EventArgs.Empty);
 
     private void EditBtn_Click(object sender, RoutedEventArgs e) => EditRequested?.Invoke(this, EventArgs.Empty);
-
-    private void ShotBtn_Click(object sender, RoutedEventArgs e) => ShotRequested?.Invoke(this, EventArgs.Empty);
 
     private void PauseBtn_Click(object sender, RoutedEventArgs e) => PauseToggleRequested?.Invoke(this, EventArgs.Empty);
 

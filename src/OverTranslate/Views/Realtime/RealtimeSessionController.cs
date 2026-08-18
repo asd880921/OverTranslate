@@ -195,7 +195,6 @@ internal sealed class RealtimeSessionController
         control.StartRequested += (_, _) => StartTranslating();
         control.EditRequested += (_, _) => EnterEditMode();
         control.CloseRequested += (_, _) => Stop();
-        control.ShotRequested += (_, _) => CaptureShowcase();
         control.PauseToggleRequested += (_, _) => TogglePause();
         _control = control;
         control.Show();
@@ -581,10 +580,9 @@ internal sealed class RealtimeSessionController
     /// <remarks>
     /// The single door through which anything in a running session may see the screen. It is handed
     /// to every block overlay so the natural-background repair reads what is under it rather than
-    /// photographing itself (#99), and it is what the showcase capture composes onto — and the point
-    /// of routing both through here is that neither can any longer be correct only on some Windows
-    /// versions. A backend either has an isolated frame or has none; there is no third answer it
-    /// could give that quietly includes our own subtitles.
+    /// photographing itself (#99) — and the point of routing it through here is that it can no
+    /// longer be correct only on some Windows versions. A backend either has an isolated frame or
+    /// has none; there is no third answer it could give that quietly includes our own subtitles.
     ///
     /// Resolved on each call rather than captured, because a block overlay is created before the
     /// backend is — the overlays have to exist and have handles before a monitor capture can be told
@@ -664,80 +662,6 @@ internal sealed class RealtimeSessionController
             Stop();
             SessionEnded?.Invoke(this, message);
         });
-
-    /// <summary>
-    /// Builds a picture of the screen with this session's subtitles drawn onto it, and puts it on
-    /// the clipboard — the only way to show someone what this feature does, since the layers
-    /// themselves are excluded from every form of screen capture.
-    /// </summary>
-    /// <remarks>
-    /// Saved to disk as well when 截圖 → 截圖時自動儲存 is on, deliberately following the rule the
-    /// capture side already set rather than introducing a second one for the same kind of output.
-    /// </remarks>
-    private void CaptureShowcase()
-    {
-        if (_control is not { } control || _request is not { } request) return;
-
-        // The picture is composed onto the backend's frame, so without a backend there is nothing to
-        // compose onto. Only reachable if the button is pressed as a session is being torn down.
-        if (_capture is not { } capture)
-        {
-            control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureFailed"), RealtimeMessageKind.Failure);
-            return;
-        }
-
-        try
-        {
-            var overlays = _blockWindows.Values
-                .Select(window => (Window: window, Image: window.RenderForCapture()))
-                .Where(pair => pair.Image is not null)
-                .Select(pair => new RealtimeShowcaseCapture.Overlay(
-                    pair.Window.PhysicalBounds, pair.Image!))
-                .ToList();
-
-            if (overlays.Count == 0)
-            {
-                // Composing here would produce a plain screenshot, which is not what was asked for
-                // and gives no sign that anything was missing.
-                control.ShowMessage(LocalizationService.Get("S.Realtime.NothingToCapture"));
-                return;
-            }
-
-            // Last, so it lands on top of any block it overlaps — the same order it has on screen.
-            // Included because a picture of subtitles with no visible tool looks like the application
-            // being watched simply has subtitles, which is the opposite of what this capture is for.
-            if (control.RenderForCapture() is { } bar)
-                overlays.Add(new RealtimeShowcaseCapture.Overlay(control.PhysicalBounds, bar));
-
-            var image = RealtimeShowcaseCapture.Compose(capture, request.ScreenBounds, overlays);
-            if (image is null)
-            {
-                control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureFailed"), RealtimeMessageKind.Failure);
-                return;
-            }
-
-            System.Windows.Clipboard.SetImage(image);
-
-            var settings = SettingsService.Instance.Current;
-            if (!settings.SaveScreenshotToDisk)
-            {
-                control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureCopied"));
-                return;
-            }
-
-            var path = ScreenshotSaveService.Save(image, settings.ScreenshotSavePath);
-            Log.Info("Realtime showcase capture saved to {Path}", path);
-            control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureCopiedAndSaved"));
-        }
-        catch (Exception ex)
-        {
-            // The clipboard can be held by another process and saving can hit a full or read-only
-            // folder. Neither is worth ending a session over, and the bar is where the user is
-            // looking.
-            Log.Warn(ex, "Realtime showcase capture failed");
-            control.ShowMessage(LocalizationService.Format("S.Realtime.CaptureError", ex.Message), RealtimeMessageKind.Failure);
-        }
-    }
 
     // ── Session callbacks (raised on the polling thread) ─────────────────────────────────────────
 

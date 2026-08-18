@@ -118,24 +118,6 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     public bool IsIsolated => true;
 
     /// <summary>
-    /// The source window, where it currently sits on the screen. Empty until a frame has arrived —
-    /// its size is the frame's, not the window rect's, because those differ by the invisible border
-    /// DWM keeps around a window.
-    /// </summary>
-    public Rectangle SourceBounds
-    {
-        get
-        {
-            if (!TryGetFrameOrigin(out var origin)) return Rectangle.Empty;
-
-            lock (_latestLock)
-                return _latest is { } latest
-                    ? new Rectangle(origin.X, origin.Y, latest.Width, latest.Height)
-                    : Rectangle.Empty;
-        }
-    }
-
-    /// <summary>
     /// Builds a backend around the window <paramref name="resolveSource"/> names, or returns null
     /// when this system cannot capture, when there is no source window, or when the window refuses
     /// to be captured.

@@ -24,8 +24,9 @@ namespace OverTranslate.Views.Realtime;
 /// <remarks>
 /// The background patch is refreshed while a line is visible. That matters over video/game content:
 /// a one-time screenshot would turn the translated line into a frozen rectangular tile while the
-/// picture behind it kept moving. The overlay itself is excluded from capture, so every refresh sees
-/// the original application rather than recursively photographing its own translation.
+/// picture behind it kept moving. The picture it refreshes from comes from the session's capture
+/// backend, which composes without this overlay, so every refresh sees the original application
+/// rather than recursively photographing its own translation.
 ///
 /// That refresh runs off the dispatcher, and only the assignment of the finished brushes comes back
 /// to it. Everything before that — the grab, the repair, the bitmap — is pixel work that does not
@@ -166,9 +167,6 @@ public partial class RealtimeBlockWindow : Window
 
     public int RegionId { get; }
 
-    /// <summary>Where this block sits on the screen, in physical pixels — what it was pinned to.</summary>
-    public System.Drawing.Rectangle PhysicalBounds => _physBounds;
-
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -184,35 +182,6 @@ public partial class RealtimeBlockWindow : Window
         // WDA_EXCLUDEFROMCAPTURE so the loop would not read its own translation back; keeping the
         // overlays out of the frame is now the capture backend's job and only the backend's, which is
         // why a session cannot start on a source that has not proved it (#105).
-    }
-
-    /// <summary>
-    /// This block's scrims and text as an image at physical resolution, for compositing onto a
-    /// screen grab. Null when there is nothing drawn — a block that has not been translated yet has
-    /// nothing to contribute and should leave the grabbed pixels alone.
-    /// </summary>
-    /// <remarks>
-    /// Rendering the visual tree rather than reading it back off the screen is not a way around the
-    /// capture backend leaving this window out of its frames — it is the better source. The window
-    /// is composed with per-pixel alpha, so what the compositor put on screen is this layer already
-    /// blended into whatever was behind it, while this is the layer itself, with its translucency
-    /// intact for the caller to blend deliberately.
-    /// </remarks>
-    public System.Windows.Media.Imaging.BitmapSource? RenderForCapture()
-    {
-        if (!_isLoaded) return null;
-        if (ScrimCanvas.Children.Count == 0 && TextCanvas.Children.Count == 0) return null;
-
-        var width = Math.Max(1, _physBounds.Width);
-        var height = Math.Max(1, _physBounds.Height);
-
-        // 96 * dpi so one bitmap pixel is one screen pixel: the canvases are laid out in DIP, and
-        // the block's own bounds are in physical pixels.
-        var rendered = new System.Windows.Media.Imaging.RenderTargetBitmap(
-            width, height, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
-        rendered.Render(LayerHost);
-        rendered.Freeze();
-        return rendered;
     }
 
     public void SetLines(IReadOnlyList<TranslatedBlock> lines)

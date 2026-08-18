@@ -115,22 +115,6 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
     public bool IsIsolated => true;
 
     /// <summary>
-    /// The captured monitor, as the frames in hand cover it.
-    /// </summary>
-    public Rectangle SourceBounds
-    {
-        get
-        {
-            if (!TryGetFrameOrigin(out var origin)) return Rectangle.Empty;
-
-            lock (_latestLock)
-                return _latest is { } latest
-                    ? new Rectangle(origin.X, origin.Y, latest.Width, latest.Height)
-                    : Rectangle.Empty;
-        }
-    }
-
-    /// <summary>
     /// Builds a backend over the monitor <paramref name="resolveMonitor"/> names, or returns null
     /// when this system cannot capture, when it has no window exclusion list, when the monitor
     /// refuses capture, or when the exclusion was not accepted.

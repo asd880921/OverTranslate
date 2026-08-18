@@ -208,7 +208,6 @@
     <sys:String x:Key="S.Realtime.Paused">已暫停</sys:String>
     <sys:String x:Key="S.Realtime.Pause">暫停即時翻譯</sys:String>
     <sys:String x:Key="S.Realtime.Resume">繼續即時翻譯</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureScreenshot">擷取畫面截圖</sys:String>
 
     <!-- Control bar and edit window messages -->
     <sys:String x:Key="S.Realtime.MovedToFront">已將即時翻譯視窗移至最上層</sys:String>
@@ -244,11 +243,6 @@
     <sys:String x:Key="S.Realtime.WindowCaptureGone">選定的視窗已經關閉或最小化，請按重新整理後再選一次</sys:String>
     <sys:String x:Key="S.Realtime.WindowCaptureFailed">無法擷取選定的視窗，獨佔全螢幕的遊戲通常是這個原因。請改用「螢幕擷取」</sys:String>
     <sys:String x:Key="S.Realtime.SessionEndedTitle">即時翻譯已結束</sys:String>
-    <sys:String x:Key="S.Realtime.NothingToCapture">目前還沒有譯文可以擷取</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureFailed">擷取畫面失敗，請再試一次</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureCopied">畫面截圖已複製到剪貼簿</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureCopiedAndSaved">畫面截圖已複製到剪貼簿並儲存至本機</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureError">擷取失敗：{0}</sys:String>
     <sys:String x:Key="S.Realtime.RemoveBlock">移除此區塊</sys:String>
 
     <!-- Block mode picker. The em dash in the summaries separates what the mode is for from what
