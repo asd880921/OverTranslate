@@ -26,10 +26,14 @@ namespace OverTranslate.Services.Realtime.Capture;
 /// DWM holds the window's own surface rather than the screen's. And one readback serves every region
 /// instead of one desktop copy per region per poll.
 ///
-/// What it costs is the source question — see <see cref="SourceWindowResolver"/> — and the limits of
-/// window capture: content the user wants that lives in a <i>separate</i> top-level window (a popup,
-/// a tooltip, an overlay from another program) is not in this frame either. That is the same
-/// property working for and against us, and it is why this is chosen per session rather than always.
+/// What it costs is the source question — which window — and the limits of window capture: content
+/// the user wants that lives in a <i>separate</i> top-level window (a popup, a tooltip, an overlay
+/// from another program) is not in this frame either. That is the same property working for and
+/// against us, and it is why this is chosen per session rather than always.
+///
+/// The source question is now put to the user, in <see cref="CaptureWindowList"/> and the picker on
+/// the page, rather than inferred from the framed blocks by <see cref="SourceWindowResolver"/> —
+/// which survives as the probe tool's way of answering it without a page.
 /// </remarks>
 [SupportedOSPlatform("windows10.0.18362.0")]
 public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend

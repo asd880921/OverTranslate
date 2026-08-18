@@ -37,6 +37,29 @@ namespace OverTranslate.Views.Realtime;
 /// <paramref name="TextColor"/>. Independent of <paramref name="NaturalBackground"/> — the two fail
 /// in different places, so either can be had without the other.
 /// </param>
+/// <summary>Where a session reads its pixels from, as the user chose on the page.</summary>
+/// <remarks>
+/// Asked rather than inferred. <see cref="SourceWindowResolver"/> used to work this out from where
+/// the blocks landed, which is invisible to the user and gives them nothing to correct when it lands
+/// somewhere they did not mean — and the two answers are not interchangeable: one reads a window and
+/// keeps working when something covers it, the other reads the screen and needs this application's
+/// own overlays excluded from capture to be safe at all.
+/// </remarks>
+public enum RealtimeCaptureMode
+{
+    /// <summary>The whole screen, as composited. Needs the overlays excluded — see #94.</summary>
+    Screen,
+
+    /// <summary>One window the user named, read directly. Isolated by construction.</summary>
+    Window,
+}
+
+/// <param name="CaptureMode">Which of the two sources this session reads.</param>
+/// <param name="SourceWindow">
+/// The window to read in <see cref="RealtimeCaptureMode.Window"/>, and
+/// <see cref="IntPtr.Zero"/> otherwise. A handle, so it dies with the window — which is the point:
+/// the session ends with it rather than quietly reading something else.
+/// </param>
 public sealed record RealtimeStartRequest(
     System.Drawing.Rectangle ScreenBounds,
     int MaxBlocks,
@@ -47,7 +70,9 @@ public sealed record RealtimeStartRequest(
     string ScrimColor,
     int ScrimOpacity,
     bool NaturalBackground,
-    bool SampleSourceTextColor);
+    bool SampleSourceTextColor,
+    RealtimeCaptureMode CaptureMode = RealtimeCaptureMode.Screen,
+    IntPtr SourceWindow = default);
 
 /// <summary>
 /// Owns a realtime session end to end: the edit layer, the per-block overlays, the floating control
@@ -129,6 +154,18 @@ internal sealed class RealtimeSessionController
 
     /// <summary>Raised when the session starts or ends, so the page can re-render its controls.</summary>
     public event EventHandler? StateChanged;
+
+    /// <summary>
+    /// Raised when a session ended on its own rather than because the user said so, carrying the
+    /// message to show them.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="StateChanged"/> because the two have different audiences. That one
+    /// is for anything drawing this feature's controls, and fires whoever ended the session. This
+    /// one exists only for the case where nobody asked — the user has no reason to be looking at
+    /// this application, so it needs a listener that can reach them outside it.
+    /// </remarks>
+    public event EventHandler<string>? SessionEnded;
 
     public bool IsActive => _control != null;
 
@@ -382,11 +419,6 @@ internal sealed class RealtimeSessionController
             .ToList();
 
         // Resolved before the overlays are shown. They are click-through and belong to this process,
-        // so the resolver would skip them either way — but the order that does not depend on either
-        // of those facts is the one to write down.
-        var framed = regions.Select(region => region.Bounds).ToList();
-        var source = SourceWindowResolver.Resolve(framed);
-
         foreach (var region in regions)
         {
             var window = new RealtimeBlockWindow(
@@ -400,12 +432,11 @@ internal sealed class RealtimeSessionController
         // Built here and not in Start: the layers exist and have handles now, which is the earliest
         // a backend can be asked whether it can keep them out of frame — and the last moment before
         // the loop would begin reading the screen they are drawn on.
-        var capture = CreateCaptureBackend(source, framed);
+        var capture = CreateCaptureBackend(request, out var refusal);
         if (capture is null)
         {
             EnterEditMode();
-            control.ShowMessage(
-                LocalizationService.Get("S.Realtime.CaptureNotIsolated"), RealtimeMessageKind.Failure);
+            control.ShowMessage(LocalizationService.Get(refusal), RealtimeMessageKind.Failure);
             return;
         }
 
@@ -422,38 +453,33 @@ internal sealed class RealtimeSessionController
     }
 
     /// <summary>
-    /// Chooses where this session reads the screen from, or returns null when nothing available can
-    /// keep OverTranslate's own overlays out of the frame.
+    /// Builds the backend the user asked for, or names why it cannot be had.
     /// </summary>
     /// <remarks>
-    /// Window capture first, and not only because it is newer. Its isolation is structural — the
-    /// source is the watched application's window, and the subtitle layers are not that window — so
-    /// nothing has to succeed for it to hold, and it works identically on the Windows versions where
-    /// <c>WDA_EXCLUDEFROMCAPTURE</c> does not (#94). It also keeps reading a window that something
-    /// else is covering, which the desktop grab never could.
+    /// One mode, one backend, and no path between them. The policy this replaces tried window
+    /// capture first and fell back to the desktop grab when the source could not be inferred, which
+    /// was the right shape while the source was a guess — but it meant the answer to "what is being
+    /// read" depended on what happened to be under the blocks at the moment 開始翻譯 was pressed,
+    /// and the user could neither see that answer nor choose it.
     ///
-    /// It is not always available. It needs Windows 1903, and it needs the framed blocks to sit over
-    /// one identifiable window — regions spread across two applications, or drawn over the desktop,
-    /// have no single source to capture. Those fall back to the desktop grab, which is honest about
-    /// what it costs: it may only run where the overlays can be excluded from capture, and where
-    /// they cannot, the session does not start at all.
-    ///
-    /// No hidden third path. Falling back from a failed window capture to the desktop without the
-    /// exclusion holding is precisely the accident this whole rework exists to make impossible.
+    /// Now they choose, which makes falling back worse than refusing: someone who picked a window
+    /// and silently got the whole screen has been handed the other feature, carrying the other
+    /// feature's requirement — this application's own overlays excluded from capture, which does not
+    /// hold before Windows 11 24H2 (#94) — attached to a choice they never made. So each mode either
+    /// produces its own backend or says what to do instead.
     /// </remarks>
+    /// <param name="refusal">The string key to show the user, when this returns null.</param>
     private IRealtimeCaptureBackend? CreateCaptureBackend(
-        SourceWindowResolver.Resolution source, IReadOnlyList<System.Drawing.Rectangle> framed)
+        RealtimeStartRequest request, out string refusal)
     {
         // Once per run of translating, and the first thing to look for in any report about this
         // feature: which capture path the user was actually on, and what their system offered.
         Log.Info("Realtime capture capability: {Capability}", WgcCapability.Describe());
 
-        if (!source.Resolved)
-            Log.Info("Realtime window capture unavailable: {Reason}", source.Reason);
-        else if (!WgcCapability.IsCaptureSupported)
-            Log.Info("Realtime window capture unavailable: this system does not support it");
-        else if (CreateWindowBackend(framed) is { } windowCapture)
-            return windowCapture;
+        refusal = "S.Realtime.CaptureNotIsolated";
+
+        if (request.CaptureMode is RealtimeCaptureMode.Window)
+            return CreateWindowCapture(request.SourceWindow, out refusal);
 
         var desktop = new DesktopGrabCaptureBackend(OverlaysHiddenFromCapture());
         if (desktop.IsIsolated) return desktop;
@@ -462,13 +488,46 @@ internal sealed class RealtimeSessionController
         return null;
     }
 
-    [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.18362.0")]
-    private WgcWindowCaptureBackend? CreateWindowBackend(IReadOnlyList<System.Drawing.Rectangle> framed)
+    /// <summary>
+    /// Window capture over the handle the user picked, or the reason it is not available.
+    /// </summary>
+    /// <remarks>
+    /// Three separate refusals rather than one, because the three have different answers. A system
+    /// without window capture can only ever use 整個螢幕, and should be told that once. A window that
+    /// closed between the picker and this call needs the list refreshed. A window that refuses
+    /// capture — a game in exclusive fullscreen is the usual cause, see
+    /// <c>WgcWindowCaptureBackend.WaitForUsableFrame</c> — is a real property of that application,
+    /// and 整個螢幕 does read it.
+    /// </remarks>
+    private WgcWindowCaptureBackend? CreateWindowCapture(IntPtr hwnd, out string refusal)
     {
-        // Resolved afresh on each attempt rather than captured once: this is also what the backend
-        // calls when its source window closes, and a game that reopened its window in another mode
-        // is a different handle over the same rectangles.
-        var backend = WgcWindowCaptureBackend.TryCreate(() => SourceWindowResolver.Resolve(framed).Hwnd);
+        refusal = "S.Realtime.WindowCaptureFailed";
+
+        if (!WgcCapability.IsCaptureSupported)
+        {
+            refusal = "S.Realtime.WindowCaptureUnsupported";
+            Log.Info("Realtime window capture unavailable: this system does not support it");
+            return null;
+        }
+
+        if (!CaptureWindowList.StillAvailable(hwnd))
+        {
+            refusal = "S.Realtime.WindowCaptureGone";
+            Log.Info("Realtime window capture unavailable: hwnd={Hwnd:X} is gone or minimised", hwnd);
+            return null;
+        }
+
+        return CreateWindowBackend(hwnd);
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.18362.0")]
+    private WgcWindowCaptureBackend? CreateWindowBackend(IntPtr hwnd)
+    {
+        // The same handle every time it is asked, which is what turns the backend's re-attach into a
+        // no-op and lets the closing of that window end the session. Searching for a replacement is
+        // the alternative, and it would have to guess which new window is the same application —
+        // guessing is what this mode exists to stop doing.
+        var backend = WgcWindowCaptureBackend.TryCreate(() => hwnd);
         if (backend is null) return null;
 
         backend.SourceLost += OnCaptureSourceLost;
@@ -476,16 +535,28 @@ internal sealed class RealtimeSessionController
     }
 
     /// <summary>
-    /// The captured window is gone for good. Back to edit mode, where the user still has their
-    /// blocks and can point them at something else.
+    /// The captured window is gone. The session goes with it.
     /// </summary>
+    /// <remarks>
+    /// It used to drop back to edit mode with the blocks intact, which was the right answer while
+    /// the source was inferred from those blocks — pointing them at something else was a real thing
+    /// to do next. With the window named up front there is nothing left to re-aim: the one thing
+    /// this session was for is closed, and leaving the user in a full-screen editing layer over a
+    /// window that no longer exists is furniture, not a choice.
+    ///
+    /// So it ends, which also puts the shell back. The notice goes out through
+    /// <see cref="SessionEnded"/> rather than the control bar, because the bar is one of the things
+    /// being torn down — and the user is looking at the application they just closed, not at this
+    /// one, so it has to reach them somewhere they will see it.
+    /// </remarks>
     private void OnCaptureSourceLost(object? sender, string message) =>
         OnDispatcher(() =>
         {
             if (!IsTranslating) return;
 
-            EnterEditMode();
-            _control?.ShowMessage(message, RealtimeMessageKind.Failure);
+            Log.Info("Realtime session ending: the captured window is gone");
+            Stop();
+            SessionEnded?.Invoke(this, message);
         });
 
     /// <summary>

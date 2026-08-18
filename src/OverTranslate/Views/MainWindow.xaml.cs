@@ -58,7 +58,16 @@ public partial class MainWindow : Window
         InitNotifyIcon();
         RegisterHotkey();
         ShowStartupBalloon();
+
+        // The one thing about a realtime session that has to reach the user outside this
+        // application: the window they were watching closed, so the session is over and they are
+        // looking at whatever was behind it.
+        RealtimeSessionController.Instance.SessionEnded += OnRealtimeSessionEnded;
     }
+
+    private void OnRealtimeSessionEnded(object? sender, string message) =>
+        Dispatcher.Invoke(() => ShowTrayNotification(
+            LocalizationService.Get("S.Realtime.SessionEndedTitle"), message));
 
     private void InitNotifyIcon()
     {

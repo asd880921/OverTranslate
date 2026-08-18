@@ -1,0 +1,189 @@
+using System.Diagnostics;
+using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Text;
+using NLog;
+
+namespace OverTranslate.Services.Realtime.Capture;
+
+/// <summary>
+/// The windows a user can point 即時翻譯 at, as offered in the picker.
+/// </summary>
+/// <remarks>
+/// This is the deliberate opposite of <see cref="SourceWindowResolver"/>. That one infers the source
+/// from where the blocks were drawn, which is invisible, occasionally wrong, and — the thing that
+/// decided it — impossible to correct: a user whose session resolved to the wrong window, or to no
+/// window at all, has no control that says which one they meant. Asking outright costs one field and
+/// answers exactly what the whole inference was guessing at.
+///
+/// What is on this list is therefore a product question, not a technical one. Everything the user
+/// can see and would recognise, nothing they cannot: a list that includes the invisible half of the
+/// shell is a list they have to read past every time.
+/// </remarks>
+public static class CaptureWindowList
+{
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
+    /// <param name="Hwnd">The window itself. Dead the moment the application closes it.</param>
+    /// <param name="Title">What the window calls itself — the only part the user recognises.</param>
+    /// <param name="ProcessName">Which application it belongs to, for telling two alike titles apart.</param>
+    /// <param name="Bounds">Where it sits, in physical pixels. Decides which screen framing happens on.</param>
+    public readonly record struct CaptureWindow(
+        IntPtr Hwnd, string Title, string ProcessName, Rectangle Bounds);
+
+    /// <summary>
+    /// Every window worth offering, front to back.
+    /// </summary>
+    /// <remarks>
+    /// Z-order, not alphabetical: <c>EnumWindows</c> hands them over topmost-first, which puts the
+    /// application the user just came back from near the top of the list. That is nearly always the
+    /// one they mean, and sorting by name would bury it.
+    /// </remarks>
+    public static IReadOnlyList<CaptureWindow> Enumerate()
+    {
+        var found = new List<CaptureWindow>();
+
+        try
+        {
+            EnumWindows((hwnd, _) =>
+            {
+                if (Describe(hwnd) is { } window) found.Add(window);
+                return true;
+            }, IntPtr.Zero);
+        }
+        catch (Exception ex)
+        {
+            // An enumeration that failed halfway still lists what it reached, and an empty list has
+            // its own message on the page. Neither is worth an exception reaching the user.
+            Log.Warn(ex, "Could not finish enumerating capturable windows");
+        }
+
+        Log.Debug("Capturable windows offered: {Count}", found.Count);
+        return found;
+    }
+
+    /// <summary>Whether a window from an earlier listing is still there to be captured.</summary>
+    public static bool StillAvailable(IntPtr hwnd) =>
+        hwnd != IntPtr.Zero && IsWindow(hwnd) && IsWindowVisible(hwnd) && !IsIconic(hwnd);
+
+    /// <summary>
+    /// One window, or null when it is not something to offer.
+    /// </summary>
+    /// <remarks>
+    /// Each exclusion earns its place by what it removes from the list:
+    ///
+    /// <list type="bullet">
+    /// <item>Invisible, untitled and zero-sized windows are the message-only windows every process
+    /// keeps. There are dozens and none of them can be pointed at.</item>
+    /// <item>Cloaked windows are the reason a plain visible-and-titled filter is not enough. UWP
+    /// keeps closed apps around as windows that report themselves visible and titled while being
+    /// drawn nowhere, so the list fills with 設定 and 小算盤 the user has not got open.</item>
+    /// <item>Tool windows are palettes and floating bars, which are not what anyone means by "the
+    /// window with the subtitles in it".</item>
+    /// <item>Minimised windows cannot be captured — window capture produces nothing for them — and
+    /// the user could not frame blocks over one anyway.</item>
+    /// <item>This process's own windows, for the reason the whole feature exists.</item>
+    /// <item>The desktop, which has no application behind it. A user who wants the wallpaper wants
+    /// 整個螢幕.</item>
+    /// </list>
+    /// </remarks>
+    private static CaptureWindow? Describe(IntPtr hwnd)
+    {
+        if (!IsWindowVisible(hwnd) || IsIconic(hwnd)) return null;
+
+        var title = TextOf(hwnd, GetWindowText);
+        if (title.Length == 0) return null;
+
+        var exStyle = (long)GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+        if ((exStyle & WS_EX_TOOLWINDOW) != 0) return null;
+
+        if (DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, out var cloaked, sizeof(int)) == 0 && cloaked != 0)
+            return null;
+
+        var className = TextOf(hwnd, GetClassName);
+        if (className is "Progman" or "WorkerW") return null;
+
+        GetWindowThreadProcessId(hwnd, out var pid);
+        if (pid == Environment.ProcessId) return null;
+
+        if (!GetWindowRect(hwnd, out var rect)) return null;
+        var bounds = Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom);
+        if (bounds.Width <= 0 || bounds.Height <= 0) return null;
+
+        return new CaptureWindow(hwnd, title, ProcessNameOf(pid), bounds);
+    }
+
+    private static string ProcessNameOf(int pid)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(pid);
+            return process.ProcessName;
+        }
+        catch (Exception)
+        {
+            // Exited between the enumeration and this call, or running at a level this process
+            // cannot ask about. The title is what the user reads; this only tells two alike ones
+            // apart, and doing that imperfectly beats dropping the window from the list.
+            return "";
+        }
+    }
+
+    private static string TextOf(IntPtr hwnd, Func<IntPtr, StringBuilder, int, int> read)
+    {
+        var buffer = new StringBuilder(256);
+        var length = read(hwnd, buffer, buffer.Capacity);
+        return length > 0 ? buffer.ToString(0, length) : "";
+    }
+
+    private const int GWL_EXSTYLE = -20;
+    private const long WS_EX_TOOLWINDOW = 0x00000080;
+    private const int DWMWA_CLOAKED = 14;
+
+    private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out int processId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hwnd, StringBuilder buffer, int capacity);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hwnd, StringBuilder buffer, int capacity);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(
+        IntPtr hwnd, int attribute, out int value, int size);
+}

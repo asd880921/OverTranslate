@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using OverTranslate.Models;
 using OverTranslate.Services;
 using OverTranslate.Services.Realtime;
+using OverTranslate.Services.Realtime.Capture;
 using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using Screen = System.Windows.Forms.Screen;
 using UserControl = System.Windows.Controls.UserControl;
@@ -15,6 +16,14 @@ namespace OverTranslate.Views.Realtime;
 public sealed record ScreenItem(
     string DeviceName, string Display, System.Drawing.Rectangle Bounds, bool IsPrimary);
 
+/// <summary>One open window, as offered in the source picker.</summary>
+/// <remarks>
+/// The handle is the value, and it is only good for as long as that window is open — which is why
+/// the list is rebuilt on demand rather than kept, and why the controller checks the handle again
+/// before it builds anything around it.
+/// </remarks>
+public sealed record WindowItem(IntPtr Hwnd, string Display, string Detail);
+
 /// <summary>
 /// Sets up a realtime session and then gets out of the way — everything after 選取翻譯區塊 happens on
 /// the screen itself, driven by <see cref="RealtimeSessionController"/>.
@@ -22,9 +31,12 @@ public sealed record ScreenItem(
 /// <remarks>
 /// The page holds two kinds of value, and the line between them is the rule to keep:
 ///
-/// <para><b>Parameters of one sitting</b> — screen and block count — are not read from or written to
-/// the settings file. Reopening the window must not restore a screen that may have been unplugged,
-/// or blocks that no longer frame the same content.</para>
+/// <para><b>Parameters of one sitting</b> — capture source, screen and block count — are not read
+/// from or written to the settings file. Reopening the window must not restore a screen that may
+/// have been unplugged, or blocks that no longer frame the same content. The capture source is the
+/// clearest case of the rule: 指定視窗 is a live window handle, which does not survive the window
+/// being closed, let alone the next launch, so storing the mode alone would reopen the page in a
+/// state missing its own answer.</para>
 ///
 /// <para><b>Translation preferences</b> — both languages and the service — are stored independently
 /// from screenshot and text translation. Watching a game and translating a document are different
@@ -79,6 +91,12 @@ public partial class RealtimePage : UserControl
 
     private int _blockCount = MinBlocks;
 
+    // Deliberately not stored, and not for the usual reason. The mode could be remembered; the
+    // window it needs cannot — a handle is meaningless in the next sitting — so restoring 指定視窗
+    // would reopen the page in a state that is missing its own answer, which is worse than the one
+    // extra press. See the class remarks for the line this sits on.
+    private bool _windowsLoaded;
+
     // True while this page is writing the opacity slider rather than the user, so that restoring a
     // stored value does not read as a change and write it straight back.
     private bool _syncingOpacity;
@@ -95,6 +113,7 @@ public partial class RealtimePage : UserControl
         BindPickers();
 
         ApplyPageDefaults();
+        ApplyCaptureMode();
 
         // Attached after the initial value is set, so initialisation does not fire the handler
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
@@ -208,6 +227,10 @@ public partial class RealtimePage : UserControl
     {
         BindPickers();
         LoadScreens();
+        // Both halves: the mode's own explanation comes from the string dictionary, and the window
+        // list is a snapshot of a desktop the user has been away from since it was taken.
+        ApplyCaptureMode();
+        if (_windowsLoaded) LoadWindows();
         SyncScrimOpacity();
         RenderColours();
         RenderPauseHint();
@@ -294,6 +317,143 @@ public partial class RealtimePage : UserControl
             : (System.Windows.Media.Brush)FindResource("AppTextSecondary");
     }
 
+    // ── 擷取來源 ───────────────────────────────────────────────────────────────
+
+    /// <summary>Whether the user has asked for one window rather than the whole screen.</summary>
+    private bool WindowMode => WindowModeRadio.IsChecked == true;
+
+    private void CaptureModeRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        // Fires during InitializeComponent, before the rest of the card exists.
+        if (WindowPickerPanel is null) return;
+
+        ApplyCaptureMode();
+    }
+
+    /// <summary>
+    /// Shows the half of the card the chosen mode needs, and hides the screen picker when it is no
+    /// longer the user's to answer.
+    /// </summary>
+    /// <remarks>
+    /// The window list is built the first time 指定視窗 is chosen rather than when the page loads:
+    /// enumerating every open window costs a pass over the desktop, and the common case — a user who
+    /// wants the whole screen — never needs it. After that it is only rebuilt on request, because a
+    /// list that reshuffles itself while the user is reading it is worse than one that is a few
+    /// seconds old.
+    /// </remarks>
+    private void ApplyCaptureMode()
+    {
+        var window = WindowMode;
+
+        WindowPickerPanel.Visibility = window ? Visibility.Visible : Visibility.Collapsed;
+        ScreenPanel.Visibility = window ? Visibility.Collapsed : Visibility.Visible;
+        CaptureSourceHint.Text = LocalizationService.Get(
+            window ? "S.Realtime.CaptureSourceWindowHint" : "S.Realtime.CaptureSourceScreenHint");
+
+        if (!window || _windowsLoaded) return;
+
+        _windowsLoaded = true;
+        LoadWindows();
+    }
+
+    private void RefreshWindowsBtn_Click(object sender, RoutedEventArgs e) => LoadWindows();
+
+    /// <summary>
+    /// Asks Windows what is open, keeping the user's pick if it is still there.
+    /// </summary>
+    private void LoadWindows()
+    {
+        var previous = (WindowBox.SelectedItem as WindowItem)?.Hwnd ?? IntPtr.Zero;
+
+        var items = CaptureWindowList.Enumerate()
+            .Select(window => new WindowItem(
+                window.Hwnd,
+                window.Title,
+                window.ProcessName.Length > 0
+                    ? LocalizationService.Format("S.Realtime.CaptureWindowDetail", window.ProcessName)
+                    : ""))
+            .ToList();
+
+        WindowBox.ItemsSource = items;
+        WindowBox.DisplayMemberPath = nameof(WindowItem.Display);
+
+        // Restored by handle rather than by name: two windows of the same application share a title
+        // often enough that picking by name would silently move the user to a different one.
+        WindowBox.SelectedItem = items.FirstOrDefault(item => item.Hwnd == previous);
+
+        RenderWindowChoice(items.Count);
+    }
+
+    private void WindowBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (WindowHint is null) return;
+
+        RenderWindowChoice((WindowBox.ItemsSource as IReadOnlyList<WindowItem>)?.Count ?? 0);
+    }
+
+    /// <summary>
+    /// The line under the picker: which monitor the framing will happen on, or why there is nothing
+    /// to choose.
+    /// </summary>
+    /// <remarks>
+    /// Naming the monitor matters more here than it looks. The screen picker is gone in this mode,
+    /// so the one thing the user cannot otherwise tell — which screen is about to be covered by a
+    /// full-screen framing layer — has to be said out loud, and it is decided by a window they may
+    /// have dragged somewhere since they last looked.
+    /// </remarks>
+    private void RenderWindowChoice(int count)
+    {
+        WindowPlaceholder.Visibility =
+            WindowBox.SelectedItem is null ? Visibility.Visible : Visibility.Collapsed;
+
+        if (count == 0)
+        {
+            WindowHint.Text = LocalizationService.Get("S.Realtime.CaptureWindowNone");
+            return;
+        }
+
+        if (WindowBox.SelectedItem is not WindowItem item)
+        {
+            WindowHint.Text = LocalizationService.Get("S.Realtime.CaptureWindowHint");
+            return;
+        }
+
+        if (ScreenOf(item.Hwnd) is not { } screen)
+        {
+            // Closed while the list was sitting open. Said here rather than saved for 開始翻譯,
+            // because the user is looking at this line right now.
+            WindowHint.Text = LocalizationService.Get("S.Realtime.WindowCaptureGone");
+            return;
+        }
+
+        var line = LocalizationService.Format("S.Realtime.CaptureWindowOnScreen", ScreenLabel(screen));
+        WindowHint.Text = item.Detail.Length > 0 ? $"{line} {item.Detail}" : line;
+    }
+
+    /// <summary>The monitor a window sits on, or null when it has gone since the list was built.</summary>
+    private static Screen? ScreenOf(IntPtr hwnd)
+    {
+        try
+        {
+            return CaptureWindowList.StillAvailable(hwnd) ? Screen.FromHandle(hwnd) : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The same wording the screen picker uses, so the two name a monitor identically.</summary>
+    private static string ScreenLabel(Screen screen)
+    {
+        var screens = Screen.AllScreens;
+        var index = Array.FindIndex(screens, candidate => candidate.DeviceName == screen.DeviceName);
+
+        return LocalizationService.Format(
+            screen.Primary ? "S.Realtime.ScreenItemPrimary" : "S.Realtime.ScreenItem",
+            index + 1, screen.Bounds.Width, screen.Bounds.Height);
+    }
+
     private void LoadScreens()
     {
         var previous = ScreenBox.SelectedValue as string;
@@ -370,15 +530,49 @@ public partial class RealtimePage : UserControl
             return;
         }
 
-        if (ScreenBox.SelectedItem is not ScreenItem screen)
+        // The two modes need different things to be true before there is a session to start, and
+        // both failures are the user's to fix on this page rather than something to discover on a
+        // screen that has just gone black.
+        System.Drawing.Rectangle framingBounds;
+        var sourceWindow = IntPtr.Zero;
+
+        if (WindowMode)
         {
-            SetStatus(LocalizationService.Get("S.Realtime.NoScreens"), isError: true);
-            return;
+            if (WindowBox.SelectedItem is not WindowItem window)
+            {
+                SetStatus(LocalizationService.Get("S.Realtime.ChooseWindowFirst"), isError: true);
+                return;
+            }
+
+            // Checked here and again in the controller, and neither is redundant: this one can still
+            // tell the user to refresh the list, while the later one is the last word before pixels
+            // are read.
+            if (ScreenOf(window.Hwnd) is not { } windowScreen)
+            {
+                SetStatus(LocalizationService.Get("S.Realtime.WindowCaptureGone"), isError: true);
+                LoadWindows();
+                return;
+            }
+
+            // The blocks have to be drawn over the window, so the framing layer belongs on whatever
+            // monitor that window is on — not on whichever one the hidden picker last held.
+            framingBounds = windowScreen.Bounds;
+            sourceWindow = window.Hwnd;
+        }
+        else
+        {
+            if (ScreenBox.SelectedItem is not ScreenItem screen)
+            {
+                SetStatus(LocalizationService.Get("S.Realtime.NoScreens"), isError: true);
+                return;
+            }
+
+            framingBounds = screen.Bounds;
         }
 
         var settings = SettingsService.Instance.Current;
         var request = new RealtimeStartRequest(
-            screen.Bounds,
+            framingBounds,
             _blockCount,
             LanguageData.GetValidOcrSourceCode(sourceLanguage),
             LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string),
@@ -387,7 +581,9 @@ public partial class RealtimePage : UserControl
             settings.RealtimeScrimColor,
             settings.RealtimeScrimOpacity,
             settings.RealtimeNaturalBackgroundEnabled,
-            settings.RealtimeSampleSourceTextColor);
+            settings.RealtimeSampleSourceTextColor,
+            WindowMode ? RealtimeCaptureMode.Window : RealtimeCaptureMode.Screen,
+            sourceWindow);
 
         // The shell is handed over to be hidden: it is almost certainly sitting on the screen the
         // user is about to frame blocks on, and it comes back when the session ends.

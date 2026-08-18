@@ -7,6 +7,12 @@ namespace OverTranslate.Views.Realtime;
 /// Whether a shortcut press can drop straight into block framing, and what to say when it cannot.
 /// </summary>
 /// <remarks>
+/// Nothing calls this at the moment. The shortcut it exists for is turned away in
+/// <c>MainWindow.OnRealtimeHotkeyPressed</c>, because a session now begins with a question this type
+/// cannot answer from a settings file: which window, chosen from what is open right now. It is kept
+/// whole rather than deleted while that is still an open product decision — see the shortcut's own
+/// remarks — and everything below still describes what it does when it is called again.
+///
 /// The page's 開始 button asks the same questions, but it asks them of its own pickers. A shortcut has
 /// no page — it can be pressed with the shell closed to the tray — so the answers have to come from
 /// the settings file, and the ones that are not stored have to have somewhere to come from.
