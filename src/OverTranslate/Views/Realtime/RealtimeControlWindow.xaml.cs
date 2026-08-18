@@ -34,9 +34,9 @@ public enum RealtimeMessageKind
 /// <remarks>
 /// It is one window across both modes rather than two, so its position survives the switch — a user
 /// who moved it out of the way of a subtitle should not find it back in the middle after pressing
-/// 編輯. Like the other realtime windows it never takes activation and is excluded from screen
-/// capture, so it can neither pull focus from a full-screen game nor end up inside a watched block's
-/// own grab.
+/// 編輯. Like the other realtime windows it never takes activation, so it cannot pull focus from a
+/// full-screen game; and the capture backend leaves it out of its frames, so it never ends up inside
+/// a watched block's own reading.
 /// </remarks>
 public partial class RealtimeControlWindow : Window
 {
@@ -56,6 +56,12 @@ public partial class RealtimeControlWindow : Window
     private static string PausedStatus => LocalizationService.Get("S.Realtime.Paused");
     private bool _hasLanguages;
     private bool _isPaused;
+
+    // Whether a message is standing in for the bar's own text. Kept explicitly rather than read off
+    // the timer, which stopped being the same question once a message could be sticky: a sticky one
+    // is showing with no timer running, and the timer check would have quietly restored the bar
+    // underneath it.
+    private bool _messageShowing;
 
     // The scale WPF renders this window at, which is the DPI of whatever monitor it currently sits
     // on — not necessarily the one the session runs on. Everything that converts between the window's
@@ -124,22 +130,15 @@ public partial class RealtimeControlWindow : Window
     public event EventHandler? StartRequested;
     public event EventHandler? EditRequested;
     public event EventHandler? CloseRequested;
-    public event EventHandler? ShotRequested;
     public event EventHandler? PauseToggleRequested;
-
-    /// <summary>
-    /// Whether this bar is hidden from anything that reads the screen — see
-    /// <see cref="WindowCaptureShield"/>. Read by <see cref="RealtimeSessionController"/> before it
-    /// lets the desktop-grab backend start polling.
-    /// </summary>
-    public bool IsHiddenFromCapture { get; private set; }
 
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
 
+        // No WDA_EXCLUDEFROMCAPTURE here any more: this bar stays out of what the loop reads because
+        // the capture backend leaves it out, not because the bar asked to be invisible (#105).
         WindowStyles.ApplyNoActivate(this);
-        IsHiddenFromCapture = WindowCaptureShield.Exclude(this);
     }
 
     /// <summary>
@@ -216,7 +215,7 @@ public partial class RealtimeControlWindow : Window
         TargetLangText.Text = Models.LanguageData.GetTargetDisplayName(targetCode);
         _hasLanguages = SourceLangText.Text.Length > 0 && TargetLangText.Text.Length > 0;
 
-        if (!_messageTimer.IsEnabled) RestoreText();
+        if (!_messageShowing) RestoreText();
     }
 
     /// <summary>
@@ -288,10 +287,19 @@ public partial class RealtimeControlWindow : Window
     }
 
     /// <summary>
-    /// Replaces the bar's own text for a moment. Transient by design: these are answers to something
-    /// the user just did (a refused drag, an engine that failed), not state worth keeping on screen.
+    /// Replaces the bar's own text. Transient by default: these are answers to something the user
+    /// just did (a refused drag, an engine that failed), not state worth keeping on screen.
     /// </summary>
-    public void ShowMessage(string message, RealtimeMessageKind kind = RealtimeMessageKind.Info)
+    /// <param name="sticky">
+    /// Keeps the message up until something else replaces it, for the one kind that is not an answer
+    /// but an instruction: a session that could not start and names what to do instead. That
+    /// instruction is 結束即時翻譯 and then change 擷取來源 — a page this session has hidden behind
+    /// the shell window — so the user cannot act on it without first leaving the screen the message
+    /// is on. Timed out after a couple of seconds it would be gone before they got back, with
+    /// nothing left on screen to say why nothing happened.
+    /// </param>
+    public void ShowMessage(
+        string message, RealtimeMessageKind kind = RealtimeMessageKind.Info, bool sticky = false)
     {
         if (_mode == RealtimeControlMode.Edit)
         {
@@ -310,38 +318,9 @@ public partial class RealtimeControlWindow : Window
             SetDotState(kind == RealtimeMessageKind.Failure);
         }
 
+        _messageShowing = true;
         _messageTimer.Stop();
-        _messageTimer.Start();
-    }
-
-    /// <summary>Where the bar sits on screen, in physical pixels.</summary>
-    public System.Drawing.Rectangle PhysicalBounds =>
-        new(_position.X, _position.Y, PhysicalWidth, PhysicalHeight);
-
-    /// <summary>
-    /// The bar as an image at physical resolution, so a showcase capture can include it — the bar is
-    /// excluded from real screen capture and would otherwise be missing from the one picture meant to
-    /// show what this feature looks like.
-    /// </summary>
-    /// <remarks>
-    /// Renders the window rather than its content. <see cref="RootChrome"/> carries the mixed-DPI
-    /// LayoutTransform, and a visual's own layout transform is not part of what Render draws — only
-    /// its descendants' are. Taken from the window, RootChrome is a descendant and the transform
-    /// applies, which is also what makes <see cref="PhysicalWidth"/> the right size for the bitmap.
-    /// </remarks>
-    public System.Windows.Media.Imaging.BitmapSource? RenderForCapture()
-    {
-        if (!IsLoaded) return null;
-
-        var width = Math.Max(1, PhysicalWidth);
-        var height = Math.Max(1, PhysicalHeight);
-
-        var rendered = new System.Windows.Media.Imaging.RenderTargetBitmap(
-            width, height, 96 * _windowScale, 96 * _windowScale,
-            System.Windows.Media.PixelFormats.Pbgra32);
-        rendered.Render(this);
-        rendered.Freeze();
-        return rendered;
+        if (!sticky) _messageTimer.Start();
     }
 
     /// <summary>Re-asserts the bar above a window created after it — the edit layer, on re-entry.</summary>
@@ -353,6 +332,7 @@ public partial class RealtimeControlWindow : Window
 
     private void RestoreText()
     {
+        _messageShowing = false;
         EditHintText.Text = EditHint;
 
         RunStatusText.Text = _isPaused ? PausedStatus : RunStatus;
@@ -472,8 +452,6 @@ public partial class RealtimeControlWindow : Window
     private void StartBtn_Click(object sender, RoutedEventArgs e) => StartRequested?.Invoke(this, EventArgs.Empty);
 
     private void EditBtn_Click(object sender, RoutedEventArgs e) => EditRequested?.Invoke(this, EventArgs.Empty);
-
-    private void ShotBtn_Click(object sender, RoutedEventArgs e) => ShotRequested?.Invoke(this, EventArgs.Empty);
 
     private void PauseBtn_Click(object sender, RoutedEventArgs e) => PauseToggleRequested?.Invoke(this, EventArgs.Empty);
 

@@ -14,12 +14,22 @@ namespace OverTranslate.Services.Realtime.Capture;
 /// works only where the source is the composited desktop, and it fails outright on every Windows
 /// before 11 24H2 (#94), where it cost users a loop that translated its own output.
 ///
-/// So a backend is answerable for its own isolation. <see cref="IsIsolated"/> is the promise, made
-/// before a single region is read; a backend that cannot make it is not used. What that costs varies
-/// by source — a backend that captures the watched window directly never had the overlays in frame
-/// to begin with, a monitor capture has the session compose the screen without them, and the desktop
-/// grab has to ask the overlays to hide themselves — and none of that reaches the session, which
-/// asks for a rectangle and gets pixels.
+/// So a backend is answerable for its own isolation, and answerable structurally — by what it
+/// captures, not by what it asks other windows to do about themselves. A window capture never had
+/// the overlays in frame to begin with; a monitor capture has the system compose the screen without
+/// them and refuses to read a frame composed before that took effect. There is no third kind: the
+/// backend that grabbed the composited desktop and relied on the overlays hiding themselves was
+/// removed in #105, because its isolation was a claim the program could not check.
+///
+/// There is deliberately no property on this interface for a backend to <i>declare</i> that it is
+/// isolated. One existed, and the session refused to start on a backend that answered false — but
+/// once every implementation was structurally isolated it could only ever answer true, and a claim
+/// nobody can check is the exact shape of the thing #105 removed: <c>WDA_EXCLUDEFROMCAPTURE</c> also
+/// reported success, and #94 is what believing it cost. A new backend satisfies this rule by being
+/// built so that it cannot fail — by capturing something the overlays are not part of, or by
+/// refusing to construct until the system has agreed to leave them out — not by returning true.
+///
+/// None of how that is arranged reaches the session, which asks for a rectangle and gets pixels.
 /// </remarks>
 public interface IRealtimeCaptureBackend : IDisposable
 {
@@ -27,16 +37,15 @@ public interface IRealtimeCaptureBackend : IDisposable
     string Name { get; }
 
     /// <summary>
-    /// Whether this backend's frames are known to be free of OverTranslate's own overlays. Answered
-    /// once the backend is built and before it is used; a false answer means the session must not
-    /// start rather than that its results are merely less good.
-    /// </summary>
-    bool IsIsolated { get; }
-
-    /// <summary>
     /// The pixels currently inside <paramref name="screenBounds"/>, given in physical screen
     /// coordinates, as a bitmap the caller owns and disposes.
     /// </summary>
+    /// <remarks>
+    /// The one way anything in a running session is allowed to see the screen. Recognition is the
+    /// obvious caller, but not the only one: the natural-background repair needs the picture
+    /// <i>under</i> this application's overlays, and that is exactly what a backend promises and
+    /// nothing else in the process can obtain.
+    /// </remarks>
     /// <returns>
     /// Null when this poll produced nothing — a locked screen, a source that has gone away, a
     /// transient failure. The caller skips the poll; the next one is 250ms behind it.

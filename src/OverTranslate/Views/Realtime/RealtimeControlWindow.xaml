@@ -162,19 +162,6 @@
                             AutomationProperties.Name="{DynamicResource S.Realtime.Pause}"
                             Click="PauseBtn_Click"/>
 
-                    <!-- Icon rather than a word: the two buttons beside it are the session's own
-                         controls, and a third label of equal weight would read as a third thing the
-                         user has to decide about. This one is only ever wanted deliberately. -->
-                    <Button x:Name="ShotBtn"
-                            Style="{StaticResource ToolbarIconButton}"
-                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                            FontSize="15"
-                            Content="&#xE722;"
-                            Margin="0,0,4,0"
-                            ToolTip="{DynamicResource S.Realtime.CaptureScreenshot}"
-                            AutomationProperties.Name="{DynamicResource S.Realtime.CaptureScreenshot}"
-                            Click="ShotBtn_Click"/>
-
                     <Button Content="{DynamicResource S.Common.Edit}"
                             Style="{StaticResource ToolbarFlatButton}"
                             Margin="0,0,4,0"

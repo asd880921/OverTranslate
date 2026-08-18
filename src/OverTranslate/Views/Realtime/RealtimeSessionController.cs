@@ -195,7 +195,6 @@ internal sealed class RealtimeSessionController
         control.StartRequested += (_, _) => StartTranslating();
         control.EditRequested += (_, _) => EnterEditMode();
         control.CloseRequested += (_, _) => Stop();
-        control.ShotRequested += (_, _) => CaptureShowcase();
         control.PauseToggleRequested += (_, _) => TogglePause();
         _control = control;
         control.Show();
@@ -416,7 +415,7 @@ internal sealed class RealtimeSessionController
         foreach (var region in regions)
         {
             var window = new RealtimeBlockWindow(
-                region.Id, region.Bounds, request.SourceLanguage, request.TargetLanguage,
+                region.Id, region.Bounds, GrabUnderlying, request.SourceLanguage, request.TargetLanguage,
                 request.TextColor, request.ScrimColor, request.ScrimOpacity,
                 request.NaturalBackground, request.SampleSourceTextColor);
             _blockWindows[region.Id] = window;
@@ -434,7 +433,11 @@ internal sealed class RealtimeSessionController
         if (capture is null)
         {
             EnterEditMode();
-            control.ShowMessage(LocalizationService.Get(refusal), RealtimeMessageKind.Failure);
+
+            // Sticky: this one names an action the user has to leave this screen to take, so it has
+            // to still be there when they come back to it. See RealtimeControlWindow.ShowMessage.
+            control.ShowMessage(
+                LocalizationService.Get(refusal), RealtimeMessageKind.Failure, sticky: true);
             return;
         }
 
@@ -462,9 +465,9 @@ internal sealed class RealtimeSessionController
     ///
     /// Now they choose, which makes falling back worse than refusing: someone who picked a window
     /// and silently got the whole screen has been handed the other feature, carrying the other
-    /// feature's requirement — this application's own overlays excluded from capture, which does not
-    /// hold before Windows 11 24H2 (#94) — attached to a choice they never made. So each mode either
-    /// produces its own backend or says what to do instead.
+    /// feature's requirement — a system new enough to compose a monitor without this application's
+    /// overlays — attached to a choice they never made. So each mode either produces its own backend
+    /// or says what to do instead.
     /// </remarks>
     /// <param name="refusal">The string key to show the user, when this returns null.</param>
     private IRealtimeCaptureBackend? CreateCaptureBackend(
@@ -474,7 +477,7 @@ internal sealed class RealtimeSessionController
         // feature: which capture path the user was actually on, and what their system offered.
         Log.Info("Realtime capture capability: {Capability}", WgcCapability.Describe());
 
-        refusal = "S.Realtime.CaptureNotIsolated";
+        refusal = "S.Realtime.ScreenCaptureUnavailable";
 
         if (request.CaptureMode is Models.RealtimeCaptureMode.Window)
             return CreateWindowCapture(request.SourceWindow, out refusal);
@@ -483,38 +486,38 @@ internal sealed class RealtimeSessionController
     }
 
     /// <summary>
-    /// The whole screen, isolated the best way this system allows, or null when it allows neither.
+    /// The whole screen as a monitor capture with this session's overlays excluded, or null when
+    /// this system cannot do that — in which case the user is sent to 視窗擷取.
     /// </summary>
     /// <remarks>
-    /// Two backends, in this order, and the order is the whole of the policy. A monitor capture with
-    /// the overlays in the session's window exclusion list is structural: the system composes the
-    /// screen without them, the set call says from which frame that holds, and frames older than
-    /// that are never read. The desktop grab is the older arrangement, where the overlays are asked
-    /// to hide themselves with <c>WDA_EXCLUDEFROMCAPTURE</c> and the session starts only if every
-    /// one of them agreed — which they cannot do before Windows 11 24H2 (#94).
+    /// One backend, one requirement, and no second choice. This used to fall back to grabbing the
+    /// composited desktop on systems with no window exclusion list, with the overlays asked to hide
+    /// themselves via <c>WDA_EXCLUDEFROMCAPTURE</c>. That path is gone (#105), and dropping it was
+    /// the point rather than a side effect: it was the one capture path whose isolation could not be
+    /// checked from inside the program — display affinity fails silently on a layered WPF window, on
+    /// every Windows before 11 24H2, which is how #94 went unnoticed for as long as it did.
     ///
-    /// The exclusion list is far newer than 24H2, so the second is not dead code waiting to be
-    /// removed: it is the only full-screen path on every machine between those two Windows, and
-    /// today that is most of them. Dropping it with the first one in place would take a working
-    /// feature away from that whole band to tidy up a file.
-    ///
-    /// This is not the fallback #96 forbade. That one was silent and changed what the user was
-    /// reading — window capture quietly becoming a screen grab. Both of these <i>are</i> the screen
-    /// the user asked for, both refuse to start unless they can prove their own isolation, and which
-    /// one ran is named in the log.
+    /// What that costs is the band of systems between 24H2 and the exclusion list, who lose 螢幕擷取.
+    /// They are not left without the feature: 視窗擷取 needs neither API — its isolation is that the
+    /// source is somebody else's window — so it works on every system with WGC at all, and the
+    /// refusal below is written to send them there rather than to explain a mechanism they cannot
+    /// act on.
     /// </remarks>
     private IRealtimeCaptureBackend? CreateScreenCapture(RealtimeStartRequest request, out string refusal)
     {
-        refusal = "S.Realtime.CaptureNotIsolated";
+        refusal = "S.Realtime.ScreenCaptureUnavailable";
 
-        if (WgcCapability.IsCaptureSupported && CreateMonitorCapture(request.ScreenBounds) is { } monitor)
-            return monitor;
+        // Normally unreachable: 擷取來源 does not offer this mode on a machine that answers false,
+        // so arriving here means a settings file that named it, or a capability that changed under a
+        // page left open. Kept because the interface offering a mode is not what makes it safe.
+        if (!WgcCapability.SupportsScreenMode)
+        {
+            Log.Info(
+                "Realtime screen capture unavailable: {Capability}", WgcCapability.Describe());
+            return null;
+        }
 
-        var desktop = new DesktopGrabCaptureBackend(OverlaysHiddenFromCapture());
-        if (desktop.IsIsolated) return desktop;
-
-        desktop.Dispose();
-        return null;
+        return CreateMonitorCapture(request.ScreenBounds);
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.18362.0")]
@@ -572,15 +575,33 @@ internal sealed class RealtimeSessionController
     }
 
     /// <summary>
+    /// The picture under a rectangle of the screen, taken from the session's capture backend.
+    /// </summary>
+    /// <remarks>
+    /// The single door through which anything in a running session may see the screen. It is handed
+    /// to every block overlay so the natural-background repair reads what is under it rather than
+    /// photographing itself (#99) — and the point of routing it through here is that it can no
+    /// longer be correct only on some Windows versions. A backend either has an isolated frame or
+    /// has none; there is no third answer it could give that quietly includes our own subtitles.
+    ///
+    /// Resolved on each call rather than captured, because a block overlay is created before the
+    /// backend is — the overlays have to exist and have handles before a monitor capture can be told
+    /// to leave them out. Null before then, and again from the moment the backend is disposed, which
+    /// is a whole tick before the overlays close.
+    /// </remarks>
+    private System.Drawing.Bitmap? GrabUnderlying(System.Drawing.Rectangle screenBounds) =>
+        _capture?.GrabRegion(screenBounds);
+
+    /// <summary>
     /// Window capture over the handle the user picked, or the reason it is not available.
     /// </summary>
     /// <remarks>
     /// Three separate refusals rather than one, because the three have different answers. A system
-    /// without window capture can only ever use 整個螢幕, and should be told that once. A window that
+    /// without window capture can only ever use 螢幕擷取, and should be told that once. A window that
     /// closed between the picker and this call needs the list refreshed. A window that refuses
     /// capture — a game in exclusive fullscreen is the usual cause, see
     /// <c>WgcWindowCaptureBackend.WaitForUsableFrame</c> — is a real property of that application,
-    /// and 整個螢幕 does read it.
+    /// and 螢幕擷取 does read it.
     /// </remarks>
     private WgcWindowCaptureBackend? CreateWindowCapture(IntPtr hwnd, out string refusal)
     {
@@ -641,106 +662,6 @@ internal sealed class RealtimeSessionController
             Stop();
             SessionEnded?.Invoke(this, message);
         });
-
-    /// <summary>
-    /// Whether every layer this session draws is absent from anything that reads the screen.
-    /// </summary>
-    /// <remarks>
-    /// The invariant behind this: recognition must never run on a frame that may contain this
-    /// application's own overlays. The loop grabs the composited desktop, so the only thing keeping
-    /// those overlays out of the grab is <see cref="WindowCaptureShield"/> — and that fails on every
-    /// Windows before 11 24H2, because WPF's <c>AllowsTransparency</c> renders through
-    /// <c>UpdateLayeredWindow</c> and display affinity is not supported on that kind of window.
-    ///
-    /// This used to be recorded and ignored. What that cost is in #94: the loop read its own
-    /// translation back composited over whatever the scrim failed to cover, so no two readings
-    /// matched, every pass counted as new, and the drawn line grew about 15% per generation until
-    /// one measured region went from 25px to 71px in nine seconds and the detector could no longer
-    /// find anything at all. There is no recovering from it afterwards either — the scrim physically
-    /// covers the source, so those pixels are gone from the grab.
-    ///
-    /// So a session that cannot isolate itself does not start. Refusing is a worse feature than
-    /// working and a far better one than the above, and the user is left in edit mode with their
-    /// blocks intact rather than watching the screen dissolve.
-    /// </remarks>
-    private bool OverlaysHiddenFromCapture()
-    {
-        var blocked = _blockWindows.Values.Count(window => !window.IsHiddenFromCapture);
-        var barBlocked = _control is { IsHiddenFromCapture: false };
-        if (blocked == 0 && !barBlocked) return true;
-
-        Log.Error(
-            "Realtime session refused to start: {Blocked} of {Total} block overlay(s)" +
-            "{Bar} could not be hidden from screen capture, so the loop would recognise its own output",
-            blocked, _blockWindows.Count, barBlocked ? " and the control bar" : string.Empty);
-        return false;
-    }
-
-    /// <summary>
-    /// Builds a picture of the screen with this session's subtitles drawn onto it, and puts it on
-    /// the clipboard — the only way to show someone what this feature does, since the layers
-    /// themselves are excluded from every form of screen capture.
-    /// </summary>
-    /// <remarks>
-    /// Saved to disk as well when 截圖 → 截圖時自動儲存 is on, deliberately following the rule the
-    /// capture side already set rather than introducing a second one for the same kind of output.
-    /// </remarks>
-    private void CaptureShowcase()
-    {
-        if (_control is not { } control || _request is not { } request) return;
-
-        try
-        {
-            var overlays = _blockWindows.Values
-                .Select(window => (Window: window, Image: window.RenderForCapture()))
-                .Where(pair => pair.Image is not null)
-                .Select(pair => new RealtimeShowcaseCapture.Overlay(
-                    pair.Window.PhysicalBounds, pair.Image!))
-                .ToList();
-
-            if (overlays.Count == 0)
-            {
-                // Composing here would produce a plain screenshot, which is not what was asked for
-                // and gives no sign that anything was missing.
-                control.ShowMessage(LocalizationService.Get("S.Realtime.NothingToCapture"));
-                return;
-            }
-
-            // Last, so it lands on top of any block it overlaps — the same order it has on screen.
-            // Included because a picture of subtitles with no visible tool looks like the application
-            // being watched simply has subtitles, which is the opposite of what this capture is for.
-            if (control.RenderForCapture() is { } bar)
-                overlays.Add(new RealtimeShowcaseCapture.Overlay(control.PhysicalBounds, bar));
-
-            var image = RealtimeShowcaseCapture.Compose(request.ScreenBounds, overlays);
-            if (image is null)
-            {
-                control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureFailed"), RealtimeMessageKind.Failure);
-                return;
-            }
-
-            System.Windows.Clipboard.SetImage(image);
-
-            var settings = SettingsService.Instance.Current;
-            if (!settings.SaveScreenshotToDisk)
-            {
-                control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureCopied"));
-                return;
-            }
-
-            var path = ScreenshotSaveService.Save(image, settings.ScreenshotSavePath);
-            Log.Info("Realtime showcase capture saved to {Path}", path);
-            control.ShowMessage(LocalizationService.Get("S.Realtime.CaptureCopiedAndSaved"));
-        }
-        catch (Exception ex)
-        {
-            // The clipboard can be held by another process and saving can hit a full or read-only
-            // folder. Neither is worth ending a session over, and the bar is where the user is
-            // looking.
-            Log.Warn(ex, "Realtime showcase capture failed");
-            control.ShowMessage(LocalizationService.Format("S.Realtime.CaptureError", ex.Message), RealtimeMessageKind.Failure);
-        }
-    }
 
     // ── Session callbacks (raised on the polling thread) ─────────────────────────────────────────
 

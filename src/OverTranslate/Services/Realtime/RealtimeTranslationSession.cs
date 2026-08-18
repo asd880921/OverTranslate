@@ -137,9 +137,10 @@ public sealed class RealtimeTranslationSession
     public bool IsPaused { get; private set; }
 
     /// <param name="capture">
-    /// Where this session reads the screen. Must be isolated — see
-    /// <see cref="IRealtimeCaptureBackend.IsIsolated"/> — because a session that can recognise its
-    /// own overlays feeds on its own output (#94). Stays owned by the caller.
+    /// Where this session reads the screen. Must be a backend whose frames cannot contain this
+    /// application's own overlays — see <see cref="IRealtimeCaptureBackend"/>, where that is a
+    /// property of how a backend is built rather than something it is asked — because a session that
+    /// can recognise its own overlays feeds on its own output (#94). Stays owned by the caller.
     /// </param>
     /// <param name="readAtOnce">
     /// Whether each region reads its first frame immediately instead of waiting for a poll and for
@@ -159,10 +160,6 @@ public sealed class RealtimeTranslationSession
         // it now would put a partial total in the log every time the user unpauses, and the line is
         // supposed to be the closing summary of one run of translating.
         Stop(releaseRecogniser: false, reportCapture: false);
-
-        if (!capture.IsIsolated)
-            throw new InvalidOperationException(
-                $"Capture backend {capture.Name} cannot keep OverTranslate's own overlays out of frame");
 
         _provider = provider;
         _regions = regions;

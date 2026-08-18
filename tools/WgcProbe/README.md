@@ -47,15 +47,15 @@ PASS: the overlay is absent from the window capture
 
 兩個視窗都是 probe 自己的，這是刻意的：第一版拿桌面上的 Edge 當來源，跑到一半視窗被拖到另一個螢幕，量測直接失效。要對真實應用程式測請用 `region`。
 
-### `exclusion` — 整個螢幕的 go/no-go
+### `exclusion` — 螢幕擷取的 go/no-go
 
 ```bash
 WgcProbe.exe exclusion [x y w h] [輸出目錄]
 ```
 
-跟 `overlay` 同一組視窗，改問另一半的問題：**擷取整個螢幕、並把字幕層放進 session 的 window exclusion list，那塊區域讀回來的是什麼？**
+跟 `overlay` 同一組視窗，改問另一半的問題：**擷取螢幕擷取、並把字幕層放進 session 的 window exclusion list，那塊區域讀回來的是什麼？**
 
-這一題沒有文件可查，而整條「整個螢幕」的路成不成立全看它。字幕層本來就蓋在原文上，如果排除之後那塊變成純黑，OCR 讀到的就是黑色，等於什麼都沒解決。
+這一題沒有文件可查，而整條「螢幕擷取」的路成不成立全看它。字幕層本來就蓋在原文上，如果排除之後那塊變成純黑，OCR 讀到的就是黑色，等於什麼都沒解決。
 
 ```
 screen edge changed    33.5%
@@ -67,7 +67,7 @@ backend                hmonitor=10073 received=5 read=1 avgReadback=24.7ms disca
 GO: the excluded region shows the source window underneath the overlay
 ```
 
-`screen edge changed` 是**擷取指示框**：整個螢幕擷取會讓 Windows 沿著整片螢幕的邊緣畫一圈黃線，整段 session 都在（視窗擷取只框住那個視窗）。數字只說邊緣有東西變了，判定請看寫出來的 `exclusion-edge-*.png`。
+`screen edge changed` 是**擷取指示框**：螢幕擷取擷取會讓 Windows 沿著整片螢幕的邊緣畫一圈黃線，整段 session 都在（視窗擷取只框住那個視窗）。數字只說邊緣有東西變了，判定請看寫出來的 `exclusion-edge-*.png`。
 
 `source content` 是關鍵那一行：**露出來的是底下來源視窗的內容，不是黑洞**（`black` 那 0.6% 是來源視窗自己的黑字）。
 
@@ -83,7 +83,7 @@ WgcProbe.exe region <x> <y> <w> <h> [輸出目錄]
 
 **先 `list` 拿 handle，再用 handle 擷取。** 用標題片段找很容易中錯：終端機視窗的標題含有你剛打的命令列，所以搜尋 `"Crab Champions"` 會先命中你自己那個終端機，然後很順利地擷取它自己、印出看起來合理的幾何、寫出一張終端機的截圖。`list` 已經把本行程的主控台排掉，但用 handle 仍然是最不會出錯的方式。
 
-`window` 直接指定視窗；`region` 照 session 的方式（`SourceWindowResolver` 的九點投票）從一塊螢幕矩形反推來源視窗。兩者都會印出幾何比對、以 250ms 節奏量 20 次 `GrabRegion` 的耗時，並寫出一張 PNG。
+`window` 直接視窗擷取；`region` 照 session 的方式（`SourceWindowResolver` 的九點投票）從一塊螢幕矩形反推來源視窗。兩者都會印出幾何比對、以 250ms 節奏量 20 次 `GrabRegion` 的耗時，並寫出一張 PNG。
 
 幾何那三行是重點：
 

@@ -24,8 +24,9 @@ namespace OverTranslate.Views.Realtime;
 /// <remarks>
 /// The background patch is refreshed while a line is visible. That matters over video/game content:
 /// a one-time screenshot would turn the translated line into a frozen rectangular tile while the
-/// picture behind it kept moving. The overlay itself is excluded from capture, so every refresh sees
-/// the original application rather than recursively photographing its own translation.
+/// picture behind it kept moving. The picture it refreshes from comes from the session's capture
+/// backend, which composes without this overlay, so every refresh sees the original application
+/// rather than recursively photographing its own translation.
 ///
 /// That refresh runs off the dispatcher, and only the assignment of the finished brushes comes back
 /// to it. Everything before that — the grab, the repair, the bitmap — is pixel work that does not
@@ -80,6 +81,11 @@ public partial class RealtimeBlockWindow : Window
     private readonly System.Drawing.Rectangle _physBounds;
     private readonly bool _latinSourceToCjkTarget;
 
+    // The session's capture backend, reached through the controller so this window never holds one.
+    // Everything this window needs to see of the screen comes through here — see
+    // CaptureUnderlyingRegion for why nothing may photograph the screen on its own any more.
+    private readonly Func<System.Drawing.Rectangle, System.Drawing.Bitmap?> _grabUnderlying;
+
     // Per session rather than per application: the colours are read once when the session starts and
     // cannot change while it runs, because reaching the page that sets them means the shell window,
     // which a running session has hidden. Frozen for the same reason the fixed brushes were — they
@@ -115,9 +121,15 @@ public partial class RealtimeBlockWindow : Window
 
     private IReadOnlyList<TranslatedBlock> _lines = [];
 
+    /// <param name="grabUnderlying">
+    /// Asks the session's capture backend for a screen rectangle. Required rather than optional:
+    /// 進階選項 cannot be drawn without it, and a window that quietly fell back to reading the
+    /// screen itself would be reading its own subtitles.
+    /// </param>
     public RealtimeBlockWindow(
         int regionId,
         System.Drawing.Rectangle physBounds,
+        Func<System.Drawing.Rectangle, System.Drawing.Bitmap?> grabUnderlying,
         string sourceLanguage,
         string targetLanguage,
         string textColor,
@@ -130,6 +142,7 @@ public partial class RealtimeBlockWindow : Window
 
         RegionId = regionId;
         _physBounds = physBounds;
+        _grabUnderlying = grabUnderlying;
         _naturalBackground = naturalBackground;
         _sampleTextColor = sampleTextColor;
         _latinSourceToCjkTarget = IsLatinToCjk(sourceLanguage, targetLanguage);
@@ -154,16 +167,6 @@ public partial class RealtimeBlockWindow : Window
 
     public int RegionId { get; }
 
-    /// <summary>Where this block sits on the screen, in physical pixels — what it was pinned to.</summary>
-    public System.Drawing.Rectangle PhysicalBounds => _physBounds;
-
-    /// <summary>
-    /// Whether this block is hidden from anything that reads the screen — see
-    /// <see cref="WindowCaptureShield"/>. Read by <see cref="RealtimeSessionController"/> before it
-    /// lets the desktop-grab backend start polling.
-    /// </summary>
-    public bool IsHiddenFromCapture { get; private set; }
-
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -175,37 +178,10 @@ public partial class RealtimeBlockWindow : Window
         // Before the DPI is read in Loaded: pinning settles which monitor the window belongs to.
         ScreenGeometry.PinPhysicalBounds(this, _physBounds);
 
-        // Without this the next poll would read this window's own translation back off the screen.
-        IsHiddenFromCapture = WindowCaptureShield.Exclude(this);
-    }
-
-    /// <summary>
-    /// This block's scrims and text as an image at physical resolution, for compositing onto a
-    /// screen grab. Null when there is nothing drawn — a block that has not been translated yet has
-    /// nothing to contribute and should leave the grabbed pixels alone.
-    /// </summary>
-    /// <remarks>
-    /// Rendering the visual tree rather than reading it back off the screen is not a workaround for
-    /// <see cref="WindowCaptureShield"/> — it is the better source. The window is composed with
-    /// per-pixel alpha, so what the compositor put on screen is this layer already blended into
-    /// whatever was behind it, while this is the layer itself, with its translucency intact for the
-    /// caller to blend deliberately.
-    /// </remarks>
-    public System.Windows.Media.Imaging.BitmapSource? RenderForCapture()
-    {
-        if (!_isLoaded) return null;
-        if (ScrimCanvas.Children.Count == 0 && TextCanvas.Children.Count == 0) return null;
-
-        var width = Math.Max(1, _physBounds.Width);
-        var height = Math.Max(1, _physBounds.Height);
-
-        // 96 * dpi so one bitmap pixel is one screen pixel: the canvases are laid out in DIP, and
-        // the block's own bounds are in physical pixels.
-        var rendered = new System.Windows.Media.Imaging.RenderTargetBitmap(
-            width, height, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
-        rendered.Render(LayerHost);
-        rendered.Freeze();
-        return rendered;
+        // Nothing here asks to be hidden from screen capture. This window used to carry
+        // WDA_EXCLUDEFROMCAPTURE so the loop would not read its own translation back; keeping the
+        // overlays out of the frame is now the capture backend's job and only the backend's, which is
+        // why a session cannot start on a source that has not proved it (#105).
     }
 
     public void SetLines(IReadOnlyList<TranslatedBlock> lines)
@@ -615,46 +591,43 @@ public partial class RealtimeBlockWindow : Window
     }
 
     /// <summary>
-    /// The picture the repair is built from: this window's own rectangle, read off the screen.
+    /// The picture the repair is built from: this window's own rectangle, as the session's capture
+    /// backend sees it — which is to say, without this window in it.
     /// </summary>
     /// <remarks>
-    /// This relies on the overlay being absent from what the screen returns, and that reliance is
-    /// unchecked — <see cref="WindowCaptureShield.Exclude"/> fails on every Windows before 11 24H2, so
-    /// there the repair photographs the translation it drew a moment ago and bakes it in. Tracked in
-    /// #99, with why #96 does not cover this path and why #98 removes the need for it.
+    /// This used to be a <c>CopyFromScreen</c> of the same rectangle, and it read whatever was on
+    /// screen, this overlay included. What kept the overlay out of it was
+    /// <c>WDA_EXCLUDEFROMCAPTURE</c> on this window, which fails on every Windows before 11 24H2 —
+    /// so there the repair photographed the translation it had drawn a moment earlier and baked it
+    /// into the "restored" background, every 250ms, on top of itself (#99). Asking the backend
+    /// instead makes that impossible rather than unlikely: the frame comes from a source that either
+    /// never contained this window (a captured application window) or was composed without it (a
+    /// monitor capture with the session's exclusion list), and there is no arrangement of Windows
+    /// versions in which it contains our own subtitles.
     ///
-    /// This used to be left unguarded on the reasoning that on those machines the session's own grab
-    /// is broken first (#94), so there is nothing about the feature working to be protected. #96
-    /// ended that: window capture isolates itself structurally — the source is the watched
-    /// application's window, and this overlay is not that window — so it needs nothing from display
-    /// affinity, and a session now runs correctly on precisely the systems where the grab below does
-    /// not. That leaves this as the one part of the feature still reading the composited desktop,
-    /// and the fault it was predicted to have is now reachable on its own: a pre-24H2 system, on the
-    /// window-capture backend, with 更符合原背景 turned on.
+    /// It also settles #98. The backend reads one frame back off the GPU and every caller crops out
+    /// of that, so the region under a block is no longer captured once for recognition and again for
+    /// the repair — the second grab is a copy out of a bitmap that already exists.
     ///
-    /// Still unguarded, and now deliberately rather than incidentally. The fix is to hand this
-    /// window the frame the session already took from its isolated backend, which is what #98 is
-    /// for; a gate here would answer the same question a second time and would silently drop the
-    /// repair on the systems that reach it, rather than repairing it correctly.
+    /// Null is ordinary and means only "not this tick": the backend is between frames, the exclusion
+    /// list has just changed and the frame composed under the old one was dropped, or this block does
+    /// not lie over the captured window at all. Every caller falls back to the band, which is the
+    /// same thing they did when the grab failed on a protected surface.
     /// </remarks>
     private System.Drawing.Bitmap? CaptureUnderlyingRegion()
     {
         if (_physBounds.Width <= 0 || _physBounds.Height <= 0) return null;
 
-        System.Drawing.Bitmap? bitmap = null;
         try
         {
-            bitmap = new System.Drawing.Bitmap(
-                _physBounds.Width, _physBounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using var graphics = System.Drawing.Graphics.FromImage(bitmap);
-            graphics.CopyFromScreen(
-                _physBounds.Left, _physBounds.Top, 0, 0, _physBounds.Size,
-                System.Drawing.CopyPixelOperation.SourceCopy);
-            return bitmap;
+            return _grabUnderlying(_physBounds);
         }
-        catch
+        catch (Exception ex)
         {
-            bitmap?.Dispose();
+            // The backend is being torn down under a refresh tick — going back to edit mode disposes
+            // it before these windows close. Nothing to repair this tick, and nothing to report four
+            // times a second.
+            Log.Debug(ex, "Realtime block {Region} could not read the picture under it", RegionId);
             return null;
         }
     }

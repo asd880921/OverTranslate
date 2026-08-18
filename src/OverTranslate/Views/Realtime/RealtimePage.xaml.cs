@@ -34,7 +34,7 @@ public sealed record WindowItem(IntPtr Hwnd, string Display, string Detail, stri
 /// <para><b>Parameters of one sitting</b> — capture source, screen and block count — are not read
 /// from or written to the settings file. Reopening the window must not restore a screen that may
 /// have been unplugged, or blocks that no longer frame the same content. The capture source is the
-/// clearest case of the rule: 指定視窗 is a live window handle, which does not survive the window
+/// clearest case of the rule: 視窗擷取 is a live window handle, which does not survive the window
 /// being closed, let alone the next launch, so storing the mode alone would reopen the page in a
 /// state missing its own answer.</para>
 ///
@@ -189,16 +189,53 @@ public partial class RealtimePage : UserControl
         // one that has to hold. RenderBlockCount runs later, from Reload.
         _blockCount = Math.Clamp(settings.Realtime.BlockCount, MinBlocks, MaxBlocks);
 
+        // Before the restore below, which needs to know whether the saved mode is one this machine
+        // can still honour.
+        ApplyCaptureCapability();
+
         // Restored, unlike the screen and the window it implies, because it is the one part of the
         // arrangement that is a habit rather than a fact about this sitting: someone who watches a
         // game watches a game. Set while _restoringSource holds, so the radio's own handler does not
         // read it as the user reaching for the control and write it straight back.
         _restoringSource = true;
-        if (settings.Realtime.CaptureMode is RealtimeCaptureMode.Window)
+        if (settings.Realtime.CaptureMode is RealtimeCaptureMode.Window
+            || !WgcCapability.SupportsScreenMode)
             WindowModeRadio.IsChecked = true;
         else
             ScreenModeRadio.IsChecked = true;
         _restoringSource = false;
+    }
+
+    /// <summary>
+    /// Offers only the capture modes this machine can actually run.
+    /// </summary>
+    /// <remarks>
+    /// The answer is static — see <see cref="WgcCapability"/>, where it is read once at launch — so
+    /// this is a fact about the machine settled before the user has chosen anything, and the honest
+    /// place to spend it is here rather than at 開始翻譯. A mode that is offered, framed over, and
+    /// then refused costs the user the whole set-up to learn something the program knew when the
+    /// page opened.
+    ///
+    /// Disabled and explained rather than hidden. A tile that is simply missing reads as the user
+    /// failing to find it — against a guide or a screenshot showing two — while a greyed one with
+    /// the reason underneath answers the question they are about to ask. The reason goes in a notice
+    /// across the bottom of the step rather than inside the tile, because a disabled tile dims its
+    /// own text along with everything else in it.
+    ///
+    /// The restore above coerces a saved 螢幕擷取 to 視窗擷取 on these machines, and deliberately
+    /// does not write that back: it runs under <see cref="_restoringSource"/>, so the preference
+    /// survives in the settings file and comes back if the machine ever gains the API.
+    /// </remarks>
+    private void ApplyCaptureCapability()
+    {
+        var screen = WgcCapability.SupportsScreenMode;
+
+        ScreenModeRadio.IsEnabled = screen;
+        ScreenModeNotice.Visibility = screen ? Visibility.Collapsed : Visibility.Visible;
+
+        // Nothing to steer to when even window capture is missing: the feature does not exist on
+        // this machine, which RenderState says once in the footer rather than twice in the tiles.
+        WindowModeRadio.IsEnabled = WgcCapability.SupportsWindowMode;
     }
 
     /// <summary>
@@ -351,7 +388,7 @@ public partial class RealtimePage : UserControl
     /// longer the user's to answer.
     /// </summary>
     /// <remarks>
-    /// The window list is built the first time 指定視窗 is chosen rather than when the page loads:
+    /// The window list is built the first time 視窗擷取 is chosen rather than when the page loads:
     /// enumerating every open window costs a pass over the desktop, and the common case — a user who
     /// wants the whole screen — never needs it. After that it is only rebuilt on request, because a
     /// list that reshuffles itself while the user is reading it is worse than one that is a few
@@ -860,8 +897,20 @@ public partial class RealtimePage : UserControl
         // Nothing can start without a source language, so the button says so by being unavailable
         // rather than by refusing after the fact, and the field keeps its prompt until answered.
         var hasSource = SrcLangBox.SelectedValue is string;
-        PrimaryBtn.IsEnabled = active || hasSource;
+
+        // The same rule one step further out: with no capture at all there is no mode to run, and
+        // the whole feature is unavailable rather than one half of it. Said here, once, instead of
+        // greying both tiles and leaving the user to work out what the two of them have in common.
+        var capturable = WgcCapability.SupportsWindowMode || WgcCapability.SupportsScreenMode;
+
+        PrimaryBtn.IsEnabled = active || (hasSource && capturable);
         SrcLangPlaceholder.Visibility = hasSource ? Visibility.Collapsed : Visibility.Visible;
+
+        if (!active && !capturable)
+        {
+            SetStatus(LocalizationService.Get("S.Realtime.RealtimeUnsupported"), isError: true);
+            return;
+        }
 
         SetStatus(
             active ? LocalizationService.Get("S.Realtime.ActiveHint") : "",
