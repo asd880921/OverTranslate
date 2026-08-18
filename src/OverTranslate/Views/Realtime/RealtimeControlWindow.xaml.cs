@@ -313,9 +313,9 @@ public partial class RealtimeControlWindow : Window
         new(_position.X, _position.Y, PhysicalWidth, PhysicalHeight);
 
     /// <summary>
-    /// The bar as an image at physical resolution, so a showcase capture can include it — the bar is
-    /// excluded from real screen capture and would otherwise be missing from the one picture meant to
-    /// show what this feature looks like.
+    /// The bar as an image at physical resolution, so a showcase capture can include it — the
+    /// capture backend leaves this window out of its frames, so it would otherwise be missing from
+    /// the one picture meant to show what this feature looks like.
     /// </summary>
     /// <remarks>
     /// Renders the window rather than its content. <see cref="RootChrome"/> carries the mixed-DPI
