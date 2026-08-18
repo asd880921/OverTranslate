@@ -621,9 +621,21 @@ public partial class RealtimeBlockWindow : Window
     /// This relies on the overlay being absent from what the screen returns, and that reliance is
     /// unchecked — <see cref="WindowCaptureShield.Exclude"/> fails on every Windows before 11 24H2, so
     /// there the repair photographs the translation it drew a moment ago and bakes it in. Tracked in
-    /// #99, with why #96 does not cover this path and why #98 removes the need for it. Not guarded here
-    /// because on those machines the session's own grab is broken first (#94), so nothing about the
-    /// feature works to be protected — the order in which those are fixed is what makes it visible.
+    /// #99, with why #96 does not cover this path and why #98 removes the need for it.
+    ///
+    /// This used to be left unguarded on the reasoning that on those machines the session's own grab
+    /// is broken first (#94), so there is nothing about the feature working to be protected. #96
+    /// ended that: window capture isolates itself structurally — the source is the watched
+    /// application's window, and this overlay is not that window — so it needs nothing from display
+    /// affinity, and a session now runs correctly on precisely the systems where the grab below does
+    /// not. That leaves this as the one part of the feature still reading the composited desktop,
+    /// and the fault it was predicted to have is now reachable on its own: a pre-24H2 system, on the
+    /// window-capture backend, with 更符合原背景 turned on.
+    ///
+    /// Still unguarded, and now deliberately rather than incidentally. The fix is to hand this
+    /// window the frame the session already took from its isolated backend, which is what #98 is
+    /// for; a gate here would answer the same question a second time and would silently drop the
+    /// repair on the systems that reach it, rather than repairing it correctly.
     /// </remarks>
     private System.Drawing.Bitmap? CaptureUnderlyingRegion()
     {
