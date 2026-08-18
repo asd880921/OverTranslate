@@ -207,7 +207,7 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreen">Whole screen</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindow">One window</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">Everything on the screen.</sys:String>
-    <sys:String x:Key="S.Realtime.ScreenModeUnavailable">This Windows cannot capture the whole screen without also capturing the subtitles. Use One window instead</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenModeUnsupported">This system does not currently support whole-screen capture.</sys:String>
     <sys:String x:Key="S.Realtime.RealtimeUnsupported">Realtime translation needs screen capture, which this Windows does not provide</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindowHint">One window, even while something covers it.</sys:String>
     <sys:String x:Key="S.Realtime.Step1Label">Step 1</sys:String>

@@ -98,6 +98,10 @@
                             <ColumnDefinition Width="200"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
                         <StackPanel Grid.Column="0" Margin="0,0,20,0">
                             <StackPanel Orientation="Horizontal">
@@ -132,22 +136,10 @@
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceScreen}"
                                                    Style="{StaticResource ChoiceTileTitle}"/>
-                                        <TextBlock x:Name="ScreenModeHint"
-                                                   Text="{DynamicResource S.Realtime.CaptureSourceScreenHint}"
+                                        <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceScreenHint}"
                                                    Style="{StaticResource FieldHint}"
                                                    Margin="0,3,0,0"
                                                    TextTrimming="CharacterEllipsis"/>
-                                        <!-- Swapped in for the hint above when this machine cannot
-                                             run the mode. A second TextBlock rather than a rewrite
-                                             of the first: both keep their DynamicResource, so
-                                             switching interface language still updates whichever
-                                             one is showing without a line of code. -->
-                                        <TextBlock x:Name="ScreenModeUnavailableHint"
-                                                   Text="{DynamicResource S.Realtime.ScreenModeUnavailable}"
-                                                   Style="{StaticResource FieldHint}"
-                                                   Margin="0,3,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Visibility="Collapsed"/>
                                     </StackPanel>
                                 </StackPanel>
                             </RadioButton>
@@ -172,6 +164,39 @@
                                 </StackPanel>
                             </RadioButton>
                         </Grid>
+
+                        <!-- Under both tiles rather than inside the greyed one: a disabled control
+                             is the wrong place to put the sentence explaining why it is disabled —
+                             it is dimmed along with everything else in the tile, which is exactly
+                             the text the user needs to read. Spans the card so it reads as a fact
+                             about this step, not a footnote to one option. -->
+                        <Border x:Name="ScreenModeNotice"
+                                Grid.Row="1" Grid.ColumnSpan="2"
+                                Style="{StaticResource InfoCardBorder}"
+                                Margin="0,14,0,0"
+                                Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="&#xE946;"
+                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="15"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,10,0"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{DynamicResource S.Realtime.ScreenModeUnsupported}"
+                                           FontFamily="{StaticResource AppFont}"
+                                           FontSize="{StaticResource AppFontSize}"
+                                           Foreground="{DynamicResource AppTextPrimary}"
+                                           TextWrapping="Wrap"
+                                           LineHeight="18"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Border>
 

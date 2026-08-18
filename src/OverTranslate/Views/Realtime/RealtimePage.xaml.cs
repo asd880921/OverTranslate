@@ -218,7 +218,9 @@ public partial class RealtimePage : UserControl
     ///
     /// Disabled and explained rather than hidden. A tile that is simply missing reads as the user
     /// failing to find it — against a guide or a screenshot showing two — while a greyed one with
-    /// the reason under it answers the question they are about to ask.
+    /// the reason underneath answers the question they are about to ask. The reason goes in a notice
+    /// across the bottom of the step rather than inside the tile, because a disabled tile dims its
+    /// own text along with everything else in it.
     ///
     /// The restore above coerces a saved 整個螢幕 to 指定視窗 on these machines, and deliberately
     /// does not write that back: it runs under <see cref="_restoringSource"/>, so the preference
@@ -229,8 +231,7 @@ public partial class RealtimePage : UserControl
         var screen = WgcCapability.SupportsScreenMode;
 
         ScreenModeRadio.IsEnabled = screen;
-        ScreenModeHint.Visibility = screen ? Visibility.Visible : Visibility.Collapsed;
-        ScreenModeUnavailableHint.Visibility = screen ? Visibility.Collapsed : Visibility.Visible;
+        ScreenModeNotice.Visibility = screen ? Visibility.Collapsed : Visibility.Visible;
 
         // Nothing to steer to when even window capture is missing: the feature does not exist on
         // this machine, which RenderState says once in the footer rather than twice in the tiles.
