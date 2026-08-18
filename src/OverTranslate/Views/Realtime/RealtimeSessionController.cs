@@ -416,7 +416,7 @@ internal sealed class RealtimeSessionController
         foreach (var region in regions)
         {
             var window = new RealtimeBlockWindow(
-                region.Id, region.Bounds, request.SourceLanguage, request.TargetLanguage,
+                region.Id, region.Bounds, GrabUnderlying, request.SourceLanguage, request.TargetLanguage,
                 request.TextColor, request.ScrimColor, request.ScrimOpacity,
                 request.NaturalBackground, request.SampleSourceTextColor);
             _blockWindows[region.Id] = window;
@@ -570,6 +570,25 @@ internal sealed class RealtimeSessionController
             if (hwnd != IntPtr.Zero) handles.Add(hwnd);
         }
     }
+
+    /// <summary>
+    /// The picture under a rectangle of the screen, taken from the session's capture backend.
+    /// </summary>
+    /// <remarks>
+    /// The single door through which anything in a running session may see the screen. It is handed
+    /// to every block overlay so the natural-background repair reads what is under it rather than
+    /// photographing itself (#99), and it is what the showcase capture composes onto — and the point
+    /// of routing both through here is that neither can any longer be correct only on some Windows
+    /// versions. A backend either has an isolated frame or has none; there is no third answer it
+    /// could give that quietly includes our own subtitles.
+    ///
+    /// Resolved on each call rather than captured, because a block overlay is created before the
+    /// backend is — the overlays have to exist and have handles before a monitor capture can be told
+    /// to leave them out. Null before then, and again from the moment the backend is disposed, which
+    /// is a whole tick before the overlays close.
+    /// </remarks>
+    private System.Drawing.Bitmap? GrabUnderlying(System.Drawing.Rectangle screenBounds) =>
+        _capture?.GrabRegion(screenBounds);
 
     /// <summary>
     /// Window capture over the handle the user picked, or the reason it is not available.

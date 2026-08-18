@@ -39,6 +39,12 @@ public sealed class DesktopGrabCaptureBackend(bool overlaysHiddenFromCapture) : 
 
     public bool IsIsolated { get; } = overlaysHiddenFromCapture;
 
+    /// <summary>
+    /// The whole virtual desktop: this backend copies out of what the compositor put on screen, so
+    /// there is no narrower source to name.
+    /// </summary>
+    public Rectangle SourceBounds => System.Windows.Forms.SystemInformation.VirtualScreen;
+
     public Bitmap? GrabRegion(Rectangle screenBounds)
     {
         if (screenBounds.Width <= 0 || screenBounds.Height <= 0) return null;

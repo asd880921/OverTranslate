@@ -115,8 +115,10 @@ public class OverlayTextFittingTests
     private static DrawnLine Draw(TranslatedBlock line, System.Drawing.Rectangle? block = null) =>
         OnStaThread(() =>
         {
+            // 進階選項 are both off here, so nothing in this window asks for the picture underneath;
+            // these tests are about the box the text lands in, not about what is behind it.
             var window = new RealtimeBlockWindow(
-                0, block ?? SubtitleBlock, "JA", "ZH-TW",
+                0, block ?? SubtitleBlock, _ => null, "JA", "ZH-TW",
                 RealtimeSubtitleColors.DefaultText,
                 RealtimeSubtitleColors.DefaultScrim,
                 RealtimeSubtitleColors.DefaultScrimOpacity);

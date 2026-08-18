@@ -34,9 +34,31 @@ public interface IRealtimeCaptureBackend : IDisposable
     bool IsIsolated { get; }
 
     /// <summary>
+    /// The screen rectangle this backend has pixels for, in physical screen coordinates, or
+    /// <see cref="Rectangle.Empty"/> when it has nothing to show yet.
+    /// </summary>
+    /// <remarks>
+    /// Asked by whoever has to <i>frame</i> a picture rather than read a region out of one — the
+    /// showcase capture, which needs to know how much of the screen this source can actually
+    /// account for. A monitor capture answers with that monitor; a window capture answers with the
+    /// window, which is why a showcase taken in 指定視窗 is a picture of the window rather than a
+    /// screen with a hole in it.
+    ///
+    /// Re-read each time rather than cached: a window moves, and a monitor's origin changes when
+    /// another display changes resolution.
+    /// </remarks>
+    Rectangle SourceBounds { get; }
+
+    /// <summary>
     /// The pixels currently inside <paramref name="screenBounds"/>, given in physical screen
     /// coordinates, as a bitmap the caller owns and disposes.
     /// </summary>
+    /// <remarks>
+    /// The one way anything in a running session is allowed to see the screen. Recognition is the
+    /// obvious caller, but not the only one: the natural-background repair and the showcase capture
+    /// both need the picture <i>under</i> this application's overlays, and that is exactly what a
+    /// backend promises and nothing else in the process can obtain.
+    /// </remarks>
     /// <returns>
     /// Null when this poll produced nothing — a locked screen, a source that has gone away, a
     /// transient failure. The caller skips the poll; the next one is 250ms behind it.
