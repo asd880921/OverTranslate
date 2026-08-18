@@ -64,7 +64,12 @@ internal static class ExclusionTest
         using var onScreen = control.GrabRegion(overlayBounds);
         if (onScreen is null) return Fail("the desktop grab produced nothing");
 
-        using var backend = WgcMonitorCaptureBackend.TryCreate(() => monitor, () => new[] { overlayHwnd });
+        // What the session hands the backend: a snapshot that changes as overlays come and go. Here
+        // it starts with the one overlay and gains a second one further down.
+        var overlays = new List<IntPtr> { overlayHwnd };
+
+        using var backend = WgcMonitorCaptureBackend.TryCreate(
+            () => monitor, () => Volatile.Read(ref overlays).ToArray());
         if (backend is null) return Fail("could not start monitor capture with the overlay excluded");
 
         // The backend has already waited for a frame composed with the exclusion in force, so this
@@ -111,6 +116,46 @@ internal static class ExclusionTest
         {
             Console.Error.WriteLine(
                 $"NO-GO: the excluded region does not show what is under it (black {blackShare:P1})");
+            return 1;
+        }
+
+        // A session creates and destroys overlays while it runs — a block added, the bar rebuilt —
+        // so an exclusion list set once at the start is a list of the windows that happened to exist
+        // then. This is the other half of the answer: a layer that appears afterwards has to be out
+        // of the frames too, and the frames composed before it was excluded must not be served.
+        var lateBounds = new Rectangle(
+            sourceBounds.X + 40, sourceBounds.Y + 40, sourceBounds.Width / 3, sourceBounds.Height / 4);
+        using var late = ProbeWindow.Show(lateBounds, opaqueWhite: false, out var lateHwnd);
+        Console.WriteLine($"late overlay           hwnd={lateHwnd:X} {lateBounds.Width}x{lateBounds.Height} at {lateBounds.X},{lateBounds.Y}");
+
+        Volatile.Write(ref overlays, [overlayHwnd, lateHwnd]);
+
+        var started = DateTime.UtcNow;
+        double lateShare = 1;
+        var polls = 0;
+        while (DateTime.UtcNow - started < TimeSpan.FromSeconds(5))
+        {
+            polls++;
+            using var poll = backend.GrabRegion(lateBounds);
+            if (poll is null)
+            {
+                // What the backend does while the frames catch up with the new list: nothing at all,
+                // which is the point.
+                Thread.Sleep(100);
+                continue;
+            }
+
+            lateShare = Share(poll, new Rectangle(0, 0, poll.Width, poll.Height), Marker);
+            if (lateShare <= 0.001) break;
+            Thread.Sleep(100);
+        }
+
+        Console.WriteLine($"late overlay excluded  {lateShare:P1} after {(DateTime.UtcNow - started).TotalMilliseconds:F0}ms over {polls} poll(s)");
+        Console.WriteLine($"backend                {backend.DescribeActivity()}");
+
+        if (lateShare > 0.001)
+        {
+            Console.Error.WriteLine("FAIL: an overlay created after the session started stayed in the frames");
             return 1;
         }
 

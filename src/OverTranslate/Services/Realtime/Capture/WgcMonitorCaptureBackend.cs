@@ -320,6 +320,17 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
         _excluded = [.. windows];
         Volatile.Write(ref _isolatedFrom, (long)applied);
         Interlocked.Increment(ref _exclusionUpdates);
+
+        // The frame in hand was composed under the previous list, which did not have whatever
+        // window has just been added to this one — so it may show that overlay, and handing it to
+        // the next poll would be the self-feed arriving by the back door. Dropped rather than kept
+        // as a stale-but-probably-fine picture: polls return nothing until a frame composed under
+        // the new list arrives, which is one screen refresh away.
+        lock (_latestLock)
+        {
+            _latest?.Dispose();
+            _latest = null;
+        }
         Log.Debug("Realtime monitor capture exclusion list: {Detail}", detail);
         return true;
     }
