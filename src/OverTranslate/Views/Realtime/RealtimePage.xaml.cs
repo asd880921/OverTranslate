@@ -347,8 +347,6 @@ public partial class RealtimePage : UserControl
 
         WindowPickerPanel.Visibility = window ? Visibility.Visible : Visibility.Collapsed;
         ScreenPanel.Visibility = window ? Visibility.Collapsed : Visibility.Visible;
-        CaptureSourceHint.Text = LocalizationService.Get(
-            window ? "S.Realtime.CaptureSourceWindowHint" : "S.Realtime.CaptureSourceScreenHint");
 
         if (!window || _windowsLoaded) return;
 
@@ -375,7 +373,6 @@ public partial class RealtimePage : UserControl
             .ToList();
 
         WindowBox.ItemsSource = items;
-        WindowBox.DisplayMemberPath = nameof(WindowItem.Display);
 
         // Restored by handle rather than by name: two windows of the same application share a title
         // often enough that picking by name would silently move the user to a different one.
@@ -470,7 +467,6 @@ public partial class RealtimePage : UserControl
             .ToList();
 
         ScreenBox.ItemsSource = items;
-        ScreenBox.DisplayMemberPath = nameof(ScreenItem.Display);
 
         // Keep the user's pick across a reload, but fall back to the monitor this window is on —
         // which is the one they are looking at, and not necessarily the primary.

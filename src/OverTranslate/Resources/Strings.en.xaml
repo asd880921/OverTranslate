@@ -152,8 +152,6 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.TargetLanguage">Target language</sys:String>
     <sys:String x:Key="S.Realtime.Provider">Provider</sys:String>
 
-    <sys:String x:Key="S.Realtime.Blocks">Blocks</sys:String>
-    <sys:String x:Key="S.Realtime.Screen">Screen</sys:String>
     <sys:String x:Key="S.Realtime.ScreenHint">Realtime translation currently covers one screen at a time.</sys:String>
     <sys:String x:Key="S.Realtime.BlockCount">How many</sys:String>
     <sys:String x:Key="S.Realtime.DecreaseBlocks">Fewer blocks</sys:String>
@@ -206,12 +204,21 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.NeedOneBlock">Drag to create at least one block first</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceLost">The window being translated has closed — realtime translation stopped</sys:String>
     <sys:String x:Key="S.Realtime.CaptureNotIsolated">This system cannot hide the subtitle layers from screen capture, so the loop would read its own output back. Switch to one window and it reads that window directly</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureSource">Capture source</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreen">Whole screen</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindow">One window</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">Reads the screen as it looks now, including anything sitting on top of it.</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureSourceWindowHint">Reads the chosen window directly, even while something covers it. On Windows before 11 24H2 this is the only source that works.</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureWindow">Window to translate</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">Everything on the screen.</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceWindowHint">One window, even while something covers it.</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Label">Step 1</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Name">Choose a capture source</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Desc">Pick the kind of area to read.</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Label">Step 2</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Name">Choose the screen or window</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Desc">Name the screen or window to read, following the choice above.</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Label">Step 3</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Name">Set up the blocks</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Desc">How many areas of the picture will be translated.</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenPrompt">Choose the screen to read.</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowPromptLine">Choose the window to read.</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowPrompt">Choose a window</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowHint">The list is what was open when you last refreshed - press refresh after opening the app.</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowNone">No window can be captured. Open the app first, then refresh.</sys:String>

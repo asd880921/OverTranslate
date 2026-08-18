@@ -158,8 +158,6 @@
     <sys:String x:Key="S.Realtime.TargetLanguage">目標語言</sys:String>
     <sys:String x:Key="S.Realtime.Provider">翻譯服務</sys:String>
 
-    <sys:String x:Key="S.Realtime.Blocks">翻譯區塊</sys:String>
-    <sys:String x:Key="S.Realtime.Screen">使用螢幕</sys:String>
     <sys:String x:Key="S.Realtime.ScreenHint">即時翻譯目前只支援單一螢幕畫面。</sys:String>
     <sys:String x:Key="S.Realtime.BlockCount">區塊數量</sys:String>
     <sys:String x:Key="S.Realtime.DecreaseBlocks">減少區塊數量</sys:String>
@@ -218,12 +216,21 @@
     <sys:String x:Key="S.Realtime.NeedOneBlock">請先拖曳建立至少一個區塊</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceLost">被翻譯的視窗已關閉，即時翻譯已停止</sys:String>
     <sys:String x:Key="S.Realtime.CaptureNotIsolated">此系統無法把字幕層排除在畫面擷取之外，繼續會讀回自己的譯文。請改用「指定視窗」，直接讀取要翻譯的那個視窗</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureSource">擷取來源</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreen">整個螢幕</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindow">指定視窗</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">讀取整個螢幕現在的畫面，蓋在上面的任何視窗都會一起被讀進去。</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureSourceWindowHint">直接讀取指定的那個視窗，被別的視窗蓋住也照樣讀得到。Windows 11 24H2 以前的系統只有這個方式可用。</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureWindow">要翻譯的視窗</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">擷取整個螢幕畫面上的所有內容。</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceWindowHint">擷取指定視窗內的內容。</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Label">步驟 1</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Name">選擇擷取方式</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Desc">選擇要擷取的範圍類型。</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Label">步驟 2</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Name">選擇畫面或視窗</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Desc">依照上一步選的方式，指定要擷取的螢幕或視窗。</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Label">步驟 3</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Name">設定翻譯區塊</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Desc">設定畫面中要進行翻譯的區塊數量。</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenPrompt">選擇要擷取的螢幕。</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowPromptLine">選擇要擷取的視窗。</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowPrompt">請選擇視窗</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowHint">清單是按下重新整理當下開著的視窗，剛開好的程式請再按一次重新整理。</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowNone">找不到可以擷取的視窗，請先開啟要翻譯的程式，再按重新整理。</sys:String>

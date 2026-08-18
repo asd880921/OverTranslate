@@ -20,110 +20,41 @@
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="0,0,8,0">
-            <StackPanel MaxWidth="760">
+            <StackPanel MaxWidth="1040">
 
                 <!-- ── 翻譯設定 ── -->
-                <!-- Labels above their fields, as on 圖片翻譯: a fixed label column makes the
-                     longest label decide the layout, and these read down the page rather than
-                     across. -->
+                <!-- One row of three, because they are one decision said three ways: what is being
+                     read, what it becomes, and who does it. Stacked down the page they read as
+                     three unrelated questions and pushed everything below them a screenful lower,
+                     which matters on a page whose real work — the three steps — is underneath. -->
                 <Border Style="{StaticResource CardBorder}">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource S.Realtime.TranslationSettings}" Style="{StaticResource SectionHeader}"/>
 
-                        <!-- OCR source languages only: this page recognises text off the screen, so
-                             a language the recogniser cannot read has nothing to offer here. Left
-                             unset on purpose — see RealtimePage.ApplyPageDefaults. -->
-                        <TextBlock Text="{DynamicResource S.Realtime.SourceLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                        <!-- Placeholder rather than a line of help underneath: the field is empty
-                             because the user has to answer it, and saying so inside the empty space
-                             puts the instruction where they are already looking. Margin matches the
-                             selected item's own (9,0,28,0) so the prompt and the eventual answer
-                             occupy the same spot rather than shifting when one replaces the other. -->
-                        <Grid Margin="0,0,0,14">
-                            <ComboBox x:Name="SrcLangBox"
-                                      Style="{StaticResource ModernComboBox}"
-                                      SelectedValuePath="Code"/>
-                            <TextBlock x:Name="SrcLangPlaceholder"
-                                       Text="{DynamicResource S.Realtime.SourceLanguagePrompt}"
-                                       FontFamily="{StaticResource AppFont}"
-                                       FontSize="{StaticResource AppFontSize}"
-                                       Foreground="{DynamicResource AppTextSecondary}"
-                                       Margin="9,0,28,0"
-                                       VerticalAlignment="Center"
-                                       IsHitTestVisible="False"/>
-                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="{DynamicResource S.Realtime.TargetLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                        <ComboBox x:Name="TgtLangBox"
-                                  Style="{StaticResource ModernComboBox}"
-                                  SelectedValuePath="Code"
-                                  Margin="0,0,0,14"/>
-
-                        <!-- Grouped so the spacing below stays the same whether or not the chosen
-                             service has anything to warn about -->
-                        <TextBlock Text="{DynamicResource S.Realtime.Provider}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                        <StackPanel>
-                            <ComboBox x:Name="ProviderBox"
-                                      Style="{StaticResource ModernComboBox}"
-                                      SelectedValuePath="Provider"/>
-                            <TextBlock x:Name="ProviderHint"
-                                       Style="{StaticResource FieldHint}"
-                                       Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- ── 擷取來源 ── -->
-                <!-- First card on the page, because it is the question the rest of the page answers
-                     differently: 整個螢幕 needs a monitor picked, 指定視窗 needs a window picked and
-                     works out the monitor itself. Two segments rather than a dropdown — there are
-                     exactly two, both fit on one line, and a closed dropdown would hide the fact
-                     that a choice exists at all. -->
-                <Border Style="{StaticResource CardBorder}">
-                    <StackPanel>
-                        <TextBlock Text="{DynamicResource S.Realtime.CaptureSource}" Style="{StaticResource SectionHeader}"/>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <RadioButton x:Name="ScreenModeRadio"
-                                         Style="{StaticResource SegmentedRadioButton}"
-                                         Content="{DynamicResource S.Realtime.CaptureSourceScreen}"
-                                         IsChecked="True"
-                                         Checked="CaptureModeRadio_Checked"/>
-                            <RadioButton x:Name="WindowModeRadio"
-                                         Style="{StaticResource SegmentedRadioButton}"
-                                         Content="{DynamicResource S.Realtime.CaptureSourceWindow}"
-                                         Checked="CaptureModeRadio_Checked"/>
-                        </StackPanel>
-
-                        <!-- One line, rewritten per mode rather than two lines with one greyed out:
-                             what the other mode would do is not what the reader needs while they are
-                             deciding what this one does. -->
-                        <TextBlock x:Name="CaptureSourceHint"
-                                   Style="{StaticResource FieldHint}"
-                                   TextWrapping="Wrap" LineHeight="16"/>
-
-                        <!-- Collapsed rather than disabled in 整個螢幕: a greyed-out window picker
-                             invites the reader to work out why it is off, and the answer is already
-                             on the segment they did not press. -->
-                        <StackPanel x:Name="WindowPickerPanel"
-                                    Visibility="Collapsed"
-                                    Margin="0,16,0,0">
-                            <TextBlock Text="{DynamicResource S.Realtime.CaptureWindow}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Same placeholder arrangement as 來源語言 above: the field is
-                                     empty because the user has to answer it, and the prompt sits
-                                     where the answer will be. -->
-                                <Grid Grid.Column="0">
-                                    <ComboBox x:Name="WindowBox"
+                            <!-- OCR source languages only: this page recognises text off the screen,
+                                 so a language the recogniser cannot read has nothing to offer here.
+                                 Left unset on purpose — see RealtimePage.ApplyPageDefaults. -->
+                            <StackPanel Grid.Column="0" Margin="0,0,7,0">
+                                <TextBlock Text="{DynamicResource S.Realtime.SourceLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                                <!-- Placeholder rather than a line of help underneath: the field is
+                                     empty because the user has to answer it, and saying so inside
+                                     the empty space puts the instruction where they are already
+                                     looking. Margin matches the selected item's own (9,0,28,0) so
+                                     the prompt and the eventual answer occupy the same spot rather
+                                     than shifting when one replaces the other. -->
+                                <Grid>
+                                    <ComboBox x:Name="SrcLangBox"
                                               Style="{StaticResource ModernComboBox}"
-                                              SelectionChanged="WindowBox_SelectionChanged"/>
-                                    <TextBlock x:Name="WindowPlaceholder"
-                                               Text="{DynamicResource S.Realtime.CaptureWindowPrompt}"
+                                              SelectedValuePath="Code"/>
+                                    <TextBlock x:Name="SrcLangPlaceholder"
+                                               Text="{DynamicResource S.Realtime.SourceLanguagePrompt}"
                                                FontFamily="{StaticResource AppFont}"
                                                FontSize="{StaticResource AppFontSize}"
                                                Foreground="{DynamicResource AppTextSecondary}"
@@ -131,85 +62,284 @@
                                                VerticalAlignment="Center"
                                                IsHitTestVisible="False"/>
                                 </Grid>
+                            </StackPanel>
 
-                                <!-- Icon and word both: the list is a snapshot of what was open when
-                                     the page last asked, and a user who has just opened the game
-                                     needs to know there is something to press. A lone glyph beside
-                                     a dropdown reads as part of the dropdown. -->
-                                <Button Grid.Column="1"
-                                        x:Name="RefreshWindowsBtn"
-                                        Style="{StaticResource IconTextButton}"
-                                        Margin="8,0,0,0"
-                                        VerticalAlignment="Center"
-                                        AutomationProperties.Name="{DynamicResource S.Realtime.RefreshWindows}"
-                                        Click="RefreshWindowsBtn_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE72C;"
-                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   FontSize="13"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,1,6,0"/>
-                                        <TextBlock Text="{DynamicResource S.Realtime.RefreshWindows}"
-                                                   VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
+                            <StackPanel Grid.Column="1" Margin="7,0,7,0">
+                                <TextBlock Text="{DynamicResource S.Realtime.TargetLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                                <ComboBox x:Name="TgtLangBox"
+                                          Style="{StaticResource ModernComboBox}"
+                                          SelectedValuePath="Code"/>
+                            </StackPanel>
 
-                            <TextBlock x:Name="WindowHint"
-                                       Style="{StaticResource FieldHint}"
-                                       Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
-                        </StackPanel>
+                            <!-- The hint stays under its own field rather than under the row: it is
+                                 about the service and nothing else, and a warning about a missing
+                                 API key is worth the uneven card it makes. -->
+                            <StackPanel Grid.Column="2" Margin="7,0,0,0">
+                                <TextBlock Text="{DynamicResource S.Realtime.Provider}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                                <ComboBox x:Name="ProviderBox"
+                                          Style="{StaticResource ModernComboBox}"
+                                          SelectedValuePath="Provider"/>
+                                <TextBlock x:Name="ProviderHint"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
-                <!-- ── 區塊設定 ── -->
-                <Border Style="{StaticResource CardBorder}">
-                    <StackPanel>
-                        <TextBlock Text="{DynamicResource S.Realtime.Blocks}" Style="{StaticResource SectionHeader}"/>
+                <!-- ── 步驟 1：選擇擷取方式 ── -->
+                <!-- Numbered from here on, because the three cards below are not three settings the
+                     user may set in any order — the second one cannot be answered until the first
+                     is, and the whole card changes with that answer. A number says that where a
+                     heading only names it. -->
+                <Border Style="{StaticResource CardBorder}" Padding="16,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="200"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                        <!-- One screen per session, chosen here rather than assumed: the primary
-                             monitor is not where the game or the video necessarily is.
-
-                             Hidden in 指定視窗, where it is not a choice: the blocks have to be drawn
-                             over the chosen window, so the monitor is wherever that window is, and
-                             offering the other one would only let the user build a session whose
-                             framing layer is on a screen the source is not on. -->
-                        <StackPanel x:Name="ScreenPanel">
-                            <TextBlock Text="{DynamicResource S.Realtime.Screen}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                            <ComboBox x:Name="ScreenBox"
-                                      Style="{StaticResource ModernComboBox}"
-                                      SelectedValuePath="DeviceName"/>
-                            <TextBlock Text="{DynamicResource S.Realtime.ScreenHint}"
-                                       Style="{StaticResource FieldHint}"
-                                       Margin="0,6,0,14" TextWrapping="Wrap" LineHeight="16"/>
+                        <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Style="{StaticResource StepBadge}">
+                                    <TextBlock Text="1" Style="{StaticResource StepBadgeText}"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource S.Realtime.Step1Label}" Style="{StaticResource StepLabel}"/>
+                            </StackPanel>
+                            <TextBlock Text="{DynamicResource S.Realtime.Step1Name}" Style="{StaticResource StepTitle}"/>
+                            <TextBlock Text="{DynamicResource S.Realtime.Step1Desc}" Style="{StaticResource StepDescription}"/>
                         </StackPanel>
 
-                        <!-- A stepper rather than a text field: the value is one of three, and a
-                             box that accepts typing invites 0, 99 and empty, each of which then
-                             needs its own rule. The number is display-only and the two buttons are
-                             the only way in, so no input can be wrong. -->
-                        <TextBlock Text="{DynamicResource S.Realtime.BlockCount}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                        <Border Style="{StaticResource StepperBorder}" HorizontalAlignment="Left">
+                        <!-- Two tiles rather than a dropdown or a pair of radio buttons: there are
+                             exactly two, both fit side by side, and each needs a line of its own to
+                             say what it does — which a closed dropdown cannot show at all. -->
+                        <Grid Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <RadioButton Grid.Column="0"
+                                         x:Name="ScreenModeRadio"
+                                         Style="{StaticResource ChoiceTile}"
+                                         Margin="0,0,6,0"
+                                         IsChecked="True"
+                                         Checked="CaptureModeRadio_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Style="{StaticResource ChoiceTileIconBox}">
+                                        <TextBlock Text="&#xE7F4;" Style="{StaticResource ChoiceTileGlyph}"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceScreen}"
+                                                   Style="{StaticResource ChoiceTileTitle}"/>
+                                        <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceScreenHint}"
+                                                   Style="{StaticResource FieldHint}"
+                                                   Margin="0,3,0,0"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton Grid.Column="1"
+                                         x:Name="WindowModeRadio"
+                                         Style="{StaticResource ChoiceTile}"
+                                         Margin="6,0,0,0"
+                                         Checked="CaptureModeRadio_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Style="{StaticResource ChoiceTileIconBox}">
+                                        <TextBlock Text="&#xE737;" Style="{StaticResource ChoiceTileGlyph}"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceWindow}"
+                                                   Style="{StaticResource ChoiceTileTitle}"/>
+                                        <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceWindowHint}"
+                                                   Style="{StaticResource FieldHint}"
+                                                   Margin="0,3,0,0"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </RadioButton>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ── 步驟 2：選擇畫面或視窗 ── -->
+                <Border Style="{StaticResource CardBorder}" Padding="16,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="200"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,20,0">
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="BlockCountDown"
-                                        Style="{StaticResource StepperButton}"
-                                        Content="&#xE949;"
-                                        AutomationProperties.Name="{DynamicResource S.Realtime.DecreaseBlocks}"
-                                        Click="BlockCountDown_Click"/>
-                                <TextBlock x:Name="BlockCountText"
-                                           Style="{StaticResource StepperValue}"
-                                           Text="1"/>
-                                <Button x:Name="BlockCountUp"
-                                        Style="{StaticResource StepperButton}"
-                                        Content="&#xE948;"
-                                        AutomationProperties.Name="{DynamicResource S.Realtime.IncreaseBlocks}"
-                                        Click="BlockCountUp_Click"/>
+                                <Border Style="{StaticResource StepBadge}">
+                                    <TextBlock Text="2" Style="{StaticResource StepBadgeText}"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource S.Realtime.Step2Label}" Style="{StaticResource StepLabel}"/>
                             </StackPanel>
-                        </Border>
-                        <TextBlock Text="{DynamicResource S.Realtime.BlockCountHint}"
-                                   Style="{StaticResource FieldHint}"
-                                   Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16"/>
-                    </StackPanel>
+                            <TextBlock Text="{DynamicResource S.Realtime.Step2Name}" Style="{StaticResource StepTitle}"/>
+                            <TextBlock Text="{DynamicResource S.Realtime.Step2Desc}" Style="{StaticResource StepDescription}"/>
+                        </StackPanel>
+
+                        <Grid Grid.Column="1">
+                            <!-- One screen per session, chosen here rather than assumed: the primary
+                                 monitor is not where the game or the video necessarily is.
+
+                                 Hidden in 指定視窗, where it is not a choice: the blocks have to be
+                                 drawn over the chosen window, so the monitor is wherever that window
+                                 is, and offering the other one would only let the user build a
+                                 session whose framing layer is on a screen the source is not on. -->
+                            <StackPanel x:Name="ScreenPanel">
+                                <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceScreen}"
+                                           Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{DynamicResource S.Realtime.ScreenPrompt}"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0,4,0,8"/>
+                                <ComboBox x:Name="ScreenBox"
+                                          Style="{StaticResource ModernComboBox}"
+                                          SelectedValuePath="DeviceName">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE7F4;"
+                                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                           FontSize="14"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,10,0"/>
+                                                <TextBlock Text="{Binding Display}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Text="{DynamicResource S.Realtime.ScreenHint}"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                            </StackPanel>
+
+                            <!-- Collapsed rather than disabled in 整個螢幕: a greyed-out window
+                                 picker invites the reader to work out why it is off, and the answer
+                                 is already on the tile they did not press. -->
+                            <StackPanel x:Name="WindowPickerPanel" Visibility="Collapsed">
+                                <TextBlock Text="{DynamicResource S.Realtime.CaptureSourceWindow}"
+                                           Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{DynamicResource S.Realtime.CaptureWindowPromptLine}"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0,4,0,8"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Same placeholder arrangement as 來源語言 above: the field is
+                                         empty because the user has to answer it, and the prompt sits
+                                         where the answer will be. -->
+                                    <Grid Grid.Column="0">
+                                        <ComboBox x:Name="WindowBox"
+                                                  Style="{StaticResource ModernComboBox}"
+                                                  SelectionChanged="WindowBox_SelectionChanged">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE737;"
+                                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                                   FontSize="14"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="0,0,10,0"/>
+                                                        <TextBlock Text="{Binding Display}" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <TextBlock x:Name="WindowPlaceholder"
+                                                   Text="{DynamicResource S.Realtime.CaptureWindowPrompt}"
+                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontSize="{StaticResource AppFontSize}"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   Margin="9,0,28,0"
+                                                   VerticalAlignment="Center"
+                                                   IsHitTestVisible="False"/>
+                                    </Grid>
+
+                                    <!-- Icon and word both: the list is a snapshot of what was open
+                                         when the page last asked, and a user who has just opened the
+                                         game needs to know there is something to press. A lone glyph
+                                         beside a dropdown reads as part of the dropdown. -->
+                                    <Button Grid.Column="1"
+                                            x:Name="RefreshWindowsBtn"
+                                            Style="{StaticResource IconTextButton}"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="{DynamicResource S.Realtime.RefreshWindows}"
+                                            Click="RefreshWindowsBtn_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE72C;"
+                                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                       FontSize="13"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,1,6,0"/>
+                                            <TextBlock Text="{DynamicResource S.Realtime.RefreshWindows}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <TextBlock x:Name="WindowHint"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ── 步驟 3：設定翻譯區塊 ── -->
+                <Border Style="{StaticResource CardBorder}" Padding="16,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="200"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Style="{StaticResource StepBadge}">
+                                    <TextBlock Text="3" Style="{StaticResource StepBadgeText}"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource S.Realtime.Step3Label}" Style="{StaticResource StepLabel}"/>
+                            </StackPanel>
+                            <TextBlock Text="{DynamicResource S.Realtime.Step3Name}" Style="{StaticResource StepTitle}"/>
+                            <TextBlock Text="{DynamicResource S.Realtime.Step3Desc}" Style="{StaticResource StepDescription}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{DynamicResource S.Realtime.BlockCount}" Style="{StaticResource FieldLabel}" Margin="0,0,0,8"/>
+                            <!-- A stepper rather than a text field: the value is one of three, and a
+                                 box that accepts typing invites 0, 99 and empty, each of which then
+                                 needs its own rule. The number is display-only and the two buttons
+                                 are the only way in, so no input can be wrong. -->
+                            <Border Style="{StaticResource StepperBorder}" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="BlockCountDown"
+                                            Style="{StaticResource StepperButton}"
+                                            Content="&#xE949;"
+                                            AutomationProperties.Name="{DynamicResource S.Realtime.DecreaseBlocks}"
+                                            Click="BlockCountDown_Click"/>
+                                    <TextBlock x:Name="BlockCountText"
+                                               Style="{StaticResource StepperValue}"
+                                               Text="1"/>
+                                    <Button x:Name="BlockCountUp"
+                                            Style="{StaticResource StepperButton}"
+                                            Content="&#xE948;"
+                                            AutomationProperties.Name="{DynamicResource S.Realtime.IncreaseBlocks}"
+                                            Click="BlockCountUp_Click"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="{DynamicResource S.Realtime.BlockCountHint}"
+                                       Style="{StaticResource FieldHint}"
+                                       Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="16"/>
+                        </StackPanel>
+                    </Grid>
                 </Border>
 
                 <!-- ── 顯示外觀 ── -->
