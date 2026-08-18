@@ -150,7 +150,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
         {
             Log.Info(
                 "Windows.Graphics.Capture is unavailable on this system (Windows {Version}); " +
-                "realtime capture falls back to grabbing the desktop",
+                "realtime translation has no capture backend at all here",
                 Environment.OSVersion.Version);
             return null;
         }
@@ -457,12 +457,12 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     ///
     /// Left unchecked that becomes a session that starts, reports nothing amiss, and never produces
     /// a subtitle, with no line in the log a user could be pointed at. Caught here it is one failed
-    /// construction, and the backend policy moves on to the desktop grab — which captures the same
+    /// construction and a refusal that names 整個螢幕 as the answer — which captures the same
     /// fullscreen game perfectly well, because the screen is exactly where that content does exist.
     ///
-    /// The cost of being wrong is a game whose opening frame is genuinely one flat colour being sent
-    /// down the desktop-grab path. That is a frame with nothing to translate in it either, and the
-    /// path it lands on is the one that used to be the only path.
+    /// The cost of being wrong is a game whose opening frame is genuinely one flat colour being
+    /// refused here. That is a frame with nothing to translate in it either, and the user is told
+    /// which mode to try instead rather than left watching a session produce nothing.
     /// </remarks>
     private bool WaitForUsableFrame(TimeSpan timeout)
     {

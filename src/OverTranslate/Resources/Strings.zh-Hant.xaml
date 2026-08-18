@@ -215,7 +215,7 @@
     <sys:String x:Key="S.Realtime.TooManyBlocks">最多同時 {0} 個區塊，請先移除一個</sys:String>
     <sys:String x:Key="S.Realtime.NeedOneBlock">請先拖曳建立至少一個區塊</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceLost">被翻譯的視窗已關閉，即時翻譯已停止</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureNotIsolated">此系統無法把字幕層排除在畫面擷取之外，繼續會讀回自己的譯文。請改用「指定視窗」，直接讀取要翻譯的那個視窗</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenCaptureUnavailable">這台機器無法用「整個螢幕」做即時翻譯。請改用「指定視窗」，選擇要翻譯的那個視窗</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreen">整個螢幕</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindow">指定視窗</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">擷取整個螢幕畫面上的所有內容。</sys:String>

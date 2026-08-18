@@ -32,9 +32,11 @@ namespace OverTranslate.Services.Realtime.Capture;
 /// is no state in which it believes an exclusion that did not happen.
 ///
 /// The cost is who can use it. The exclusion list needs a Windows much newer than 24H2, so a system
-/// without it is not served by this backend at all and must be offered another one — see
-/// <c>RealtimeSessionController.CreateScreenCapture</c>, which keeps the desktop grab as the second
-/// choice for machines where WDA does work.
+/// without it has no 整個螢幕 at all — this is the only backend for that mode, and
+/// <c>RealtimeSessionController.CreateScreenCapture</c> refuses rather than offering a second one.
+/// There used to be a second one, grabbing the composited desktop with the overlays asked to hide
+/// themselves; it was dropped in #105 precisely because that arrangement cannot be checked from
+/// inside the program, which is the difference this backend exists to make.
 /// </remarks>
 [SupportedOSPlatform("windows10.0.18362.0")]
 public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend

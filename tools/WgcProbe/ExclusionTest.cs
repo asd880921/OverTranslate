@@ -59,9 +59,10 @@ internal static class ExclusionTest
         if (monitor == IntPtr.Zero) return Fail("no monitor under the overlay");
         Console.WriteLine($"monitor                hmonitor={monitor:X}");
 
-        // The control, with the overlay up: what anything reading the screen sees today.
-        using var control = new DesktopGrabCaptureBackend(overlaysHiddenFromCapture: true);
-        using var onScreen = control.GrabRegion(overlayBounds);
+        // The control, with the overlay up: what anything reading the composited screen sees. Done
+        // here with GDI rather than through a capture backend, because there is no longer a backend
+        // that reads the screen — that is the whole result this probe is the evidence for.
+        using var onScreen = GrabScreen(overlayBounds);
         if (onScreen is null) return Fail("the desktop grab produced nothing");
 
         // What the session hands the backend: a snapshot that changes as overlays come and go. Here
@@ -183,6 +184,18 @@ internal static class ExclusionTest
     /// indicator is drawn on the edge itself rather than outside it — a comparison of the pixels
     /// beyond the screen measures nothing at all.
     /// </summary>
+    /// <summary>One rectangle of the composited screen, overlays and all — the control this probe
+    /// measures the exclusion against.</summary>
+    private static Bitmap? GrabScreen(Rectangle bounds)
+    {
+        if (bounds.Width <= 0 || bounds.Height <= 0) return null;
+
+        var bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
+        using var graphics = Graphics.FromImage(bitmap);
+        graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
+        return bitmap;
+    }
+
     private static Bitmap GrabScreenRing(Rectangle onThatMonitor)
     {
         var bounds = Screen.FromRectangle(onThatMonitor).Bounds;

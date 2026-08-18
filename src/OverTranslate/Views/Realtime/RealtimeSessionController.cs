@@ -462,9 +462,9 @@ internal sealed class RealtimeSessionController
     ///
     /// Now they choose, which makes falling back worse than refusing: someone who picked a window
     /// and silently got the whole screen has been handed the other feature, carrying the other
-    /// feature's requirement — this application's own overlays excluded from capture, which does not
-    /// hold before Windows 11 24H2 (#94) — attached to a choice they never made. So each mode either
-    /// produces its own backend or says what to do instead.
+    /// feature's requirement — a system new enough to compose a monitor without this application's
+    /// overlays — attached to a choice they never made. So each mode either produces its own backend
+    /// or says what to do instead.
     /// </remarks>
     /// <param name="refusal">The string key to show the user, when this returns null.</param>
     private IRealtimeCaptureBackend? CreateCaptureBackend(
@@ -474,7 +474,7 @@ internal sealed class RealtimeSessionController
         // feature: which capture path the user was actually on, and what their system offered.
         Log.Info("Realtime capture capability: {Capability}", WgcCapability.Describe());
 
-        refusal = "S.Realtime.CaptureNotIsolated";
+        refusal = "S.Realtime.ScreenCaptureUnavailable";
 
         if (request.CaptureMode is Models.RealtimeCaptureMode.Window)
             return CreateWindowCapture(request.SourceWindow, out refusal);
@@ -483,38 +483,34 @@ internal sealed class RealtimeSessionController
     }
 
     /// <summary>
-    /// The whole screen, isolated the best way this system allows, or null when it allows neither.
+    /// The whole screen as a monitor capture with this session's overlays excluded, or null when
+    /// this system cannot do that — in which case the user is sent to 指定視窗.
     /// </summary>
     /// <remarks>
-    /// Two backends, in this order, and the order is the whole of the policy. A monitor capture with
-    /// the overlays in the session's window exclusion list is structural: the system composes the
-    /// screen without them, the set call says from which frame that holds, and frames older than
-    /// that are never read. The desktop grab is the older arrangement, where the overlays are asked
-    /// to hide themselves with <c>WDA_EXCLUDEFROMCAPTURE</c> and the session starts only if every
-    /// one of them agreed — which they cannot do before Windows 11 24H2 (#94).
+    /// One backend, one requirement, and no second choice. This used to fall back to grabbing the
+    /// composited desktop on systems with no window exclusion list, with the overlays asked to hide
+    /// themselves via <c>WDA_EXCLUDEFROMCAPTURE</c>. That path is gone (#105), and dropping it was
+    /// the point rather than a side effect: it was the one capture path whose isolation could not be
+    /// checked from inside the program — display affinity fails silently on a layered WPF window, on
+    /// every Windows before 11 24H2, which is how #94 went unnoticed for as long as it did.
     ///
-    /// The exclusion list is far newer than 24H2, so the second is not dead code waiting to be
-    /// removed: it is the only full-screen path on every machine between those two Windows, and
-    /// today that is most of them. Dropping it with the first one in place would take a working
-    /// feature away from that whole band to tidy up a file.
-    ///
-    /// This is not the fallback #96 forbade. That one was silent and changed what the user was
-    /// reading — window capture quietly becoming a screen grab. Both of these <i>are</i> the screen
-    /// the user asked for, both refuse to start unless they can prove their own isolation, and which
-    /// one ran is named in the log.
+    /// What that costs is the band of systems between 24H2 and the exclusion list, who lose 整個螢幕.
+    /// They are not left without the feature: 指定視窗 needs neither API — its isolation is that the
+    /// source is somebody else's window — so it works on every system with WGC at all, and the
+    /// refusal below is written to send them there rather than to explain a mechanism they cannot
+    /// act on.
     /// </remarks>
     private IRealtimeCaptureBackend? CreateScreenCapture(RealtimeStartRequest request, out string refusal)
     {
-        refusal = "S.Realtime.CaptureNotIsolated";
+        refusal = "S.Realtime.ScreenCaptureUnavailable";
 
-        if (WgcCapability.IsCaptureSupported && CreateMonitorCapture(request.ScreenBounds) is { } monitor)
-            return monitor;
+        if (!WgcCapability.IsCaptureSupported)
+        {
+            Log.Info("Realtime screen capture unavailable: this system does not support it");
+            return null;
+        }
 
-        var desktop = new DesktopGrabCaptureBackend(OverlaysHiddenFromCapture());
-        if (desktop.IsIsolated) return desktop;
-
-        desktop.Dispose();
-        return null;
+        return CreateMonitorCapture(request.ScreenBounds);
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.18362.0")]

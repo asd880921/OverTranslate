@@ -203,7 +203,7 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.TooManyBlocks">{0} blocks at most — remove one first</sys:String>
     <sys:String x:Key="S.Realtime.NeedOneBlock">Drag to create at least one block first</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceLost">The window being translated has closed — realtime translation stopped</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureNotIsolated">This system cannot hide the subtitle layers from screen capture, so the loop would read its own output back. Switch to one window and it reads that window directly</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenCaptureUnavailable">This system cannot read the whole screen for realtime translation. Switch to One window and pick the window you want translated</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreen">Whole screen</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceWindow">One window</sys:String>
     <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">Everything on the screen.</sys:String>
