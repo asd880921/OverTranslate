@@ -104,12 +104,54 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.ApiBaseUrl}"
+                            <!-- The guide comes before the fields rather than after them: this
+                                 provider is aimed at a local model, and someone who has not
+                                 installed one yet cannot fill in a single box below until they
+                                 have. Spanning both columns and tinted like the note it is, so it
+                                 reads as the way in rather than as a first field to fill. -->
+                            <Border Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2"
+                                    Style="{StaticResource InfoCardBorder}">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- An open book, drawn rather than set in an icon font: the two
+                                         glyph fonts this app can rely on (Segoe Fluent Icons, Segoe
+                                         MDL2 Assets) are not on every supported Windows build, and a
+                                         missing glyph next to a link reads as a broken image.
+                                         Stroked, not filled, so it carries the same weight as the
+                                         text beside it, and drawn on a 16-unit grid so it stays
+                                         crisp. Accent-coloured to match the link it labels. -->
+                                    <Path x:Name="OllamaGuideIcon"
+                                          Width="17" Height="17"
+                                          Margin="0,0,11,0"
+                                          VerticalAlignment="Center"
+                                          Stretch="Uniform"
+                                          Stroke="{DynamicResource AppAccent}"
+                                          StrokeThickness="1.15"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Data="M8,4.3 C6.7,3.3 4.9,2.9 3,2.9 L1.7,2.9 L1.7,12.1 L3,12.1
+                                                C4.9,12.1 6.7,12.5 8,13.5
+                                                M8,4.3 C9.3,3.3 11.1,2.9 13,2.9 L14.3,2.9 L14.3,12.1 L13,12.1
+                                                C11.1,12.1 9.3,12.5 8,13.5
+                                                M8,4.3 L8,13.5"/>
+
+                                    <TextBlock FontFamily="{StaticResource AppFont}"
+                                               FontSize="{StaticResource AppFontSize}"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap">
+                                        <Hyperlink x:Name="OllamaGuideLink"
+                                                   Foreground="{DynamicResource AppAccent}"
+                                                   RequestNavigate="OllamaGuideLink_RequestNavigate"
+                                                   NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Grid.Column="0" Grid.Row="1" Text="{DynamicResource S.Settings.ApiBaseUrl}"
                                        Style="{StaticResource FieldLabel}"/>
-                            <Grid Grid.Column="1" Grid.Row="0">
+                            <Grid Grid.Column="1" Grid.Row="1">
                                 <TextBox x:Name="OpenAiBaseUrlBox"
                                          Style="{StaticResource ModernTextBox}"
                                          TextChanged="OpenAiSetting_TextChanged"/>
@@ -123,17 +165,17 @@
                                            VerticalAlignment="Center"/>
                             </Grid>
 
-                            <TextBlock Grid.Column="0" Grid.Row="1" Text="{DynamicResource S.Common.ApiKey}"
+                            <TextBlock Grid.Column="0" Grid.Row="2" Text="{DynamicResource S.Common.ApiKey}"
                                        Margin="0,10,0,0"
                                        Style="{StaticResource FieldLabel}"/>
-                            <controls:SecretBox Grid.Column="1" Grid.Row="1" x:Name="OpenAiApiKeyBox"
+                            <controls:SecretBox Grid.Column="1" Grid.Row="2" x:Name="OpenAiApiKeyBox"
                                                 Margin="0,10,0,0"
                                                 SecretChanged="OpenAiSecret_SecretChanged"/>
 
-                            <TextBlock Grid.Column="0" Grid.Row="2" Text="{DynamicResource S.Settings.ModelName}"
+                            <TextBlock Grid.Column="0" Grid.Row="3" Text="{DynamicResource S.Settings.ModelName}"
                                        Margin="0,10,0,0"
                                        Style="{StaticResource FieldLabel}"/>
-                            <Grid Grid.Column="1" Grid.Row="2" Margin="0,10,0,0">
+                            <Grid Grid.Column="1" Grid.Row="3" Margin="0,10,0,0">
                                 <TextBox x:Name="OpenAiModelBox"
                                          Style="{StaticResource ModernTextBox}"
                                          TextChanged="OpenAiSetting_TextChanged"/>
@@ -150,12 +192,12 @@
                                            VerticalAlignment="Center"/>
                             </Grid>
 
-                            <TextBlock Grid.Column="0" Grid.Row="3"
+                            <TextBlock Grid.Column="0" Grid.Row="4"
                                        Text="{DynamicResource S.Settings.Prompt}"
                                        Margin="0,10,12,0"
                                        VerticalAlignment="Top"
                                        Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Grid.Column="1" Grid.Row="3" Margin="0,12,0,0">
+                            <StackPanel Grid.Column="1" Grid.Row="4" Margin="0,12,0,0">
                                 <!-- The switch and the reset sit on one line above the editor, so
                                      it is clear the reset applies to the prompt being shown and
                                      not to both of them. -->
@@ -383,7 +425,7 @@
                             <!-- Collapsed by default and one level down from the fields above it:
                                  nothing in here is needed to translate, and a user who never has a
                                  model that disagrees with the defaults never has to read it. -->
-                            <Button Grid.Column="1" Grid.Row="4"
+                            <Button Grid.Column="1" Grid.Row="5"
                                     x:Name="OpenAiAdvancedToggle"
                                     Style="{StaticResource FlatButton}"
                                     Background="Transparent"
@@ -423,7 +465,7 @@
 
                             <!-- Clipped so the content can be animated out of a zero height rather
                                  than blinking in and out of the layout. -->
-                            <Border Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="2"
+                            <Border Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2"
                                     x:Name="OpenAiAdvancedHost"
                                     ClipToBounds="True"
                                     Height="0"
@@ -490,51 +532,6 @@
                                                Style="{StaticResource FieldHint}"/>
                                 </Grid>
                             </Border>
-
-                            <!-- The guide is about the provider as a whole, not about the prompt
-                                 directly above it, so a rule separates the two rather than letting
-                                 the link read as one more line of the prompt's own help. -->
-                            <Border Grid.Column="1" Grid.Row="6"
-                                    Height="1"
-                                    Margin="0,14,0,0"
-                                    Background="{DynamicResource AppBorder}"/>
-
-                            <StackPanel Grid.Column="1" Grid.Row="7"
-                                        Orientation="Horizontal"
-                                        Margin="2,12,0,0">
-                                <!-- An open book, drawn rather than set in an icon font: the two
-                                     glyph fonts this app can rely on (Segoe Fluent Icons, Segoe
-                                     MDL2 Assets) are not on every supported Windows build, and a
-                                     missing glyph next to a link reads as a broken image. Stroked,
-                                     not filled, so it carries the same weight as the 11px text
-                                     beside it, and drawn on a 16-unit grid so it stays crisp.
-                                     Uses the link's own colour by binding to the text below. -->
-                                <Path x:Name="OllamaGuideIcon"
-                                      Width="15" Height="15"
-                                      Margin="0,0,7,0"
-                                      VerticalAlignment="Center"
-                                      Stretch="Uniform"
-                                      Stroke="{DynamicResource AppTextSecondary}"
-                                      StrokeThickness="1.15"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round"
-                                      Data="M8,4.3 C6.7,3.3 4.9,2.9 3,2.9 L1.7,2.9 L1.7,12.1 L3,12.1
-                                            C4.9,12.1 6.7,12.5 8,13.5
-                                            M8,4.3 C9.3,3.3 11.1,2.9 13,2.9 L14.3,2.9 L14.3,12.1 L13,12.1
-                                            C11.1,12.1 9.3,12.5 8,13.5
-                                            M8,4.3 L8,13.5"/>
-
-                                <TextBlock FontFamily="{StaticResource AppFont}"
-                                           FontSize="11"
-                                           VerticalAlignment="Center"
-                                           TextWrapping="Wrap">
-                                    <Hyperlink x:Name="OllamaGuideLink"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               RequestNavigate="OllamaGuideLink_RequestNavigate"
-                                               NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
-                                </TextBlock>
-                            </StackPanel>
                         </Grid>
                     </Grid>
                 </ScrollViewer>

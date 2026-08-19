@@ -45,6 +45,11 @@ public partial class SettingsPage : UserControl
     /// when it changes. True for the capture shortcut, which the interface names in three places;
     /// false for the other shortcuts, which it names nowhere.
     /// </param>
+    /// <remarks>
+    /// There is no record button in the record because there is none on the page: the box is
+    /// read-only and starts recording when it is clicked, so a button beside it would have been a
+    /// second way to do the one thing clicking the box already does.
+    /// </remarks>
     /// <param name="EnabledBox">
     /// The tick that turns this shortcut off, or null for the capture one, which has no tick at all
     /// and no setting behind it because that shortcut is the feature the application is for. Null
@@ -62,7 +67,6 @@ public partial class SettingsPage : UserControl
         HotkeyAction Action,
         string NameKey,
         TextBox Box,
-        Button Record,
         Func<AppSettings, string> Display,
         Func<AppSettings, ShortcutTrigger> Trigger,
         Action<AppSettings, ShortcutTrigger, string> Apply,
@@ -90,7 +94,7 @@ public partial class SettingsPage : UserControl
             new HotkeyField(
                 HotkeyAction.Capture,
                 "S.Settings.CaptureHotkey",
-                HotkeyBox, RecordBtn,
+                HotkeyBox,
                 s => s.HotkeyDisplay,
                 s => HotkeyBindings.TriggerFor(s, HotkeyAction.Capture),
                 ApplyCaptureTrigger,
@@ -98,7 +102,7 @@ public partial class SettingsPage : UserControl
             new HotkeyField(
                 HotkeyAction.TranslationWindow,
                 "S.Settings.WindowHotkey",
-                WindowHotkeyBox, WindowRecordBtn,
+                WindowHotkeyBox,
                 s => s.TranslationWindowHotkeyDisplay,
                 s => HotkeyBindings.TriggerFor(s, HotkeyAction.TranslationWindow),
                 ApplyWindowTrigger,
@@ -110,7 +114,7 @@ public partial class SettingsPage : UserControl
             new HotkeyField(
                 HotkeyAction.RealtimePause,
                 "S.Settings.RealtimePauseHotkey",
-                RealtimePauseHotkeyBox, RealtimePauseRecordBtn,
+                RealtimePauseHotkeyBox,
                 s => s.RealtimePauseHotkeyDisplay,
                 s => HotkeyBindings.TriggerFor(s, HotkeyAction.RealtimePause),
                 ApplyRealtimePauseTrigger,
@@ -143,8 +147,8 @@ public partial class SettingsPage : UserControl
     }
 
     /// <summary>
-    /// Re-reads the stored settings. The translation page writes the same language/provider
-    /// fields, so navigating back here has to pick up whatever it changed.
+    /// Re-reads the stored settings, so a change made elsewhere — a key typed into the service
+    /// panel, a shortcut rebound — is on screen when this page is next shown.
     /// </summary>
     public void Reload() => LoadSettings();
 
@@ -154,15 +158,6 @@ public partial class SettingsPage : UserControl
         try
         {
             var s = SettingsService.Instance.Current;
-
-            LocalizationService.BindLocalizedItems(SourceLangBox, LanguageData.OcrSourceLanguages);
-            SourceLangBox.SelectedValue = LanguageData.GetValidOcrSourceCode(s.SourceLanguage);
-            if (SourceLangBox.SelectedValue == null) SourceLangBox.SelectedIndex = 0;
-
-            LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
-            ProviderBox.SelectedValue = s.Provider;
-            if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
-            ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
 
             foreach (var field in _hotkeyFields) field.Box.Text = field.Display(s);
 
@@ -251,21 +246,6 @@ public partial class SettingsPage : UserControl
 
     // ── Field handlers ───────────────────────────────────────────────────────
 
-    private void SourceLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        => Persist(s => s.SourceLanguage = LanguageData.GetValidOcrSourceCode(SourceLangBox.SelectedValue as string));
-
-    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        ProviderHint.Text = (ProviderBox.SelectedItem as ProviderItem)?.Hint ?? "";
-        Persist(s => s.Provider = ProviderBox.SelectedValue is TranslationProvider p
-            ? p
-            : TranslationProvider.Microsoft);
-
-        // After the write, so the "使用中" mark is read back from the setting rather than from the
-        // selector it was just made in.
-        RefreshServiceTiles();
-    }
-
     // ── Translation services ─────────────────────────────────────────────────
 
     /// <summary>Which service a tile's button configures.</summary>
@@ -287,8 +267,8 @@ public partial class SettingsPage : UserControl
     }
 
     /// <summary>
-    /// Brings the two tiles in line with what is stored — what each service still needs, and which
-    /// one is actually doing the translating.
+    /// Brings the two tiles in line with what is stored: what each service still needs before it
+    /// can translate.
     /// </summary>
     /// <remarks>
     /// Public because the shell calls it when the settings panel is dismissed: what was typed in
@@ -308,9 +288,6 @@ public partial class SettingsPage : UserControl
             s.OpenAiApiKey.Trim().Length > 0 ||
             s.OpenAiModel.Trim().Length > 0;
         WriteServiceBadge(OpenAiBadge, OpenAiBadgeText, configured: openAiTouched, required: false);
-
-        MarkServiceInUse(DeepLTile, DeepLInUseBadge, s.Provider == TranslationProvider.DeepL);
-        MarkServiceInUse(OpenAiTile, OpenAiInUseBadge, s.Provider == TranslationProvider.OpenAI);
     }
 
     /// <param name="required">
@@ -331,16 +308,6 @@ public partial class SettingsPage : UserControl
         var warn = !configured && required;
         badge.SetResourceReference(Border.BackgroundProperty, warn ? "AppWarningSubtle" : "AppAccentSubtle");
         text.SetResourceReference(TextBlock.ForegroundProperty, warn ? "AppWarning" : "AppAccent");
-    }
-
-    /// <summary>
-    /// Outlines the tile of the service the selector above is set to, so the pair of tiles says
-    /// which one the settings in them are currently affecting.
-    /// </summary>
-    private void MarkServiceInUse(Border tile, Border badge, bool inUse)
-    {
-        tile.SetResourceReference(Border.BorderBrushProperty, inUse ? "AppAccent" : "AppSubtleBorder");
-        badge.Visibility = inUse ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ── General ──────────────────────────────────────────────────────────────
@@ -469,10 +436,9 @@ public partial class SettingsPage : UserControl
 
     // ── Hotkey recording ─────────────────────────────────────────────────────
 
-    /// <summary>The field these two controls edit, or null for anything else.</summary>
+    /// <summary>The field this box edits, or null for anything else.</summary>
     private HotkeyField? FieldOf(object sender) =>
-        _hotkeyFields.FirstOrDefault(
-            field => ReferenceEquals(field.Box, sender) || ReferenceEquals(field.Record, sender));
+        _hotkeyFields.FirstOrDefault(field => ReferenceEquals(field.Box, sender));
 
     /// <summary>The row that edits one action.</summary>
     private HotkeyField? FieldFor(HotkeyAction action) =>
@@ -496,7 +462,6 @@ public partial class SettingsPage : UserControl
         var on = field.EnabledBox is not { } box || box.IsChecked == true;
 
         field.Box.IsEnabled = on;
-        field.Record.IsEnabled = on;
 
         // Written here rather than beside the switch, because this is the one place both the load
         // and the toggle already go through — and a switch whose word disagreed with it would be
@@ -616,7 +581,6 @@ public partial class SettingsPage : UserControl
 
         _recording = field;
         field.Box.Text = LocalizationService.Get("S.Settings.HotkeyPromptAnyInput");
-        field.Record.Content = LocalizationService.Get("S.Common.Cancel");
         field.Box.Focus();
 
         for (int i = 0; i < _recordGamepadButtons.Length; i++)
@@ -636,14 +600,25 @@ public partial class SettingsPage : UserControl
         if (_recording is not { } field) return;
 
         field.Box.Text = field.Display(SettingsService.Instance.Current);
-        field.Record.Content = LocalizationService.Get("S.Common.Record");
         _recording = null;
     }
 
-    private void RecordBtn_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Every click on a focused box toggles recording — start, then stop, then start again.
+    /// </summary>
+    /// <remarks>
+    /// GotFocus can only answer the first click, because the box stays focused after it. Without
+    /// this the box would record once and then ignore every further click until focus had left and
+    /// come back, which is the state a user lands in the moment they change their mind.
+    ///
+    /// The focusing click is left alone so it is not handled twice: GotFocus starts the recording
+    /// that click asked for.
+    /// </remarks>
+    private void HotkeyBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (FieldOf(sender) is not { } field) return;
+        if (FieldOf(sender) is not { } field || !field.Box.IsFocused) return;
 
+        e.Handled = true;
         if (ReferenceEquals(_recording, field)) StopRecording();
         else StartRecording(field);
     }
@@ -659,8 +634,8 @@ public partial class SettingsPage : UserControl
         if (FieldOf(sender) is not { } field || !ReferenceEquals(_recording, field)) return;
 
         // Keep recording while focus moves inside this settings page. This is what lets the user
-        // press middle mouse anywhere on the page after clicking Record instead of having to aim at
-        // the read-only box itself.
+        // press middle mouse anywhere on the page after starting to record instead of having to aim
+        // at the read-only box itself.
         if (Keyboard.FocusedElement is DependencyObject focused && IsDescendantOfThisPage(focused)) return;
 
         StopRecording();

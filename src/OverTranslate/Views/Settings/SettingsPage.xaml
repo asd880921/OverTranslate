@@ -24,6 +24,19 @@
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="Margin"            Value="10,1,10,0"/>
         </Style>
+        <!-- The card's heading strip: glyph, title, and room under it before the first setting. -->
+        <Style x:Key="CardHeaderRow" TargetType="StackPanel">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Margin"      Value="0,0,0,12"/>
+        </Style>
+        <!-- The shortcut boxes are read-only and act as buttons: clicking one starts recording,
+             which is why these rows carry no separate record button. -->
+        <Style x:Key="HotkeyBox" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+            <Setter Property="IsReadOnly"        Value="True"/>
+            <Setter Property="Cursor"            Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="ToolTip"           Value="{DynamicResource S.Settings.HotkeyRecordTip}"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="28,22,28,20">
@@ -70,10 +83,10 @@
                         Style="{StaticResource CardBorder}"
                         Margin="0,0,12,12">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Style="{StaticResource CardHeaderRow}">
                             <TextBlock Text="&#xE765;" Style="{StaticResource CardHeaderIcon}"/>
                             <TextBlock Text="{DynamicResource S.Settings.Hotkeys}"
-                                       Style="{StaticResource SectionHeader}"/>
+                                       Style="{StaticResource CardTitle}"/>
                         </StackPanel>
 
                         <!-- What can be bound at all, said once at the top rather than three times
@@ -124,34 +137,21 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="200"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="70"/>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                             </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,14,0"
+                            <StackPanel Grid.Column="0" Margin="0,0,14,0"
                                         VerticalAlignment="Center">
                                 <TextBlock Text="{DynamicResource S.Settings.CaptureHotkey}"
                                            Style="{StaticResource OptionTitle}"/>
                                 <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.CaptureHotkeyHint}"
                                            Style="{StaticResource OptionDescription}"/>
                             </StackPanel>
-                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="HotkeyBox"
-                                       Style="{StaticResource ModernTextBox}"
-                                       IsReadOnly="True"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,8,0"
+                            <TextBox   Grid.Column="1" x:Name="HotkeyBox"
+                                       Style="{StaticResource HotkeyBox}"
+                                       PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RecordBtn"
-                                       Content="{DynamicResource S.Common.Record}"
-                                       Style="{StaticResource FlatButton}"
-                                       Height="34"
-                                       VerticalAlignment="Center"
-                                       Click="RecordBtn_Click"/>
                         </Grid>
 
                         <!-- Translation window. Same editing controls as the capture shortcut and
@@ -161,7 +161,6 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="200"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="70"/>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
@@ -176,23 +175,15 @@
                                            Style="{StaticResource OptionDescription}"/>
                             </StackPanel>
                             <TextBox   Grid.Column="1" Grid.Row="0" x:Name="WindowHotkeyBox"
-                                       Style="{StaticResource ModernTextBox}"
-                                       IsReadOnly="True"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,8,0"
+                                       Style="{StaticResource HotkeyBox}"
+                                       PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="2" Grid.Row="0" x:Name="WindowRecordBtn"
-                                       Content="{DynamicResource S.Common.Record}"
-                                       Style="{StaticResource FlatButton}"
-                                       Height="34"
-                                       VerticalAlignment="Center"
-                                       Click="RecordBtn_Click"/>
-                            <StackPanel Grid.Column="3" Grid.Row="0"
+                            <StackPanel Grid.Column="2" Grid.Row="0"
                                         Orientation="Horizontal"
                                         VerticalAlignment="Center"
-                                        Margin="10,0,0,0">
+                                        Margin="12,0,0,0">
                                 <CheckBox x:Name="WindowHotkeyEnabledCheckBox"
                                           Style="{StaticResource ToggleSwitch}"
                                           ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
@@ -206,7 +197,7 @@
                                            MinWidth="56"
                                            Margin="9,0,0,0"/>
                             </StackPanel>
-                            <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="4"
+                            <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3"
                                        x:Name="WindowHotkeyShadowHint"
                                        Style="{StaticResource FieldHint}"
                                        Margin="0,6,0,0"
@@ -220,7 +211,6 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="200"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="70"/>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
@@ -235,23 +225,15 @@
                                            Style="{StaticResource OptionDescription}"/>
                             </StackPanel>
                             <TextBox   Grid.Column="1" Grid.Row="0" x:Name="RealtimePauseHotkeyBox"
-                                       Style="{StaticResource ModernTextBox}"
-                                       IsReadOnly="True"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,8,0"
+                                       Style="{StaticResource HotkeyBox}"
+                                       PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                        PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                        GotFocus="HotkeyBox_GotFocus"
                                        LostFocus="HotkeyBox_LostFocus"/>
-                            <Button    Grid.Column="2" Grid.Row="0" x:Name="RealtimePauseRecordBtn"
-                                       Content="{DynamicResource S.Common.Record}"
-                                       Style="{StaticResource FlatButton}"
-                                       Height="34"
-                                       VerticalAlignment="Center"
-                                       Click="RecordBtn_Click"/>
-                            <StackPanel Grid.Column="3" Grid.Row="0"
+                            <StackPanel Grid.Column="2" Grid.Row="0"
                                         Orientation="Horizontal"
                                         VerticalAlignment="Center"
-                                        Margin="10,0,0,0">
+                                        Margin="12,0,0,0">
                                 <CheckBox x:Name="RealtimePauseHotkeyEnabledCheckBox"
                                           Style="{StaticResource ToggleSwitch}"
                                           ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
@@ -262,7 +244,7 @@
                                            MinWidth="56"
                                            Margin="9,0,0,0"/>
                             </StackPanel>
-                            <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="4"
+                            <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3"
                                        x:Name="RealtimePauseHotkeyShadowHint"
                                        Style="{StaticResource FieldHint}"
                                        Margin="0,6,0,0"
@@ -277,15 +259,15 @@
                      opened this page because they cannot read it finds it without scrolling. -->
                 <Border Grid.Column="1" Grid.Row="0" Style="{StaticResource CardBorder}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Style="{StaticResource CardHeaderRow}">
                             <TextBlock Text="&#xE713;" Style="{StaticResource CardHeaderIcon}"/>
                             <TextBlock Text="{DynamicResource S.Settings.General}"
-                                       Style="{StaticResource SectionHeader}"/>
+                                       Style="{StaticResource CardTitle}"/>
                         </StackPanel>
 
                         <TextBlock Text="{DynamicResource S.Settings.UiLanguage}"
                                    Style="{StaticResource FieldLabel}"
-                                   Margin="0,2,0,7"/>
+                                   Margin="0,0,0,7"/>
                         <ComboBox x:Name="UiLanguageBox"
                                   Style="{StaticResource ModernComboBox}"
                                   SelectedValuePath="Code"
@@ -401,64 +383,23 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ══════════ 翻譯服務 ══════════
-                     Which service translates, then the two services that have anything to be told.
-                     The other services are not tiles here at all: a tile whose only message is
-                     "nothing to set" asks to be read and then says nothing. -->
+                <!-- ══════════ 翻譯服務設定 ══════════
+                     Only the two services that have something to be told. Which service actually
+                     translates is deliberately not set here: 文字翻譯 and 即時翻譯 each keep their
+                     own choice and save it themselves, so a third selector on this page would claim
+                     to speak for both and speak for neither. The services that need nothing are not
+                     tiles either — a tile whose only message is "nothing to set" asks to be read
+                     and then says nothing. -->
                 <Border Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
                         Style="{StaticResource CardBorder}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Style="{StaticResource CardHeaderRow}">
                             <TextBlock Text="&#xE774;" Style="{StaticResource CardHeaderIcon}"/>
-                            <TextBlock Text="{DynamicResource S.Settings.Translation}"
-                                       Style="{StaticResource SectionHeader}"/>
-                        </StackPanel>
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Source language, above the service that will translate it: this is
-                                 what the screenshot flow reads, so it belongs with the rest of
-                                 translation rather than among the general toggles. -->
-                            <TextBlock Grid.Column="0" Grid.Row="0"
-                                       Text="{DynamicResource S.Settings.SourceLanguage}"
-                                       Style="{StaticResource FieldLabel}"/>
-                            <ComboBox  Grid.Column="1" Grid.Row="0" x:Name="SourceLangBox"
-                                       Style="{StaticResource ModernComboBox}"
-                                       Margin="0,0,0,10"
-                                       SelectedValuePath="Code"
-                                       SelectionChanged="SourceLangBox_SelectionChanged"/>
-
-                            <TextBlock Grid.Column="0" Grid.Row="1"
-                                       Text="{DynamicResource S.Settings.Provider}"
-                                       Style="{StaticResource FieldLabel}"/>
-                            <ComboBox  Grid.Column="1" Grid.Row="1" x:Name="ProviderBox"
-                                       Style="{StaticResource ModernComboBox}"
-                                       SelectedValuePath="Provider"
-                                       SelectionChanged="ProviderBox_SelectionChanged"/>
-                            <TextBlock Grid.Column="1" Grid.Row="2" x:Name="ProviderHint"
-                                       Style="{StaticResource FieldHint}"/>
-                        </Grid>
-
-                        <Border Height="1" Margin="0,16,0,14"
-                                Background="{DynamicResource AppSeparator}"/>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                             <TextBlock Text="{DynamicResource S.Settings.ServiceSetup}"
-                                       Style="{StaticResource SectionHeader}"
-                                       Margin="0"
-                                       VerticalAlignment="Center"/>
+                                       Style="{StaticResource CardTitle}"/>
                             <TextBlock Text="{DynamicResource S.Settings.ServiceSetupHint}"
                                        Style="{StaticResource FieldHint}"
-                                       Margin="10,0,0,0"
+                                       Margin="12,0,0,0"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
 
@@ -470,8 +411,7 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <Border Grid.Column="0" x:Name="DeepLTile"
-                                    Style="{StaticResource ServiceTileBorder}"
+                            <Border Grid.Column="0" Style="{StaticResource ServiceTileBorder}"
                                     Margin="0,0,6,0">
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -483,56 +423,44 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- A monogram rather than the service's own mark: the marks are
-                                         colour bitmaps this app does not ship, and a two-letter tile
-                                         reads the same in both themes at any scale. -->
-                                    <Border Grid.Column="0" Grid.Row="0"
-                                            Width="40" Height="40"
-                                            CornerRadius="8"
-                                            VerticalAlignment="Top"
-                                            Margin="0,0,12,0"
-                                            Background="{DynamicResource AppAccentSubtle}">
-                                        <TextBlock Text="DL"
-                                                   FontFamily="{StaticResource AppFont}"
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource AppAccent}"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"/>
-                                    </Border>
+                                    <!-- The mark stands on the tile itself rather than on a filled
+                                         square of its own: these are the vendors' logos, and a
+                                         backing plate turns two recognisable marks into two of this
+                                         app's icons. Sized by height, because the two are not the
+                                         same shape and it is their optical weight that has to
+                                         match. -->
+                                    <Path Grid.Column="0" Grid.Row="0"
+                                          Data="{StaticResource DeepLMarkGeometry}"
+                                          Fill="{DynamicResource AppDeepLMark}"
+                                          Stretch="Uniform"
+                                          Height="40"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,14,0"/>
 
-                                    <StackPanel Grid.Column="1" Grid.Row="0">
+                                    <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.Provider.DeepL}"
-                                                   Style="{StaticResource ChoiceTileTitle}"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                            <Border x:Name="DeepLBadge" Style="{StaticResource ServiceBadgeBorder}">
-                                                <TextBlock x:Name="DeepLBadgeText" Style="{StaticResource ServiceBadgeText}"/>
-                                            </Border>
-                                            <Border x:Name="DeepLInUseBadge"
-                                                    Style="{StaticResource ServiceBadgeBorder}"
-                                                    Margin="6,0,0,0"
-                                                    Background="{DynamicResource AppAccentSubtle}"
-                                                    Visibility="Collapsed">
-                                                <TextBlock Text="{DynamicResource S.Settings.ServiceInUse}"
-                                                           Style="{StaticResource ServiceBadgeText}"
-                                                           Foreground="{DynamicResource AppAccent}"/>
-                                            </Border>
-                                        </StackPanel>
+                                                   Style="{StaticResource ChoiceTileTitle}"
+                                                   FontSize="15"/>
+                                        <Border x:Name="DeepLBadge"
+                                                Style="{StaticResource ServiceBadgeBorder}"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,6,0,0">
+                                            <TextBlock x:Name="DeepLBadgeText" Style="{StaticResource ServiceBadgeText}"/>
+                                        </Border>
                                     </StackPanel>
 
                                     <Button Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
                                             x:Name="DeepLConfigureBtn"
                                             Content="{DynamicResource S.Common.Configure}"
                                             Style="{StaticResource FlatButton}"
-                                            Height="32"
-                                            Margin="0,12,0,0"
+                                            Height="34"
+                                            Margin="0,14,0,0"
                                             HorizontalAlignment="Stretch"
                                             Click="ConfigureService_Click"/>
                                 </Grid>
                             </Border>
 
-                            <Border Grid.Column="1" x:Name="OpenAiTile"
-                                    Style="{StaticResource ServiceTileBorder}"
+                            <Border Grid.Column="1" Style="{StaticResource ServiceTileBorder}"
                                     Margin="6,0,0,0">
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -544,46 +472,32 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <Border Grid.Column="0" Grid.Row="0"
-                                            Width="40" Height="40"
-                                            CornerRadius="8"
-                                            VerticalAlignment="Top"
-                                            Margin="0,0,12,0"
-                                            Background="{DynamicResource AppAccentSubtle}">
-                                        <TextBlock Text="AI"
-                                                   FontFamily="{StaticResource AppFont}"
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource AppAccent}"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"/>
-                                    </Border>
+                                    <Path Grid.Column="0" Grid.Row="0"
+                                          Data="{StaticResource OpenAiMarkGeometry}"
+                                          Fill="{DynamicResource AppOpenAiMark}"
+                                          Stretch="Uniform"
+                                          Height="40"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,14,0"/>
 
-                                    <StackPanel Grid.Column="1" Grid.Row="0">
+                                    <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.Provider.OpenAI}"
-                                                   Style="{StaticResource ChoiceTileTitle}"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                            <Border x:Name="OpenAiBadge" Style="{StaticResource ServiceBadgeBorder}">
-                                                <TextBlock x:Name="OpenAiBadgeText" Style="{StaticResource ServiceBadgeText}"/>
-                                            </Border>
-                                            <Border x:Name="OpenAiInUseBadge"
-                                                    Style="{StaticResource ServiceBadgeBorder}"
-                                                    Margin="6,0,0,0"
-                                                    Background="{DynamicResource AppAccentSubtle}"
-                                                    Visibility="Collapsed">
-                                                <TextBlock Text="{DynamicResource S.Settings.ServiceInUse}"
-                                                           Style="{StaticResource ServiceBadgeText}"
-                                                           Foreground="{DynamicResource AppAccent}"/>
-                                            </Border>
-                                        </StackPanel>
+                                                   Style="{StaticResource ChoiceTileTitle}"
+                                                   FontSize="15"/>
+                                        <Border x:Name="OpenAiBadge"
+                                                Style="{StaticResource ServiceBadgeBorder}"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,6,0,0">
+                                            <TextBlock x:Name="OpenAiBadgeText" Style="{StaticResource ServiceBadgeText}"/>
+                                        </Border>
                                     </StackPanel>
 
                                     <Button Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
                                             x:Name="OpenAiConfigureBtn"
                                             Content="{DynamicResource S.Common.Configure}"
                                             Style="{StaticResource FlatButton}"
-                                            Height="32"
-                                            Margin="0,12,0,0"
+                                            Height="34"
+                                            Margin="0,14,0,0"
                                             HorizontalAlignment="Stretch"
                                             Click="ConfigureService_Click"/>
                                 </Grid>
@@ -597,10 +511,10 @@
                         Style="{StaticResource CardBorder}"
                         Margin="0,0,12,12">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Style="{StaticResource CardHeaderRow}">
                             <TextBlock Text="&#xE790;" Style="{StaticResource CardHeaderIcon}"/>
                             <TextBlock Text="{DynamicResource S.Settings.Appearance}"
-                                       Style="{StaticResource SectionHeader}"/>
+                                       Style="{StaticResource CardTitle}"/>
                         </StackPanel>
 
                         <Grid>
@@ -632,10 +546,10 @@
                      report never needs to read it. -->
                 <Border Grid.Column="1" Grid.Row="2" Style="{StaticResource CardBorder}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Style="{StaticResource CardHeaderRow}">
                             <TextBlock Text="&#xE7BA;" Style="{StaticResource CardHeaderIcon}"/>
                             <TextBlock Text="{DynamicResource S.Settings.Advanced}"
-                                       Style="{StaticResource SectionHeader}"/>
+                                       Style="{StaticResource CardTitle}"/>
                         </StackPanel>
 
                         <Grid>

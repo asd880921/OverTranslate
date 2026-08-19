@@ -7,8 +7,6 @@
          are composite formats consumed through LocalizationService.Format. -->
 
     <!-- ── Shared ── -->
-    <sys:String x:Key="S.Common.Record">錄製</sys:String>
-    <sys:String x:Key="S.Common.Cancel">取消</sys:String>
     <sys:String x:Key="S.Common.Edit">編輯</sys:String>
     <sys:String x:Key="S.Common.Reset">重設</sys:String>
     <sys:String x:Key="S.Common.Close">關閉</sys:String>
@@ -285,6 +283,8 @@
     <sys:String x:Key="S.Settings.Hotkeys">快捷鍵</sys:String>
     <!-- 勾選框沒有文字，所以這是它的 ToolTip，不是標籤 -->
     <sys:String x:Key="S.Settings.HotkeyEnable">啟用此快捷鍵</sys:String>
+    <!-- The shortcut box has no label of its own; this is its ToolTip -->
+    <sys:String x:Key="S.Settings.HotkeyRecordTip">點一下重新錄製快捷鍵</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOn">已啟用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOff">未啟用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">快捷鍵可以是 Ctrl／Alt／Shift 搭配任意按鍵的組合鍵，也可以是單一功能鍵、滑鼠中鍵或遊戲手把按鍵。</sys:String>
@@ -301,20 +301,16 @@
     <sys:String x:Key="S.Settings.CaptureHotkeyHint">按下快捷鍵即可使用[[截圖翻譯]]功能</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkey">開啟翻譯視窗</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkeyHint">[[即時翻譯]]進行中時，改為將[[浮動視窗列]]移至最上層</sys:String>
-    <sys:String x:Key="S.Settings.SourceLanguage">來源語言</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslate">自動翻譯</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslateCheck">截圖翻譯框選完成時立即翻譯，不需要再手動點擊。</sys:String>
     <sys:String x:Key="S.Settings.Startup">開機啟動</sys:String>
     <sys:String x:Key="S.Settings.StartupCheck">開機時自動啟動</sys:String>
 
-    <sys:String x:Key="S.Settings.Translation">翻譯</sys:String>
-    <sys:String x:Key="S.Settings.Provider">翻譯服務</sys:String>
     <sys:String x:Key="S.Settings.ServiceSetup">翻譯服務設定</sys:String>
     <sys:String x:Key="S.Settings.ServiceSetupHint">僅需為需要金鑰或端點的服務進行設定</sys:String>
     <sys:String x:Key="S.Settings.ServiceNeedsSetup">需設定</sys:String>
     <sys:String x:Key="S.Settings.ServiceReady">已設定</sys:String>
     <sys:String x:Key="S.Settings.ServiceDefault">使用預設</sys:String>
-    <sys:String x:Key="S.Settings.ServiceInUse">使用中</sys:String>
     <sys:String x:Key="S.Settings.ServiceDialogTitle">{0}設定</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API 位址</sys:String>
     <sys:String x:Key="S.Settings.ModelName">模型名稱</sys:String>

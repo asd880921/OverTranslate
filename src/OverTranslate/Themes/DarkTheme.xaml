@@ -61,6 +61,11 @@
          so it must not be painted the colour a failure is. -->
     <SolidColorBrush x:Key="AppWarning"        Color="#E8A33D"/>
     <SolidColorBrush x:Key="AppWarningSubtle"  Color="#3A2E1C"/>
+
+    <!-- Translation service marks: white on this ground, black on the light theme's.
+         See DeepLMarkGeometry in SharedStyles. -->
+    <SolidColorBrush x:Key="AppDeepLMark"      Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="AppOpenAiMark"     Color="#FFFFFF"/>
     <SolidColorBrush x:Key="AppSectionHeader"  Color="#BBBBBB"/>
 
     <!-- Toolbar specific -->
