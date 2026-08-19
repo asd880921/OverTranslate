@@ -12,166 +12,183 @@
 
     <!-- Margin gives room for the drop shadow to render outside the visual -->
     <Border Margin="8,6,8,10">
-        <Border Background="{DynamicResource ToolbarBg}"
-                BorderBrush="{DynamicResource ToolbarBorder}"
-                BorderThickness="1"
-                CornerRadius="16"
-                Padding="8,8">
-            <Border.Effect>
-                <!-- Shadow color is black in both themes; hardcoded avoids Freezable binding edge cases -->
-                <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.18" Color="#000000"/>
-            </Border.Effect>
+        <Grid>
+            <!-- The shadow rides an empty twin of the bar rather than the bar itself. An Effect makes
+                 WPF rasterise the element it is set on into an intermediate surface, and ClearType
+                 sub-pixel antialiasing cannot run over a surface that may be transparent - so a
+                 shadow on the bar quietly dropped every label on it to greyscale antialiasing, which
+                 at 11-12px CJK is the difference between text that reads and text that looks thin
+                 and hard. Blurring an empty rectangle costs the same and leaves the bar itself
+                 un-rasterised. The same trick as ShellWindow's content host, for the same reason. -->
+            <Border Background="{DynamicResource ToolbarBg}"
+                    Margin="2"
+                    CornerRadius="14">
+                <Border.Effect>
+                    <!-- Shadow color is black in both themes; hardcoded avoids Freezable binding edge cases -->
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.18" Color="#000000"/>
+                </Border.Effect>
+            </Border>
 
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <!-- ClearTypeHint on top of an opaque background: the window itself is layered
+                 (AllowsTransparency), which is the other thing that turns ClearType off. The hint is
+                 how WPF is told this particular surface really is opaque. -->
+            <Border Background="{DynamicResource ToolbarBg}"
+                    BorderBrush="{DynamicResource ToolbarBorder}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="8,8"
+                    RenderOptions.ClearTypeHint="Enabled">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
 
-                <!-- At the head of the bar, in front of the source picker, because that picker is
-                     what it reads with and what switches it off: this reads the original, never the
-                     translation. Sat among the actions on the right it was one more thing to do to
-                     the result, and the only way to say which text it meant would have been to spell
-                     it out in the label — four characters for a button on a bar already short of
-                     room. Position says it in none.
+                    <!-- At the head of the bar, in front of the source picker, because that picker is
+                         what it reads with and what switches it off: this reads the original, never the
+                         translation. Sat among the actions on the right it was one more thing to do to
+                         the result, and the only way to say which text it meant would have been to spell
+                         it out in the label — four characters for a button on a bar already short of
+                         room. Position says it in none.
 
-                     Reads the recognised source text as one piece, not block by block: the blocks
-                     are how the picture was cut up for recognition, not how the sentence was
-                     written, and read one at a time they come out as fragments. Same text the
-                     translation window is opened with. -->
-                <Button x:Name="TtsBtn"
-                        Style="{StaticResource ToolbarStackButton}"
-                        IsEnabled="False"
-                        Margin="0,0,4,0"
-                        Click="TtsBtn_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="TtsGlyph"
-                                   Text="&#xE767;"
-                                   Style="{StaticResource ToolbarActionGlyph}"/>
-                        <TextBlock x:Name="TtsLabel"
-                                   VerticalAlignment="Center"
-                                   Text="{DynamicResource S.Toolbar.Speak}"/>
-                    </StackPanel>
-                </Button>
+                         Reads the recognised source text as one piece, not block by block: the blocks
+                         are how the picture was cut up for recognition, not how the sentence was
+                         written, and read one at a time they come out as fragments. Same text the
+                         translation window is opened with. -->
+                    <Button x:Name="TtsBtn"
+                            Style="{StaticResource ToolbarStackButton}"
+                            IsEnabled="False"
+                            Margin="0,0,4,0"
+                            Click="TtsBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="TtsGlyph"
+                                       Text="&#xE767;"
+                                       Style="{StaticResource ToolbarActionGlyph}"/>
+                            <TextBlock x:Name="TtsLabel"
+                                       VerticalAlignment="Center"
+                                       Text="{DynamicResource S.Toolbar.Speak}"/>
+                        </StackPanel>
+                    </Button>
 
-                <!-- Source language (140px - fits longest entry + arrow) -->
-                <ComboBox x:Name="SrcLangBox"
-                          Style="{StaticResource ToolbarComboBox}"
-                          Width="132"
-                          SelectedValuePath="Code"
-                          VerticalContentAlignment="Center"/>
+                    <!-- Source language (140px - fits longest entry + arrow) -->
+                    <ComboBox x:Name="SrcLangBox"
+                              Style="{StaticResource ToolbarComboBox}"
+                              Width="132"
+                              SelectedValuePath="Code"
+                              VerticalContentAlignment="Center"/>
 
-                <!-- Swap -->
-                <Button Content="&#xE8AB;"
-                        Style="{StaticResource ToolbarIconButton}"
-                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                        FontSize="14"
-                        Margin="1,0"
-                        ToolTip="{DynamicResource S.Toolbar.Swap}"
-                        AutomationProperties.Name="{DynamicResource S.Toolbar.Swap}"
-                        Click="SwapBtn_Click"/>
+                    <!-- Swap -->
+                    <Button Content="&#xE8AB;"
+                            Style="{StaticResource ToolbarIconButton}"
+                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                            FontSize="14"
+                            Margin="1,0"
+                            ToolTip="{DynamicResource S.Toolbar.Swap}"
+                            AutomationProperties.Name="{DynamicResource S.Toolbar.Swap}"
+                            Click="SwapBtn_Click"/>
 
-                <!-- Target language -->
-                <ComboBox x:Name="TgtLangBox"
-                          Style="{StaticResource ToolbarComboBox}"
-                          Width="132"
-                          Margin="0,0,6,0"
-                          SelectedValuePath="Code"
-                          VerticalContentAlignment="Center"/>
-
-                <!-- Provider -->
-                <ComboBox x:Name="ProviderBox"
-                          Style="{StaticResource ToolbarComboBox}"
-                          Width="142"
-                          SelectedValuePath="Provider"
-                          VerticalContentAlignment="Center"/>
-
-                <!-- Fallback badge: shown only when a backup engine actually served the batch -->
-                <Border x:Name="EngineBadge"
-                        Visibility="Collapsed"
-                        Background="#33F59E0B"
-                        BorderBrush="#F59E0B"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Padding="6,1"
-                        Margin="6,0,0,0"
-                        VerticalAlignment="Center">
-                    <TextBlock x:Name="EngineBadgeText"
-                               Foreground="#F59E0B"
-                               FontSize="12"
-                               VerticalAlignment="Center"/>
-                </Border>
-
-                <!-- No rule between the settings and the actions: the gap says it, and a bar this
-                     wide floating over the user's own screen does not need more lines drawn on it. -->
-
-                <!-- Translate -->
-                <Button x:Name="TranslateBtn"
-                        Style="{StaticResource ToolbarPrimaryButton}"
-                        Margin="10,0,6,0"
-                        Click="TranslateBtn_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <!-- Drawn rather than typed: there is no sparkle in Segoe MDL2, which is all
-                             Windows 10 has, and a missing glyph on the primary button is the worst
-                             place for one. -->
-                        <Path Width="13" Height="13"
-                              Stretch="None"
-                              VerticalAlignment="Center"
+                    <!-- Target language -->
+                    <ComboBox x:Name="TgtLangBox"
+                              Style="{StaticResource ToolbarComboBox}"
+                              Width="132"
                               Margin="0,0,6,0"
-                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              Data="M7,0.6 C7.7,4.2 9.8,6.3 13.4,7 C9.8,7.7 7.7,9.8 7,13.4 C6.3,9.8 4.2,7.7 0.6,7 C4.2,6.3 6.3,4.2 7,0.6 Z M12.1,9.6 C12.3,10.8 12.6,11.1 13.8,11.3 C12.6,11.5 12.3,11.8 12.1,13 C11.9,11.8 11.6,11.5 10.4,11.3 C11.6,11.1 11.9,10.8 12.1,9.6 Z"/>
-                        <TextBlock x:Name="TranslateLabel"
-                                   VerticalAlignment="Center"
-                                   Text="{DynamicResource S.Toolbar.Translate}"/>
-                    </StackPanel>
-                </Button>
+                              SelectedValuePath="Code"
+                              VerticalContentAlignment="Center"/>
 
-                <!-- Toggle original / translated bubbles -->
-                <Button x:Name="ToggleBtn"
-                        Style="{StaticResource ToolbarStackButton}"
-                        IsEnabled="False"
-                        Click="ToggleBtn_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="ToggleGlyph"
-                                   Text="&#xE890;"
-                                   Style="{StaticResource ToolbarActionGlyph}"/>
-                        <TextBlock x:Name="ToggleLabel"
-                                   VerticalAlignment="Center"
-                                   Text="{DynamicResource S.Toolbar.ShowSource}"/>
-                    </StackPanel>
-                </Button>
+                    <!-- Provider -->
+                    <ComboBox x:Name="ProviderBox"
+                              Style="{StaticResource ToolbarComboBox}"
+                              Width="142"
+                              SelectedValuePath="Provider"
+                              VerticalContentAlignment="Center"/>
 
-                <!-- Copy current selection screenshot to clipboard -->
-                <Button x:Name="CopyShotBtn"
-                        Style="{StaticResource ToolbarStackButton}"
-                        Click="CopyShotBtn_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE8FF;"
-                                   Style="{StaticResource ToolbarActionGlyph}"/>
-                        <TextBlock VerticalAlignment="Center"
-                                   Text="{DynamicResource S.Toolbar.Screenshot}"/>
-                    </StackPanel>
-                </Button>
+                    <!-- Fallback badge: shown only when a backup engine actually served the batch -->
+                    <Border x:Name="EngineBadge"
+                            Visibility="Collapsed"
+                            Background="#33F59E0B"
+                            BorderBrush="#F59E0B"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="6,1"
+                            Margin="6,0,0,0"
+                            VerticalAlignment="Center">
+                        <TextBlock x:Name="EngineBadgeText"
+                                   Foreground="#F59E0B"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"/>
+                    </Border>
 
-                <!-- Open translation window -->
-                <Button x:Name="OpenWindowBtn"
-                        Style="{StaticResource ToolbarStackRaisedButton}"
-                        Margin="6,0,0,0"
-                        Click="OpenWindowBtn_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE8A7;"
-                                   Style="{StaticResource ToolbarActionGlyph}"/>
-                        <TextBlock VerticalAlignment="Center"
-                                   Text="{DynamicResource S.Toolbar.OpenWindow}"/>
-                    </StackPanel>
-                </Button>
+                    <!-- No rule between the settings and the actions: the gap says it, and a bar this
+                         wide floating over the user's own screen does not need more lines drawn on it. -->
 
-                <!-- Close, set apart by the gap: everything left of it acts inside the session. -->
-                <Button Content="&#x2715;"
-                        Style="{StaticResource ToolbarIconButton}"
-                        Width="30" Height="30"
-                        Margin="8,0,0,0"
-                        ToolTip="{DynamicResource S.Toolbar.Close}"
-                        AutomationProperties.Name="{DynamicResource S.Toolbar.Close}"
-                        Click="CloseBtn_Click"/>
+                    <!-- Translate -->
+                    <Button x:Name="TranslateBtn"
+                            Style="{StaticResource ToolbarPrimaryButton}"
+                            Margin="10,0,6,0"
+                            Click="TranslateBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Drawn rather than typed: there is no sparkle in Segoe MDL2, which is all
+                                 Windows 10 has, and a missing glyph on the primary button is the worst
+                                 place for one. -->
+                            <Path Width="13" Height="13"
+                                  Stretch="None"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,6,0"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  Data="M7,0.6 C7.7,4.2 9.8,6.3 13.4,7 C9.8,7.7 7.7,9.8 7,13.4 C6.3,9.8 4.2,7.7 0.6,7 C4.2,6.3 6.3,4.2 7,0.6 Z M12.1,9.6 C12.3,10.8 12.6,11.1 13.8,11.3 C12.6,11.5 12.3,11.8 12.1,13 C11.9,11.8 11.6,11.5 10.4,11.3 C11.6,11.1 11.9,10.8 12.1,9.6 Z"/>
+                            <TextBlock x:Name="TranslateLabel"
+                                       VerticalAlignment="Center"
+                                       Text="{DynamicResource S.Toolbar.Translate}"/>
+                        </StackPanel>
+                    </Button>
 
-            </StackPanel>
-        </Border>
+                    <!-- Toggle original / translated bubbles -->
+                    <Button x:Name="ToggleBtn"
+                            Style="{StaticResource ToolbarStackButton}"
+                            IsEnabled="False"
+                            Click="ToggleBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="ToggleGlyph"
+                                       Text="&#xE890;"
+                                       Style="{StaticResource ToolbarActionGlyph}"/>
+                            <TextBlock x:Name="ToggleLabel"
+                                       VerticalAlignment="Center"
+                                       Text="{DynamicResource S.Toolbar.ShowSource}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Copy current selection screenshot to clipboard -->
+                    <Button x:Name="CopyShotBtn"
+                            Style="{StaticResource ToolbarStackButton}"
+                            Click="CopyShotBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8FF;"
+                                       Style="{StaticResource ToolbarActionGlyph}"/>
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="{DynamicResource S.Toolbar.Screenshot}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Open translation window -->
+                    <Button x:Name="OpenWindowBtn"
+                            Style="{StaticResource ToolbarStackRaisedButton}"
+                            Margin="6,0,0,0"
+                            Click="OpenWindowBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8A7;"
+                                       Style="{StaticResource ToolbarActionGlyph}"/>
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="{DynamicResource S.Toolbar.OpenWindow}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Close, set apart by the gap: everything left of it acts inside the session. -->
+                    <Button Content="&#x2715;"
+                            Style="{StaticResource ToolbarIconButton}"
+                            Width="30" Height="30"
+                            Margin="8,0,0,0"
+                            ToolTip="{DynamicResource S.Toolbar.Close}"
+                            AutomationProperties.Name="{DynamicResource S.Toolbar.Close}"
+                            Click="CloseBtn_Click"/>
+
+                </StackPanel>
+            </Border>
+        </Grid>
     </Border>
 </Window>

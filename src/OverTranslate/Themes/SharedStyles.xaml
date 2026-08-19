@@ -1166,25 +1166,35 @@
         <Setter Property="FontSize"   Value="12.5"/>
         <Setter Property="Foreground" Value="{DynamicResource ToolbarPrimaryFg}"/>
         <Setter Property="Background" Value="{DynamicResource ToolbarPrimaryBg}"/>
-        <!-- A little of its own colour cast on the bar under it, so the pill reads as sitting on the
-             bar rather than as a shape laid over it. Hardcoded like the bar's own shadow: an Effect
-             takes a Color, not a Brush, so it cannot follow a themed resource — and this one is the
-             same blue in both themes. -->
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect BlurRadius="14" ShadowDepth="0" Opacity="0.5" Color="#3B82F6"/>
-            </Setter.Value>
-        </Setter>
+
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Root"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="16"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                    </Border>
+                    <Grid>
+                        <!-- A little of the pill's own colour cast on the bar under it, so it reads
+                             as sitting on the bar rather than as a shape laid over it. On a twin
+                             behind the button rather than on the button: an Effect rasterises what
+                             it is set on, and ClearType cannot run over that - which would have cost
+                             this label the crispness the whole bar was just given. Hardcoded because
+                             an Effect takes a Color and not a Brush, so it cannot follow a themed
+                             resource; it is the same blue in both themes. -->
+                        <Border Background="{TemplateBinding Background}"
+                                Margin="3"
+                                CornerRadius="13">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="14" ShadowDepth="0" Opacity="0.5" Color="#3B82F6"/>
+                            </Border.Effect>
+                        </Border>
+
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="16"
+                                Padding="{TemplateBinding Padding}"
+                                RenderOptions.ClearTypeHint="Enabled">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Root" Property="Background"
