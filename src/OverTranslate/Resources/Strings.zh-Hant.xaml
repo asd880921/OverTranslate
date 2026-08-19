@@ -255,9 +255,11 @@
     <sys:String x:Key="S.Realtime.CaptureWindowOnScreen">字幕框選會在{0}上進行。</sys:String>
     <sys:String x:Key="S.Realtime.RefreshWindows">重新整理</sys:String>
     <sys:String x:Key="S.Realtime.ChooseWindowFirst">請先選擇要翻譯的視窗</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureUnsupported">這台電腦不支援「視窗擷取」（需要 Windows 10 1903 以上），請改用「螢幕擷取」</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureGone">選定的視窗已經關閉或最小化，請按重新整理後再選一次</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureFailed">無法擷取選定的視窗，獨佔全螢幕的遊戲通常是這個原因。請改用「螢幕擷取」</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureUnsupported">目前的 Windows 版本不支援此畫面擷取功能。</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureGone">指定的視窗已關閉或最小化，請重新選擇視窗。</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFailed">無法擷取此視窗，請切換至「無邊框視窗」或「視窗化」後再試一次。</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFullscreen">目前的顯示模式無法擷取，請切換至「無邊框視窗」或「視窗化」後再試一次。</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureNoFrame">無法取得視窗畫面，請切換至「無邊框視窗」或「視窗化」後再試一次。</sys:String>
     <sys:String x:Key="S.Realtime.SessionEndedTitle">即時翻譯已結束</sys:String>
     <sys:String x:Key="S.Realtime.RemoveBlock">移除此區塊</sys:String>
 

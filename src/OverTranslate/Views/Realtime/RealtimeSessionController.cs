@@ -600,12 +600,22 @@ internal sealed class RealtimeSessionController
     /// Window capture over the handle the user picked, or the reason it is not available.
     /// </summary>
     /// <remarks>
-    /// Three separate refusals rather than one, because the three have different answers. A system
-    /// without window capture can only ever use 螢幕擷取, and should be told that once. A window that
-    /// closed between the picker and this call needs the list refreshed. A window that refuses
-    /// capture — a game in exclusive fullscreen is the usual cause, see
-    /// <c>WgcWindowCaptureBackend.WaitForUsableFrame</c> — is a real property of that application,
-    /// and 螢幕擷取 does read it.
+    /// A refusal per reason, because each has a different answer. A system without window capture
+    /// has no realtime capture at all — 螢幕擷取 is built on the same API and needs more of it, not
+    /// less — so that one states the fact and stops. A window that closed between the picker and
+    /// this call needs the list refreshed. A window presenting past the compositor — a
+    /// game in exclusive fullscreen, see <c>WgcWindowCaptureBackend.WaitForUsableFrame</c> — has a
+    /// display setting the user can change. And a capture that produced nothing at all is none of
+    /// those: it is this machine's capture chain, which the user cannot act on, so that one names
+    /// the log instead of an action.
+    ///
+    /// None of them sends the user to 螢幕擷取. Someone who chose 視窗擷取 either has a reason to
+    /// avoid the other mode or is on a machine that does not offer it — this report came from the
+    /// second kind — so the way forward that is always theirs to take is the display mode of the
+    /// application they are translating, and that is what every one of these says.
+    ///
+    /// The last two used to share the fullscreen message, which is how a report of it arrived —
+    /// a Windows 10 user told to leave exclusive fullscreen by a game that was already windowed.
     /// </remarks>
     private WgcWindowCaptureBackend? CreateWindowCapture(IntPtr hwnd, out string refusal)
     {
@@ -625,18 +635,27 @@ internal sealed class RealtimeSessionController
             return null;
         }
 
-        return CreateWindowBackend(hwnd);
+        return CreateWindowBackend(hwnd, ref refusal);
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows10.0.18362.0")]
-    private WgcWindowCaptureBackend? CreateWindowBackend(IntPtr hwnd)
+    private WgcWindowCaptureBackend? CreateWindowBackend(IntPtr hwnd, ref string refusal)
     {
         // The same handle every time it is asked, which is what turns the backend's re-attach into a
         // no-op and lets the closing of that window end the session. Searching for a replacement is
         // the alternative, and it would have to guess which new window is the same application —
         // guessing is what this mode exists to stop doing.
-        var backend = WgcWindowCaptureBackend.TryCreate(() => hwnd);
-        if (backend is null) return null;
+        var backend = WgcWindowCaptureBackend.TryCreate(() => hwnd, out var outcome);
+        if (backend is null)
+        {
+            refusal = outcome switch
+            {
+                WindowCaptureOutcome.Blank => "S.Realtime.WindowCaptureFullscreen",
+                WindowCaptureOutcome.NoFrame => "S.Realtime.WindowCaptureNoFrame",
+                _ => "S.Realtime.WindowCaptureFailed"
+            };
+            return null;
+        }
 
         backend.SourceLost += OnCaptureSourceLost;
         return backend;

@@ -63,8 +63,9 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
 
     // How long a new backend is given to produce one frame with something in it before it is judged
     // unusable. Generous: this is paid once, on a path whose alternative is a session that appears
-    // to work and never translates anything.
-    private static readonly TimeSpan FirstFrameTimeout = TimeSpan.FromMilliseconds(1500);
+    // to work and never translates anything — and only in full when the capture is genuinely not
+    // producing anything, since the wait now ends on the frame rather than on a timer.
+    private static readonly TimeSpan FirstFrameTimeout = TimeSpan.FromMilliseconds(3000);
 
     private readonly Func<IntPtr> _resolveSource;
     private readonly IDirect3DDevice _device;
@@ -89,11 +90,24 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     // the window's frame rate, this says whether anyone is still watching.
     private long _lastGrabAt;
 
+    // Raised whenever a frame has been read back. Only the start-up wait listens: it turns waiting
+    // for the first frame from a sleep into a wait the frame itself ends — and, on the UI thread
+    // that starts a session, into a wait that keeps pumping COM while it runs. A thread sleeping in
+    // Thread.Sleep pumps nothing, which is one way a capture that is working fine can look like a
+    // capture that never produced a frame.
+    private readonly ManualResetEventSlim _frameSignal = new(false);
+
     private int _framesReceived;
     private int _framesRead;
     private int _rebuilds;
     private long _readbackTicks;
     private int _outsideReported;
+
+    // Which adapter the frames are being asked for on, and the first thing a frame handler failed
+    // with, if it failed. Both exist for the log line that a capture producing nothing leaves
+    // behind: without them "no frame at all" is the whole of what a report can say.
+    private string _adapter = "unknown";
+    private string? _firstFault;
 
     private WgcWindowCaptureBackend(Func<IntPtr> resolveSource, IDirect3DDevice device, IntPtr rawDevice)
     {
@@ -120,8 +134,20 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     /// Asked again whenever the source has to be found afresh — the window was closed and reopened,
     /// or a game replaced its window on a mode change. Returns <see cref="IntPtr.Zero"/> for none.
     /// </param>
-    public static WgcWindowCaptureBackend? TryCreate(Func<IntPtr> resolveSource)
+    public static WgcWindowCaptureBackend? TryCreate(Func<IntPtr> resolveSource) =>
+        TryCreate(resolveSource, out _);
+
+    /// <inheritdoc cref="TryCreate(Func{IntPtr})"/>
+    /// <param name="outcome">
+    /// Why there is no backend, when this returns null. The interface says something different for
+    /// each: a window presenting past the compositor is a setting in that application the user can
+    /// change, while a capture chain that produced nothing is not.
+    /// </param>
+    public static WgcWindowCaptureBackend? TryCreate(
+        Func<IntPtr> resolveSource, out WindowCaptureOutcome outcome)
     {
+        outcome = WindowCaptureOutcome.Refused;
+
         if (!WgcInterop.IsCaptureSupported())
         {
             Log.Info(
@@ -134,19 +160,53 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
         var hwnd = resolveSource();
         if (hwnd == IntPtr.Zero) return null;
 
+        WgcWindowCaptureBackend? backend;
+        (backend, outcome) = TryStart(resolveSource, hwnd, forceWarp: false);
+        if (backend is not null) return backend;
+
+        // No frame at all is the one failure a different graphics device can answer. It is what a
+        // capture on the wrong adapter looks like — nothing arrives, nothing is refused — so the
+        // software adapter, which every machine has and which no display arrangement can put on the
+        // wrong side of, is given one try before the mode is declared unavailable.
+        //
+        // Blank frames are not retried: those say the window is being presented past the compositor,
+        // and no device this program creates changes that.
+        if (outcome is not WindowCaptureOutcome.NoFrame) return null;
+
+        // Half the wait for the retry. A capture that works at all hands over its first frame at
+        // once, and this one is on top of a wait the user has already spent.
+        Log.Info("Retrying window capture for hwnd={Hwnd:X} on the software adapter", hwnd);
+        (backend, outcome) = TryStart(resolveSource, hwnd, forceWarp: true);
+        return backend;
+    }
+
+    private static (WgcWindowCaptureBackend? Backend, WindowCaptureOutcome Outcome) TryStart(
+        Func<IntPtr> resolveSource, IntPtr hwnd, bool forceWarp)
+    {
+        var timeout = forceWarp ? FirstFrameTimeout / 2 : FirstFrameTimeout;
+
         IDirect3DDevice? device = null;
         var rawDevice = IntPtr.Zero;
         WgcWindowCaptureBackend? backend = null;
+        var outcome = WindowCaptureOutcome.Refused;
         try
         {
-            device = WgcInterop.CreateDirect3DDevice(out rawDevice);
-            backend = new WgcWindowCaptureBackend(resolveSource, device, rawDevice);
-            if (!backend.Attach(hwnd)) throw new InvalidOperationException("the window refused capture");
-            if (!backend.WaitForUsableFrame(FirstFrameTimeout))
-                throw new InvalidOperationException(
-                    "the window produced no usable frame — a game in exclusive fullscreen is the usual cause");
+            device = WgcInterop.CreateDirect3DDevice(
+                MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), forceWarp,
+                out rawDevice, out var adapter);
 
-            return backend;
+            backend = new WgcWindowCaptureBackend(resolveSource, device, rawDevice) { _adapter = adapter };
+            if (!backend.Attach(hwnd)) throw new InvalidOperationException("the window refused capture");
+
+            outcome = backend.WaitForUsableFrame(timeout);
+            if (outcome is not WindowCaptureOutcome.Started)
+                throw new InvalidOperationException(
+                    outcome is WindowCaptureOutcome.NoFrame
+                        ? "the window produced no frame at all — see the counters logged above"
+                        : "the window produced only blank frames — a game in exclusive fullscreen is " +
+                          "the usual cause");
+
+            return (backend, outcome);
         }
         catch (Exception ex)
         {
@@ -160,9 +220,10 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
                 (device as IDisposable)?.Dispose();
                 if (rawDevice != IntPtr.Zero) Marshal.Release(rawDevice);
             }
-            return null;
+            return (null, outcome);
         }
     }
+
 
     public Bitmap? GrabRegion(Rectangle screenBounds)
     {
@@ -304,8 +365,9 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
             _session.StartCapture();
 
             Log.Info(
-                "Realtime capture backend WgcWindow attached: hwnd={Hwnd:X} itemSize={Width}x{Height}",
-                hwnd, item.Size.Width, item.Size.Height);
+                "Realtime capture backend WgcWindow attached: hwnd={Hwnd:X} itemSize={Width}x{Height} " +
+                "on {Adapter}",
+                hwnd, item.Size.Width, item.Size.Height, _adapter);
             return true;
         }
     }
@@ -317,6 +379,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     /// </summary>
     private void OnFrameArrived(Direct3D11CaptureFramePool sender, object args)
     {
+        SizeInt32? resizeTo = null;
         try
         {
             using var frame = sender.TryGetNextFrame();
@@ -334,9 +397,16 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
             // harmless and was not: capture only produces frames when the window's content changes,
             // so on a still window the frame dropped this way was the only one that would ever
             // arrive, and the capture appeared to produce nothing at all.
+            //
+            // The resize itself is deferred to the end of this handler, after the frame has been
+            // read and released. Recreating a pool while still holding one of its frames is asking
+            // it to reclaim a buffer this thread has not given back, and the wait for that can only
+            // end on this thread — which is inside the wait. That deadlock takes the capture with
+            // it, silently and on the very first frame, since a window's content size and its item
+            // size routinely differ by the invisible resize border.
             var content = frame.ContentSize;
             if (content.Width != _poolSize.Width || content.Height != _poolSize.Height)
-                Recreate(content);
+                resizeTo = content;
 
             // The first frame is always read, and that is not an optimisation detail: capture emits
             // one frame when the session starts and one whenever the content changes, so over a
@@ -361,6 +431,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
                 Volatile.Write(ref _latestAt, Stopwatch.GetTimestamp());
             }
             previous?.Dispose();
+            _frameSignal.Set();
         }
         catch (ObjectDisposedException)
         {
@@ -370,7 +441,17 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
         {
             // One bad frame must not take the capture down — the next one is milliseconds away, and
             // a poll that finds no fresh frame simply reads the one before it.
+            //
+            // The first one is kept, though. A capture that produces nothing because every frame
+            // throws is indistinguishable, from the outside, from one where no frame ever arrives,
+            // and the difference is the whole of what a report about it would need to say.
+            Interlocked.CompareExchange(ref _firstFault, $"{ex.GetType().Name}: {ex.Message.Trim()}", null);
             Log.Debug(ex, "Realtime capture dropped a frame");
+        }
+        finally
+        {
+            // Outside the try above, so the frame it was decided for has been disposed by now.
+            if (resizeTo is { } size) Recreate(size);
         }
     }
 
@@ -440,12 +521,12 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     /// refused here. That is a frame with nothing to translate in it either, and the user is told
     /// which mode to try instead rather than left watching a session produce nothing.
     /// </remarks>
-    private bool WaitForUsableFrame(TimeSpan timeout)
+    private WindowCaptureOutcome WaitForUsableFrame(TimeSpan timeout)
     {
         var started = Stopwatch.GetTimestamp();
         var sawFrame = false;
 
-        while (Stopwatch.GetElapsedTime(started) < timeout)
+        while (true)
         {
             // The readback is demand-driven, and nothing has asked yet.
             Volatile.Write(ref _lastGrabAt, Stopwatch.GetTimestamp());
@@ -455,20 +536,35 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
                 if (_latest is { } latest)
                 {
                     sawFrame = true;
-                    if (!IsBlank(latest)) return true;
+                    if (!IsBlank(latest)) return WindowCaptureOutcome.Started;
                 }
             }
 
-            Thread.Sleep(50);
+            var left = timeout - Stopwatch.GetElapsedTime(started);
+            if (left <= TimeSpan.Zero) break;
+
+            // On the handle rather than through ManualResetEventSlim.Wait, and not Thread.Sleep.
+            // This is called from the thread that starts a session, which on a WPF application is
+            // the UI thread — an STA thread, whose blocking waits must keep pumping COM for anything
+            // marshalled through it to arrive. A sleep here would be a capture stack held shut for
+            // the whole of its own start-up timeout.
+            _frameSignal.Wait(TimeSpan.FromMilliseconds(Math.Min(50, left.TotalMilliseconds)));
+            _frameSignal.Reset();
         }
 
         Log.Warn(
             sawFrame
                 ? "Realtime window capture of hwnd={Hwnd:X} produced only blank frames; the window is " +
-                  "not being composited — a game in exclusive fullscreen is the usual cause"
-                : "Realtime window capture of hwnd={Hwnd:X} produced no frame at all",
-            _hwnd);
-        return false;
+                  "not being composited — a game in exclusive fullscreen is the usual cause " +
+                  "({Activity}, adapter: {Adapter})"
+                : "Realtime window capture of hwnd={Hwnd:X} produced no frame at all " +
+                  "({Activity}, adapter: {Adapter})",
+            _hwnd, DescribeActivity(), _adapter);
+
+        if (_firstFault is { } fault)
+            Log.Warn("Realtime window capture of hwnd={Hwnd:X} first failed with {Fault}", _hwnd, fault);
+
+        return sawFrame ? WindowCaptureOutcome.Blank : WindowCaptureOutcome.NoFrame;
     }
 
     /// <summary>
@@ -571,6 +667,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
             _latest = null;
         }
 
+        _frameSignal.Dispose();
         (_device as IDisposable)?.Dispose();
         if (_rawDevice != IntPtr.Zero) Marshal.Release(_rawDevice);
     }
@@ -586,9 +683,14 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
         public int Bottom;
     }
 
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmGetWindowAttribute(IntPtr hwnd, uint attribute, out RECT value, int size);

@@ -239,9 +239,11 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowOnScreen">Blocks will be framed on {0}.</sys:String>
     <sys:String x:Key="S.Realtime.RefreshWindows">Refresh</sys:String>
     <sys:String x:Key="S.Realtime.ChooseWindowFirst">Choose the window to translate first</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureUnsupported">This PC cannot capture a window (Windows 10 1903 or later is required) - use the whole screen instead</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureGone">That window has closed or been minimised - refresh the list and pick it again</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureFailed">That window cannot be captured, which usually means a game in exclusive fullscreen. Use the whole screen instead</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureUnsupported">This version of Windows does not support screen capture.</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureGone">That window has closed or been minimised. Pick a window again.</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFailed">That window cannot be captured. Switch it to borderless window or windowed and try again.</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFullscreen">That display mode cannot be captured. Switch to borderless window or windowed and try again.</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureNoFrame">No picture could be taken from that window. Switch it to borderless window or windowed and try again.</sys:String>
     <sys:String x:Key="S.Realtime.SessionEndedTitle">Realtime translation ended</sys:String>
     <sys:String x:Key="S.Realtime.RemoveBlock">Remove this block</sys:String>
 
