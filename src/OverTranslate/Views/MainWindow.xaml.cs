@@ -1129,122 +1129,14 @@ public partial class MainWindow : Window
 
         if (n == 0)
         {
-            double lum = (0.299 * bg.R + 0.587 * bg.G + 0.114 * bg.B) / 255.0;
+            double lum = OverlayTextColor.PerceivedLuminance(bg);
             return lum > 0.5
                 ? System.Windows.Media.Color.FromRgb(0, 0, 0)
                 : System.Windows.Media.Color.FromRgb(255, 255, 255);
         }
 
         var sampled = System.Windows.Media.Color.FromRgb((byte)(r / n), (byte)(g / n), (byte)(b / n));
-        return TuneOverlayTextColor(sampled, bg);
-    }
-
-    private static System.Windows.Media.Color TuneOverlayTextColor(
-        System.Windows.Media.Color text,
-        System.Windows.Media.Color background)
-    {
-        double bgLum = GetPerceivedLuminance(background);
-        double textLum = GetPerceivedLuminance(text);
-        var (h, s, l) = RgbToHsl(text);
-        bool isNearNeutral = s < 0.18;
-        bool isNearBlack = textLum < 0.16;
-
-        if (isNearNeutral)
-        {
-            if (isNearBlack)
-                return text;
-
-            if (bgLum >= 0.55)
-            {
-                double maxAllowedLum = Math.Max(0.08, bgLum - 0.24);
-                double boostedLum = Math.Min(maxAllowedLum, textLum + 0.12);
-                double boostedLightness = Math.Min(0.74, l + 0.1);
-                return HslToRgb(h, Math.Min(0.22, s * 1.08), Math.Max(boostedLightness, boostedLum));
-            }
-
-            double minAllowedLum = Math.Min(0.92, bgLum + 0.3);
-            double liftedLum = Math.Max(minAllowedLum, textLum + 0.08);
-            double liftedLightness = Math.Max(l, Math.Min(0.9, l + 0.08));
-            return HslToRgb(h, Math.Min(0.22, s * 1.08), Math.Max(liftedLightness, liftedLum));
-        }
-
-        // For colored text, preserve hue and only nudge brightness slightly.
-        // The main correction is stronger saturation so sampled colors feel closer
-        // to the source instead of getting washed out by antialiasing.
-        double targetSaturation = Math.Min(1.0, Math.Max(s + 0.08, s * 1.12));
-
-        if (bgLum >= 0.55)
-        {
-            double maxAllowedLum = Math.Max(0.08, bgLum - 0.24);
-            double adjustedLum = Math.Min(maxAllowedLum, textLum + 0.01);
-            double adjustedLightness = Math.Min(0.64, Math.Max(l, l + 0.01));
-            return HslToRgb(h, targetSaturation, Math.Max(adjustedLightness, adjustedLum));
-        }
-
-        double minAllowedColorLum = Math.Min(0.9, bgLum + 0.22);
-        double colorLum = Math.Max(minAllowedColorLum, textLum + 0.01);
-        double colorLightness = Math.Max(l, Math.Min(0.8, l + 0.01));
-        return HslToRgb(h, targetSaturation, Math.Max(colorLightness, colorLum));
-    }
-
-    private static double GetPerceivedLuminance(System.Windows.Media.Color color) =>
-        (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0;
-
-    private static (double H, double S, double L) RgbToHsl(System.Windows.Media.Color color)
-    {
-        double r = color.R / 255.0;
-        double g = color.G / 255.0;
-        double b = color.B / 255.0;
-        double max = Math.Max(r, Math.Max(g, b));
-        double min = Math.Min(r, Math.Min(g, b));
-        double h = 0;
-        double l = (max + min) / 2.0;
-
-        if (Math.Abs(max - min) < double.Epsilon)
-            return (0, 0, l);
-
-        double d = max - min;
-        double s = l > 0.5 ? d / (2.0 - max - min) : d / (max + min);
-
-        if (Math.Abs(max - r) < double.Epsilon)
-            h = ((g - b) / d + (g < b ? 6 : 0)) / 6.0;
-        else if (Math.Abs(max - g) < double.Epsilon)
-            h = ((b - r) / d + 2) / 6.0;
-        else
-            h = ((r - g) / d + 4) / 6.0;
-
-        return (h, s, l);
-    }
-
-    private static System.Windows.Media.Color HslToRgb(double h, double s, double l)
-    {
-        h = h - Math.Floor(h);
-        s = Math.Clamp(s, 0, 1);
-        l = Math.Clamp(l, 0, 1);
-
-        if (s <= 0)
-        {
-            byte gray = (byte)Math.Round(l * 255);
-            return System.Windows.Media.Color.FromRgb(gray, gray, gray);
-        }
-
-        double q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        double p = 2 * l - q;
-
-        static double HueToRgb(double p, double q, double t)
-        {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1.0 / 6.0) return p + (q - p) * 6 * t;
-            if (t < 1.0 / 2.0) return q;
-            if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
-            return p;
-        }
-
-        return System.Windows.Media.Color.FromRgb(
-            (byte)Math.Round(HueToRgb(p, q, h + 1.0 / 3.0) * 255),
-            (byte)Math.Round(HueToRgb(p, q, h) * 255),
-            (byte)Math.Round(HueToRgb(p, q, h - 1.0 / 3.0) * 255));
+        return OverlayTextColor.Tune(sampled, bg);
     }
 
     protected override void OnClosed(EventArgs e)
