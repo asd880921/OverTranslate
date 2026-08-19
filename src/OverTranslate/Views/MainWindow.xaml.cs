@@ -35,6 +35,11 @@ public partial class MainWindow : Window
     // callers, not the holder, and the call sites below name AppServices directly so that reading
     // any one of them shows where the engine comes from.
 
+    // The voice for the capture toolbar's speak button. Its own instance rather than the
+    // translation page's: the two are separate places with separate stop buttons, and one shared
+    // player would have the page's speaker silently stop a capture that is still reading.
+    private readonly TtsService _tts = new();
+
     // Kept alive so toolbar translate can re-run OCR/translation on the current selection
     private List<OcrTextBlock> _lastOcrBlocks = [];
     private List<TranslatedBlock> _lastColoredBlocks = [];
@@ -53,6 +58,11 @@ public partial class MainWindow : Window
     {
         var helper = new WindowInteropHelper(this);
         helper.EnsureHandle();
+
+        // The service reports every end of playback — natural, failed, or stopped — and the toolbar
+        // button has to come back from ⏹ to the speaker whichever it was. Start is reflected on the
+        // press instead, so the icon does not wait on the fetch.
+        _tts.StateChanged += (_, _) => _toolbarWindow?.SetSpeaking(_tts.IsActive);
 
         InitNotifyIcon();
         RegisterHotkey();
@@ -556,9 +566,12 @@ public partial class MainWindow : Window
         toolbar.CopyScreenshotRequested += OnCopyScreenshotRequested;
         toolbar.CloseAllRequested       += (_, _) => CloseAll();
         toolbar.BubblesVisibilityChanged += (_, visible) => _overlayWindow?.SetBubblesVisible(visible);
+        toolbar.SpeakToggleRequested    += OnSpeakToggleRequested;
+        toolbar.SpeakStopRequested      += (_, _) => _tts.Stop();
         _toolbarWindow = toolbar;
         toolbar.SetTranslationState(hasTranslated);
         toolbar.SetToggleEnabled(blocks.Count > 0);
+        toolbar.SetSpeakableText(SourceTextForSpeech().Length > 0);
         toolbar.Show();
     }
 
@@ -766,6 +779,11 @@ public partial class MainWindow : Window
             if (IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
             {
                 _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
+
+                // Here rather than on the success path: recognition is what produces the text to
+                // read, and it has run by the time translation fails or finds nothing to translate.
+                // A run that failed at the engine still leaves the original on screen and readable.
+                requestToolbar?.SetSpeakableText(SourceTextForSpeech().Length > 0);
                 requestToolbar?.SetBusy(false);
             }
         }
@@ -855,6 +873,55 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Reads the recognised source text aloud, or stops it if it is already being read.
+    /// </summary>
+    /// <remarks>
+    /// The whole recognised text in one go, joined exactly the way the translation window is opened
+    /// with it. The blocks are how the picture was cut up for recognition — one per line of a
+    /// subtitle, one per label on a form — not how the sentence was written, so reading them one at
+    /// a time would deliver a paragraph as a list of fragments with a pause after each.
+    ///
+    /// The source text rather than the translation: this is for hearing how the thing on screen is
+    /// said, which is also why it needs a real source language and why the button is switched off
+    /// until it has one. See <c>ToolbarWindow.RenderSpeakButton</c>.
+    /// </remarks>
+    private async void OnSpeakToggleRequested(object? sender, EventArgs e)
+    {
+        if (_tts.IsActive) { _tts.Stop(); return; }
+        if (_toolbarWindow is not { } toolbar) return;
+
+        var text = SourceTextForSpeech();
+        if (text.Length == 0) return;
+
+        var lang = toolbar.CurrentSourceLang;
+        // Belt and braces: the button is already disabled on 自動, and a voice picked for a language
+        // nobody chose reads English aloud in Chinese.
+        if (Models.LanguageData.IsAutomaticSource(lang)) return;
+
+        // Shown on the press rather than waited for: fetching the audio takes a moment, and the one
+        // thing the user needs immediately is the way to stop it.
+        toolbar.SetSpeaking(true);
+        try
+        {
+            await _tts.SpeakAsync(text, lang);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Toolbar text-to-speech failed");
+            ShowBalloon(
+                LocalizationService.Get("S.Main.SpeakFailedTitle"),
+                LocalizationService.Format("S.Main.SpeakFailedBody", ex.Message),
+                CurrentSelectionRect());
+        }
+    }
+
+    private string SourceTextForSpeech() =>
+        JoinWithoutLineBreaks(_lastOcrBlocks.Select(b => b.Text)).Trim();
+
+    private System.Windows.Rect CurrentSelectionRect() => new(
+        _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight);
+
     private void OnOpenWindowRequested(object? sender, EventArgs e)
     {
         var srcText = JoinWithoutLineBreaks(_lastOcrBlocks.Select(b => b.Text));
@@ -880,6 +947,10 @@ public partial class MainWindow : Window
         _selectionSessionId++;
         DisposeEscapeHook();
         CancelSession();
+
+        // A voice reading a selection that is no longer on screen has nothing left to be about, and
+        // nothing would be left to stop it: the button that does is going with the toolbar.
+        _tts.Stop();
 
         // A toast is positioned against the selection it reported on. Once that selection is gone it
         // has nothing left to point at, so it goes with the session rather than lingering on an

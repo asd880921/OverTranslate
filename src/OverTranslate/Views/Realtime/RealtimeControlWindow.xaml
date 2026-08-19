@@ -25,217 +25,240 @@
             MouseLeftButtonDown="Chrome_MouseLeftButtonDown"
             MouseMove="Chrome_MouseMove"
             MouseLeftButtonUp="Chrome_MouseLeftButtonUp">
-        <Border x:Name="Chrome"
-                Background="{DynamicResource ToolbarBg}"
-                BorderBrush="{DynamicResource ToolbarBorder}"
-                BorderThickness="1"
-                CornerRadius="16"
-                Padding="10,6">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.22" Color="#000000"/>
-            </Border.Effect>
+        <Grid>
+            <!-- The shadow rides an empty, slightly inset twin of the bar rather than the bar itself.
+                 An Effect makes WPF rasterise the element it is set on into an intermediate surface,
+                 and ClearType sub-pixel antialiasing cannot run over a surface that may be
+                 transparent — so a shadow on the bar quietly dropped every word on it to greyscale
+                 antialiasing, which at this size over moving picture is the difference between text
+                 that reads and text that looks thin and hard. Blurring an empty rectangle costs the
+                 same. Inset by 2, so the twin's own antialiased curve stays underneath the bar in
+                 front of it: two partial-coverage edges of the same colour add up, and the corner
+                 they make together steps instead of easing. The capture toolbar does the same. -->
+            <Border Background="{DynamicResource ToolbarBg}"
+                    Margin="2"
+                    CornerRadius="14">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.22" Color="#000000"/>
+                </Border.Effect>
+            </Border>
 
-            <Grid>
-                <!-- ══════════ Edit mode ══════════ -->
-                <!-- Everything the user needs while framing sits on one line. Refresh is deliberately
-                     absent here: it cannot do anything until translation has started. -->
-                <StackPanel x:Name="EditPanel" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                               FontSize="14"
-                               Margin="4,0,8,0"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource AppAccent}"
-                               Text="&#xE7A7;"/>
+            <!-- ClearTypeHint over an opaque background: the window itself is layered
+                 (AllowsTransparency), which is the other thing that turns ClearType off. The hint is
+                 how WPF is told this particular surface really is opaque. -->
+            <Border x:Name="Chrome"
+                    Background="{DynamicResource ToolbarBg}"
+                    BorderBrush="{DynamicResource ToolbarBorder}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="10,6"
+                    RenderOptions.ClearTypeHint="Enabled">
+                <Grid>
+                    <!-- ══════════ Edit mode ══════════ -->
+                    <!-- Everything the user needs while framing sits on one line. Refresh is deliberately
+                         absent here: it cannot do anything until translation has started. -->
+                    <StackPanel x:Name="EditPanel" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14"
+                                   Margin="4,0,8,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppAccent}"
+                                   Text="&#xE7A7;"/>
 
-                    <TextBlock x:Name="EditHintText"
-                               VerticalAlignment="Center"
-                               FontFamily="{StaticResource AppFont}"
-                               FontSize="12.5"
-                               Foreground="{DynamicResource AppTextPrimary}"
-                               Text="{DynamicResource S.Realtime.EditHint}"/>
-
-                    <!-- Trailing and a size down: a running count is a reference, not an instruction.
-                         Subordinate by position and size rather than by a dimmer colour — it is the
-                         only place the user is told they have hit the block limit. -->
-                    <TextBlock x:Name="BlockCountText"
-                               VerticalAlignment="Center"
-                               Margin="8,0,0,0"
-                               FontFamily="{StaticResource AppFont}"
-                               FontSize="12"
-                               Foreground="{DynamicResource AppTextSecondary}"/>
-
-                    <Separator Style="{StaticResource VerticalSeparator}"/>
-
-                    <!-- The two buttons the user chooses between while framing, in a tray of their
-                         own: whether to keep drawing or to start translating is one decision, and
-                         set loose on the bar they read as two more pieces of furniture next to ✕.
-                         ✕ stays outside it — ending the session is not part of that decision. -->
-                    <Border Background="{DynamicResource ToolbarGroupBg}"
-                            CornerRadius="10"
-                            Padding="3"
-                            Margin="0,0,6,0">
-                        <StackPanel Orientation="Horizontal">
-                            <!-- Framing on or off, without leaving edit mode. The icon is what
-                                 pressing it does, the same way the pause button works: a plain
-                                 pointer while framing is on — press to hand the mouse back to
-                                 whatever is playing underneath — and the dashed marquee it would
-                                 bring back while it is off. A marquee rather than a crosshair
-                                 because it is the shape the user drags out on screen; a crosshair
-                                 says "precision" without saying what it would do.
-                                 Drawn as a Path because neither shape exists in Segoe MDL2, which is
-                                 all Windows 10 has; a Path also has no font fallback to lose. Its
-                                 stroke follows the button's own foreground so hover and theme
-                                 changes reach it. -->
-                            <Button x:Name="CrosshairBtn"
-                                    Style="{StaticResource ToolbarGroupIconButton}"
-                                    Foreground="{DynamicResource AppTextPrimary}"
-                                    Margin="0,0,2,0"
-                                    Click="CrosshairBtn_Click">
-                                <Path x:Name="CrosshairGlyph"
-                                      Width="16" Height="16"
-                                      Stretch="None"
-                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                      StrokeThickness="1.3"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round"/>
-                            </Button>
-
-                            <!-- The accent is carried by the glyph rather than by a filled pill: a
-                                 solid accent square in a row of quiet icons was the one thing on the
-                                 bar shouting, and this bar floats over whatever the user is actually
-                                 watching. Colour alone still makes it the only coloured thing here.
-                                 A solid triangle, not the outline the resume button uses — an
-                                 outline at 16px reads as a hollow shape rather than as play, and the
-                                 two are never on screen together. Drawn rather than typed because
-                                 the solid play glyph (F5B0) is Segoe Fluent Icons only, and on
-                                 Windows 10 it would fall back to MDL2 as a missing-glyph box. The
-                                 nose sits a touch right of centre, where a triangle looks centred
-                                 rather than measures so. -->
-                            <Button x:Name="StartBtn"
-                                    Style="{StaticResource ToolbarGroupIconButton}"
-                                    Foreground="{DynamicResource AppAccent}"
-                                    ToolTip="{DynamicResource S.Realtime.StartTranslating}"
-                                    AutomationProperties.Name="{DynamicResource S.Realtime.StartTranslating}"
-                                    Click="StartBtn_Click">
-                                <Path Width="16" Height="16"
-                                      Stretch="None"
-                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                      Data="M5.8,2.6 L13.4,8 L5.8,13.4 Z"/>
-                            </Button>
-                        </StackPanel>
-                    </Border>
-
-                    <Button Content="✕"
-                            Style="{StaticResource ToolbarIconButton}"
-                            ToolTip="{DynamicResource S.Realtime.StopSession}"
-                            Click="CloseBtn_Click"/>
-                </StackPanel>
-
-                <!-- ══════════ Translating ══════════ -->
-                <!-- Shrunk to a capsule once the work starts: from here on the interface has nothing
-                     to ask, and the user is watching the content, not this. -->
-                <StackPanel x:Name="RunPanel"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center"
-                            Visibility="Collapsed">
-                    <Ellipse x:Name="StatusDot"
-                             Width="8" Height="8"
-                             Margin="4,0,8,0"
-                             VerticalAlignment="Center"
-                             Fill="{DynamicResource AppAccent}"/>
-
-                    <!-- The language pair, and the transient messages, share this one slot: only one
-                         of the two is ever visible. -->
-                    <TextBlock x:Name="RunStatusText"
-                               VerticalAlignment="Center"
-                               Margin="0,0,8,0"
-                               FontFamily="{StaticResource AppFont}"
-                               FontSize="12.5"
-                               Foreground="{DynamicResource AppTextPrimary}"
-                               Text="{DynamicResource S.Realtime.Running}"/>
-
-                    <!-- Source and target are not two equal labels: the target is the thing on screen
-                         from here on, so it keeps the primary colour and the source steps back one
-                         level to secondary. Not to muted — that brush is #666 on a #2A2A2A bar,
-                         2.4:1, and this is 12.5px CJK floating over whatever the user is watching.
-                         Secondary reaches 5.9:1 dark / 6.4:1 light and still reads as subordinate. The
-                         arrow between them is drawn rather than typed — U+2192 is not in the UI font,
-                         so it used to fall back to a CJK face, which renders it full-width and
-                         centred on the em box: too much air on both sides and sitting visibly high
-                         against 12.5px text. A Path has no fallback to lose and its weight and
-                         height are ours to set. -->
-                    <StackPanel x:Name="LangPairPanel"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center"
-                                Margin="0,0,8,0"
-                                Visibility="Collapsed">
-                        <TextBlock x:Name="SourceLangText"
+                        <TextBlock x:Name="EditHintText"
                                    VerticalAlignment="Center"
                                    FontFamily="{StaticResource AppFont}"
                                    FontSize="12.5"
+                                   Foreground="{DynamicResource AppTextPrimary}"
+                                   Text="{DynamicResource S.Realtime.EditHint}"/>
+
+                        <!-- Trailing and a size down: a running count is a reference, not an instruction.
+                             Subordinate by position and size rather than by a dimmer colour — it is the
+                             only place the user is told they have hit the block limit. -->
+                        <TextBlock x:Name="BlockCountText"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="12"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
 
-                        <!-- Half-pixel coordinates so the 1px stroke lands on a pixel row rather than
-                             straddling two. Bottom margin of 1 lifts it off the text box's centre and
-                             onto the CJK glyphs' optical centre, which sits above it. -->
-                        <!-- Secondary dimmed, rather than the muted brush it wants to be: muted is the
-                             same #666 the source label just left for being unreadable here, and an
-                             arrow nobody can see is not restraint, it is a missing arrow. 0.7 lands
-                             it at 3.7:1 dark / 3.3:1 light — over the 3:1 a 1px non-text stroke
-                             needs, still a step below the label it separates. -->
-                        <Path VerticalAlignment="Center"
-                              Margin="5.5,0,5.5,1"
-                              Width="10.6" Height="9"
-                              Stretch="None"
-                              Stroke="{DynamicResource AppTextSecondary}"
-                              Opacity="0.7"
-                              StrokeThickness="1"
-                              StrokeStartLineCap="Round"
-                              StrokeEndLineCap="Round"
-                              StrokeLineJoin="Round"
-                              Data="M0,4.5 H9.1 M6.8,2.6 L9.6,4.5 L6.8,6.4"/>
+                        <!-- Wider than the shared style's own margin, and equal either side: the
+                             count ends at its last glyph and the tray after the rule starts at its
+                             own fill, so both edges are visible ones and the rule belongs midway
+                             between them. -->
+                        <Separator Style="{StaticResource VerticalSeparator}" Margin="11,0"/>
 
-                        <TextBlock x:Name="TargetLangText"
-                                   VerticalAlignment="Center"
-                                   FontFamily="{StaticResource AppFont}"
-                                   FontSize="12.5"
-                                   Foreground="{DynamicResource AppTextPrimary}"/>
+                        <!-- The two buttons the user chooses between while framing, in a tray of their
+                             own: whether to keep drawing or to start translating is one decision, and
+                             set loose on the bar they read as two more pieces of furniture next to ✕.
+                             ✕ stays outside it — ending the session is not part of that decision. -->
+                        <Border Background="{DynamicResource ToolbarGroupBg}"
+                                CornerRadius="10"
+                                Padding="3"
+                                Margin="0,0,6,0">
+                            <StackPanel Orientation="Horizontal">
+                                <!-- Framing on or off, without leaving edit mode. The icon is what
+                                     pressing it does, the same way the pause button works: a plain
+                                     pointer while framing is on — press to hand the mouse back to
+                                     whatever is playing underneath — and the dashed marquee it would
+                                     bring back while it is off. A marquee rather than a crosshair
+                                     because it is the shape the user drags out on screen; a crosshair
+                                     says "precision" without saying what it would do.
+                                     Drawn as a Path because neither shape exists in Segoe MDL2, which is
+                                     all Windows 10 has; a Path also has no font fallback to lose. Its
+                                     stroke follows the button's own foreground so hover and theme
+                                     changes reach it. -->
+                                <Button x:Name="CrosshairBtn"
+                                        Style="{StaticResource ToolbarGroupIconButton}"
+                                        Foreground="{DynamicResource AppTextPrimary}"
+                                        Margin="0,0,2,0"
+                                        Click="CrosshairBtn_Click">
+                                    <Path x:Name="CrosshairGlyph"
+                                          Width="16" Height="16"
+                                          Stretch="None"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.3"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"/>
+                                </Button>
+
+                                <!-- The accent is carried by the glyph rather than by a filled pill: a
+                                     solid accent square in a row of quiet icons was the one thing on the
+                                     bar shouting, and this bar floats over whatever the user is actually
+                                     watching. Colour alone still makes it the only coloured thing here.
+                                     A solid triangle, not the outline the resume button uses — an
+                                     outline at 16px reads as a hollow shape rather than as play, and the
+                                     two are never on screen together. Drawn rather than typed because
+                                     the solid play glyph (F5B0) is Segoe Fluent Icons only, and on
+                                     Windows 10 it would fall back to MDL2 as a missing-glyph box. The
+                                     nose sits a touch right of centre, where a triangle looks centred
+                                     rather than measures so. -->
+                                <Button x:Name="StartBtn"
+                                        Style="{StaticResource ToolbarGroupIconButton}"
+                                        Foreground="{DynamicResource AppAccent}"
+                                        ToolTip="{DynamicResource S.Realtime.StartTranslating}"
+                                        AutomationProperties.Name="{DynamicResource S.Realtime.StartTranslating}"
+                                        Click="StartBtn_Click">
+                                    <Path Width="16" Height="16"
+                                          Stretch="None"
+                                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          Data="M5.8,2.6 L13.4,8 L5.8,13.4 Z"/>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Content="✕"
+                                Style="{StaticResource ToolbarIconButton}"
+                                ToolTip="{DynamicResource S.Realtime.StopSession}"
+                                Click="CloseBtn_Click"/>
                     </StackPanel>
 
-                    <!-- Icon-only keeps the running capsule compact. Its tooltip names both the
-                         action and the user's configured keyboard equivalent. The glyph is the
-                         action, not the state: a running session shows ⏸ because that is what
-                         pressing it does — the state is said by the dot and the text beside it. -->
-                    <Button x:Name="PauseBtn"
-                            Style="{StaticResource ToolbarIconButton}"
-                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                            FontSize="13"
-                            Content="&#xE769;"
-                            Margin="0,0,4,0"
-                            AutomationProperties.Name="{DynamicResource S.Realtime.Pause}"
-                            Click="PauseBtn_Click"/>
+                    <!-- ══════════ Translating ══════════ -->
+                    <!-- Shrunk to a capsule once the work starts: from here on the interface has nothing
+                         to ask, and the user is watching the content, not this. -->
+                    <StackPanel x:Name="RunPanel"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Visibility="Collapsed">
+                        <Ellipse x:Name="StatusDot"
+                                 Width="8" Height="8"
+                                 Margin="4,0,8,0"
+                                 VerticalAlignment="Center"
+                                 Fill="{DynamicResource AppAccent}"/>
 
-                    <!-- Icon-only, like the two buttons either side of it: the capsule is meant to
-                         be read at a glance and one word set in a flat button among icons was the
-                         only thing on it drawing the eye. The pencil is the same one Windows uses
-                         for edit everywhere else, and the tooltip carries the word it replaced. -->
-                    <Button x:Name="EditBtn"
-                            Style="{StaticResource ToolbarIconButton}"
-                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                            FontSize="13"
-                            Content="&#xE70F;"
-                            Margin="0,0,4,0"
-                            ToolTip="{DynamicResource S.Realtime.EditBlocks}"
-                            AutomationProperties.Name="{DynamicResource S.Realtime.EditBlocks}"
-                            Click="EditBtn_Click"/>
+                        <!-- The language pair, and the transient messages, share this one slot: only one
+                             of the two is ever visible. -->
+                        <TextBlock x:Name="RunStatusText"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="12.5"
+                                   Foreground="{DynamicResource AppTextPrimary}"
+                                   Text="{DynamicResource S.Realtime.Running}"/>
 
-                    <Button Content="✕"
-                            Style="{StaticResource ToolbarIconButton}"
-                            ToolTip="{DynamicResource S.Realtime.StopSession}"
-                            Click="CloseBtn_Click"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+                        <!-- Source and target are not two equal labels: the target is the thing on screen
+                             from here on, so it keeps the primary colour and the source steps back one
+                             level to secondary. Not to muted — that brush is #666 on a #2A2A2A bar,
+                             2.4:1, and this is 12.5px CJK floating over whatever the user is watching.
+                             Secondary reaches 5.9:1 dark / 6.4:1 light and still reads as subordinate. The
+                             arrow between them is drawn rather than typed — U+2192 is not in the UI font,
+                             so it used to fall back to a CJK face, which renders it full-width and
+                             centred on the em box: too much air on both sides and sitting visibly high
+                             against 12.5px text. A Path has no fallback to lose and its weight and
+                             height are ours to set. -->
+                        <StackPanel x:Name="LangPairPanel"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    Visibility="Collapsed">
+                            <TextBlock x:Name="SourceLangText"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource AppFont}"
+                                       FontSize="12.5"
+                                       Foreground="{DynamicResource AppTextSecondary}"/>
+
+                            <!-- Half-pixel coordinates so the 1px stroke lands on a pixel row rather than
+                                 straddling two. Bottom margin of 1 lifts it off the text box's centre and
+                                 onto the CJK glyphs' optical centre, which sits above it. -->
+                            <!-- Secondary dimmed, rather than the muted brush it wants to be: muted is the
+                                 same #666 the source label just left for being unreadable here, and an
+                                 arrow nobody can see is not restraint, it is a missing arrow. 0.7 lands
+                                 it at 3.7:1 dark / 3.3:1 light — over the 3:1 a 1px non-text stroke
+                                 needs, still a step below the label it separates. -->
+                            <Path VerticalAlignment="Center"
+                                  Margin="5.5,0,5.5,1"
+                                  Width="10.6" Height="9"
+                                  Stretch="None"
+                                  Stroke="{DynamicResource AppTextSecondary}"
+                                  Opacity="0.7"
+                                  StrokeThickness="1"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"
+                                  Data="M0,4.5 H9.1 M6.8,2.6 L9.6,4.5 L6.8,6.4"/>
+
+                            <TextBlock x:Name="TargetLangText"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource AppFont}"
+                                       FontSize="12.5"
+                                       Foreground="{DynamicResource AppTextPrimary}"/>
+                        </StackPanel>
+
+                        <!-- Icon-only keeps the running capsule compact. Its tooltip names both the
+                             action and the user's configured keyboard equivalent. The glyph is the
+                             action, not the state: a running session shows ⏸ because that is what
+                             pressing it does — the state is said by the dot and the text beside it. -->
+                        <Button x:Name="PauseBtn"
+                                Style="{StaticResource ToolbarIconButton}"
+                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                FontSize="13"
+                                Content="&#xE769;"
+                                Margin="0,0,4,0"
+                                AutomationProperties.Name="{DynamicResource S.Realtime.Pause}"
+                                Click="PauseBtn_Click"/>
+
+                        <!-- Icon-only, like the two buttons either side of it: the capsule is meant to
+                             be read at a glance and one word set in a flat button among icons was the
+                             only thing on it drawing the eye. The pencil is the same one Windows uses
+                             for edit everywhere else, and the tooltip carries the word it replaced. -->
+                        <Button x:Name="EditBtn"
+                                Style="{StaticResource ToolbarIconButton}"
+                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                FontSize="13"
+                                Content="&#xE70F;"
+                                Margin="0,0,4,0"
+                                ToolTip="{DynamicResource S.Realtime.EditBlocks}"
+                                AutomationProperties.Name="{DynamicResource S.Realtime.EditBlocks}"
+                                Click="EditBtn_Click"/>
+
+                        <Button Content="✕"
+                                Style="{StaticResource ToolbarIconButton}"
+                                ToolTip="{DynamicResource S.Realtime.StopSession}"
+                                Click="CloseBtn_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
     </Border>
 </Window>
