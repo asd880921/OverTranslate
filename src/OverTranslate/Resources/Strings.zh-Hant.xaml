@@ -188,7 +188,9 @@
     <sys:String x:Key="S.Realtime.NaturalBackgroundHint">嘗試移除原文並以周圍畫面補背景，讓譯文更自然融入畫面。</sys:String>
     <sys:String x:Key="S.Realtime.SampleTextColor">沿用原文字顏色</sys:String>
     <sys:String x:Key="S.Realtime.SampleTextColorHint">優先取樣原文字顏色，若辨識不穩定則改用你設定的文字顏色。</sys:String>
-    <sys:String x:Key="S.Realtime.AdvancedOptionsCost">進階選項需要額外處理資源，啟用後可能影響效能。</sys:String>
+    <!-- 不是效能警語。這兩個選項都靠讀取畫面上原本的像素來運作，畫面靜止時讀到的就是對的，
+         畫面快速變動時讀到的是上一瞬間的樣子——這是合不合適的問題，不是快不快的問題。 -->
+    <sys:String x:Key="S.Realtime.AdvancedOptionsBestFor">進階選項適合較為穩定的情境，例如對話框、選單或靜態畫面等。畫面快速變動時，背景與文字顏色可能無法即時貼合。</sys:String>
 
     <sys:String x:Key="S.Realtime.HowItWorks">運作方式</sys:String>
     <sys:String x:Key="S.Realtime.Step1">1. 點擊「選取翻譯區塊」，在畫面上框選要翻譯的區域。</sys:String>
@@ -247,7 +249,7 @@
     <sys:String x:Key="S.Realtime.ScreenPrompt">選擇要擷取的螢幕。</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowPromptLine">選擇要擷取的視窗。</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowPrompt">請選擇視窗</sys:String>
-    <sys:String x:Key="S.Realtime.CaptureWindowHint">清單是按下重新整理當下開著的視窗，剛開好的程式請再按一次重新整理。</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowHint">視窗清單會在按下「重新整理」時更新；若剛開啟新的程式，請重新整理後再選擇。</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowNone">找不到可以擷取的視窗，請先開啟要翻譯的程式，再按重新整理。</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowDetail">來自 {0}</sys:String>
     <sys:String x:Key="S.Realtime.CaptureWindowOnScreen">字幕框選會在{0}上進行。</sys:String>
