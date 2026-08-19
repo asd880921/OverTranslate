@@ -159,7 +159,14 @@ internal static class RealtimeNaturalBackground
             return fallback;
 
         var sampled = MediaColor.FromRgb((byte)(r / count), (byte)(g / count), (byte)(b / count));
-        return EnsureReadable(sampled, MediaColor.FromRgb(bg.R, bg.G, bg.B), fallback);
+        var background = MediaColor.FromRgb(bg.R, bg.G, bg.B);
+
+        // Nothing is corrected until it is known to be worth keeping: the fallback is the colour the
+        // user chose, and tuning that would be overruling them rather than repairing a measurement.
+        if (!SeparatesFrom(sampled, background))
+            return fallback;
+
+        return OverlayTextColor.Tune(sampled, background);
     }
 
     /// <summary>
@@ -317,18 +324,18 @@ internal static class RealtimeNaturalBackground
             (int)(dominant.B / dominant.Count));
     }
 
-    private static MediaColor EnsureReadable(MediaColor sampled, MediaColor background, MediaColor fallback)
-    {
-        double distance = Math.Abs(sampled.R - background.R) +
-                          Math.Abs(sampled.G - background.G) +
-                          Math.Abs(sampled.B - background.B);
-        if (distance >= 90)
-            return sampled;
-
-        // The source may depend on an outline that sampling cannot reproduce. In that case the user's
-        // configured colour is safer than returning a nearly invisible foreground.
-        return fallback;
-    }
+    /// <summary>
+    /// Whether what was sampled stands far enough from its background to be worth drawing.
+    /// </summary>
+    /// <remarks>
+    /// The source may depend on an outline that sampling cannot reproduce. Where it does, the two
+    /// averages come out close together, and the user's configured colour is safer than a foreground
+    /// that is nearly invisible.
+    /// </remarks>
+    private static bool SeparatesFrom(MediaColor sampled, MediaColor background) =>
+        Math.Abs(sampled.R - background.R) +
+        Math.Abs(sampled.G - background.G) +
+        Math.Abs(sampled.B - background.B) >= 90;
 
     private static Rectangle Clamp(WpfRect rect, int width, int height) => Rectangle.FromLTRB(
         Math.Clamp((int)Math.Floor(rect.Left), 0, width),
