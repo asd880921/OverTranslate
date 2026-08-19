@@ -255,7 +255,7 @@ public partial class RealtimeBlockWindow : Window
             // nothing to follow, and recording one here would have the refresh below replace it with
             // a patch the user never asked for.
             if (_naturalBackground)
-                patches.Add(new NaturalPatchVisual(visual.Background, line, visual.PatchBounds));
+                patches.Add(new NaturalPatchVisual(visual.Background, visual.PatchBounds));
         }
 
         Volatile.Write(ref _naturalPatches, [.. patches]);
@@ -269,7 +269,7 @@ public partial class RealtimeBlockWindow : Window
         Border Background, Border Text, System.Drawing.Rectangle PatchBounds);
 
     private readonly record struct NaturalPatchVisual(
-        Border Surface, TranslatedBlock Line, System.Drawing.Rectangle PatchBounds);
+        Border Surface, System.Drawing.Rectangle PatchBounds);
 
     private LineVisual? BuildLine(
         TranslatedBlock line, double canvasWidth, double canvasHeight, System.Drawing.Bitmap? frame)
@@ -412,7 +412,7 @@ public partial class RealtimeBlockWindow : Window
             double guardHeight = Math.Max(0, guardBottom - guardTop);
 
             naturalBrush = BuildNaturalBrush(
-                frame, line, ToPhysicalPatchBounds(guardLeft, guardTop, guardWidth, guardHeight));
+                frame, ToPhysicalPatchBounds(guardLeft, guardTop, guardWidth, guardHeight), _lines);
 
             // Capture can fail on protected/UAC surfaces. Keep the compact band in that case rather
             // than painting the much larger guard with a flat colour.
@@ -544,6 +544,7 @@ public partial class RealtimeBlockWindow : Window
             {
                 var generation = Volatile.Read(ref _patchGeneration);
                 var patches = Volatile.Read(ref _naturalPatches);
+                var blocks = _lines;
                 if (patches.Length == 0) continue;
 
                 using var frame = CaptureUnderlyingRegion();
@@ -559,7 +560,7 @@ public partial class RealtimeBlockWindow : Window
                 foreach (var patch in patches)
                 {
                     token.ThrowIfCancellationRequested();
-                    if (BuildNaturalBrush(frame, patch.Line, patch.PatchBounds) is { } brush)
+                    if (BuildNaturalBrush(frame, patch.PatchBounds, blocks) is { } brush)
                         repainted.Add((patch.Surface, brush));
                 }
 
@@ -642,18 +643,16 @@ public partial class RealtimeBlockWindow : Window
         return System.Drawing.Rectangle.FromLTRB(x1, y1, x2, y2);
     }
 
+    /// <param name="blocks">Every block this window draws — see RealtimeNaturalBackground.EraseTargets.</param>
     private static ImageBrush? BuildNaturalBrush(
         System.Drawing.Bitmap? frame,
-        TranslatedBlock line,
-        System.Drawing.Rectangle patchBounds)
+        System.Drawing.Rectangle patchBounds,
+        IReadOnlyList<TranslatedBlock> blocks)
     {
         if (frame is null || patchBounds.Width <= 0 || patchBounds.Height <= 0) return null;
 
-        var sourceLines = line.SourceLineBounds is { Count: > 0 } lines
-            ? lines
-            : (IReadOnlyList<System.Windows.Rect>)[line.Bounds];
-
-        using var patch = RealtimeNaturalBackground.CreatePatch(frame, patchBounds, sourceLines);
+        using var patch = RealtimeNaturalBackground.CreatePatch(
+            frame, patchBounds, RealtimeNaturalBackground.EraseTargets(blocks));
         if (patch is null) return null;
 
         var image = BitmapInterop.ToBitmapSource(patch);

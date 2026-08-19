@@ -1,4 +1,5 @@
 using System.Drawing;
+using OverTranslate.Services;
 using OverTranslate.Services.Realtime;
 using Xunit;
 
@@ -57,6 +58,121 @@ public class RealtimeNaturalBackgroundTests
         Assert.True(repairedMark.R < 100);
         Assert.True(repairedMark.G < 140);
         Assert.True(repairedMark.B < 120);
+    }
+
+    /// <summary>
+    /// A Latin line arrives as a box roughly three times the height of the text in it, with the
+    /// glyph height carried separately, so the repair must erase the glyphs and leave the rest of
+    /// the box as the picture it is.
+    /// </summary>
+    [Fact]
+    public void CreatePatch_ErasesTheGlyphsRatherThanTheWholeLooseLineBox()
+    {
+        using var frame = new Bitmap(160, 120);
+        for (int y = 0; y < frame.Height; y++)
+            for (int x = 0; x < frame.Width; x++)
+                frame.SetPixel(x, y, Color.FromArgb(255, 10 + y, 200 - y, 60 + y % 7 * 6));
+
+        using (var g = Graphics.FromImage(frame))
+        {
+            g.FillRectangle(Brushes.White, 40, 50, 80, 20);
+            // The tail of a g, which the glyph height does not account for.
+            g.FillRectangle(Brushes.White, 55, 70, 5, 7);
+        }
+
+        var looseBox = new System.Windows.Rect(40, 30, 80, 60);
+        var patchBounds = new Rectangle(20, 10, 120, 100);
+
+        using var patch = RealtimeNaturalBackground.CreatePatch(
+            frame, patchBounds, [RealtimeNaturalBackground.GlyphBounds(looseBox, 20)]);
+
+        Assert.NotNull(patch);
+
+        // The glyphs are gone, tail included — left behind, it is read as the picture below the
+        // line and drawn the height of the fill as a bright column.
+        var repaired = patch!.GetPixel(60 - 20, 60 - 10);
+        Assert.True(repaired.R < 200);
+
+        var repairedTail = patch.GetPixel(57 - 20, 74 - 10);
+        Assert.True(repairedTail.R < 200);
+
+        // The picture the box merely surrounded is still the picture, not part of the fill.
+        Assert.Equal(frame.GetPixel(60, 35), patch.GetPixel(60 - 20, 35 - 10));
+        Assert.Equal(frame.GetPixel(60, 85), patch.GetPixel(60 - 20, 85 - 10));
+    }
+
+    /// <summary>
+    /// Two patches over the same line — one holding it whole, one cut across it — must repair it the
+    /// same way, or the one painted second leaves its own version behind as a visible rectangle.
+    /// </summary>
+    [Fact]
+    public void CreatePatch_RepairsALineTheSameWayWhicheverPatchItFallsIn()
+    {
+        using var frame = new Bitmap(200, 200);
+        for (int y = 0; y < frame.Height; y++)
+            for (int x = 0; x < frame.Width; x++)
+                frame.SetPixel(x, y, Color.FromArgb(255, 30 + y, 90 + x % 5 * 9, 150 - y / 2));
+
+        using (var g = Graphics.FromImage(frame))
+            g.FillRectangle(Brushes.White, 50, 95, 100, 16);
+
+        var line = new System.Windows.Rect(50, 95, 100, 16);
+
+        // The second patch stops halfway down the line, which is what a neighbouring block's patch
+        // does to it.
+        using var whole = RealtimeNaturalBackground.CreatePatch(frame, new Rectangle(40, 60, 120, 90), [line]);
+        using var cut = RealtimeNaturalBackground.CreatePatch(frame, new Rectangle(40, 103, 120, 60), [line]);
+
+        Assert.NotNull(whole);
+        Assert.NotNull(cut);
+
+        // The rows they share, read out of each: same picture or the seam is visible.
+        for (int y = 103; y < 150; y++)
+            for (int x = 45; x < 155; x++)
+                Assert.Equal(whole!.GetPixel(x - 40, y - 60), cut!.GetPixel(x - 40, y - 103));
+    }
+
+    /// <summary>
+    /// Two stacked English subtitle lines, at the boxes they were measured at: each patch is a copy
+    /// of the picture and reaches over its neighbour, so a patch that erased only its own line put
+    /// half of the other one back.
+    /// </summary>
+    [Fact]
+    public void EraseTargets_CoverEveryTranslatedBlockRatherThanOnePatchesOwn()
+    {
+        var upper = new TranslatedBlock(
+            "like an explosive force", "像是一股爆炸力",
+            new System.Windows.Rect(300, 765, 569, 70), SourceGlyphHeight: 37);
+        var lower = new TranslatedBlock(
+            "hurtling into the sky!", "衝向天空！",
+            new System.Windows.Rect(310, 827, 542, 74), SourceGlyphHeight: 37);
+
+        var targets = RealtimeNaturalBackground.EraseTargets([upper, lower]);
+
+        Assert.Equal(2, targets.Count);
+        Assert.Contains(targets, rect => rect.Top < 790 && rect.Bottom > 810);   // the upper line
+        Assert.Contains(targets, rect => rect.Top < 852 && rect.Bottom > 872);   // the lower one
+    }
+
+    /// <summary>
+    /// A block with no translation drawn over it is still on screen to be read, so a neighbouring
+    /// patch must not rub out the part of it that happens to fall inside.
+    /// </summary>
+    [Fact]
+    public void EraseTargets_LeaveBlocksNothingWasDrawnOver()
+    {
+        var translated = new TranslatedBlock(
+            "like an explosive force", "像是一股爆炸力",
+            new System.Windows.Rect(300, 765, 569, 70), SourceGlyphHeight: 37);
+        var untranslated = new TranslatedBlock(
+            "hurtling into the sky!", "  ",
+            new System.Windows.Rect(310, 827, 542, 74), SourceGlyphHeight: 37);
+
+        var targets = RealtimeNaturalBackground.EraseTargets([translated, untranslated]);
+
+        Assert.Single(targets);
+        // The one that is left is the translated line's, inside its own box.
+        Assert.True(targets[0].Top >= 765 && targets[0].Bottom <= 835);
     }
 
     [Fact]

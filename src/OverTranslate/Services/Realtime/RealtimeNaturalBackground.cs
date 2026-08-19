@@ -32,6 +32,77 @@ internal static class RealtimeNaturalBackground
     private const int MinErasePadTop = 8;
     private const int MinErasePadBottom = 4;
 
+    /// <summary>Every line a patch has to erase, from the blocks the window is drawing.</summary>
+    /// <remarks>
+    /// All of them, not only the block whose patch is being built. A patch is a fresh copy of the
+    /// picture under it, so a line reaching into it that is left alone is reprinted over the repair
+    /// its own block's patch made — and lines do reach into each other's patches, because each patch
+    /// is grown by a guard margin and a Latin detection box is tall enough to overlap its neighbour
+    /// before that. Two stacked English subtitle lines measured 765..835 and 827..901: the lower
+    /// patch begins above the upper line's baseline and used to reprint the bottom half of it.
+    ///
+    /// Blocks with nothing translated are left out. Nothing was drawn over them, so their text is
+    /// still on screen to be read, and erasing the part of it that falls in someone else's patch
+    /// would rub out half a line the user can still read the rest of.
+    /// </remarks>
+    public static IReadOnlyList<WpfRect> EraseTargets(IReadOnlyList<TranslatedBlock> blocks) =>
+    [
+        .. blocks
+            .Where(block => !string.IsNullOrWhiteSpace(block.TranslatedText))
+            .SelectMany(block => (block.SourceLineBounds is { Count: > 0 } lines ? lines : [block.Bounds])
+                .Select(line => GlyphBounds(line, block.SourceGlyphHeight)))
+    ];
+
+    /// <summary>The part of a line rectangle its glyphs actually occupy.</summary>
+    /// <remarks>
+    /// A Latin source keeps the detector's box unshrunk, because the translation drawn over it is
+    /// sized to cover the taller original glyphs; only the glyph height travels separately. Erasing
+    /// that whole box is what this is for. Measured over the English subtitle corpus, at the size
+    /// realtime reads a subtitle strip at, the box is 66–125px tall for glyphs of 33–49px — so the
+    /// repair was being asked to invent a strip three times the height of the text it replaced, and
+    /// interpolating that far turns whatever the line sits on into one smeared band.
+    ///
+    /// Centred, because the box is concentric with the text: over the same corpus the box's vertical
+    /// centre and that of the same line read as CJK — which does shrink its box — agreed to within
+    /// half a pixel on every line, while the widths were identical. The looseness is in height only,
+    /// and it is symmetric.
+    ///
+    /// The padding <see cref="EraseSourceText"/> adds is what covers the rest: an outline, an
+    /// ascender, the antialiasing around them.
+    /// </remarks>
+    public static WpfRect GlyphBounds(WpfRect line, double? glyphHeight)
+    {
+        if (glyphHeight is not { } height || height <= 0 || height >= line.Height)
+            return line;
+
+        double top = line.Y + (line.Height - height) / 2;
+        double bottom = Math.Min(line.Bottom, top + height * (1 + DescenderAllowance));
+        return new WpfRect(line.X, top, line.Width, bottom - top);
+    }
+
+    /// <summary>How much further down than its glyph height a Latin line reaches, as a fraction.</summary>
+    /// <remarks>
+    /// The glyph height is measured from the line's average pitch, which is the body of the text: it
+    /// does not know about the tail of a g, j, p, q or y, nor about the outline drawn around it. Left
+    /// out, that tail is not merely missed — the row band is read from immediately below the strip,
+    /// so the band lands ON the tail, and a stroke a few pixels wide is drawn the height of the fill
+    /// as a black column. It is the most visible way this repair fails on English subtitles.
+    ///
+    /// Swept over the English corpus at 0.00/0.15/0.20/0.25/0.30/0.35/0.50 and read off the repaired
+    /// frames: the columns are obvious to 0.20, faint at 0.25, and gone at 0.30 on every frame that
+    /// had a descender. Above that nothing improves and the strip only invents more of the picture.
+    ///
+    /// Latin only, because it applies to a rectangle that carries a glyph height, and CJK does not —
+    /// its box already sits on its glyphs, which have no descender to reach past it.
+    /// </remarks>
+    private const double DescenderAllowance = 0.30;
+
+    /// <param name="sourceLineBounds">
+    /// Every line to erase out of this patch, as the rectangles its glyphs occupy — see
+    /// <see cref="GlyphBounds"/>. Lines belonging to neighbouring blocks count: a patch is a copy of
+    /// the picture, so any line reaching into it that is left alone is reprinted over whatever
+    /// repaired it.
+    /// </param>
     public static Bitmap? CreatePatch(
         Bitmap frame,
         Rectangle patchBounds,
@@ -42,17 +113,27 @@ internal static class RealtimeNaturalBackground
         if (clippedPatch.Width <= 0 || clippedPatch.Height <= 0)
             return null;
 
+        var sources = new Rectangle[sourceLineBounds.Count];
+        for (int i = 0; i < sourceLineBounds.Count; i++)
+            sources[i] = Rectangle.FromLTRB(
+                (int)Math.Floor(sourceLineBounds[i].Left),
+                (int)Math.Floor(sourceLineBounds[i].Top),
+                (int)Math.Ceiling(sourceLineBounds[i].Right),
+                (int)Math.Ceiling(sourceLineBounds[i].Bottom));
+
+        var work = Rectangle.Intersect(frameBounds, WorkingArea(clippedPatch, sources));
+
         Bitmap patch;
         try
         {
-            patch = frame.Clone(clippedPatch, PixelFormat.Format32bppArgb);
+            patch = frame.Clone(work, PixelFormat.Format32bppArgb);
         }
         catch
         {
             return null;
         }
 
-        if (sourceLineBounds.Count == 0)
+        if (sources.Length == 0)
             return patch;
 
         // One lock and one copy each way for the whole patch, however many lines are erased into it.
@@ -71,14 +152,9 @@ internal static class RealtimeNaturalBackground
             for (int y = 0; y < patch.Height; y++)
                 Marshal.Copy(IntPtr.Add(data.Scan0, y * data.Stride), pixels, y * stride, stride);
 
-            foreach (var source in sourceLineBounds)
+            foreach (var source in sources)
             {
-                var local = Rectangle.FromLTRB(
-                    (int)Math.Floor(source.Left) - clippedPatch.Left,
-                    (int)Math.Floor(source.Top) - clippedPatch.Top,
-                    (int)Math.Ceiling(source.Right) - clippedPatch.Left,
-                    (int)Math.Ceiling(source.Bottom) - clippedPatch.Top);
-
+                var local = source with { X = source.X - work.X, Y = source.Y - work.Y };
                 EraseSourceText(pixels, stride, patch.Width, patch.Height, local);
             }
 
@@ -90,7 +166,54 @@ internal static class RealtimeNaturalBackground
             patch.UnlockBits(data);
         }
 
-        return patch;
+        if (work == clippedPatch)
+            return patch;
+
+        using (patch)
+        {
+            var inside = new Rectangle(
+                clippedPatch.X - work.X, clippedPatch.Y - work.Y, clippedPatch.Width, clippedPatch.Height);
+            try
+            {
+                return patch.Clone(inside, PixelFormat.Format32bppArgb);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The area the repair is carried out in: the patch, grown to hold whole every line that reaches
+    /// into it.
+    /// </summary>
+    /// <remarks>
+    /// A patch is a crop of the picture, and a fill cut off by the edge of one is not the same fill:
+    /// with no rows beyond the cut to read, <see cref="EraseSourceText"/> falls back to extending the
+    /// one edge it has, which paints a flat block. Two patches that overlap then disagree about the
+    /// line they share, and the one painted second leaves its version behind as a rectangle with a
+    /// visible edge — the seam between two stacked subtitle lines.
+    ///
+    /// Repairing in an area that contains the whole line makes the fill for a line the same wherever
+    /// it is drawn, because it is computed from the same pixels either way. The patch itself is cut
+    /// out of the result afterwards.
+    /// </remarks>
+    private static Rectangle WorkingArea(Rectangle patch, IReadOnlyList<Rectangle> sources)
+    {
+        var work = patch;
+
+        foreach (var source in sources)
+        {
+            var area = ErasedArea(source);
+            if (!area.IntersectsWith(patch)) continue;
+
+            // The rows and columns the fill is read from, which is as deep as one band goes.
+            area.Inflate(BandDepth, BandDepth);
+            work = Rectangle.Union(work, area);
+        }
+
+        return work;
     }
 
     /// <summary>
@@ -169,95 +292,207 @@ internal static class RealtimeNaturalBackground
         return OverlayTextColor.Tune(sampled, background);
     }
 
-    /// <summary>
-    /// Fills one source line's rectangle with colour interpolated from its surroundings.
-    /// </summary>
-    /// <remarks>
-    /// Reads only outside the rectangle it writes: the row above and below, or the column either
-    /// side, or the ring around it. That is what lets several lines share one buffer — there is no
-    /// order in which one line's fill can be read as though it were the picture underneath.
-    /// </remarks>
-    private static void EraseSourceText(byte[] pixels, int stride, int width, int height, Rectangle source)
+    /// <summary>The area a line's fill covers: its glyphs, and the padding this repair adds.</summary>
+    private static Rectangle ErasedArea(Rectangle source)
     {
         int heightBasis = Math.Clamp(source.Height, 12, 72);
         int padX = Math.Max(MinErasePadX, (int)Math.Ceiling(heightBasis * 0.16));
         int padTop = Math.Max(MinErasePadTop, (int)Math.Ceiling(heightBasis * 0.34));
         int padBottom = Math.Max(MinErasePadBottom, (int)Math.Ceiling(heightBasis * 0.16));
 
-        var expanded = Rectangle.FromLTRB(
+        return Rectangle.FromLTRB(
             source.Left - padX,
             source.Top - padTop,
             source.Right + padX,
             source.Bottom + padBottom);
-        var rect = Rectangle.Intersect(new Rectangle(0, 0, width, height), expanded);
+    }
+
+    /// <summary>
+    /// Fills one source line's rectangle with colour interpolated from its surroundings.
+    /// </summary>
+    /// <remarks>
+    /// Reads only outside the rectangle it writes, and reads all of it before writing any of it.
+    /// That is what lets several lines share one buffer — there is no order in which one line's
+    /// fill can be read as though it were the picture underneath.
+    /// </remarks>
+    private static void EraseSourceText(byte[] pixels, int stride, int width, int height, Rectangle source)
+    {
+        var rect = Rectangle.Intersect(new Rectangle(0, 0, width, height), ErasedArea(source));
         if (rect.Width <= 0 || rect.Height <= 0) return;
 
-        bool hasTopBottom = rect.Top > 0 && rect.Bottom < height;
-        bool hasLeftRight = rect.Left > 0 && rect.Right < width;
+        var above = rect.Top > 0 ? RowBand(pixels, stride, height, rect, above: true) : null;
+        var below = rect.Bottom < height ? RowBand(pixels, stride, height, rect, above: false) : null;
 
-        if (hasTopBottom)
+        // Interpolating between two real edges beats extending one of them, whichever axis it is on,
+        // so both two-sided cases are tried before either one-sided one. A line rect is wide and
+        // short, which is why the rows come first: reaching across its width from a single column
+        // either side is a smear the length of the sentence.
+        if (above is not null && below is not null)
         {
-            int topRow = (rect.Top - 1) * stride;
-            int bottomRow = rect.Bottom * stride;
+            FillFromRows(pixels, stride, rect, above, below);
+            return;
+        }
 
-            for (int y = rect.Top; y < rect.Bottom; y++)
+        var left = rect.Left > 0 ? ColumnBand(pixels, stride, width, rect, left: true) : null;
+        var right = rect.Right < width ? ColumnBand(pixels, stride, width, rect, left: false) : null;
+
+        if (left is not null && right is not null)
+        {
+            FillFromColumns(pixels, stride, rect, left, right);
+            return;
+        }
+
+        if (above is not null || below is not null)
+        {
+            FillFromRows(pixels, stride, rect, above, below);
+            return;
+        }
+
+        if (left is not null || right is not null)
+        {
+            FillFromColumns(pixels, stride, rect, left, right);
+            return;
+        }
+
+        // Nothing outside the rectangle is left to read from, so there is nothing to interpolate.
+        // Taken before anything is written, which is also why it can read the same buffer: every
+        // pixel it averages lies outside the rectangle about to be filled.
+        var fill = BorderAverage(pixels, stride, width, height, rect);
+
+        for (int y = rect.Top; y < rect.Bottom; y++)
+        {
+            int row = y * stride;
+            for (int x = rect.Left; x < rect.Right; x++)
             {
-                double t = (y - rect.Top + 1.0) / (rect.Height + 1.0);
-                int dstRow = y * stride;
-
-                for (int x = rect.Left; x < rect.Right; x++)
-                {
-                    int dst = dstRow + x * 4;
-                    int a = topRow + x * 4;
-                    int b = bottomRow + x * 4;
-                    pixels[dst] = Lerp(pixels[a], pixels[b], t);
-                    pixels[dst + 1] = Lerp(pixels[a + 1], pixels[b + 1], t);
-                    pixels[dst + 2] = Lerp(pixels[a + 2], pixels[b + 2], t);
-                    pixels[dst + 3] = 255;
-                }
+                int dst = row + x * 4;
+                pixels[dst] = fill.B;
+                pixels[dst + 1] = fill.G;
+                pixels[dst + 2] = fill.R;
+                pixels[dst + 3] = 255;
             }
         }
-        else if (hasLeftRight)
+    }
+
+    /// <summary>How deep, in rows or columns, one edge of the rectangle is read.</summary>
+    /// <remarks>
+    /// Three, reduced to their median rather than averaged. The padding around a line is sized for
+    /// the glyph body, so an outline, a shadow or a Japanese mark can still reach the first row
+    /// outside it — and one lit pixel there, carried the whole height of the fill, is a bright line
+    /// down the middle of the repair. A median discards that row's value as long as the other two
+    /// agree, so the line is never drawn in the first place. An average would not: it would let the
+    /// stray pixel through at a third of its strength, which is a fainter line, not no line.
+    ///
+    /// It costs nothing in sharpness, which is what separates it from spreading the band sideways —
+    /// the other half of the attempt this came from, and the half that made repairs visibly blurry.
+    ///
+    /// Three exactly: <see cref="Median"/> is written for three and nothing else.
+    /// </remarks>
+    private const int BandDepth = 3;
+
+    /// <summary>The rows above or below the rectangle, reduced to one B,G,R per column of it.</summary>
+    private static byte[] RowBand(byte[] pixels, int stride, int height, Rectangle rect, bool above)
+    {
+        var band = new byte[rect.Width * 3];
+        var samples = new byte[BandDepth];
+
+        for (int i = 0; i < rect.Width; i++)
         {
-            int leftX = rect.Left - 1;
-            int rightX = rect.Right;
-
-            for (int y = rect.Top; y < rect.Bottom; y++)
+            int x = rect.Left + i;
+            for (int channel = 0; channel < 3; channel++)
             {
-                int row = y * stride;
-                int left = row + leftX * 4;
-                int right = row + rightX * 4;
-
-                for (int x = rect.Left; x < rect.Right; x++)
+                for (int depth = 0; depth < BandDepth; depth++)
                 {
-                    double t = (x - rect.Left + 1.0) / (rect.Width + 1.0);
-                    int dst = row + x * 4;
-                    pixels[dst] = Lerp(pixels[left], pixels[right], t);
-                    pixels[dst + 1] = Lerp(pixels[left + 1], pixels[right + 1], t);
-                    pixels[dst + 2] = Lerp(pixels[left + 2], pixels[right + 2], t);
-                    pixels[dst + 3] = 255;
+                    int y = Math.Clamp(above ? rect.Top - 1 - depth : rect.Bottom + depth, 0, height - 1);
+                    samples[depth] = pixels[y * stride + x * 4 + channel];
                 }
+
+                band[i * 3 + channel] = Median(samples);
             }
         }
-        else
-        {
-            // Taken before anything is written, which is also why it can read the same buffer: every
-            // pixel it averages lies outside the rectangle about to be filled.
-            var fill = BorderAverage(pixels, stride, width, height, rect);
 
-            for (int y = rect.Top; y < rect.Bottom; y++)
+        return band;
+    }
+
+    /// <summary>The columns left or right of the rectangle, reduced to one B,G,R per row of it.</summary>
+    private static byte[] ColumnBand(byte[] pixels, int stride, int width, Rectangle rect, bool left)
+    {
+        var band = new byte[rect.Height * 3];
+        var samples = new byte[BandDepth];
+
+        for (int i = 0; i < rect.Height; i++)
+        {
+            int row = (rect.Top + i) * stride;
+            for (int channel = 0; channel < 3; channel++)
             {
-                int row = y * stride;
-                for (int x = rect.Left; x < rect.Right; x++)
+                for (int depth = 0; depth < BandDepth; depth++)
                 {
-                    int dst = row + x * 4;
-                    pixels[dst] = fill.B;
-                    pixels[dst + 1] = fill.G;
-                    pixels[dst + 2] = fill.R;
-                    pixels[dst + 3] = 255;
+                    int x = Math.Clamp(left ? rect.Left - 1 - depth : rect.Right + depth, 0, width - 1);
+                    samples[depth] = pixels[row + x * 4 + channel];
                 }
+
+                band[i * 3 + channel] = Median(samples);
             }
         }
+
+        return band;
+    }
+
+    private static void FillFromRows(byte[] pixels, int stride, Rectangle rect, byte[]? above, byte[]? below)
+    {
+        for (int y = rect.Top; y < rect.Bottom; y++)
+        {
+            double t = (y - rect.Top + 1.0) / (rect.Height + 1.0);
+            int row = y * stride;
+
+            for (int i = 0; i < rect.Width; i++)
+            {
+                int dst = row + (rect.Left + i) * 4;
+                int at = i * 3;
+
+                for (int channel = 0; channel < 3; channel++)
+                    pixels[dst + channel] = Blend(above, below, at + channel, t);
+
+                pixels[dst + 3] = 255;
+            }
+        }
+    }
+
+    private static void FillFromColumns(byte[] pixels, int stride, Rectangle rect, byte[]? left, byte[]? right)
+    {
+        for (int y = rect.Top; y < rect.Bottom; y++)
+        {
+            int row = y * stride;
+            int at = (y - rect.Top) * 3;
+
+            for (int x = rect.Left; x < rect.Right; x++)
+            {
+                double t = (x - rect.Left + 1.0) / (rect.Width + 1.0);
+                int dst = row + x * 4;
+
+                for (int channel = 0; channel < 3; channel++)
+                    pixels[dst + channel] = Blend(left, right, at + channel, t);
+
+                pixels[dst + 3] = 255;
+            }
+        }
+    }
+
+    /// <summary>
+    /// One channel of the fill: between the two edges where both exist, and the one that does where
+    /// only one does — the rectangle runs to the edge of the picture and there is nothing beyond it.
+    /// </summary>
+    private static byte Blend(byte[]? start, byte[]? end, int at, double t) =>
+        start is null ? end![at]
+        : end is null ? start[at]
+        : Lerp(start[at], end[at], t);
+
+    /// <summary>The middle of three, which is <see cref="BandDepth"/> and only that.</summary>
+    private static byte Median(byte[] samples)
+    {
+        byte a = samples[0], b = samples[1], c = samples[2];
+        return a > b
+            ? (b > c ? b : a > c ? c : a)
+            : (a > c ? a : b > c ? c : b);
     }
 
     private static GdiColor BorderAverage(
