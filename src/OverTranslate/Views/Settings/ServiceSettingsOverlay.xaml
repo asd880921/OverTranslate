@@ -183,6 +183,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <!-- The guide comes before the fields rather than after them: this
@@ -392,12 +393,20 @@
                                 </Grid>
                             </Border>
 
+                            <!-- The prompt is the one thing on this panel that is written rather
+                                 than filled in, and the tab box around it is nearly the height of
+                                 the card. The rule is what says the fields end here. -->
+                            <Rectangle Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2"
+                                       Height="1"
+                                       Margin="0,18,0,0"
+                                       Fill="{DynamicResource AppSeparator}"/>
+
                             <!-- Two prompts behind two tabs, not a mode being set: the pill this
                                  replaces sat against the prompt label and read as choosing how the
                                  app translates, when all it ever picked was which of the two stored
                                  prompts the editor below is holding. -->
-                            <Border Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2"
-                                    Margin="0,16,0,0"
+                            <Border Grid.Column="0" Grid.Row="7" Grid.ColumnSpan="2"
+                                    Margin="0,18,0,0"
                                     BorderBrush="{DynamicResource AppBorder}"
                                     BorderThickness="1"
                                     CornerRadius="8">
