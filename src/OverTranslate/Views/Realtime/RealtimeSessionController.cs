@@ -601,12 +601,18 @@ internal sealed class RealtimeSessionController
     /// </summary>
     /// <remarks>
     /// A refusal per reason, because each has a different answer. A system without window capture
-    /// can only ever use 螢幕擷取, and should be told that once. A window that closed between the
-    /// picker and this call needs the list refreshed. A window presenting past the compositor — a
+    /// has no realtime capture at all — 螢幕擷取 is built on the same API and needs more of it, not
+    /// less — so that one states the fact and stops. A window that closed between the picker and
+    /// this call needs the list refreshed. A window presenting past the compositor — a
     /// game in exclusive fullscreen, see <c>WgcWindowCaptureBackend.WaitForUsableFrame</c> — has a
     /// display setting the user can change. And a capture that produced nothing at all is none of
     /// those: it is this machine's capture chain, which the user cannot act on, so that one names
     /// the log instead of an action.
+    ///
+    /// None of them sends the user to 螢幕擷取. Someone who chose 視窗擷取 either has a reason to
+    /// avoid the other mode or is on a machine that does not offer it — this report came from the
+    /// second kind — so the way forward that is always theirs to take is the display mode of the
+    /// application they are translating, and that is what every one of these says.
     ///
     /// The last two used to share the fullscreen message, which is how a report of it arrived —
     /// a Windows 10 user told to leave exclusive fullscreen by a game that was already windowed.
