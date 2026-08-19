@@ -79,6 +79,10 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
     private long _latestAt;
     private long _lastGrabAt;
 
+    // Raised whenever a frame has been read back; only the start-up wait listens. See
+    // WgcWindowCaptureBackend for why that wait must not be a sleep.
+    private readonly ManualResetEventSlim _frameSignal = new(false);
+
     private int _framesReceived;
     private int _framesRead;
     private int _framesBeforeExclusion;
@@ -144,7 +148,11 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
         WgcMonitorCaptureBackend? backend = null;
         try
         {
-            device = WgcInterop.CreateDirect3DDevice(out rawDevice);
+            // On the adapter driving this monitor rather than on whichever one is listed first: a
+            // capture served by another adapter is not refused, it simply never delivers a frame.
+            device = WgcInterop.CreateDirect3DDevice(monitor, false, out rawDevice, out var adapter);
+            Log.Debug("Realtime monitor capture using {Adapter}", adapter);
+
             backend = new WgcMonitorCaptureBackend(resolveMonitor, resolveOverlays, device, rawDevice);
             if (!backend.Attach(monitor)) throw new InvalidOperationException("the monitor refused capture");
             if (!backend.WaitForIsolatedFrame(FirstFrameTimeout))
@@ -395,6 +403,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
     /// </summary>
     private void OnFrameArrived(Direct3D11CaptureFramePool sender, object args)
     {
+        SizeInt32? resizeTo = null;
         try
         {
             using var frame = sender.TryGetNextFrame();
@@ -402,9 +411,13 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
 
             Interlocked.Increment(ref _framesReceived);
 
+            // Noted here and done at the end of the handler, once the frame has been released: a
+            // pool asked to recreate itself while one of its own frames is still held waits for a
+            // buffer that only this thread can give back, and this thread is inside the wait. See
+            // the same deferral in WgcWindowCaptureBackend, where the deadlock was found.
             var content = frame.ContentSize;
             if (content.Width != _poolSize.Width || content.Height != _poolSize.Height)
-                Recreate(content);
+                resizeTo = content;
 
             // The one check this whole backend rests on. A frame numbered below the iteration the
             // exclusion was accepted at was composed before it took effect and may still hold the
@@ -437,6 +450,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
                 Volatile.Write(ref _latestAt, Stopwatch.GetTimestamp());
             }
             previous?.Dispose();
+            _frameSignal.Set();
         }
         catch (ObjectDisposedException)
         {
@@ -445,6 +459,11 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
         catch (Exception ex)
         {
             Log.Debug(ex, "Realtime monitor capture dropped a frame");
+        }
+        finally
+        {
+            // Outside the try above, so the frame it was decided for has been disposed by now.
+            if (resizeTo is { } size) Recreate(size);
         }
     }
 
@@ -475,7 +494,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
     {
         var started = Stopwatch.GetTimestamp();
 
-        while (Stopwatch.GetElapsedTime(started) < timeout)
+        while (true)
         {
             // The readback is demand-driven and nothing has polled yet.
             Volatile.Write(ref _lastGrabAt, Stopwatch.GetTimestamp());
@@ -485,7 +504,14 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
                 if (_latest is not null) return true;
             }
 
-            Thread.Sleep(50);
+            var left = timeout - Stopwatch.GetElapsedTime(started);
+            if (left <= TimeSpan.Zero) break;
+
+            // A wait rather than a sleep, for the reason spelled out in
+            // WgcWindowCaptureBackend.WaitForUsableFrame: this runs on the thread that started the
+            // session, and on an STA thread only a wait keeps pumping COM.
+            _frameSignal.Wait(TimeSpan.FromMilliseconds(Math.Min(50, left.TotalMilliseconds)));
+            _frameSignal.Reset();
         }
 
         Log.Warn(
@@ -578,6 +604,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
             _latest = null;
         }
 
+        _frameSignal.Dispose();
         (_device as IDisposable)?.Dispose();
         if (_rawDevice != IntPtr.Zero) Marshal.Release(_rawDevice);
     }
