@@ -423,19 +423,26 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- The mark stands on the tile itself rather than on a filled
-                                         square of its own: these are the vendors' logos, and a
-                                         backing plate turns two recognisable marks into two of this
-                                         app's icons. Sized by height, because the two are not the
-                                         same shape and it is their optical weight that has to
-                                         match. -->
-                                    <Path Grid.Column="0" Grid.Row="0"
-                                          Data="{StaticResource DeepLMarkGeometry}"
-                                          Fill="{DynamicResource AppDeepLMark}"
-                                          Stretch="Uniform"
-                                          Width="36" Height="46"
+                                    <!-- The square around each mark paints nothing: it is the box
+                                         an app icon would occupy, and it is here only so the two
+                                         marks are measured against one fixed size rather than
+                                         against whatever else is in the row. Without it Uniform has
+                                         no height to fit into, and since it only ever shrinks, the
+                                         DeepL mark stayed at the 19 units its own file is drawn in.
+
+                                         A visible plate is a different thing and deliberately not
+                                         drawn: these are the vendors' logos, and setting them on
+                                         tinted tiles turns two recognisable marks into two of this
+                                         app's icons. -->
+                                    <Grid Grid.Column="0" Grid.Row="0"
+                                          Width="48" Height="48"
                                           VerticalAlignment="Center"
-                                          Margin="0,0,16,0"/>
+                                          Margin="0,0,12,0">
+                                        <Path Data="{StaticResource DeepLMarkGeometry}"
+                                              Fill="{DynamicResource AppDeepLMark}"
+                                              Stretch="Uniform"
+                                              Width="36"/>
+                                    </Grid>
 
                                     <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.Provider.DeepL}"
@@ -472,13 +479,15 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <Path Grid.Column="0" Grid.Row="0"
-                                          Data="{StaticResource OpenAiMarkGeometry}"
-                                          Fill="{DynamicResource AppOpenAiMark}"
-                                          Stretch="Uniform"
-                                          Width="36" Height="46"
+                                    <Grid Grid.Column="0" Grid.Row="0"
+                                          Width="48" Height="48"
                                           VerticalAlignment="Center"
-                                          Margin="0,0,16,0"/>
+                                          Margin="0,0,12,0">
+                                        <Path Data="{StaticResource OpenAiMarkGeometry}"
+                                              Fill="{DynamicResource AppOpenAiMark}"
+                                              Stretch="Uniform"
+                                              Width="36"/>
+                                    </Grid>
 
                                     <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.Provider.OpenAI}"

@@ -152,12 +152,12 @@
     <!--  Sized by width in the tiles, not height:    -->
     <!--  DeepL's mark is narrow and tall and         -->
     <!--  OpenAI's is square, so equal heights make   -->
-    <!--  the DeepL one the smaller of the two. Both  -->
-    <!--  dimensions of that box are given, and the   -->
-    <!--  height is the taller mark's — Uniform only  -->
-    <!--  shrinks to fit, so an unbounded height      -->
-    <!--  leaves a geometry smaller than its box at   -->
-    <!--  its own size, which is 19 units for DeepL.  -->
+    <!--  the DeepL one the smaller of the two. The   -->
+    <!--  width is set against a fixed square that    -->
+    <!--  paints nothing — see the tiles: Uniform     -->
+    <!--  only shrinks to fit, so without a bounded   -->
+    <!--  height a small geometry stays at its own    -->
+    <!--  size, which is 19 units for DeepL.          -->
     <!--                                              -->
     <!--  F1 is the nonzero fill rule the SVGs use;   -->
     <!--  WPF geometry defaults to even-odd, which   -->
