@@ -639,8 +639,17 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Outside the group rather than inside it: it is not a third option, it is
-                             what both of the two above cost. -->
+                        <!-- Outside the group rather than inside it: it is not a third option, it
+                             is when both of the two above are worth having.
+
+                             It used to warn about performance, which was not true and pointed the
+                             reader at the wrong question. Both options work by reading the pixels
+                             already on screen: the colour sampler reads once, when a line is rebuilt
+                             after the text changed, and the background repair runs on its own thread
+                             at 4Hz over the block's own strip and stops at a fingerprint when the
+                             picture has not moved. What actually decides whether to turn them on is
+                             the content: a picture that holds still is one they can read correctly,
+                             and a picture that does not is one they are always a moment behind. -->
                         <Grid Margin="4,0,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -654,7 +663,7 @@
                                        Margin="0,3,7,0"
                                        VerticalAlignment="Top"/>
                             <TextBlock Grid.Column="1"
-                                       Text="{DynamicResource S.Realtime.AdvancedOptionsCost}"
+                                       Text="{DynamicResource S.Realtime.AdvancedOptionsBestFor}"
                                        Style="{StaticResource FieldHint}"
                                        Margin="0"/>
                         </Grid>
