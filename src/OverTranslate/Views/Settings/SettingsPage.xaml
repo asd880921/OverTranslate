@@ -483,10 +483,17 @@
                                           Width="48" Height="48"
                                           VerticalAlignment="Center"
                                           Margin="0,0,12,0">
+                                        <!-- Wider than the DeepL mark on purpose. That one is a
+                                             solid shape that fills its box; this one is thin open
+                                             strokes with most of its box empty, and its widest
+                                             points are on the diagonal — so matched box widths
+                                             leave it looking both smaller and further from the
+                                             text. The usual optical correction for an open round
+                                             mark against a solid angular one. -->
                                         <Path Data="{StaticResource OpenAiMarkGeometry}"
                                               Fill="{DynamicResource AppOpenAiMark}"
                                               Stretch="Uniform"
-                                              Width="36"/>
+                                              Width="40"/>
                                     </Grid>
 
                                     <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
