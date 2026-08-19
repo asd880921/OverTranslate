@@ -433,9 +433,9 @@
                                           Data="{StaticResource DeepLMarkGeometry}"
                                           Fill="{DynamicResource AppDeepLMark}"
                                           Stretch="Uniform"
-                                          Height="48"
+                                          Width="36" Height="46"
                                           VerticalAlignment="Center"
-                                          Margin="0,0,14,0"/>
+                                          Margin="0,0,16,0"/>
 
                                     <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.Provider.DeepL}"
@@ -476,9 +476,9 @@
                                           Data="{StaticResource OpenAiMarkGeometry}"
                                           Fill="{DynamicResource AppOpenAiMark}"
                                           Stretch="Uniform"
-                                          Height="48"
+                                          Width="36" Height="46"
                                           VerticalAlignment="Center"
-                                          Margin="0,0,14,0"/>
+                                          Margin="0,0,16,0"/>
 
                                     <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.Provider.OpenAI}"
