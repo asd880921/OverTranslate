@@ -196,6 +196,10 @@ internal sealed class RealtimeSessionController
         control.EditRequested += (_, _) => EnterEditMode();
         control.CloseRequested += (_, _) => Stop();
         control.PauseToggleRequested += (_, _) => TogglePause();
+        // Wired here rather than in EnterEditMode, which runs again on every trip back into framing
+        // and would stack a fresh handler each time. The layer it talks to is whichever one is up:
+        // there is none while translating, and the button that raises this is not on screen then.
+        control.CrosshairToggleRequested += (_, enabled) => _edit?.SetCrosshairEnabled(enabled);
         _control = control;
         control.Show();
         RefreshOverlayHandles();

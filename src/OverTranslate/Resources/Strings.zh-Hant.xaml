@@ -7,7 +7,6 @@
          are composite formats consumed through LocalizationService.Format. -->
 
     <!-- ── Shared ── -->
-    <sys:String x:Key="S.Common.Edit">編輯</sys:String>
     <sys:String x:Key="S.Common.Reset">重設</sys:String>
     <sys:String x:Key="S.Common.Close">關閉</sys:String>
     <sys:String x:Key="S.Common.Configure">設定</sys:String>
@@ -207,6 +206,10 @@
     <sys:String x:Key="S.Realtime.Paused">已暫停</sys:String>
     <sys:String x:Key="S.Realtime.Pause">暫停即時翻譯</sys:String>
     <sys:String x:Key="S.Realtime.Resume">繼續即時翻譯</sys:String>
+    <sys:String x:Key="S.Realtime.EditBlocks">編輯翻譯區塊</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOff">暫停框選，改為操作下方畫面</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOn">恢復框選</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOffHint">已暫停框選，可直接操作下方畫面</sys:String>
 
     <!-- Control bar and edit window messages -->
     <sys:String x:Key="S.Realtime.MovedToFront">已將即時翻譯視窗移至最上層</sys:String>

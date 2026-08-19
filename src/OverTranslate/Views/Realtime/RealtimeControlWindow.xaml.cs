@@ -45,8 +45,36 @@ public partial class RealtimeControlWindow : Window
     private readonly System.Drawing.Rectangle _screenBounds;
     private readonly DispatcherTimer _messageTimer;
 
+    /// <summary>
+    /// The marquee the framing button shows while framing is off, and the pointer it shows while it
+    /// is on. Coordinates are in a 16×16 box drawn at its own size — see the Path in XAML.
+    /// </summary>
+    private const string MarqueeIcon =
+        "M4.5,2.5 H11.5 A2,2 0 0 1 13.5,4.5 V11.5 A2,2 0 0 1 11.5,13.5 "
+        + "H4.5 A2,2 0 0 1 2.5,11.5 V4.5 A2,2 0 0 1 4.5,2.5 Z";
+
+    private const string PointerIcon = "M4.2,2.2 L4.2,12.9 L7,10.2 L8.9,14.4 L10.7,13.5 L8.9,9.6 L12.6,9.4 Z";
+
+    /// <summary>
+    /// Dash pattern for the marquee, in multiples of the stroke width. The same broken outline the
+    /// drag preview draws on screen, which is what makes the icon read as that gesture rather than
+    /// as a plain box.
+    /// </summary>
+    private static readonly DoubleCollection MarqueeDashes = Freeze([2.2, 1.8]);
+
+    private static DoubleCollection Freeze(double[] values)
+    {
+        var collection = new DoubleCollection(values);
+        collection.Freeze();
+        return collection;
+    }
+
     private RealtimeControlMode _mode = RealtimeControlMode.Edit;
     private static string EditHint => LocalizationService.Get("S.Realtime.EditHint");
+    // Stands in for the framing instruction while framing is off, because that instruction is then
+    // wrong: dragging does nothing, and a bar still telling the user to drag reads as the layer
+    // having broken rather than as a state they asked for.
+    private static string CrosshairOffHint => LocalizationService.Get("S.Realtime.CrosshairOffHint");
     // What the capsule says before SetLanguages has named the pair. A transient message borrows the
     // same slot and RestoreText brings whichever of the two applies back.
     private static string RunStatus => LocalizationService.Get("S.Realtime.Running");
@@ -56,6 +84,10 @@ public partial class RealtimeControlWindow : Window
     private static string PausedStatus => LocalizationService.Get("S.Realtime.Paused");
     private bool _hasLanguages;
     private bool _isPaused;
+
+    // Whether the edit layer is still taking the mouse. Owned here rather than by the layer: the
+    // button that changes it lives on this bar, and the bar has to say so in its own hint text.
+    private bool _crosshairEnabled = true;
 
     // Whether a message is standing in for the bar's own text. Kept explicitly rather than read off
     // the timer, which stopped being the same question once a message could be sticky: a sticky one
@@ -88,6 +120,7 @@ public partial class RealtimeControlWindow : Window
 
         _screenBounds = screenBounds;
         ApplyPauseButton();
+        ApplyCrosshairButton();
         RestoreText();
 
         _messageTimer = new DispatcherTimer { Interval = MessageDuration };
@@ -131,6 +164,12 @@ public partial class RealtimeControlWindow : Window
     public event EventHandler? EditRequested;
     public event EventHandler? CloseRequested;
     public event EventHandler? PauseToggleRequested;
+
+    /// <summary>
+    /// Raised with the state framing should be in from now on: true to take the mouse back for
+    /// drawing blocks, false to hand it to whatever is underneath.
+    /// </summary>
+    public event EventHandler<bool>? CrosshairToggleRequested;
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -252,6 +291,12 @@ public partial class RealtimeControlWindow : Window
         _isPaused = false;
         ApplyPauseButton();
 
+        // Every trip into edit mode starts with the crosshair, whatever the last one ended on: the
+        // layer is rebuilt each time, so it opens taking the mouse, and the user pressed 編輯
+        // because they came to draw. Off is the temporary state, not the one to inherit.
+        _crosshairEnabled = true;
+        ApplyCrosshairButton();
+
         _messageTimer.Stop();
         RestoreText();
         SetBusy(false);
@@ -333,7 +378,7 @@ public partial class RealtimeControlWindow : Window
     private void RestoreText()
     {
         _messageShowing = false;
-        EditHintText.Text = EditHint;
+        EditHintText.Text = _crosshairEnabled ? EditHint : CrosshairOffHint;
 
         RunStatusText.Text = _isPaused ? PausedStatus : RunStatus;
 
@@ -364,6 +409,19 @@ public partial class RealtimeControlWindow : Window
         PauseBtn.ToolTip = RealtimePauseHint.ForControlTooltip(RealtimePauseHint.CurrentHotkey, _isPaused);
         System.Windows.Automation.AutomationProperties.SetName(
             PauseBtn, LocalizationService.Get(_isPaused ? "S.Realtime.Resume" : "S.Realtime.Pause"));
+    }
+
+    private void ApplyCrosshairButton()
+    {
+        // The icon is the action, not the state — see the button's comment in XAML. The dashes go
+        // with the marquee and have to come off the pointer, which is one continuous outline.
+        CrosshairGlyph.Data = Geometry.Parse(_crosshairEnabled ? PointerIcon : MarqueeIcon);
+        CrosshairGlyph.StrokeDashArray = _crosshairEnabled ? null : MarqueeDashes;
+
+        var label = LocalizationService.Get(
+            _crosshairEnabled ? "S.Realtime.CrosshairOff" : "S.Realtime.CrosshairOn");
+        CrosshairBtn.ToolTip = label;
+        System.Windows.Automation.AutomationProperties.SetName(CrosshairBtn, label);
     }
 
     // ── Placement and dragging ───────────────────────────────────────────────────────────────────
@@ -454,6 +512,19 @@ public partial class RealtimeControlWindow : Window
     private void EditBtn_Click(object sender, RoutedEventArgs e) => EditRequested?.Invoke(this, EventArgs.Empty);
 
     private void PauseBtn_Click(object sender, RoutedEventArgs e) => PauseToggleRequested?.Invoke(this, EventArgs.Empty);
+
+    private void CrosshairBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _crosshairEnabled = !_crosshairEnabled;
+        ApplyCrosshairButton();
+
+        // A message from before the toggle was answering something else, and the hint underneath it
+        // has just changed — the same reason SetPaused drops one.
+        _messageTimer.Stop();
+        RestoreText();
+
+        CrosshairToggleRequested?.Invoke(this, _crosshairEnabled);
+    }
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => CloseRequested?.Invoke(this, EventArgs.Empty);
 }
