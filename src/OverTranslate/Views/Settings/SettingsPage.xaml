@@ -29,6 +29,26 @@
             <Setter Property="Orientation" Value="Horizontal"/>
             <Setter Property="Margin"      Value="0,0,0,12"/>
         </Style>
+        <!-- One shortcut: a glyph, what it does, the combination, and the switch. Filled rather
+             than outlined so a row reads as one thing to act on, against the card that holds it. -->
+        <Style x:Key="HotkeyRow" TargetType="Border" BasedOn="{StaticResource ToggleRowBorder}">
+            <Setter Property="Padding" Value="12,11"/>
+        </Style>
+        <Style x:Key="HotkeyRowIcon" TargetType="Border">
+            <Setter Property="Width"              Value="34"/>
+            <Setter Property="Height"             Value="34"/>
+            <Setter Property="CornerRadius"       Value="8"/>
+            <Setter Property="Background"         Value="{DynamicResource AppAccentSubtle}"/>
+            <Setter Property="VerticalAlignment"  Value="Center"/>
+            <Setter Property="Margin"             Value="0,0,13,0"/>
+        </Style>
+        <Style x:Key="HotkeyRowGlyph" TargetType="TextBlock">
+            <Setter Property="FontFamily"           Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+            <Setter Property="FontSize"             Value="16"/>
+            <Setter Property="Foreground"           Value="{DynamicResource AppAccent}"/>
+            <Setter Property="HorizontalAlignment"  Value="Center"/>
+            <Setter Property="VerticalAlignment"    Value="Center"/>
+        </Style>
         <!-- The shortcut boxes are read-only and act as buttons: clicking one starts recording,
              which is why these rows carry no separate record button. -->
         <Style x:Key="HotkeyBox" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
@@ -135,130 +155,170 @@
 
                         <!-- Capture has no on/off tick at all: this is the feature the application
                              is for. Its last column is empty and still here, so the three rows'
-                             shortcut boxes end at the same place — see SharedSizeGroup.
+                             shortcut boxes end at the same place — see SharedSizeGroup. -->
+                        <Border Style="{StaticResource HotkeyRow}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
+                                    </Grid.ColumnDefinitions>
 
-                             The explanation sits under the name instead of under the whole row, so
-                             a row is one block the eye can take in rather than a line of controls
-                             with its caption on the far side of them. The column is a fixed width
-                             because the sentences wrap: Auto would measure them unwrapped and hand
-                             the row a width no window has. -->
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,14,0"
-                                        VerticalAlignment="Center">
-                                <TextBlock Text="{DynamicResource S.Settings.CaptureHotkey}"
-                                           Style="{StaticResource OptionTitle}"/>
-                                <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.CaptureHotkeyHint}"
-                                           Style="{StaticResource OptionDescription}"/>
+                                    <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
+                                        <TextBlock Text="&#xE123;" Style="{StaticResource HotkeyRowGlyph}"/>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
+                                        <TextBlock Text="{DynamicResource S.Settings.CaptureHotkey}"
+                                                   Style="{StaticResource OptionTitle}"/>
+                                        <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.CaptureHotkeyHint}"
+                                                   Style="{StaticResource OptionDescription}"/>
+                                    </StackPanel>
+
+                                    <TextBox Grid.Column="2" x:Name="HotkeyBox"
+                                             Style="{StaticResource HotkeyBox}"
+                                             Width="150"
+                                             PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
+                                             PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                             GotFocus="HotkeyBox_GotFocus"
+                                             LostFocus="HotkeyBox_LostFocus"/>
+                                </Grid>
                             </StackPanel>
-                            <TextBox   Grid.Column="1" x:Name="HotkeyBox"
-                                       Style="{StaticResource HotkeyBox}"
-                                       PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
-                                       PreviewKeyDown="HotkeyBox_PreviewKeyDown"
-                                       GotFocus="HotkeyBox_GotFocus"
-                                       LostFocus="HotkeyBox_LostFocus"/>
-                        </Grid>
+                        </Border>
 
                         <!-- Translation window. Same editing controls as the capture shortcut and
                              deliberately nothing else: this one opens a window that is already one
                              tray click away, so it is not announced at startup. -->
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,14,0"
-                                        VerticalAlignment="Center">
-                                <TextBlock Text="{DynamicResource S.Settings.WindowHotkey}"
-                                           Style="{StaticResource OptionTitle}"/>
-                                <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.WindowHotkeyHint}"
-                                           Style="{StaticResource OptionDescription}"/>
+                        <Border Style="{StaticResource HotkeyRow}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
+                                        <TextBlock Text="&#xE8C1;" Style="{StaticResource HotkeyRowGlyph}"/>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
+                                        <TextBlock Text="{DynamicResource S.Settings.WindowHotkey}"
+                                                   Style="{StaticResource OptionTitle}"/>
+                                        <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.WindowHotkeyHint}"
+                                                   Style="{StaticResource OptionDescription}"/>
+                                    </StackPanel>
+
+                                    <TextBox Grid.Column="2" x:Name="WindowHotkeyBox"
+                                             Style="{StaticResource HotkeyBox}"
+                                             Width="150"
+                                             PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
+                                             PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                             GotFocus="HotkeyBox_GotFocus"
+                                             LostFocus="HotkeyBox_LostFocus"/>
+
+                                    <StackPanel Grid.Column="3"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Margin="12,0,0,0">
+                                        <CheckBox x:Name="WindowHotkeyEnabledCheckBox"
+                                                  Style="{StaticResource ToggleSwitch}"
+                                                  ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                                  Checked="HotkeyEnabled_Toggled"
+                                                  Unchecked="HotkeyEnabled_Toggled"/>
+                                        <!-- Sized for the longer of the two words, so switching one
+                                             row does not move the switches on the rows sharing this
+                                             column's width. -->
+                                        <TextBlock x:Name="WindowHotkeyEnabledLabel"
+                                                   Style="{StaticResource FieldLabel}"
+                                                   MinWidth="56"
+                                                   Margin="9,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock x:Name="WindowHotkeyShadowHint"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0,8,0,0"
+                                           Visibility="Collapsed"/>
                             </StackPanel>
-                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="WindowHotkeyBox"
-                                       Style="{StaticResource HotkeyBox}"
-                                       PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
-                                       PreviewKeyDown="HotkeyBox_PreviewKeyDown"
-                                       GotFocus="HotkeyBox_GotFocus"
-                                       LostFocus="HotkeyBox_LostFocus"/>
-                            <StackPanel Grid.Column="2" Grid.Row="0"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center"
-                                        Margin="12,0,0,0">
-                                <CheckBox x:Name="WindowHotkeyEnabledCheckBox"
-                                          Style="{StaticResource ToggleSwitch}"
-                                          ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
-                                          Checked="HotkeyEnabled_Toggled"
-                                          Unchecked="HotkeyEnabled_Toggled"/>
-                                <!-- Sized for the longer of the two words, so switching one
-                                     row does not move the switches on the rows sharing this
-                                     column's width. -->
-                                <TextBlock x:Name="WindowHotkeyEnabledLabel"
-                                           Style="{StaticResource FieldLabel}"
-                                           MinWidth="56"
-                                           Margin="9,0,0,0"/>
-                            </StackPanel>
-                            <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3"
-                                       x:Name="WindowHotkeyShadowHint"
-                                       Style="{StaticResource FieldHint}"
-                                       Margin="0,6,0,0"
-                                       Visibility="Collapsed"/>
-                        </Grid>
+                        </Border>
 
                         <!-- Pausing a running session. The only realtime shortcut there is: block
                              framing had one above this until a session started by naming a window on
                              the page, which is not something a shortcut can answer. -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,14,0"
-                                        VerticalAlignment="Center">
-                                <TextBlock Text="{DynamicResource S.Settings.RealtimePauseHotkey}"
-                                           Style="{StaticResource OptionTitle}"/>
-                                <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.RealtimePauseHotkeyHint}"
-                                           Style="{StaticResource OptionDescription}"/>
+                        <Border Style="{StaticResource HotkeyRow}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
+                                        <TextBlock Text="&#xE769;" Style="{StaticResource HotkeyRowGlyph}"/>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
+                                        <TextBlock Text="{DynamicResource S.Settings.RealtimePauseHotkey}"
+                                                   Style="{StaticResource OptionTitle}"/>
+                                        <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.RealtimePauseHotkeyHint}"
+                                                   Style="{StaticResource OptionDescription}"/>
+                                    </StackPanel>
+
+                                    <TextBox Grid.Column="2" x:Name="RealtimePauseHotkeyBox"
+                                             Style="{StaticResource HotkeyBox}"
+                                             Width="150"
+                                             PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
+                                             PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                             GotFocus="HotkeyBox_GotFocus"
+                                             LostFocus="HotkeyBox_LostFocus"/>
+
+                                    <StackPanel Grid.Column="3"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Margin="12,0,0,0">
+                                        <CheckBox x:Name="RealtimePauseHotkeyEnabledCheckBox"
+                                                  Style="{StaticResource ToggleSwitch}"
+                                                  ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                                  Checked="HotkeyEnabled_Toggled"
+                                                  Unchecked="HotkeyEnabled_Toggled"/>
+                                        <!-- Sized for the longer of the two words, so switching one
+                                             row does not move the switches on the rows sharing this
+                                             column's width. -->
+                                        <TextBlock x:Name="RealtimePauseHotkeyEnabledLabel"
+                                                   Style="{StaticResource FieldLabel}"
+                                                   MinWidth="56"
+                                                   Margin="9,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock x:Name="RealtimePauseHotkeyShadowHint"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0,8,0,0"
+                                           Visibility="Collapsed"/>
                             </StackPanel>
-                            <TextBox   Grid.Column="1" Grid.Row="0" x:Name="RealtimePauseHotkeyBox"
-                                       Style="{StaticResource HotkeyBox}"
-                                       PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
-                                       PreviewKeyDown="HotkeyBox_PreviewKeyDown"
-                                       GotFocus="HotkeyBox_GotFocus"
-                                       LostFocus="HotkeyBox_LostFocus"/>
-                            <StackPanel Grid.Column="2" Grid.Row="0"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center"
-                                        Margin="12,0,0,0">
-                                <CheckBox x:Name="RealtimePauseHotkeyEnabledCheckBox"
-                                          Style="{StaticResource ToggleSwitch}"
-                                          ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
-                                          Checked="HotkeyEnabled_Toggled"
-                                          Unchecked="HotkeyEnabled_Toggled"/>
-                                <TextBlock x:Name="RealtimePauseHotkeyEnabledLabel"
-                                           Style="{StaticResource FieldLabel}"
-                                           MinWidth="56"
-                                           Margin="9,0,0,0"/>
-                            </StackPanel>
-                            <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="3"
-                                       x:Name="RealtimePauseHotkeyShadowHint"
+                        </Border>
+
+                        <!-- When this one does nothing, said once under the rows rather than as a
+                             fourth line inside the row: it is a fact about the feature, not about
+                             the shortcut, and the row is already three lines deep. -->
+                        <StackPanel Orientation="Horizontal" Margin="2,6,0,0">
+                            <TextBlock Text="&#xE946;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource AppTextSecondary}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0"/>
+                            <TextBlock Text="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
                                        Style="{StaticResource FieldHint}"
-                                       Margin="0,6,0,0"
-                                       Visibility="Collapsed"/>
-                        </Grid>
+                                       Margin="0"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

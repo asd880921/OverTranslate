@@ -290,7 +290,8 @@
     <sys:String x:Key="S.Settings.HotkeyKinds">快捷鍵可以是 Ctrl／Alt／Shift 搭配任意按鍵的組合鍵，也可以是單一功能鍵、滑鼠中鍵或遊戲手把按鍵。</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">例如：Ctrl+Alt+A、Shift+F2、F8、滑鼠中鍵。單獨使用時僅支援功能鍵；滑鼠中鍵與手把按鍵不會擋住遊戲的操作。</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">暫停 / 繼續</sys:String>
-    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">[[即時翻譯]]進行中時，按下快捷鍵即可[[暫停 / 繼續]]目前的即時翻譯（暫停時會還原畫面原文內容）</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">暫停或繼續目前的[[即時翻譯]]</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">「暫停 / 繼續」僅在即時翻譯進行中可用。</sys:String>
     <sys:String x:Key="S.Settings.HotkeyShadowed">✗ 與上方的「{0}」重複，已停用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ 單一按鍵只能是 F1–F24、Pause 或 Scroll Lock，其他按鍵請搭配 Ctrl／Alt／Shift</sys:String>
 
@@ -298,9 +299,9 @@
     <sys:String x:Key="S.Settings.CaptureHotkey">截圖翻譯</sys:String>
     <!-- [[…]] 內的字會以主題色強調，見 Views/Controls/HighlightedText。兩種語言的標記數量必須一致，
          StringsParityTests 會擋。 -->
-    <sys:String x:Key="S.Settings.CaptureHotkeyHint">按下快捷鍵即可使用[[截圖翻譯]]功能</sys:String>
+    <sys:String x:Key="S.Settings.CaptureHotkeyHint">按下快捷鍵即可開始[[截圖翻譯]]</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkey">開啟翻譯視窗</sys:String>
-    <sys:String x:Key="S.Settings.WindowHotkeyHint">[[即時翻譯]]進行中時，改為將[[浮動視窗列]]移至最上層</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkeyHint">開啟[[翻譯視窗]]</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslate">自動翻譯</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslateCheck">截圖翻譯框選完成時立即翻譯，不需要再手動點擊。</sys:String>
     <sys:String x:Key="S.Settings.Startup">開機啟動</sys:String>
