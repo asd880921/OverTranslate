@@ -208,8 +208,8 @@ internal static class RealtimeNaturalBackground
             var area = ErasedArea(source);
             if (!area.IntersectsWith(patch)) continue;
 
-            // The row above and below, and the column either side: what the fill is read from.
-            area.Inflate(1, 1);
+            // The rows and columns the fill is read from, which is as deep as one band goes.
+            area.Inflate(BandDepth, BandDepth);
             work = Rectangle.Union(work, area);
         }
 
@@ -311,81 +311,188 @@ internal static class RealtimeNaturalBackground
     /// Fills one source line's rectangle with colour interpolated from its surroundings.
     /// </summary>
     /// <remarks>
-    /// Reads only outside the rectangle it writes: the row above and below, or the column either
-    /// side, or the ring around it. That is what lets several lines share one buffer — there is no
-    /// order in which one line's fill can be read as though it were the picture underneath.
+    /// Reads only outside the rectangle it writes, and reads all of it before writing any of it.
+    /// That is what lets several lines share one buffer — there is no order in which one line's
+    /// fill can be read as though it were the picture underneath.
     /// </remarks>
     private static void EraseSourceText(byte[] pixels, int stride, int width, int height, Rectangle source)
     {
         var rect = Rectangle.Intersect(new Rectangle(0, 0, width, height), ErasedArea(source));
         if (rect.Width <= 0 || rect.Height <= 0) return;
 
-        bool hasTopBottom = rect.Top > 0 && rect.Bottom < height;
-        bool hasLeftRight = rect.Left > 0 && rect.Right < width;
+        var above = rect.Top > 0 ? RowBand(pixels, stride, height, rect, above: true) : null;
+        var below = rect.Bottom < height ? RowBand(pixels, stride, height, rect, above: false) : null;
 
-        if (hasTopBottom)
+        // Interpolating between two real edges beats extending one of them, whichever axis it is on,
+        // so both two-sided cases are tried before either one-sided one. A line rect is wide and
+        // short, which is why the rows come first: reaching across its width from a single column
+        // either side is a smear the length of the sentence.
+        if (above is not null && below is not null)
         {
-            int topRow = (rect.Top - 1) * stride;
-            int bottomRow = rect.Bottom * stride;
+            FillFromRows(pixels, stride, rect, above, below);
+            return;
+        }
 
-            for (int y = rect.Top; y < rect.Bottom; y++)
+        var left = rect.Left > 0 ? ColumnBand(pixels, stride, width, rect, left: true) : null;
+        var right = rect.Right < width ? ColumnBand(pixels, stride, width, rect, left: false) : null;
+
+        if (left is not null && right is not null)
+        {
+            FillFromColumns(pixels, stride, rect, left, right);
+            return;
+        }
+
+        if (above is not null || below is not null)
+        {
+            FillFromRows(pixels, stride, rect, above, below);
+            return;
+        }
+
+        if (left is not null || right is not null)
+        {
+            FillFromColumns(pixels, stride, rect, left, right);
+            return;
+        }
+
+        // Nothing outside the rectangle is left to read from, so there is nothing to interpolate.
+        // Taken before anything is written, which is also why it can read the same buffer: every
+        // pixel it averages lies outside the rectangle about to be filled.
+        var fill = BorderAverage(pixels, stride, width, height, rect);
+
+        for (int y = rect.Top; y < rect.Bottom; y++)
+        {
+            int row = y * stride;
+            for (int x = rect.Left; x < rect.Right; x++)
             {
-                double t = (y - rect.Top + 1.0) / (rect.Height + 1.0);
-                int dstRow = y * stride;
-
-                for (int x = rect.Left; x < rect.Right; x++)
-                {
-                    int dst = dstRow + x * 4;
-                    int a = topRow + x * 4;
-                    int b = bottomRow + x * 4;
-                    pixels[dst] = Lerp(pixels[a], pixels[b], t);
-                    pixels[dst + 1] = Lerp(pixels[a + 1], pixels[b + 1], t);
-                    pixels[dst + 2] = Lerp(pixels[a + 2], pixels[b + 2], t);
-                    pixels[dst + 3] = 255;
-                }
+                int dst = row + x * 4;
+                pixels[dst] = fill.B;
+                pixels[dst + 1] = fill.G;
+                pixels[dst + 2] = fill.R;
+                pixels[dst + 3] = 255;
             }
         }
-        else if (hasLeftRight)
+    }
+
+    /// <summary>How deep, in rows or columns, one edge of the rectangle is read.</summary>
+    /// <remarks>
+    /// Three, reduced to their median rather than averaged. The padding around a line is sized for
+    /// the glyph body, so an outline, a shadow or a Japanese mark can still reach the first row
+    /// outside it — and one lit pixel there, carried the whole height of the fill, is a bright line
+    /// down the middle of the repair. A median discards that row's value as long as the other two
+    /// agree, so the line is never drawn in the first place. An average would not: it would let the
+    /// stray pixel through at a third of its strength, which is a fainter line, not no line.
+    ///
+    /// It costs nothing in sharpness, which is what separates it from spreading the band sideways —
+    /// the other half of the attempt this came from, and the half that made repairs visibly blurry.
+    ///
+    /// Three exactly: <see cref="Median"/> is written for three and nothing else.
+    /// </remarks>
+    private const int BandDepth = 3;
+
+    /// <summary>The rows above or below the rectangle, reduced to one B,G,R per column of it.</summary>
+    private static byte[] RowBand(byte[] pixels, int stride, int height, Rectangle rect, bool above)
+    {
+        var band = new byte[rect.Width * 3];
+        var samples = new byte[BandDepth];
+
+        for (int i = 0; i < rect.Width; i++)
         {
-            int leftX = rect.Left - 1;
-            int rightX = rect.Right;
-
-            for (int y = rect.Top; y < rect.Bottom; y++)
+            int x = rect.Left + i;
+            for (int channel = 0; channel < 3; channel++)
             {
-                int row = y * stride;
-                int left = row + leftX * 4;
-                int right = row + rightX * 4;
-
-                for (int x = rect.Left; x < rect.Right; x++)
+                for (int depth = 0; depth < BandDepth; depth++)
                 {
-                    double t = (x - rect.Left + 1.0) / (rect.Width + 1.0);
-                    int dst = row + x * 4;
-                    pixels[dst] = Lerp(pixels[left], pixels[right], t);
-                    pixels[dst + 1] = Lerp(pixels[left + 1], pixels[right + 1], t);
-                    pixels[dst + 2] = Lerp(pixels[left + 2], pixels[right + 2], t);
-                    pixels[dst + 3] = 255;
+                    int y = Math.Clamp(above ? rect.Top - 1 - depth : rect.Bottom + depth, 0, height - 1);
+                    samples[depth] = pixels[y * stride + x * 4 + channel];
                 }
+
+                band[i * 3 + channel] = Median(samples);
             }
         }
-        else
-        {
-            // Taken before anything is written, which is also why it can read the same buffer: every
-            // pixel it averages lies outside the rectangle about to be filled.
-            var fill = BorderAverage(pixels, stride, width, height, rect);
 
-            for (int y = rect.Top; y < rect.Bottom; y++)
+        return band;
+    }
+
+    /// <summary>The columns left or right of the rectangle, reduced to one B,G,R per row of it.</summary>
+    private static byte[] ColumnBand(byte[] pixels, int stride, int width, Rectangle rect, bool left)
+    {
+        var band = new byte[rect.Height * 3];
+        var samples = new byte[BandDepth];
+
+        for (int i = 0; i < rect.Height; i++)
+        {
+            int row = (rect.Top + i) * stride;
+            for (int channel = 0; channel < 3; channel++)
             {
-                int row = y * stride;
-                for (int x = rect.Left; x < rect.Right; x++)
+                for (int depth = 0; depth < BandDepth; depth++)
                 {
-                    int dst = row + x * 4;
-                    pixels[dst] = fill.B;
-                    pixels[dst + 1] = fill.G;
-                    pixels[dst + 2] = fill.R;
-                    pixels[dst + 3] = 255;
+                    int x = Math.Clamp(left ? rect.Left - 1 - depth : rect.Right + depth, 0, width - 1);
+                    samples[depth] = pixels[row + x * 4 + channel];
                 }
+
+                band[i * 3 + channel] = Median(samples);
             }
         }
+
+        return band;
+    }
+
+    private static void FillFromRows(byte[] pixels, int stride, Rectangle rect, byte[]? above, byte[]? below)
+    {
+        for (int y = rect.Top; y < rect.Bottom; y++)
+        {
+            double t = (y - rect.Top + 1.0) / (rect.Height + 1.0);
+            int row = y * stride;
+
+            for (int i = 0; i < rect.Width; i++)
+            {
+                int dst = row + (rect.Left + i) * 4;
+                int at = i * 3;
+
+                for (int channel = 0; channel < 3; channel++)
+                    pixels[dst + channel] = Blend(above, below, at + channel, t);
+
+                pixels[dst + 3] = 255;
+            }
+        }
+    }
+
+    private static void FillFromColumns(byte[] pixels, int stride, Rectangle rect, byte[]? left, byte[]? right)
+    {
+        for (int y = rect.Top; y < rect.Bottom; y++)
+        {
+            int row = y * stride;
+            int at = (y - rect.Top) * 3;
+
+            for (int x = rect.Left; x < rect.Right; x++)
+            {
+                double t = (x - rect.Left + 1.0) / (rect.Width + 1.0);
+                int dst = row + x * 4;
+
+                for (int channel = 0; channel < 3; channel++)
+                    pixels[dst + channel] = Blend(left, right, at + channel, t);
+
+                pixels[dst + 3] = 255;
+            }
+        }
+    }
+
+    /// <summary>
+    /// One channel of the fill: between the two edges where both exist, and the one that does where
+    /// only one does — the rectangle runs to the edge of the picture and there is nothing beyond it.
+    /// </summary>
+    private static byte Blend(byte[]? start, byte[]? end, int at, double t) =>
+        start is null ? end![at]
+        : end is null ? start[at]
+        : Lerp(start[at], end[at], t);
+
+    /// <summary>The middle of three, which is <see cref="BandDepth"/> and only that.</summary>
+    private static byte Median(byte[] samples)
+    {
+        byte a = samples[0], b = samples[1], c = samples[2];
+        return a > b
+            ? (b > c ? b : a > c ? c : a)
+            : (a > c ? a : b > c ? c : b);
     }
 
     private static GdiColor BorderAverage(
