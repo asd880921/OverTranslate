@@ -113,17 +113,27 @@ internal static class RealtimeNaturalBackground
         if (clippedPatch.Width <= 0 || clippedPatch.Height <= 0)
             return null;
 
+        var sources = new Rectangle[sourceLineBounds.Count];
+        for (int i = 0; i < sourceLineBounds.Count; i++)
+            sources[i] = Rectangle.FromLTRB(
+                (int)Math.Floor(sourceLineBounds[i].Left),
+                (int)Math.Floor(sourceLineBounds[i].Top),
+                (int)Math.Ceiling(sourceLineBounds[i].Right),
+                (int)Math.Ceiling(sourceLineBounds[i].Bottom));
+
+        var work = Rectangle.Intersect(frameBounds, WorkingArea(clippedPatch, sources));
+
         Bitmap patch;
         try
         {
-            patch = frame.Clone(clippedPatch, PixelFormat.Format32bppArgb);
+            patch = frame.Clone(work, PixelFormat.Format32bppArgb);
         }
         catch
         {
             return null;
         }
 
-        if (sourceLineBounds.Count == 0)
+        if (sources.Length == 0)
             return patch;
 
         // One lock and one copy each way for the whole patch, however many lines are erased into it.
@@ -142,14 +152,9 @@ internal static class RealtimeNaturalBackground
             for (int y = 0; y < patch.Height; y++)
                 Marshal.Copy(IntPtr.Add(data.Scan0, y * data.Stride), pixels, y * stride, stride);
 
-            foreach (var source in sourceLineBounds)
+            foreach (var source in sources)
             {
-                var local = Rectangle.FromLTRB(
-                    (int)Math.Floor(source.Left) - clippedPatch.Left,
-                    (int)Math.Floor(source.Top) - clippedPatch.Top,
-                    (int)Math.Ceiling(source.Right) - clippedPatch.Left,
-                    (int)Math.Ceiling(source.Bottom) - clippedPatch.Top);
-
+                var local = source with { X = source.X - work.X, Y = source.Y - work.Y };
                 EraseSourceText(pixels, stride, patch.Width, patch.Height, local);
             }
 
@@ -161,7 +166,54 @@ internal static class RealtimeNaturalBackground
             patch.UnlockBits(data);
         }
 
-        return patch;
+        if (work == clippedPatch)
+            return patch;
+
+        using (patch)
+        {
+            var inside = new Rectangle(
+                clippedPatch.X - work.X, clippedPatch.Y - work.Y, clippedPatch.Width, clippedPatch.Height);
+            try
+            {
+                return patch.Clone(inside, PixelFormat.Format32bppArgb);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The area the repair is carried out in: the patch, grown to hold whole every line that reaches
+    /// into it.
+    /// </summary>
+    /// <remarks>
+    /// A patch is a crop of the picture, and a fill cut off by the edge of one is not the same fill:
+    /// with no rows beyond the cut to read, <see cref="EraseSourceText"/> falls back to extending the
+    /// one edge it has, which paints a flat block. Two patches that overlap then disagree about the
+    /// line they share, and the one painted second leaves its version behind as a rectangle with a
+    /// visible edge — the seam between two stacked subtitle lines.
+    ///
+    /// Repairing in an area that contains the whole line makes the fill for a line the same wherever
+    /// it is drawn, because it is computed from the same pixels either way. The patch itself is cut
+    /// out of the result afterwards.
+    /// </remarks>
+    private static Rectangle WorkingArea(Rectangle patch, IReadOnlyList<Rectangle> sources)
+    {
+        var work = patch;
+
+        foreach (var source in sources)
+        {
+            var area = ErasedArea(source);
+            if (!area.IntersectsWith(patch)) continue;
+
+            // The row above and below, and the column either side: what the fill is read from.
+            area.Inflate(1, 1);
+            work = Rectangle.Union(work, area);
+        }
+
+        return work;
     }
 
     /// <summary>
@@ -240,6 +292,21 @@ internal static class RealtimeNaturalBackground
         return OverlayTextColor.Tune(sampled, background);
     }
 
+    /// <summary>The area a line's fill covers: its glyphs, and the padding this repair adds.</summary>
+    private static Rectangle ErasedArea(Rectangle source)
+    {
+        int heightBasis = Math.Clamp(source.Height, 12, 72);
+        int padX = Math.Max(MinErasePadX, (int)Math.Ceiling(heightBasis * 0.16));
+        int padTop = Math.Max(MinErasePadTop, (int)Math.Ceiling(heightBasis * 0.34));
+        int padBottom = Math.Max(MinErasePadBottom, (int)Math.Ceiling(heightBasis * 0.16));
+
+        return Rectangle.FromLTRB(
+            source.Left - padX,
+            source.Top - padTop,
+            source.Right + padX,
+            source.Bottom + padBottom);
+    }
+
     /// <summary>
     /// Fills one source line's rectangle with colour interpolated from its surroundings.
     /// </summary>
@@ -250,17 +317,7 @@ internal static class RealtimeNaturalBackground
     /// </remarks>
     private static void EraseSourceText(byte[] pixels, int stride, int width, int height, Rectangle source)
     {
-        int heightBasis = Math.Clamp(source.Height, 12, 72);
-        int padX = Math.Max(MinErasePadX, (int)Math.Ceiling(heightBasis * 0.16));
-        int padTop = Math.Max(MinErasePadTop, (int)Math.Ceiling(heightBasis * 0.34));
-        int padBottom = Math.Max(MinErasePadBottom, (int)Math.Ceiling(heightBasis * 0.16));
-
-        var expanded = Rectangle.FromLTRB(
-            source.Left - padX,
-            source.Top - padTop,
-            source.Right + padX,
-            source.Bottom + padBottom);
-        var rect = Rectangle.Intersect(new Rectangle(0, 0, width, height), expanded);
+        var rect = Rectangle.Intersect(new Rectangle(0, 0, width, height), ErasedArea(source));
         if (rect.Width <= 0 || rect.Height <= 0) return;
 
         bool hasTopBottom = rect.Top > 0 && rect.Bottom < height;
