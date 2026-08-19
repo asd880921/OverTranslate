@@ -125,10 +125,8 @@
                                        Padding="4,2"
                                        Margin="7,1,0,0"
                                        VerticalAlignment="Center"
-                                       Cursor="Help"
-                                       ToolTipService.InitialShowDelay="200"
-                                       ToolTipService.ShowDuration="30000">
-                                <TextBlock.ToolTip>
+                                       Cursor="Help">
+                                <controls:HoverToolTip.Content>
                                     <!-- Two blocks rather than one string: the second is an example
                                          of the first, and they were two lines in the card this
                                          replaced for the same reason. MaxWidth because a tooltip
@@ -149,7 +147,7 @@
                                                    LineHeight="16"
                                                    Margin="0,5,0,0"/>
                                     </StackPanel>
-                                </TextBlock.ToolTip>
+                                </controls:HoverToolTip.Content>
                             </TextBlock>
                         </StackPanel>
 
