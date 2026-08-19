@@ -433,7 +433,7 @@
                                           Data="{StaticResource DeepLMarkGeometry}"
                                           Fill="{DynamicResource AppDeepLMark}"
                                           Stretch="Uniform"
-                                          Height="40"
+                                          Height="48"
                                           VerticalAlignment="Center"
                                           Margin="0,0,14,0"/>
 
@@ -476,7 +476,7 @@
                                           Data="{StaticResource OpenAiMarkGeometry}"
                                           Fill="{DynamicResource AppOpenAiMark}"
                                           Stretch="Uniform"
-                                          Height="40"
+                                          Height="48"
                                           VerticalAlignment="Center"
                                           Margin="0,0,14,0"/>
 
