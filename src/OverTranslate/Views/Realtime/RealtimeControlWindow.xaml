@@ -66,6 +66,28 @@
 
                     <Separator Style="{StaticResource VerticalSeparator}"/>
 
+                    <!-- Framing on or off, without leaving edit mode. The icon is what pressing it
+                         does, the same way the pause button works: while framing is on it shows a
+                         plain pointer — press to hand the mouse back to whatever is playing
+                         underneath — and while it is off it shows the crosshair it would bring back.
+                         Drawn as a Path rather than typed as an icon-font glyph because neither
+                         shape exists in Segoe Fluent Icons; a Path also has no font fallback to lose.
+                         Its stroke follows the button's own foreground so hover and theme changes
+                         reach it, which a hard-coded brush would not. -->
+                    <Button x:Name="CrosshairBtn"
+                            Style="{StaticResource ToolbarIconButton}"
+                            Margin="0,0,4,0"
+                            Click="CrosshairBtn_Click">
+                        <Path x:Name="CrosshairGlyph"
+                              Width="16" Height="16"
+                              Stretch="None"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.3"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round"/>
+                    </Button>
+
                     <Button x:Name="StartBtn"
                             Content="{DynamicResource S.Realtime.StartTranslating}"
                             Style="{StaticResource ToolbarAccentButton}"
@@ -162,9 +184,18 @@
                             AutomationProperties.Name="{DynamicResource S.Realtime.Pause}"
                             Click="PauseBtn_Click"/>
 
-                    <Button Content="{DynamicResource S.Common.Edit}"
-                            Style="{StaticResource ToolbarFlatButton}"
+                    <!-- Icon-only, like the two buttons either side of it: the capsule is meant to
+                         be read at a glance and one word set in a flat button among icons was the
+                         only thing on it drawing the eye. The pencil is the same one Windows uses
+                         for edit everywhere else, and the tooltip carries the word it replaced. -->
+                    <Button x:Name="EditBtn"
+                            Style="{StaticResource ToolbarIconButton}"
+                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                            FontSize="13"
+                            Content="&#xE70F;"
                             Margin="0,0,4,0"
+                            ToolTip="{DynamicResource S.Realtime.EditBlocks}"
+                            AutomationProperties.Name="{DynamicResource S.Realtime.EditBlocks}"
                             Click="EditBtn_Click"/>
 
                     <Button Content="✕"

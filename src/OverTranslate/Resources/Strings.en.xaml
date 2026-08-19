@@ -10,7 +10,6 @@
          Prefer the noun ("Shortcut", "Provider") over the sentence. -->
 
     <!-- ── Shared ── -->
-    <sys:String x:Key="S.Common.Edit">Edit</sys:String>
     <sys:String x:Key="S.Common.Reset">Reset</sys:String>
     <sys:String x:Key="S.Common.Close">Close</sys:String>
     <sys:String x:Key="S.Common.Configure">Configure</sys:String>
@@ -195,6 +194,10 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.Paused">Paused</sys:String>
     <sys:String x:Key="S.Realtime.Pause">Pause realtime translation</sys:String>
     <sys:String x:Key="S.Realtime.Resume">Resume realtime translation</sys:String>
+    <sys:String x:Key="S.Realtime.EditBlocks">Edit blocks</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOff">Pause framing and use the app underneath</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOn">Resume framing</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOffHint">Framing paused — the app underneath takes the mouse</sys:String>
 
     <!-- Control bar and edit window messages -->
     <sys:String x:Key="S.Realtime.MovedToFront">Realtime windows brought to the front</sys:String>

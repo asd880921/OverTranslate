@@ -21,8 +21,9 @@ namespace OverTranslate.Views.Realtime;
 
 /// <summary>
 /// Edit mode: a transparent layer over one screen on which the user draws, moves and resizes the
-/// areas to watch. Interactive for as long as it exists — the click-through, drawing half of the
-/// feature is <see cref="RealtimeBlockWindow"/>, and the two are never on screen together.
+/// areas to watch. Interactive unless framing is switched off — see
+/// <see cref="SetCrosshairEnabled"/>; the click-through, drawing half of the feature is
+/// <see cref="RealtimeBlockWindow"/>, and the two are never on screen together.
 /// </summary>
 /// <remarks>
 /// The window never takes activation (WS_EX_NOACTIVATE). Dragging a block out over a running game
@@ -134,6 +135,11 @@ public partial class RealtimeEditWindow : Window
     private Point _drawOrigin;
     private Shape? _drawPreview;
 
+    /// <summary>
+    /// Whether the layer is taking the mouse. See <see cref="SetCrosshairEnabled"/>.
+    /// </summary>
+    private bool _crosshairEnabled = true;
+
     public RealtimeEditWindow(
         System.Drawing.Rectangle physBounds,
         IReadOnlyList<RealtimeBlockPlacement> initialBlocks,
@@ -164,6 +170,40 @@ public partial class RealtimeEditWindow : Window
 
             RaiseBlocksChanged();
         };
+    }
+
+    /// <summary>
+    /// Turns framing off without leaving edit mode: no crosshair, no drawing, and every click lands
+    /// on whatever is playing underneath instead of on this layer.
+    /// </summary>
+    /// <remarks>
+    /// Done with the window style rather than by swapping the cursor, because the cursor was never
+    /// the whole complaint. This layer covers the entire screen and swallows every click on it, so
+    /// while it is up the user cannot touch the thing they are framing — pause the video, scrub back
+    /// to the line they want, answer the game. The only way out was to start translating and come
+    /// back, which throws away nothing but costs a round trip through both other modes.
+    ///
+    /// The blocks stay on screen while it is off: they are what the user is coming back to adjust,
+    /// and a layer that emptied itself would read as having lost them. Their own handles go inert
+    /// along with everything else, which is the point — nothing on this layer answers the mouse
+    /// until framing is turned back on.
+    ///
+    /// The control bar is unaffected: it is its own window, owned by this one rather than drawn on
+    /// it, so it keeps taking clicks and stays the way back.
+    /// </remarks>
+    public void SetCrosshairEnabled(bool enabled)
+    {
+        if (_crosshairEnabled == enabled) return;
+
+        _crosshairEnabled = enabled;
+
+        // A drag cannot be in flight — the press that got here landed on the bar — but a capture
+        // left behind by a lost mouse-up owns every click on the screen, and handing the mouse to
+        // the application underneath while still holding one is the one state worth not entering.
+        AbandonDraw();
+
+        BlockCanvas.Cursor = enabled ? Cursors.Cross : Cursors.Arrow;
+        WindowStyles.SetClickThrough(this, !enabled);
     }
 
     /// <summary>Raised whenever a block is added, removed, moved or resized.</summary>

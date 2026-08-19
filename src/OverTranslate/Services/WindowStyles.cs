@@ -59,6 +59,21 @@ internal static class WindowStyles
     }
 
     /// <summary>
+    /// Turns click-through on or off on a window that is already on screen, for a layer that has to
+    /// hand the mouse back to the application underneath and later take it again.
+    /// </summary>
+    /// <remarks>
+    /// WS_EX_LAYERED is only ever added, never taken away: it is also what AllowsTransparency renders
+    /// through, so clearing it along with the transparency bit would leave the layer unable to draw
+    /// itself at all.
+    /// </remarks>
+    public static void SetClickThrough(Window window, bool enabled)
+    {
+        if (enabled) Add(window, WS_EX_TRANSPARENT | WS_EX_LAYERED);
+        else Remove(window, WS_EX_TRANSPARENT);
+    }
+
+    /// <summary>
     /// Adds bits to the existing extended style rather than replacing it: WPF has already put its own
     /// there — WS_EX_TOOLWINDOW from ShowInTaskbar, WS_EX_LAYERED from AllowsTransparency — and
     /// overwriting them would undo settings made in XAML.
@@ -69,5 +84,14 @@ internal static class WindowStyles
         if (hwnd == IntPtr.Zero) return;
 
         SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | exStyle);
+    }
+
+    /// <summary>Clears bits from the extended style, leaving everything else where it was.</summary>
+    private static void Remove(Window window, int exStyle)
+    {
+        var hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~exStyle);
     }
 }
