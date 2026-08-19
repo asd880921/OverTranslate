@@ -15,6 +15,7 @@
     <sys:String x:Key="S.Common.Edit">Edit</sys:String>
     <sys:String x:Key="S.Common.Reset">Reset</sys:String>
     <sys:String x:Key="S.Common.Close">Close</sys:String>
+    <sys:String x:Key="S.Common.Configure">Configure</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API key</sys:String>
 
     <!-- ── Shell window ── -->
@@ -264,7 +265,7 @@ Leave a little room around the whole area; box several areas separately rather t
 
     <!-- ── Settings page ── -->
     <sys:String x:Key="S.Settings.Title">Settings</sys:String>
-    <sys:String x:Key="S.Settings.Subtitle">Shortcuts, translation services, screenshots and appearance</sys:String>
+    <sys:String x:Key="S.Settings.Subtitle">Shortcuts, translation services, appearance and advanced options</sys:String>
 
     <sys:String x:Key="S.Settings.Hotkeys">Shortcuts</sys:String>
     <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
@@ -291,6 +292,13 @@ Leave a little room around the whole area; box several areas separately rather t
 
     <sys:String x:Key="S.Settings.Translation">Translation</sys:String>
     <sys:String x:Key="S.Settings.Provider">Provider</sys:String>
+    <sys:String x:Key="S.Settings.ServiceSetup">Service setup</sys:String>
+    <sys:String x:Key="S.Settings.ServiceSetupHint">Only services that need a key or an endpoint</sys:String>
+    <sys:String x:Key="S.Settings.ServiceNeedsSetup">Setup needed</sys:String>
+    <sys:String x:Key="S.Settings.ServiceReady">Configured</sys:String>
+    <sys:String x:Key="S.Settings.ServiceDefault">Using defaults</sys:String>
+    <sys:String x:Key="S.Settings.ServiceInUse">In use</sys:String>
+    <sys:String x:Key="S.Settings.ServiceDialogTitle">{0} settings</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API URL</sys:String>
     <sys:String x:Key="S.Settings.ModelName">Model</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">Local LLM (Ollama) setup guide</sys:String>
@@ -326,9 +334,7 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.Theme">Theme</sys:String>
     <sys:String x:Key="S.Settings.ThemeLight">Light</sys:String>
     <sys:String x:Key="S.Settings.ThemeDark">Dark</sys:String>
-    <!-- Card heading, then the row label inside it -->
     <sys:String x:Key="S.Settings.UiLanguage">Interface language</sys:String>
-    <sys:String x:Key="S.Settings.UiLanguageLabel">Language</sys:String>
 
     <sys:String x:Key="S.Settings.Advanced">Advanced</sys:String>
     <sys:String x:Key="S.Settings.Logging">Logging</sys:String>

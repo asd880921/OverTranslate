@@ -111,6 +111,10 @@ public partial class ShellWindow : Window
         MatchBrandIconToText();
         RefreshHotkeyHint();
 
+        // Subscribed once here rather than per open, so the handler is not stacked up by a user who
+        // opens the service panel more than once.
+        ServiceSettings.Closed += (_, _) => _settingsPage.RefreshServiceTiles();
+
         // Subscribed rather than refreshed on show: a session ending brings this window back with
         // Show(), not through ShowOrActivate, so nothing else would clear the disabled state and
         // the button would stay greyed out for as long as the shell stayed open.
@@ -399,6 +403,16 @@ public partial class ShellWindow : Window
     }
 
     private void AboutBtn_Click(object sender, RoutedEventArgs e) => About.Open();
+
+    /// <summary>
+    /// Opens the panel holding what one translation service has to be told, over the whole window.
+    /// </summary>
+    /// <remarks>
+    /// Hosted here rather than inside the settings page so the scrim covers the nav rail too. The
+    /// page is told when it closes because what was typed in there is what its service tiles report.
+    /// </remarks>
+    public void OpenServiceSettings(Models.TranslationProvider provider)
+        => ServiceSettings.Open(provider);
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {

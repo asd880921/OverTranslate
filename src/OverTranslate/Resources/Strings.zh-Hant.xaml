@@ -12,6 +12,7 @@
     <sys:String x:Key="S.Common.Edit">編輯</sys:String>
     <sys:String x:Key="S.Common.Reset">重設</sys:String>
     <sys:String x:Key="S.Common.Close">關閉</sys:String>
+    <sys:String x:Key="S.Common.Configure">設定</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API Key</sys:String>
 
     <!-- ── Shell window ── -->
@@ -279,7 +280,7 @@
 
     <!-- ── Settings page ── -->
     <sys:String x:Key="S.Settings.Title">設定</sys:String>
-    <sys:String x:Key="S.Settings.Subtitle">管理快捷鍵、翻譯服務、截圖與外觀</sys:String>
+    <sys:String x:Key="S.Settings.Subtitle">管理快捷鍵、翻譯服務、外觀與進階選項</sys:String>
 
     <sys:String x:Key="S.Settings.Hotkeys">快捷鍵</sys:String>
     <!-- 勾選框沒有文字，所以這是它的 ToolTip，不是標籤 -->
@@ -308,6 +309,13 @@
 
     <sys:String x:Key="S.Settings.Translation">翻譯</sys:String>
     <sys:String x:Key="S.Settings.Provider">翻譯服務</sys:String>
+    <sys:String x:Key="S.Settings.ServiceSetup">翻譯服務設定</sys:String>
+    <sys:String x:Key="S.Settings.ServiceSetupHint">僅需為需要金鑰或端點的服務進行設定</sys:String>
+    <sys:String x:Key="S.Settings.ServiceNeedsSetup">需設定</sys:String>
+    <sys:String x:Key="S.Settings.ServiceReady">已設定</sys:String>
+    <sys:String x:Key="S.Settings.ServiceDefault">使用預設</sys:String>
+    <sys:String x:Key="S.Settings.ServiceInUse">使用中</sys:String>
+    <sys:String x:Key="S.Settings.ServiceDialogTitle">{0}設定</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API 位址</sys:String>
     <sys:String x:Key="S.Settings.ModelName">模型名稱</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">本地 LLM (Ollama) 安裝教學</sys:String>
@@ -345,9 +353,7 @@
     <sys:String x:Key="S.Settings.Theme">主題</sys:String>
     <sys:String x:Key="S.Settings.ThemeLight">淺色</sys:String>
     <sys:String x:Key="S.Settings.ThemeDark">深色</sys:String>
-    <!-- Card heading, then the row label inside it -->
     <sys:String x:Key="S.Settings.UiLanguage">介面語言</sys:String>
-    <sys:String x:Key="S.Settings.UiLanguageLabel">語言</sys:String>
 
     <sys:String x:Key="S.Settings.Advanced">進階設定</sys:String>
     <sys:String x:Key="S.Settings.Logging">應用紀錄</sys:String>

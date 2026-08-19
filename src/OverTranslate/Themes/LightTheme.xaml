@@ -56,6 +56,9 @@
     <SolidColorBrush x:Key="AppSplitter"       Color="#E0E0E0"/>
     <SolidColorBrush x:Key="AppSuccess"        Color="#0F7B0F"/>
     <SolidColorBrush x:Key="AppError"          Color="#C42B1C"/>
+    <!-- The light half of AppWarning — see DarkTheme.xaml. -->
+    <SolidColorBrush x:Key="AppWarning"        Color="#9A6206"/>
+    <SolidColorBrush x:Key="AppWarningSubtle"  Color="#FCF1DD"/>
     <SolidColorBrush x:Key="AppSectionHeader"  Color="#444444"/>
 
     <!-- Toolbar specific -->

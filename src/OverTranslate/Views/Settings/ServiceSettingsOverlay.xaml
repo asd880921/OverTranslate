@@ -1,0 +1,560 @@
+<UserControl x:Class="OverTranslate.Views.Settings.ServiceSettingsOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:OverTranslate.Views.Controls"
+             Visibility="Collapsed"
+             Focusable="True">
+
+    <!-- Scrim: swallows clicks so the page underneath stays inert, and dismisses on click -->
+    <Grid x:Name="Scrim"
+          Background="#8C000000"
+          MouseLeftButtonDown="Scrim_MouseLeftButtonDown">
+
+        <!-- Layout rounding for the same reason the about card uses it: a centred card at an odd
+             window width lands on a half pixel and every glyph inside it is then sub-pixel
+             positioned, which reads as a soft card rather than a misplaced one. -->
+        <Border x:Name="Card"
+                Width="620"
+                MaxHeight="640"
+                UseLayoutRounding="True"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                CornerRadius="12"
+                Background="{DynamicResource AppCardBg}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1"
+                RenderTransformOrigin="0.5,0.5"
+                MouseLeftButtonDown="Card_MouseLeftButtonDown">
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+            </Border.RenderTransform>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.3" Color="#000000"/>
+            </Border.Effect>
+
+            <Grid Margin="24,18,24,18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,14">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE713;" Style="{StaticResource CardHeaderIcon}" FontSize="18"/>
+                        <TextBlock x:Name="TitleText"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="17"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppTextPrimary}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button Style="{StaticResource OverlayCloseButton}"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Margin="0,0,-8,0"
+                            ToolTip="{DynamicResource S.Common.Close}"
+                            Click="CloseBtn_Click"/>
+                </Grid>
+
+                <Rectangle Grid.Row="1" Height="1" Fill="{DynamicResource AppSeparator}"/>
+
+                <!-- The OpenAI panel is taller than any window is guaranteed to be, so the fields
+                     scroll inside the card rather than the card growing past the screen. -->
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Margin="0,16,0,0"
+                              Padding="0,0,8,0">
+                    <Grid Grid.IsSharedSizeScope="True">
+
+                        <!-- ══════════ DeepL ══════════ -->
+                        <Grid x:Name="DeepLPanel">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="ServiceLabel"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Column="0" Grid.Row="0"
+                                       Text="{DynamicResource S.Common.ApiKey}"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <controls:SecretBox Grid.Column="1" Grid.Row="0" x:Name="ApiKeyBox"
+                                                SecretChanged="ApiKeyBox_SecretChanged"/>
+                            <TextBlock Grid.Column="1" Grid.Row="1"
+                                       Text="{DynamicResource S.Provider.DeepLHint}"
+                                       Style="{StaticResource FieldHint}"/>
+                        </Grid>
+
+                        <!-- ══════════ OpenAI ══════════ -->
+                        <Grid x:Name="OpenAiPanel">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="ServiceLabel"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{DynamicResource S.Settings.ApiBaseUrl}"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <Grid Grid.Column="1" Grid.Row="0">
+                                <TextBox x:Name="OpenAiBaseUrlBox"
+                                         Style="{StaticResource ModernTextBox}"
+                                         TextChanged="OpenAiSetting_TextChanged"/>
+                                <TextBlock x:Name="OpenAiBaseUrlPlaceholder"
+                                           IsHitTestVisible="False"
+                                           FontFamily="{StaticResource AppFont}"
+                                           FontSize="{StaticResource AppFontSize}"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           Opacity="0.7"
+                                           Margin="10,0,10,0"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <TextBlock Grid.Column="0" Grid.Row="1" Text="{DynamicResource S.Common.ApiKey}"
+                                       Margin="0,10,0,0"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <controls:SecretBox Grid.Column="1" Grid.Row="1" x:Name="OpenAiApiKeyBox"
+                                                Margin="0,10,0,0"
+                                                SecretChanged="OpenAiSecret_SecretChanged"/>
+
+                            <TextBlock Grid.Column="0" Grid.Row="2" Text="{DynamicResource S.Settings.ModelName}"
+                                       Margin="0,10,0,0"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <Grid Grid.Column="1" Grid.Row="2" Margin="0,10,0,0">
+                                <TextBox x:Name="OpenAiModelBox"
+                                         Style="{StaticResource ModernTextBox}"
+                                         TextChanged="OpenAiSetting_TextChanged"/>
+                                <!-- Same contract as the prompt below: an empty box means the
+                                     built-in default, and this is that default shown in place
+                                     rather than described somewhere else. -->
+                                <TextBlock x:Name="OpenAiModelPlaceholder"
+                                           IsHitTestVisible="False"
+                                           FontFamily="{StaticResource AppFont}"
+                                           FontSize="{StaticResource AppFontSize}"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           Opacity="0.7"
+                                           Margin="10,0,10,0"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <TextBlock Grid.Column="0" Grid.Row="3"
+                                       Text="{DynamicResource S.Settings.Prompt}"
+                                       Margin="0,10,12,0"
+                                       VerticalAlignment="Top"
+                                       Style="{StaticResource FieldLabel}"/>
+                            <StackPanel Grid.Column="1" Grid.Row="3" Margin="0,12,0,0">
+                                <!-- The switch and the reset sit on one line above the editor, so
+                                     it is clear the reset applies to the prompt being shown and
+                                     not to both of them. -->
+                                <Grid>
+                                    <controls:SegmentedControl x:Name="PromptSwitch"
+                                                               HorizontalAlignment="Left"
+                                                               SelectionChanged="PromptSwitch_SelectionChanged"/>
+                                    <!-- The same glyph the realtime page resets colours with, but
+                                         on a surface rather than bare: a glyph alone beside a
+                                         segmented control and an input box does not read as
+                                         something to press. -->
+                                    <Button x:Name="PromptResetButton"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center"
+                                            Width="38" Height="34" Padding="0"
+                                            Style="{StaticResource FlatButton}"
+                                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                            FontSize="14"
+                                            Foreground="{DynamicResource AppTextSecondary}"
+                                            Content="&#xE72C;"
+                                            ToolTip="{DynamicResource S.Settings.ResetDefault}"
+                                            AutomationProperties.Name="{DynamicResource S.Settings.ResetDefault}"
+                                            Click="PromptResetButton_Click"/>
+                                </Grid>
+
+                                <Grid Margin="0,10,0,0">
+                                    <TextBox x:Name="PromptBox"
+                                             Style="{StaticResource SettingsMultilineTextBox}"
+                                             TextChanged="PromptBox_TextChanged"/>
+                                    <!-- The built-in wording shown in place rather than described
+                                         elsewhere: an empty box is what "using the default" looks
+                                         like, and this is the default it is using. IsHitTestVisible
+                                         off so clicking the text still lands in the box. -->
+                                    <TextBlock x:Name="PromptPlaceholder"
+                                               IsHitTestVisible="False"
+                                               FontFamily="{StaticResource AppFont}"
+                                               FontSize="{StaticResource AppFontSize}"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               Opacity="0.7"
+                                               Margin="15,11,15,0"
+                                               LineHeight="21"
+                                               VerticalAlignment="Top"
+                                               TextWrapping="Wrap"/>
+                                </Grid>
+
+                                <!-- 可用參數. A table rather than a run-on sentence: four
+                                     placeholders each with a meaning and an example is a grid of
+                                     facts, and prose made the reader parse it back into one. Rows
+                                     are separate Grids sharing their column widths, so the two
+                                     source rows can be hidden whole when 自動 has no source. -->
+                                <StackPanel Orientation="Horizontal" Margin="2,14,0,6">
+                                    <TextBlock Text="{DynamicResource S.Settings.PromptParams}"
+                                               Style="{StaticResource SectionHeader}"
+                                               Margin="0"
+                                               VerticalAlignment="Center"/>
+                                    <!-- Background="Transparent", not left null: a TextBlock with no
+                                         background is only hit-testable where the glyph's own strokes
+                                         are, so the tooltip would appear over parts of an 11px "i"
+                                         and nowhere else. Transparent fills the box for hit testing
+                                         without painting anything. Padding widens that box to
+                                         something a mouse can find. -->
+                                    <TextBlock Text="&#xE946;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               Background="Transparent"
+                                               Padding="3,2"
+                                               Margin="3,0,0,0"
+                                               VerticalAlignment="Center"
+                                               Cursor="Help"
+                                               ToolTipService.InitialShowDelay="200"
+                                               ToolTipService.ShowDuration="30000"
+                                               ToolTip="{DynamicResource S.Settings.PromptParamsTip}"/>
+                                </StackPanel>
+
+                                <!-- Left, not stretched: every column sizes to its content, so a
+                                     table pulled out to the panel's width would be four short
+                                     columns and a stretch of empty rule. -->
+                                <Border BorderBrush="{DynamicResource AppBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        HorizontalAlignment="Left"
+                                        Margin="2,0,0,0">
+                                    <StackPanel Grid.IsSharedSizeScope="True">
+                                        <StackPanel.Resources>
+                                            <Style x:Key="ParamRow" TargetType="Grid">
+                                                <Setter Property="Margin" Value="0"/>
+                                            </Style>
+                                            <Style x:Key="ParamCell" TargetType="Border">
+                                                <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+                                                <Setter Property="BorderThickness" Value="0,0,1,0"/>
+                                                <Setter Property="Padding" Value="10,6"/>
+                                            </Style>
+                                            <Style x:Key="ParamLastCell" TargetType="Border" BasedOn="{StaticResource ParamCell}">
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                            </Style>
+                                            <Style x:Key="ParamText" TargetType="TextBlock">
+                                                <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+                                                <Setter Property="FontSize" Value="11"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                            </Style>
+                                            <Style x:Key="ParamName" TargetType="TextBlock" BasedOn="{StaticResource ParamText}">
+                                                <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+                                            </Style>
+                                            <!-- The header is the one row that is not data, so it is a
+                                                 size up and sits on its own ground. The text itself is
+                                                 left alone — what separates the row is the fill behind
+                                                 it, not a dimmer word. -->
+                                            <Style x:Key="ParamHeaderText" TargetType="TextBlock" BasedOn="{StaticResource ParamText}">
+                                                <Setter Property="FontSize" Value="12"/>
+                                            </Style>
+                                        </StackPanel.Resources>
+
+                                        <!-- Header. AppHeaderBg rather than AppSurfaceBg: the light
+                                             theme paints surface and card the same white, so that one
+                                             would separate nothing there. The corners are one less
+                                             than the outer border's, so the fill sits inside it
+                                             instead of squaring off its top. -->
+                                        <Border Background="{DynamicResource AppHeaderBg}"
+                                                CornerRadius="5,5,0,0"
+                                                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1">
+                                            <Grid Style="{StaticResource ParamRow}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Style="{StaticResource ParamCell}">
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol1}" Style="{StaticResource ParamHeaderText}"/>
+                                                </Border>
+                                                <Border Grid.Column="1" Style="{StaticResource ParamCell}">
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol2}" Style="{StaticResource ParamHeaderText}"/>
+                                                </Border>
+                                                <Border Grid.Column="2" Style="{StaticResource ParamLastCell}">
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamCol3}" Style="{StaticResource ParamHeaderText}"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- {source_name} -->
+                                        <Border x:Name="ParamRowSourceName"
+                                                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1">
+                                            <Grid Style="{StaticResource ParamRow}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Style="{StaticResource ParamCell}">
+                                                    <!-- {} escapes the brace: XAML reads a leading { as a markup extension. -->
+                                                    <TextBlock Text="{}{source_name}" Style="{StaticResource ParamName}"/>
+                                                </Border>
+                                                <Border Grid.Column="1" Style="{StaticResource ParamCell}">
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamSourceName}" Style="{StaticResource ParamText}"/>
+                                                </Border>
+                                                <Border Grid.Column="2" Style="{StaticResource ParamLastCell}">
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamSourceNameEg}" Style="{StaticResource ParamText}"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- {source_code} -->
+                                        <Border x:Name="ParamRowSourceCode"
+                                                BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1">
+                                            <Grid Style="{StaticResource ParamRow}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Style="{StaticResource ParamCell}">
+                                                    <TextBlock Text="{}{source_code}" Style="{StaticResource ParamName}"/>
+                                                </Border>
+                                                <Border Grid.Column="1" Style="{StaticResource ParamCell}">
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamSourceCode}" Style="{StaticResource ParamText}"/>
+                                                </Border>
+                                                <Border Grid.Column="2" Style="{StaticResource ParamLastCell}">
+                                                    <TextBlock Text="en" Style="{StaticResource ParamText}"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- {target_name} -->
+                                        <Border BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1">
+                                            <Grid Style="{StaticResource ParamRow}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Style="{StaticResource ParamCell}">
+                                                    <TextBlock Text="{}{target_name}" Style="{StaticResource ParamName}"/>
+                                                </Border>
+                                                <Border Grid.Column="1" Style="{StaticResource ParamCell}">
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamTargetName}" Style="{StaticResource ParamText}"/>
+                                                </Border>
+                                                <Border Grid.Column="2" Style="{StaticResource ParamLastCell}">
+                                                    <TextBlock Text="{DynamicResource S.Settings.PromptParamTargetNameEg}" Style="{StaticResource ParamText}"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- {target_code} -->
+                                        <Grid Style="{StaticResource ParamRow}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol1"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol2"/>
+                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ParamCol3"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Style="{StaticResource ParamCell}">
+                                                <TextBlock Text="{}{target_code}" Style="{StaticResource ParamName}"/>
+                                            </Border>
+                                            <Border Grid.Column="1" Style="{StaticResource ParamCell}">
+                                                <TextBlock Text="{DynamicResource S.Settings.PromptParamTargetCode}" Style="{StaticResource ParamText}"/>
+                                            </Border>
+                                            <Border Grid.Column="2" Style="{StaticResource ParamLastCell}">
+                                                <TextBlock Text="ja" Style="{StaticResource ParamText}"/>
+                                            </Border>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Collapsed by default and one level down from the fields above it:
+                                 nothing in here is needed to translate, and a user who never has a
+                                 model that disagrees with the defaults never has to read it. -->
+                            <Button Grid.Column="1" Grid.Row="4"
+                                    x:Name="OpenAiAdvancedToggle"
+                                    Style="{StaticResource FlatButton}"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    HorizontalAlignment="Left"
+                                    Height="30"
+                                    Padding="8,0"
+                                    Margin="-8,12,0,0"
+                                    Click="OpenAiAdvancedToggle_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Drawn rather than set in an icon font, for the same reason
+                                         the guide's book below is: the glyph fonts are not on every
+                                         supported build, and a missing chevron reads as damage. -->
+                                    <Path x:Name="OpenAiAdvancedChevron"
+                                          Width="9" Height="6"
+                                          Margin="0,1,8,0"
+                                          VerticalAlignment="Center"
+                                          Stretch="Uniform"
+                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          StrokeThickness="1.4"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Data="M1,1 L5,5 L9,1"
+                                          RenderTransformOrigin="0.5,0.5">
+                                        <Path.RenderTransform>
+                                            <RotateTransform x:Name="OpenAiAdvancedChevronRotation"/>
+                                        </Path.RenderTransform>
+                                    </Path>
+                                    <TextBlock Text="{DynamicResource S.Settings.OpenAiAdvanced}"
+                                               FontFamily="{StaticResource AppFont}"
+                                               FontSize="{StaticResource AppFontSize}"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Clipped so the content can be animated out of a zero height rather
+                                 than blinking in and out of the layout. -->
+                            <Border Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="2"
+                                    x:Name="OpenAiAdvancedHost"
+                                    ClipToBounds="True"
+                                    Height="0"
+                                    Opacity="0">
+                                <Grid x:Name="OpenAiAdvancedContent" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="ServiceLabel"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Not localized: this is the name of the field in the request,
+                                         and every model's own documentation calls it that. -->
+                                    <TextBlock Grid.Column="0" Grid.Row="0"
+                                               Text="{DynamicResource S.Settings.Temperature}"
+                                               Style="{StaticResource FieldLabel}"/>
+
+                                    <Grid Grid.Column="1" Grid.Row="0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <CheckBox x:Name="TemperatureEnabledCheckBox"
+                                                      Content="{DynamicResource S.Settings.TemperatureEnable}"
+                                                      Style="{StaticResource ModernCheckBox}"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,12,0"
+                                                      Checked="TemperatureEnabled_Toggled"
+                                                      Unchecked="TemperatureEnabled_Toggled"/>
+                                            <TextBox x:Name="TemperatureBox"
+                                                     Width="86"
+                                                     Style="{StaticResource ModernTextBox}"
+                                                     TextChanged="TemperatureBox_TextChanged"
+                                                     LostFocus="TemperatureBox_LostFocus"/>
+                                            <!-- Beside the field rather than in the sentence below
+                                                 it: this is the rule the box enforces on the way
+                                                 out, so it belongs where the typing happens. -->
+                                            <TextBlock x:Name="TemperatureRangeHint"
+                                                       Text="{DynamicResource S.Settings.TemperatureRange}"
+                                                       Margin="10,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       FontFamily="{StaticResource AppFont}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource AppTextSecondary}"/>
+                                        </StackPanel>
+
+                                        <Button x:Name="TemperatureResetButton"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Width="38" Height="34" Padding="0"
+                                                Style="{StaticResource FlatButton}"
+                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                FontSize="14"
+                                                Foreground="{DynamicResource AppTextSecondary}"
+                                                Content="&#xE72C;"
+                                                ToolTip="{DynamicResource S.Settings.ResetDefault}"
+                                                AutomationProperties.Name="{DynamicResource S.Settings.ResetDefault}"
+                                                Click="TemperatureResetButton_Click"/>
+                                    </Grid>
+
+                                    <TextBlock Grid.Column="1" Grid.Row="1"
+                                               Text="{DynamicResource S.Settings.TemperatureHint}"
+                                               Margin="2,8,0,0"
+                                               Style="{StaticResource FieldHint}"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- The guide is about the provider as a whole, not about the prompt
+                                 directly above it, so a rule separates the two rather than letting
+                                 the link read as one more line of the prompt's own help. -->
+                            <Border Grid.Column="1" Grid.Row="6"
+                                    Height="1"
+                                    Margin="0,14,0,0"
+                                    Background="{DynamicResource AppBorder}"/>
+
+                            <StackPanel Grid.Column="1" Grid.Row="7"
+                                        Orientation="Horizontal"
+                                        Margin="2,12,0,0">
+                                <!-- An open book, drawn rather than set in an icon font: the two
+                                     glyph fonts this app can rely on (Segoe Fluent Icons, Segoe
+                                     MDL2 Assets) are not on every supported Windows build, and a
+                                     missing glyph next to a link reads as a broken image. Stroked,
+                                     not filled, so it carries the same weight as the 11px text
+                                     beside it, and drawn on a 16-unit grid so it stays crisp.
+                                     Uses the link's own colour by binding to the text below. -->
+                                <Path x:Name="OllamaGuideIcon"
+                                      Width="15" Height="15"
+                                      Margin="0,0,7,0"
+                                      VerticalAlignment="Center"
+                                      Stretch="Uniform"
+                                      Stroke="{DynamicResource AppTextSecondary}"
+                                      StrokeThickness="1.15"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      Data="M8,4.3 C6.7,3.3 4.9,2.9 3,2.9 L1.7,2.9 L1.7,12.1 L3,12.1
+                                            C4.9,12.1 6.7,12.5 8,13.5
+                                            M8,4.3 C9.3,3.3 11.1,2.9 13,2.9 L14.3,2.9 L14.3,12.1 L13,12.1
+                                            C11.1,12.1 9.3,12.5 8,13.5
+                                            M8,4.3 L8,13.5"/>
+
+                                <TextBlock FontFamily="{StaticResource AppFont}"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap">
+                                    <Hyperlink x:Name="OllamaGuideLink"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               RequestNavigate="OllamaGuideLink_RequestNavigate"
+                                               NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
+                                </TextBlock>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- The page's own auto-save line is behind the scrim, so the same contract is
+                     restated here rather than leaving this card looking like it needs an OK. -->
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,16,0,0">
+                    <TextBlock Text="&#xE945;"
+                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="13"
+                               Foreground="{DynamicResource AppAccent}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"/>
+                    <TextBlock Text="{DynamicResource S.Settings.AutoSaveHint}"
+                               VerticalAlignment="Center"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppTextSecondary}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

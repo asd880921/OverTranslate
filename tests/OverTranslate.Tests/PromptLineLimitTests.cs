@@ -15,7 +15,7 @@ public class PromptLineLimitTests
     [InlineData("line\nline")]
     public void ShortEnoughTextIsLeftAlone(string text)
     {
-        Assert.Equal(-1, SettingsPage.LineLimitOverflowIndex(text, 200));
+        Assert.Equal(-1, ServiceSettingsOverlay.LineLimitOverflowIndex(text, 200));
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public class PromptLineLimitTests
     {
         var text = string.Join("\n", Enumerable.Range(0, 200).Select(i => $"line {i}"));
 
-        Assert.Equal(-1, SettingsPage.LineLimitOverflowIndex(text, 200));
+        Assert.Equal(-1, ServiceSettingsOverlay.LineLimitOverflowIndex(text, 200));
     }
 
     [Theory]
@@ -34,7 +34,7 @@ public class PromptLineLimitTests
         var kept = string.Join(lineBreak, Enumerable.Range(0, 200).Select(i => $"line {i}"));
         var text = kept + lineBreak + "line 200";
 
-        var overflow = SettingsPage.LineLimitOverflowIndex(text, 200);
+        var overflow = ServiceSettingsOverlay.LineLimitOverflowIndex(text, 200);
 
         Assert.Equal(kept.Length, overflow);
         // Never ends on half a CRLF pair, which would leave a stray carriage return in the prompt.
@@ -50,7 +50,7 @@ public class PromptLineLimitTests
     {
         var kept = string.Join("\n", Enumerable.Range(0, 200).Select(i => $"line {i}"));
 
-        Assert.Equal(kept.Length, SettingsPage.LineLimitOverflowIndex(kept + "\n", 200));
+        Assert.Equal(kept.Length, ServiceSettingsOverlay.LineLimitOverflowIndex(kept + "\n", 200));
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class PromptLineLimitTests
     {
         var text = new string('\n', 500);
 
-        var overflow = SettingsPage.LineLimitOverflowIndex(text, 200);
+        var overflow = ServiceSettingsOverlay.LineLimitOverflowIndex(text, 200);
 
         Assert.Equal(199, overflow);
         Assert.Equal(199, text[..overflow].Length);
