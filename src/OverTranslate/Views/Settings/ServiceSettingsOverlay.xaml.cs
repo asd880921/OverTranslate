@@ -337,10 +337,10 @@ public partial class ServiceSettingsOverlay : UserControl
             RotateTransform.AngleProperty,
             new DoubleAnimation(expanded ? 180 : 0, AdvancedDuration) { EasingFunction = ease });
 
-        // Visible for the whole of the opening move, and only taken out of the layout once the
-        // closing one has finished — collapsed, its content is out of the tab order as well as out
-        // of sight, which a zero height alone would not manage.
-        if (expanded) OpenAiAdvancedHost.Visibility = Visibility.Visible;
+        // Enabled for the whole of the opening move, and only switched off once the closing one has
+        // finished — closed, its content has to be out of the tab order as well as out of sight,
+        // which a zero height alone would not manage.
+        if (expanded) OpenAiAdvancedHost.IsEnabled = true;
 
         var from = OpenAiAdvancedHost.ActualHeight;
         double to = 0;
@@ -364,7 +364,7 @@ public partial class ServiceSettingsOverlay : UserControl
             else
             {
                 OpenAiAdvancedHost.Height = 0;
-                OpenAiAdvancedHost.Visibility = Visibility.Collapsed;
+                OpenAiAdvancedHost.IsEnabled = false;
             }
         };
 
