@@ -75,14 +75,13 @@
                             Padding="3"
                             Margin="0,0,6,0">
                         <StackPanel Orientation="Horizontal">
-                            <!-- Framing on or off, without leaving edit mode. A dashed marquee, which
-                                 is the shape the user has just been dragging out on screen — a
-                                 crosshair says "precision" without saying what it would do. Unlike
-                                 the pause button, this icon is the state rather than the action: the
-                                 marquee while framing is on, a plain pointer while the mouse belongs
-                                 to whatever is underneath. A toggle whose icon flipped to the other
-                                 mode would leave the bar showing a pointer at the exact moment the
-                                 screen is showing a marquee. The tooltip carries the action.
+                            <!-- Framing on or off, without leaving edit mode. The icon is what
+                                 pressing it does, the same way the pause button works: a plain
+                                 pointer while framing is on — press to hand the mouse back to
+                                 whatever is playing underneath — and the dashed marquee it would
+                                 bring back while it is off. A marquee rather than a crosshair
+                                 because it is the shape the user drags out on screen; a crosshair
+                                 says "precision" without saying what it would do.
                                  Drawn as a Path because neither shape exists in Segoe MDL2, which is
                                  all Windows 10 has; a Path also has no font fallback to lose. Its
                                  stroke follows the button's own foreground so hover and theme

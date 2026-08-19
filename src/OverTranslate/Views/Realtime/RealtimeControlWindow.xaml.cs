@@ -46,9 +46,8 @@ public partial class RealtimeControlWindow : Window
     private readonly DispatcherTimer _messageTimer;
 
     /// <summary>
-    /// The marquee the framing button shows while framing is on, and the pointer it shows while the
-    /// mouse belongs to whatever is underneath. Coordinates are in a 16×16 box drawn at its own size
-    /// — see the Path in XAML.
+    /// The marquee the framing button shows while framing is off, and the pointer it shows while it
+    /// is on. Coordinates are in a 16×16 box drawn at its own size — see the Path in XAML.
     /// </summary>
     private const string MarqueeIcon =
         "M4.5,2.5 H11.5 A2,2 0 0 1 13.5,4.5 V11.5 A2,2 0 0 1 11.5,13.5 "
@@ -414,10 +413,10 @@ public partial class RealtimeControlWindow : Window
 
     private void ApplyCrosshairButton()
     {
-        // The icon is the state, not the action — see the button's comment in XAML. The dashes go
+        // The icon is the action, not the state — see the button's comment in XAML. The dashes go
         // with the marquee and have to come off the pointer, which is one continuous outline.
-        CrosshairGlyph.Data = Geometry.Parse(_crosshairEnabled ? MarqueeIcon : PointerIcon);
-        CrosshairGlyph.StrokeDashArray = _crosshairEnabled ? MarqueeDashes : null;
+        CrosshairGlyph.Data = Geometry.Parse(_crosshairEnabled ? PointerIcon : MarqueeIcon);
+        CrosshairGlyph.StrokeDashArray = _crosshairEnabled ? null : MarqueeDashes;
 
         var label = LocalizationService.Get(
             _crosshairEnabled ? "S.Realtime.CrosshairOff" : "S.Realtime.CrosshairOn");
