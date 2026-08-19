@@ -45,6 +45,39 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- ══════════ Advanced toggle ══════════ -->
+        <!-- Its own template rather than FlatButton, whose content presenter is centred: the label
+             and the chevron have to be pushed to opposite ends of the row, which a presenter sized
+             to its content cannot do however the button itself is aligned. -->
+        <Style x:Key="AdvancedToggleRow" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor"     Value="Hand"/>
+            <Setter Property="Height"     Value="34"/>
+            <Setter Property="Padding"    Value="8,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background"
+                                        Value="{DynamicResource AppButtonHoverBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background"
+                                        Value="{DynamicResource AppButtonPressedBg}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <!-- Scrim: swallows clicks so the page underneath stays inert, and dismisses on click -->
@@ -241,24 +274,32 @@
                                  card. Spanning both columns so the chevron starts at the panel's
                                  left edge — sat in the field column it lines up under the boxes and
                                  reads as one more part of the model row above it. -->
+                            <!-- The whole width, not a pill around the word: sized to its content
+                                 the highlight that comes up under the pointer is a small block
+                                 floating mid-panel, which reads as something having gone wrong
+                                 rather than as a row waiting to be pressed. The negative margins
+                                 let that highlight reach the edges of the fields above, out to
+                                 where the ScrollViewer's own padding starts. -->
                             <Button Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2"
                                     x:Name="OpenAiAdvancedToggle"
-                                    Style="{StaticResource FlatButton}"
-                                    Background="Transparent"
-                                    BorderBrush="Transparent"
-                                    HorizontalAlignment="Left"
-                                    Height="30"
-                                    Padding="8,0"
-                                    Margin="-8,12,0,0"
+                                    Style="{StaticResource AdvancedToggleRow}"
+                                    Margin="-8,12,-8,0"
                                     Click="OpenAiAdvancedToggle_Click">
-                                <StackPanel Orientation="Horizontal">
+                                <Grid>
+                                    <TextBlock Text="{DynamicResource S.Settings.OpenAiAdvanced}"
+                                               FontFamily="{StaticResource AppFont}"
+                                               FontSize="{StaticResource AppFontSize}"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Center"/>
                                     <!-- Drawn rather than set in an icon font, for the same reason
-                                         the guide's book below is: the glyph fonts are not on every
+                                         the guide's book above is: the glyph fonts are not on every
                                          supported build, and a missing chevron reads as damage. -->
                                     <Path x:Name="OpenAiAdvancedChevron"
                                           Width="9" Height="6"
-                                          Margin="0,1,8,0"
+                                          HorizontalAlignment="Right"
                                           VerticalAlignment="Center"
+                                          Margin="8,1,0,0"
                                           Stretch="Uniform"
                                           Stroke="{DynamicResource AppTextSecondary}"
                                           StrokeThickness="1.4"
@@ -271,12 +312,7 @@
                                             <RotateTransform x:Name="OpenAiAdvancedChevronRotation"/>
                                         </Path.RenderTransform>
                                     </Path>
-                                    <TextBlock Text="{DynamicResource S.Settings.OpenAiAdvanced}"
-                                               FontFamily="{StaticResource AppFont}"
-                                               FontSize="{StaticResource AppFontSize}"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
+                                </Grid>
                             </Button>
 
                             <!-- Clipped so the content can be animated out of a zero height rather
