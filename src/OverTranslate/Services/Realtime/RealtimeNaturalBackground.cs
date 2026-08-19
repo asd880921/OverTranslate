@@ -32,6 +32,77 @@ internal static class RealtimeNaturalBackground
     private const int MinErasePadTop = 8;
     private const int MinErasePadBottom = 4;
 
+    /// <summary>Every line a patch has to erase, from the blocks the window is drawing.</summary>
+    /// <remarks>
+    /// All of them, not only the block whose patch is being built. A patch is a fresh copy of the
+    /// picture under it, so a line reaching into it that is left alone is reprinted over the repair
+    /// its own block's patch made — and lines do reach into each other's patches, because each patch
+    /// is grown by a guard margin and a Latin detection box is tall enough to overlap its neighbour
+    /// before that. Two stacked English subtitle lines measured 765..835 and 827..901: the lower
+    /// patch begins above the upper line's baseline and used to reprint the bottom half of it.
+    ///
+    /// Blocks with nothing translated are left out. Nothing was drawn over them, so their text is
+    /// still on screen to be read, and erasing the part of it that falls in someone else's patch
+    /// would rub out half a line the user can still read the rest of.
+    /// </remarks>
+    public static IReadOnlyList<WpfRect> EraseTargets(IReadOnlyList<TranslatedBlock> blocks) =>
+    [
+        .. blocks
+            .Where(block => !string.IsNullOrWhiteSpace(block.TranslatedText))
+            .SelectMany(block => (block.SourceLineBounds is { Count: > 0 } lines ? lines : [block.Bounds])
+                .Select(line => GlyphBounds(line, block.SourceGlyphHeight)))
+    ];
+
+    /// <summary>The part of a line rectangle its glyphs actually occupy.</summary>
+    /// <remarks>
+    /// A Latin source keeps the detector's box unshrunk, because the translation drawn over it is
+    /// sized to cover the taller original glyphs; only the glyph height travels separately. Erasing
+    /// that whole box is what this is for. Measured over the English subtitle corpus, at the size
+    /// realtime reads a subtitle strip at, the box is 66–125px tall for glyphs of 33–49px — so the
+    /// repair was being asked to invent a strip three times the height of the text it replaced, and
+    /// interpolating that far turns whatever the line sits on into one smeared band.
+    ///
+    /// Centred, because the box is concentric with the text: over the same corpus the box's vertical
+    /// centre and that of the same line read as CJK — which does shrink its box — agreed to within
+    /// half a pixel on every line, while the widths were identical. The looseness is in height only,
+    /// and it is symmetric.
+    ///
+    /// The padding <see cref="EraseSourceText"/> adds is what covers the rest: an outline, an
+    /// ascender, the antialiasing around them.
+    /// </remarks>
+    public static WpfRect GlyphBounds(WpfRect line, double? glyphHeight)
+    {
+        if (glyphHeight is not { } height || height <= 0 || height >= line.Height)
+            return line;
+
+        double top = line.Y + (line.Height - height) / 2;
+        double bottom = Math.Min(line.Bottom, top + height * (1 + DescenderAllowance));
+        return new WpfRect(line.X, top, line.Width, bottom - top);
+    }
+
+    /// <summary>How much further down than its glyph height a Latin line reaches, as a fraction.</summary>
+    /// <remarks>
+    /// The glyph height is measured from the line's average pitch, which is the body of the text: it
+    /// does not know about the tail of a g, j, p, q or y, nor about the outline drawn around it. Left
+    /// out, that tail is not merely missed — the row band is read from immediately below the strip,
+    /// so the band lands ON the tail, and a stroke a few pixels wide is drawn the height of the fill
+    /// as a black column. It is the most visible way this repair fails on English subtitles.
+    ///
+    /// Swept over the English corpus at 0.00/0.15/0.20/0.25/0.30/0.35/0.50 and read off the repaired
+    /// frames: the columns are obvious to 0.20, faint at 0.25, and gone at 0.30 on every frame that
+    /// had a descender. Above that nothing improves and the strip only invents more of the picture.
+    ///
+    /// Latin only, because it applies to a rectangle that carries a glyph height, and CJK does not —
+    /// its box already sits on its glyphs, which have no descender to reach past it.
+    /// </remarks>
+    private const double DescenderAllowance = 0.30;
+
+    /// <param name="sourceLineBounds">
+    /// Every line to erase out of this patch, as the rectangles its glyphs occupy — see
+    /// <see cref="GlyphBounds"/>. Lines belonging to neighbouring blocks count: a patch is a copy of
+    /// the picture, so any line reaching into it that is left alone is reprinted over whatever
+    /// repaired it.
+    /// </param>
     public static Bitmap? CreatePatch(
         Bitmap frame,
         Rectangle patchBounds,
