@@ -202,7 +202,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
-                                        <TextBlock Text="&#xE8C1;" Style="{StaticResource HotkeyRowGlyph}"/>
+                                        <TextBlock Text="&#xE737;" Style="{StaticResource HotkeyRowGlyph}"/>
                                     </Border>
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
@@ -238,11 +238,6 @@
                                                    Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
-
-                                <TextBlock x:Name="WindowHotkeyShadowHint"
-                                           Style="{StaticResource FieldHint}"
-                                           Margin="0,8,0,0"
-                                           Visibility="Collapsed"/>
                             </StackPanel>
                         </Border>
 
@@ -297,28 +292,23 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <TextBlock x:Name="RealtimePauseHotkeyShadowHint"
-                                           Style="{StaticResource FieldHint}"
-                                           Margin="0,8,0,0"
-                                           Visibility="Collapsed"/>
+                                <!-- When this shortcut does nothing, inside the row it is about
+                                     rather than under the three of them: nothing here applies to
+                                     the other two. -->
+                                <StackPanel Orientation="Horizontal" Margin="47,8,0,0">
+                                    <TextBlock Text="&#xE946;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"/>
+                                    <TextBlock Text="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
-
-                        <!-- When this one does nothing, said once under the rows rather than as a
-                             fourth line inside the row: it is a fact about the feature, not about
-                             the shortcut, and the row is already three lines deep. -->
-                        <StackPanel Orientation="Horizontal" Margin="2,6,0,0">
-                            <TextBlock Text="&#xE946;"
-                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="12"
-                                       Foreground="{DynamicResource AppTextSecondary}"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,8,0"/>
-                            <TextBlock Text="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
-                                       Style="{StaticResource FieldHint}"
-                                       Margin="0"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
                     </StackPanel>
                 </Border>
 

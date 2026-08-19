@@ -59,10 +59,12 @@ public partial class SettingsPage : UserControl
     /// The word beside the switch saying which way it is set. Null for the capture row, which has
     /// no switch to describe.
     /// </param>
-    /// <param name="ShadowHint">
-    /// Where to say that a higher-priority shortcut has taken this combination. Null for capture,
-    /// which is the highest priority and so can never be the one shadowed.
-    /// </param>
+    /// <remarks>
+    /// A row shadowed by a higher-priority shortcut says nothing about it. Priority still decides
+    /// which of two shortcuts sharing a combination is registered — see
+    /// <see cref="HotkeyBindings.Resolve"/>, and MainWindow logs the one it dropped — but the page
+    /// does not carry a line for a state a user reaches only by having set the clash themselves.
+    /// </remarks>
     private sealed record HotkeyField(
         HotkeyAction Action,
         string NameKey,
@@ -74,7 +76,6 @@ public partial class SettingsPage : UserControl
         // Fully qualified: WinForms is also referenced here and has its own CheckBox.
         System.Windows.Controls.CheckBox? EnabledBox = null,
         Action<AppSettings, bool>? SetEnabled = null,
-        TextBlock? ShadowHint = null,
         TextBlock? EnabledLabel = null);
 
     private HotkeyField[] _hotkeyFields = [];
@@ -109,7 +110,6 @@ public partial class SettingsPage : UserControl
                 AdvertisedInShell: false,
                 WindowHotkeyEnabledCheckBox,
                 (s, on) => s.TranslationWindowHotkeyEnabled = on,
-                WindowHotkeyShadowHint,
                 WindowHotkeyEnabledLabel),
             new HotkeyField(
                 HotkeyAction.RealtimePause,
@@ -121,7 +121,6 @@ public partial class SettingsPage : UserControl
                 AdvertisedInShell: false,
                 RealtimePauseHotkeyEnabledCheckBox,
                 (s, on) => s.RealtimePauseHotkeyEnabled = on,
-                RealtimePauseHotkeyShadowHint,
                 RealtimePauseHotkeyEnabledLabel),
         ];
 
@@ -169,8 +168,6 @@ public partial class SettingsPage : UserControl
                     box.IsChecked = binding.Enabled;
 
             foreach (var field in _hotkeyFields) ApplyHotkeyRowAvailability(field);
-
-            RefreshHotkeyShadowHints();
 
             LightThemeRadio.IsChecked = s.Theme != ThemeService.Dark;
             DarkThemeRadio.IsChecked  = s.Theme == ThemeService.Dark;
@@ -489,40 +486,6 @@ public partial class SettingsPage : UserControl
         // a switch that takes effect later is worse than no switch.
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();
-
-        // Turning one off releases its combination, which can bring a shadowed row back — so the
-        // hints below are re-read from the resolver rather than only cleared for this row.
-        RefreshHotkeyShadowHints();
-    }
-
-    /// <summary>
-    /// Says, per row, that a higher-priority shortcut holds this combination.
-    /// </summary>
-    /// <remarks>
-    /// The recorder refuses to assign a combination another shortcut already holds, so this state
-    /// cannot be reached by editing. It is reached by upgrading: adding the realtime shortcut gave
-    /// every existing installation a Ctrl+Alt+S it never agreed to, and anyone who had already put
-    /// that on the translation window would otherwise have had one of the two stop working with
-    /// nothing said. Priority decides which, and this is where it is said out loud.
-    /// </remarks>
-    private void RefreshHotkeyShadowHints()
-    {
-        foreach (var binding in HotkeyBindings.Resolve(SettingsService.Instance.Current))
-        {
-            if (FieldFor(binding.Action)?.ShadowHint is not { } hint) continue;
-
-            if (binding.ShadowedBy is not { } holder)
-            {
-                hint.Visibility = Visibility.Collapsed;
-                continue;
-            }
-
-            var holderName = FieldFor(holder)?.NameKey;
-            hint.Text = LocalizationService.Format(
-                "S.Settings.HotkeyShadowed",
-                holderName is null ? "" : LocalizationService.Get(holderName));
-            hint.Visibility = Visibility.Visible;
-        }
     }
 
     private static void ApplyCaptureTrigger(AppSettings s, ShortcutTrigger trigger, string display)
@@ -768,10 +731,6 @@ public partial class SettingsPage : UserControl
 
         // After the write, so the box picks the new trigger up out of the settings.
         StopRecording();
-
-        // Recording cannot create a clash — it is refused above — but it can clear one a stored
-        // setting arrived in, so the shadow lines are re-read rather than left as they were.
-        RefreshHotkeyShadowHints();
 
         // The global hook holds the old trigger until it is rebound.
         if (System.Windows.Application.Current.MainWindow is MainWindow main)

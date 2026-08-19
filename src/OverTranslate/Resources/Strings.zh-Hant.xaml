@@ -292,7 +292,6 @@
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">暫停 / 繼續</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">暫停或繼續目前的[[即時翻譯]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">「暫停 / 繼續」僅在即時翻譯進行中可用。</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyShadowed">✗ 與上方的「{0}」重複，已停用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ 單一按鍵只能是 F1–F24、Pause 或 Scroll Lock，其他按鍵請搭配 Ctrl／Alt／Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">一般設定</sys:String>
