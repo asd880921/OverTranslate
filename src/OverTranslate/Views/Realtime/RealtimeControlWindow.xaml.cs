@@ -46,14 +46,29 @@ public partial class RealtimeControlWindow : Window
     private readonly DispatcherTimer _messageTimer;
 
     /// <summary>
-    /// The crosshair icon the button shows while framing is off, and the pointer it shows while
-    /// framing is on. Coordinates are in a 16×16 box drawn at its own size — see the Path in XAML.
+    /// The marquee the framing button shows while framing is on, and the pointer it shows while the
+    /// mouse belongs to whatever is underneath. Coordinates are in a 16×16 box drawn at its own size
+    /// — see the Path in XAML.
     /// </summary>
-    private const string CrosshairIcon =
-        "M8,1.6 V6.2 M8,9.8 V14.4 M1.6,8 H6.2 M9.8,8 H14.4 "
-        + "M4.6,8 A3.4,3.4 0 1 0 11.4,8 A3.4,3.4 0 1 0 4.6,8";
+    private const string MarqueeIcon =
+        "M4.5,2.5 H11.5 A2,2 0 0 1 13.5,4.5 V11.5 A2,2 0 0 1 11.5,13.5 "
+        + "H4.5 A2,2 0 0 1 2.5,11.5 V4.5 A2,2 0 0 1 4.5,2.5 Z";
 
     private const string PointerIcon = "M4.2,2.2 L4.2,12.9 L7,10.2 L8.9,14.4 L10.7,13.5 L8.9,9.6 L12.6,9.4 Z";
+
+    /// <summary>
+    /// Dash pattern for the marquee, in multiples of the stroke width. The same broken outline the
+    /// drag preview draws on screen, which is what makes the icon read as that gesture rather than
+    /// as a plain box.
+    /// </summary>
+    private static readonly DoubleCollection MarqueeDashes = Freeze([2.2, 1.8]);
+
+    private static DoubleCollection Freeze(double[] values)
+    {
+        var collection = new DoubleCollection(values);
+        collection.Freeze();
+        return collection;
+    }
 
     private RealtimeControlMode _mode = RealtimeControlMode.Edit;
     private static string EditHint => LocalizationService.Get("S.Realtime.EditHint");
@@ -399,8 +414,10 @@ public partial class RealtimeControlWindow : Window
 
     private void ApplyCrosshairButton()
     {
-        // The icon is the action, not the state — see the button's comment in XAML.
-        CrosshairGlyph.Data = Geometry.Parse(_crosshairEnabled ? PointerIcon : CrosshairIcon);
+        // The icon is the state, not the action — see the button's comment in XAML. The dashes go
+        // with the marquee and have to come off the pointer, which is one continuous outline.
+        CrosshairGlyph.Data = Geometry.Parse(_crosshairEnabled ? MarqueeIcon : PointerIcon);
+        CrosshairGlyph.StrokeDashArray = _crosshairEnabled ? MarqueeDashes : null;
 
         var label = LocalizationService.Get(
             _crosshairEnabled ? "S.Realtime.CrosshairOff" : "S.Realtime.CrosshairOn");

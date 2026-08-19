@@ -66,48 +66,66 @@
 
                     <Separator Style="{StaticResource VerticalSeparator}"/>
 
-                    <!-- Framing on or off, without leaving edit mode. The icon is what pressing it
-                         does, the same way the pause button works: while framing is on it shows a
-                         plain pointer — press to hand the mouse back to whatever is playing
-                         underneath — and while it is off it shows the crosshair it would bring back.
-                         Drawn as a Path rather than typed as an icon-font glyph because neither
-                         shape exists in Segoe Fluent Icons; a Path also has no font fallback to lose.
-                         Its stroke follows the button's own foreground so hover and theme changes
-                         reach it, which a hard-coded brush would not. -->
-                    <Button x:Name="CrosshairBtn"
-                            Style="{StaticResource ToolbarIconButton}"
-                            Margin="0,0,4,0"
-                            Click="CrosshairBtn_Click">
-                        <Path x:Name="CrosshairGlyph"
-                              Width="16" Height="16"
-                              Stretch="None"
-                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              StrokeThickness="1.3"
-                              StrokeStartLineCap="Round"
-                              StrokeEndLineCap="Round"
-                              StrokeLineJoin="Round"/>
-                    </Button>
+                    <!-- The two buttons the user chooses between while framing, in a tray of their
+                         own: whether to keep drawing or to start translating is one decision, and
+                         set loose on the bar they read as two more pieces of furniture next to ✕.
+                         ✕ stays outside it — ending the session is not part of that decision. -->
+                    <Border Background="{DynamicResource ToolbarGroupBg}"
+                            CornerRadius="10"
+                            Padding="3"
+                            Margin="0,0,6,0">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Framing on or off, without leaving edit mode. A dashed marquee, which
+                                 is the shape the user has just been dragging out on screen — a
+                                 crosshair says "precision" without saying what it would do. Unlike
+                                 the pause button, this icon is the state rather than the action: the
+                                 marquee while framing is on, a plain pointer while the mouse belongs
+                                 to whatever is underneath. A toggle whose icon flipped to the other
+                                 mode would leave the bar showing a pointer at the exact moment the
+                                 screen is showing a marquee. The tooltip carries the action.
+                                 Drawn as a Path because neither shape exists in Segoe MDL2, which is
+                                 all Windows 10 has; a Path also has no font fallback to lose. Its
+                                 stroke follows the button's own foreground so hover and theme
+                                 changes reach it. -->
+                            <Button x:Name="CrosshairBtn"
+                                    Style="{StaticResource ToolbarGroupIconButton}"
+                                    Foreground="{DynamicResource AppTextPrimary}"
+                                    Margin="0,0,2,0"
+                                    Click="CrosshairBtn_Click">
+                                <Path x:Name="CrosshairGlyph"
+                                      Width="16" Height="16"
+                                      Stretch="None"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.3"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"/>
+                            </Button>
 
-                    <!-- Icon-only like the rest of the row, but still the accent one: it is the only
-                         thing on this bar the user is meant to press when they are done framing.
-                         A solid triangle, not the outline the pause button's resume state uses —
-                         white outline on a filled accent square reads thin, and the two are never on
-                         screen together to be confused. Drawn rather than typed for the same reason
-                         as the crosshair beside it: the solid play glyph (F5B0) only exists in Segoe
-                         Fluent Icons, which Windows 10 does not ship, and there it would fall back to
-                         MDL2 and come out as a missing-glyph box. The nose sits a touch right of the
-                         box's centre, where a triangle looks centred rather than measuring so. -->
-                    <Button x:Name="StartBtn"
-                            Style="{StaticResource ToolbarAccentIconButton}"
-                            Margin="0,0,4,0"
-                            ToolTip="{DynamicResource S.Realtime.StartTranslating}"
-                            AutomationProperties.Name="{DynamicResource S.Realtime.StartTranslating}"
-                            Click="StartBtn_Click">
-                        <Path Width="16" Height="16"
-                              Stretch="None"
-                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              Data="M5.8,2.6 L13.4,8 L5.8,13.4 Z"/>
-                    </Button>
+                            <!-- The accent is carried by the glyph rather than by a filled pill: a
+                                 solid accent square in a row of quiet icons was the one thing on the
+                                 bar shouting, and this bar floats over whatever the user is actually
+                                 watching. Colour alone still makes it the only coloured thing here.
+                                 A solid triangle, not the outline the resume button uses — an
+                                 outline at 16px reads as a hollow shape rather than as play, and the
+                                 two are never on screen together. Drawn rather than typed because
+                                 the solid play glyph (F5B0) is Segoe Fluent Icons only, and on
+                                 Windows 10 it would fall back to MDL2 as a missing-glyph box. The
+                                 nose sits a touch right of centre, where a triangle looks centred
+                                 rather than measures so. -->
+                            <Button x:Name="StartBtn"
+                                    Style="{StaticResource ToolbarGroupIconButton}"
+                                    Foreground="{DynamicResource AppAccent}"
+                                    ToolTip="{DynamicResource S.Realtime.StartTranslating}"
+                                    AutomationProperties.Name="{DynamicResource S.Realtime.StartTranslating}"
+                                    Click="StartBtn_Click">
+                                <Path Width="16" Height="16"
+                                      Stretch="None"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Data="M5.8,2.6 L13.4,8 L5.8,13.4 Z"/>
+                            </Button>
+                        </StackPanel>
+                    </Border>
 
                     <Button Content="✕"
                             Style="{StaticResource ToolbarIconButton}"

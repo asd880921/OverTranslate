@@ -68,6 +68,14 @@
     <!-- Toolbar specific -->
     <SolidColorBrush x:Key="ToolbarBg"         Color="#FAFAFA"/>
     <SolidColorBrush x:Key="ToolbarBorder"     Color="#D0D0D0"/>
+
+    <!-- The action group on the realtime edit bar: a slightly raised tray holding the two buttons the
+         user chooses between, so they read as one control rather than as more window furniture. Its
+         buttons need their own hover and pressed steps because the bar's are measured against the
+         bar, and against this tray they would be all but invisible. -->
+    <SolidColorBrush x:Key="ToolbarGroupBg"        Color="#EDEDED"/>
+    <SolidColorBrush x:Key="ToolbarGroupHoverBg"   Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="ToolbarGroupPressedBg" Color="#D4D4D4"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
     <!-- Toast — same in both themes (always dark) -->

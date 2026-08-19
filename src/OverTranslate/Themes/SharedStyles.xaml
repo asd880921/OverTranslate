@@ -1170,13 +1170,36 @@
         <Setter Property="FontSize"    Value="13"/>
     </Style>
 
-    <!-- A primary action reduced to its icon: same square as ToolbarIconButton so it sits in the row
-         without breaking its rhythm, but keeping the accent fill, because losing the label is not the
-         same as stepping down from being the one thing on the bar to press. -->
-    <Style x:Key="ToolbarAccentIconButton" TargetType="Button" BasedOn="{StaticResource ToolbarAccentButton}">
-        <Setter Property="Width"       Value="28"/>
-        <Setter Property="Height"      Value="28"/>
-        <Setter Property="Padding"     Value="0"/>
+    <!-- Icon buttons that sit inside a raised group tray rather than directly on the bar. Their
+         template is repeated rather than inherited for the same reason ToastIconButton repeats it:
+         BasedOn cannot reach the hover and pressed brushes named inside it, and against the tray the
+         bar's own steps are too close to its surface to be seen. -->
+    <Style x:Key="ToolbarGroupIconButton" TargetType="Button" BasedOn="{StaticResource ToolbarIconButton}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="7">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource ToolbarGroupHoverBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource ToolbarGroupPressedBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- The toast is dark in both themes, so its buttons need their own brushes rather than the
