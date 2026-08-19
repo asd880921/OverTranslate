@@ -11,6 +11,18 @@ public partial class ToolbarWindow : Window
     private const string SpeakGlyph = Controls.TtsGlyphs.Speak;
     private const string StopGlyph = Controls.TtsGlyphs.Stop;
 
+    /// <summary>
+    /// The eye the toggle shows while the translation is on screen, and the struck-through one it
+    /// shows while the original is.
+    /// </summary>
+    /// <remarks>
+    /// Both are the action, like the label beside them: pressing the first reveals the original,
+    /// pressing the second puts it away again. A fixed eye under a label that changed was the icon
+    /// disagreeing with the word next to it every second press.
+    /// </remarks>
+    private const string RevealGlyph = "\uE890";
+    private const string HideGlyph = "\uED1A";
+
     public event EventHandler<TranslateRequest>? TranslateRequested;
     public event EventHandler? OpenWindowRequested;
     public event EventHandler? CopyScreenshotRequested;
@@ -199,6 +211,14 @@ public partial class ToolbarWindow : Window
     private void TtsBtn_Click(object sender, RoutedEventArgs e)
         => SpeakToggleRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Puts the toggle's icon and label on the same side of what pressing it would do.</summary>
+    private void RenderToggleButton()
+    {
+        ToggleGlyph.Text = _bubblesVisible ? RevealGlyph : HideGlyph;
+        ToggleLabel.Text = LocalizationService.Get(
+            _bubblesVisible ? "S.Toolbar.ShowSource" : "S.Toolbar.ShowTranslation");
+    }
+
     private void CopyShotBtn_Click(object sender, RoutedEventArgs e)
         => CopyScreenshotRequested?.Invoke(this, EventArgs.Empty);
 
@@ -316,16 +336,15 @@ public partial class ToolbarWindow : Window
     {
         _toggleEnabled   = enabled;
         _bubblesVisible  = true;
-        ToggleLabel.Text = LocalizationService.Get("S.Toolbar.ShowSource");
+        RenderToggleButton();
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
         BubblesVisibilityChanged?.Invoke(this, _bubblesVisible);
     }
 
     private void ToggleBtn_Click(object sender, RoutedEventArgs e)
     {
-        _bubblesVisible  = !_bubblesVisible;
-        ToggleLabel.Text = LocalizationService.Get(
-            _bubblesVisible ? "S.Toolbar.ShowSource" : "S.Toolbar.ShowTranslation");
+        _bubblesVisible = !_bubblesVisible;
+        RenderToggleButton();
         BubblesVisibilityChanged?.Invoke(this, _bubblesVisible);
     }
 

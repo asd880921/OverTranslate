@@ -770,7 +770,6 @@ public partial class MainWindow : Window
             _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
             requestToolbar?.SetTranslationState(_lastColoredBlocks.Count > 0);
             requestToolbar?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
-            requestToolbar?.SetSpeakableText(SourceTextForSpeech().Length > 0);
             ShowBalloon(
                 LocalizationService.Get("S.Main.TranslateFailedTitle"),
                 LocalizationService.Format("S.Main.TranslateFailedBody", ex.Message), selRect);
@@ -780,6 +779,11 @@ public partial class MainWindow : Window
             if (IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
             {
                 _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
+
+                // Here rather than on the success path: recognition is what produces the text to
+                // read, and it has run by the time translation fails or finds nothing to translate.
+                // A run that failed at the engine still leaves the original on screen and readable.
+                requestToolbar?.SetSpeakableText(SourceTextForSpeech().Length > 0);
                 requestToolbar?.SetBusy(false);
             }
         }

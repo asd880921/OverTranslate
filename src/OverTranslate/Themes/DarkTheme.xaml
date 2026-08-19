@@ -72,6 +72,17 @@
     <SolidColorBrush x:Key="ToolbarBg"         Color="#2A2A2A"/>
     <SolidColorBrush x:Key="ToolbarBorder"     Color="#484848"/>
 
+    <!-- The primary action on a floating toolbar. Its own blue rather than AppAccent, for the one
+         place the accent cannot serve: this bar is dark in the dark theme, and there AppAccent is a
+         pale cyan that takes black text — correct Fluent for a filled button on a page, a bright
+         patch shouting off a bar that floats over whatever the user is actually looking at. A blue
+         deep enough to carry white text sits on the bar instead of on top of it. In the light theme
+         the accent already is that blue and already carries white, so there it is the accent. -->
+    <SolidColorBrush x:Key="ToolbarPrimaryBg"        Color="#3B82F6"/>
+    <SolidColorBrush x:Key="ToolbarPrimaryHoverBg"   Color="#5693F8"/>
+    <SolidColorBrush x:Key="ToolbarPrimaryPressedBg" Color="#2F6FE0"/>
+    <SolidColorBrush x:Key="ToolbarPrimaryFg"        Color="#FFFFFF"/>
+
     <!-- The action group on the realtime edit bar: a slightly raised tray holding the two buttons the
          user chooses between, so they read as one control rather than as more window furniture. Its
          buttons need their own hover and pressed steps because the bar's are measured against the
