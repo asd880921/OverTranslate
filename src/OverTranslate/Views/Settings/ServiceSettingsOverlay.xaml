@@ -518,9 +518,7 @@
                                                                Margin="3,0,0,0"
                                                                VerticalAlignment="Center"
                                                                Cursor="Help"
-                                                               ToolTipService.InitialShowDelay="200"
-                                                               ToolTipService.ShowDuration="30000"
-                                                               ToolTip="{DynamicResource S.Settings.PromptParamsTip}"/>
+                                                               controls:HoverToolTip.Content="{DynamicResource S.Settings.PromptParamsTip}"/>
                                                 </StackPanel>
 
                                                 <!-- Left, not stretched: every column sizes to its content, so a
