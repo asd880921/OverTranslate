@@ -10,11 +10,10 @@
          Prefer the noun ("Shortcut", "Provider") over the sentence. -->
 
     <!-- ── Shared ── -->
-    <sys:String x:Key="S.Common.Record">Record</sys:String>
-    <sys:String x:Key="S.Common.Cancel">Cancel</sys:String>
     <sys:String x:Key="S.Common.Edit">Edit</sys:String>
     <sys:String x:Key="S.Common.Reset">Reset</sys:String>
     <sys:String x:Key="S.Common.Close">Close</sys:String>
+    <sys:String x:Key="S.Common.Configure">Configure</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API key</sys:String>
 
     <!-- ── Shell window ── -->
@@ -264,33 +263,38 @@ Leave a little room around the whole area; box several areas separately rather t
 
     <!-- ── Settings page ── -->
     <sys:String x:Key="S.Settings.Title">Settings</sys:String>
-    <sys:String x:Key="S.Settings.Subtitle">Shortcuts, translation services, screenshots and appearance</sys:String>
+    <sys:String x:Key="S.Settings.Subtitle">Shortcuts, translation services, appearance and advanced options</sys:String>
 
     <sys:String x:Key="S.Settings.Hotkeys">Shortcuts</sys:String>
     <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
     <sys:String x:Key="S.Settings.HotkeyEnable">Enable this shortcut</sys:String>
+    <!-- The shortcut box has no label of its own; this is its ToolTip -->
+    <sys:String x:Key="S.Settings.HotkeyRecordTip">Click to record a new shortcut</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOn">Enabled</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOff">Disabled</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with any key, or be a single function key, the middle mouse button, or a gamepad button.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+F2, F8, middle mouse. On its own, a key has to be a function key; middle mouse and the gamepad leave the game's own input alone.</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>
-    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">While [[realtime translation]] is running, press this shortcut to [[pause / resume]] it (pausing puts the original text back on screen)</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyShadowed">✗ Same as "{0}" above, so it is off</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">Pause or resume [[realtime translation]]</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">"Pause / resume" only works while realtime translation is running. (a way to read the original text)</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ A single key can only be F1–F24, Pause or Scroll Lock — other keys need Ctrl/Alt/Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkey">Capture</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkeyHint">Press this shortcut to start a [[screen capture translation]]</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkey">Open window</sys:String>
-    <sys:String x:Key="S.Settings.WindowHotkeyHint">While [[realtime translation]] is running, brings the [[floating bar]] to the front instead</sys:String>
-    <sys:String x:Key="S.Settings.SourceLanguage">Source</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkeyHint">Press this shortcut to open the [[translation window]]</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslate">Auto</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslateCheck">Translate as soon as a screen capture region is selected, with nothing left to click.</sys:String>
     <sys:String x:Key="S.Settings.Startup">Startup</sys:String>
     <sys:String x:Key="S.Settings.StartupCheck">Launch when Windows starts</sys:String>
 
-    <sys:String x:Key="S.Settings.Translation">Translation</sys:String>
-    <sys:String x:Key="S.Settings.Provider">Provider</sys:String>
+    <sys:String x:Key="S.Settings.ServiceSetup">Service setup</sys:String>
+    <sys:String x:Key="S.Settings.ServiceSetupHint">Only services that need a key or an endpoint</sys:String>
+    <sys:String x:Key="S.Settings.ServiceNeedsSetup">Setup needed</sys:String>
+    <sys:String x:Key="S.Settings.ServiceReady">Configured</sys:String>
+    <sys:String x:Key="S.Settings.ServiceDefault">Using defaults</sys:String>
+    <sys:String x:Key="S.Settings.ServiceDialogTitle">{0} settings</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API URL</sys:String>
     <sys:String x:Key="S.Settings.ModelName">Model</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">Local LLM (Ollama) setup guide</sys:String>
@@ -326,9 +330,7 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.Theme">Theme</sys:String>
     <sys:String x:Key="S.Settings.ThemeLight">Light</sys:String>
     <sys:String x:Key="S.Settings.ThemeDark">Dark</sys:String>
-    <!-- Card heading, then the row label inside it -->
     <sys:String x:Key="S.Settings.UiLanguage">Interface language</sys:String>
-    <sys:String x:Key="S.Settings.UiLanguageLabel">Language</sys:String>
 
     <sys:String x:Key="S.Settings.Advanced">Advanced</sys:String>
     <sys:String x:Key="S.Settings.Logging">Logging</sys:String>

@@ -59,6 +59,13 @@ public partial class ShellWindow : Window
     /// <inheritdoc cref="_lastSize"/>
     private static double? _lastSidebarWidth;
 
+    /// <summary>
+    /// The page the shell was last showing, so opening it again lands where the user left off
+    /// rather than always on 文字翻譯.
+    /// </summary>
+    /// <inheritdoc cref="_lastSize"/>
+    private static ShellPage _lastPage = ShellPage.Translation;
+
     private static readonly Duration IndicatorDuration = new(TimeSpan.FromMilliseconds(180));
     private static readonly Duration ContentDuration   = new(TimeSpan.FromMilliseconds(120));
 
@@ -77,8 +84,17 @@ public partial class ShellWindow : Window
     /// Shows the shell on <paramref name="page"/>, creating it if needed, and returns the
     /// live instance so callers can push content into a page.
     /// </summary>
-    public static ShellWindow ShowOrActivate(ShellPage page = ShellPage.Translation)
+    /// <param name="page">
+    /// Where to land, or null for wherever the shell was last left — which is what a plain
+    /// "open the window" means. Callers with something to say pass the page that says it: the
+    /// tray's 設定 item, and the capture flow handing its result to 文字翻譯.
+    /// </param>
+    public static ShellWindow ShowOrActivate(ShellPage? page = null)
     {
+        // Read before the window is built: constructing one mounts a page, which writes _lastPage,
+        // so asking for it after would only ever get back the page the constructor chose.
+        var target = page ?? _lastPage;
+
         if (_instance == null)
         {
             _instance = new ShellWindow();
@@ -89,7 +105,7 @@ public partial class ShellWindow : Window
             _instance.WindowState = WindowState.Normal;
         }
 
-        _instance.Navigate(page);
+        _instance.Navigate(target);
         _instance.RefreshHotkeyHint();
         _instance.RefreshCaptureAvailability();
 
@@ -110,6 +126,10 @@ public partial class ShellWindow : Window
         _instance = this;
         MatchBrandIconToText();
         RefreshHotkeyHint();
+
+        // Subscribed once here rather than per open, so the handler is not stacked up by a user who
+        // opens the service panel more than once.
+        ServiceSettings.Closed += (_, _) => _settingsPage.RefreshServiceTiles();
 
         // Subscribed rather than refreshed on show: a session ending brings this window back with
         // Show(), not through ShowOrActivate, so nothing else would clear the disabled state and
@@ -290,6 +310,7 @@ public partial class ShellWindow : Window
     private void ShowPage(ShellPage page)
     {
         _current = page;
+        _lastPage = page;
 
         // These pages read state that can change while the user is elsewhere: shared translation
         // preferences, the settings file, and attached monitors plus realtime session state.
@@ -399,6 +420,16 @@ public partial class ShellWindow : Window
     }
 
     private void AboutBtn_Click(object sender, RoutedEventArgs e) => About.Open();
+
+    /// <summary>
+    /// Opens the panel holding what one translation service has to be told, over the whole window.
+    /// </summary>
+    /// <remarks>
+    /// Hosted here rather than inside the settings page so the scrim covers the nav rail too. The
+    /// page is told when it closes because what was typed in there is what its service tiles report.
+    /// </remarks>
+    public void OpenServiceSettings(Models.TranslationProvider provider)
+        => ServiceSettings.Open(provider);
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
