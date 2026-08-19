@@ -82,7 +82,11 @@
                                    FontSize="12"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
 
-                        <Separator Style="{StaticResource VerticalSeparator}"/>
+                        <!-- Wider than the shared style's own margin, and equal either side: the
+                             count ends at its last glyph and the tray after the rule starts at its
+                             own fill, so both edges are visible ones and the rule belongs midway
+                             between them. -->
+                        <Separator Style="{StaticResource VerticalSeparator}" Margin="11,0"/>
 
                         <!-- The two buttons the user chooses between while framing, in a tray of their
                              own: whether to keep drawing or to start translating is one decision, and
