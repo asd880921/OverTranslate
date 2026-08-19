@@ -25,9 +25,17 @@
     <SolidColorBrush x:Key="AppTextSecondary"  Color="#AAAAAA"/>
 
     <!-- Accent -->
-    <SolidColorBrush x:Key="AppAccent"         Color="#60CDFF"/>
+    <!-- A step deeper than the #60CDFF this used to be. The accent is filled into large flat areas
+         here — a switch track, a checked box — and a light colour spread over one reads lighter than
+         the same colour does as a word or as a hairline, so the on state came out looking washed
+         rather than on. One token rather than a second brush for the filled case: the places that
+         draw with it are the same places, and a second blue to keep in step with the first is the
+         kind of pair that drifts. Kept to a small step so the accent stays legible where it is text
+         on a dark ground, which is the other half of what it does. Pressed follows it down, or it
+         would no longer read as darker than the resting state it answers. -->
+    <SolidColorBrush x:Key="AppAccent"         Color="#52C4FA"/>
     <SolidColorBrush x:Key="AppAccentHover"    Color="#7AD7FF"/>
-    <SolidColorBrush x:Key="AppAccentPressed"  Color="#4BBFEE"/>
+    <SolidColorBrush x:Key="AppAccentPressed"  Color="#3EB2E6"/>
     <SolidColorBrush x:Key="AppAccentFg"       Color="#000000"/>
 
     <!-- The knob of a switch that is on. White in both themes rather than AppAccentFg,
