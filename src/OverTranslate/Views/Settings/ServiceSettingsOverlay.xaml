@@ -234,12 +234,14 @@
                                            VerticalAlignment="Center"/>
                             </Grid>
 
-                            <!-- Collapsed by default and one level down from the fields above it:
-                                 nothing in here is needed to translate, and a user who never has a
-                                 model that disagrees with the defaults never has to read it. Above
-                                 the prompt rather than after it: the prompt tab is tall enough that
-                                 anything under it is off the bottom of the card. -->
-                            <Button Grid.Column="1" Grid.Row="4"
+                            <!-- Collapsed by default: nothing in here is needed to translate, and a
+                                 user who never has a model that disagrees with the defaults never
+                                 has to read it. Above the prompt rather than after it: the prompt
+                                 tab is tall enough that anything under it is off the bottom of the
+                                 card. Spanning both columns so the chevron starts at the panel's
+                                 left edge — sat in the field column it lines up under the boxes and
+                                 reads as one more part of the model row above it. -->
+                            <Button Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2"
                                     x:Name="OpenAiAdvancedToggle"
                                     Style="{StaticResource FlatButton}"
                                     Background="Transparent"
