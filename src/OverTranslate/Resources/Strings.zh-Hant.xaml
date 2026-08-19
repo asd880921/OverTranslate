@@ -315,9 +315,10 @@
     <sys:String x:Key="S.Settings.ApiBaseUrl">API 位址</sys:String>
     <sys:String x:Key="S.Settings.ModelName">模型名稱</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">本地 LLM (Ollama) 安裝教學</sys:String>
-    <sys:String x:Key="S.Settings.Prompt">提示詞</sys:String>
-    <sys:String x:Key="S.Settings.PromptAuto">自動</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicit">指定語言</sys:String>
+    <sys:String x:Key="S.Settings.PromptAuto">自動翻譯 Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicit">指定語言 Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">正在編輯「自動翻譯 Prompt」，此提示詞只會在來源語言為自動偵測時使用。</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">正在編輯「指定語言 Prompt」，此提示詞只會在指定來源語言時使用。</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">還原預設</sys:String>
     <!-- 例子用的是語言選單裡真正會被代入的名稱（英語 / 日語），不是泛稱 -->
     <!-- 可用參數表。範例用的是語言選單裡真正會被代入的名稱與代碼，不是泛稱 -->

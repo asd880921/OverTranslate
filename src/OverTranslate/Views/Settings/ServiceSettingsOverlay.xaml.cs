@@ -50,9 +50,9 @@ public partial class ServiceSettingsOverlay : UserControl
     private bool _trimmingPrompt;
 
     /// <summary>
-    /// Which of the two prompts the editor is currently holding. Kept alongside the switch's own
-    /// selection because a pending edit has to be written to the prompt it was typed into, even if
-    /// the user has since switched to the other one.
+    /// Which of the two prompts the editor is currently holding. Kept alongside the tab's own
+    /// checked state because a pending edit has to be written to the prompt it was typed into, even
+    /// if the user has since switched to the other tab.
     /// </summary>
     private int _promptSegment = PromptAutoSegment;
 
@@ -460,28 +460,31 @@ public partial class ServiceSettingsOverlay : UserControl
     // ── Prompt editor ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Fills the switch and the editor. Also the language-change path, since the segment labels and
-    /// the built-in wording shown behind an empty box are both localized.
+    /// Fills the tabs and the editor. Also the language-change path, since the note under the tabs
+    /// and the built-in wording shown behind an empty box are both localized.
     /// </summary>
+    /// <remarks>
+    /// Only ever reached with <see cref="_loading"/> set, which is what keeps checking the tab here
+    /// from running <see cref="PromptTab_Checked"/> and reloading the editor a second time.
+    /// </remarks>
     private void LoadPromptEditor(AppSettings s)
     {
-        PromptSwitch.Items.Clear();
-        PromptSwitch.Items.Add(new SegmentedItem(LocalizationService.Get("S.Settings.PromptAuto")));
-        PromptSwitch.Items.Add(new SegmentedItem(LocalizationService.Get("S.Settings.PromptExplicit")));
-        // Not animated: the user has not moved anything, the panel is simply arriving.
-        PromptSwitch.Select(_promptSegment, animate: false);
+        if (_promptSegment == PromptAutoSegment) PromptAutoTab.IsChecked = true;
+        else PromptExplicitTab.IsChecked = true;
 
         PromptBox.Text = _promptSegment == PromptAutoSegment ? s.OpenAiPromptAuto : s.OpenAiPromptExplicit;
         UpdatePromptChrome();
     }
 
-    private void PromptSwitch_SelectionChanged(object? sender, EventArgs e)
+    private void PromptTab_Checked(object sender, RoutedEventArgs e)
     {
+        if (_loading) return;
+
         // The pending edit belongs to the prompt it was typed into, so it is written out before the
         // editor is handed to the other one.
         FlushPromptEdit();
 
-        _promptSegment = PromptSwitch.SelectedIndex;
+        _promptSegment = PromptExplicitTab.IsChecked == true ? PromptExplicitSegment : PromptAutoSegment;
 
         var s = SettingsService.Instance.Current;
         var text = _promptSegment == PromptAutoSegment ? s.OpenAiPromptAuto : s.OpenAiPromptExplicit;
@@ -606,7 +609,10 @@ public partial class ServiceSettingsOverlay : UserControl
     /// </summary>
     private void UpdatePromptChrome()
     {
-        if (PromptSwitch.Items.Count < 2) return;
+        var automatic = _promptSegment == PromptAutoSegment;
+
+        PromptTabHint.Text = LocalizationService.Get(
+            automatic ? "S.Settings.PromptAutoHint" : "S.Settings.PromptExplicitHint");
 
         // Nothing to restore while the built-in one is in use, and a live button that does nothing
         // would be the only control here that lies about having something to do. This reads the
@@ -616,13 +622,11 @@ public partial class ServiceSettingsOverlay : UserControl
 
         PromptPlaceholder.Visibility = PromptBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         WritePlaceholderAware(
-            PromptPlaceholder,
-            OpenAiCompatibleProvider.DefaultPromptTemplate(_promptSegment == PromptAutoSegment));
+            PromptPlaceholder, OpenAiCompatibleProvider.DefaultPromptTemplate(automatic));
 
         // 自動 has no source language, so the two rows describing one would be listing parameters
         // that resolve to nothing. Hidden whole rather than left showing an empty example.
-        var showsSource = _promptSegment != PromptAutoSegment;
-        var sourceRows = showsSource ? Visibility.Visible : Visibility.Collapsed;
+        var sourceRows = automatic ? Visibility.Collapsed : Visibility.Visible;
         ParamRowSourceName.Visibility = sourceRows;
         ParamRowSourceCode.Visibility = sourceRows;
     }

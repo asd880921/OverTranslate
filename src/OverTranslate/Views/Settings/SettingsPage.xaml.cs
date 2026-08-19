@@ -564,6 +564,12 @@ public partial class SettingsPage : UserControl
 
         field.Box.Text = field.Display(SettingsService.Instance.Current);
         _recording = null;
+
+        // The box asks to be pressed by being focused, so it has to stop being focused once it has
+        // been: a box left carrying the focus ring after the shortcut is taken reads as still
+        // waiting for one. Only when the focus is still here — the path in from LostFocus runs
+        // after the user has already put it somewhere else, and clearing then would take it back.
+        if (field.Box.IsKeyboardFocused) Keyboard.ClearFocus();
     }
 
     /// <summary>

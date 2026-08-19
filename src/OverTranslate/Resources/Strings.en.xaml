@@ -298,9 +298,10 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.ApiBaseUrl">API URL</sys:String>
     <sys:String x:Key="S.Settings.ModelName">Model</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">Local LLM (Ollama) setup guide</sys:String>
-    <sys:String x:Key="S.Settings.Prompt">Prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptAuto">Automatic</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicit">Chosen language</sys:String>
+    <sys:String x:Key="S.Settings.PromptAuto">Auto-detect prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicit">Chosen-language prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">You are editing the auto-detect prompt. It is used only when the source language is set to auto-detect.</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">You are editing the chosen-language prompt. It is used only when a source language is chosen.</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">Reset to default</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">Available parameters</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">Write these into the prompt; each is replaced with the language actually in use before the request is sent, so one prompt serves every language pair.</sys:String>
