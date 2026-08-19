@@ -437,11 +437,11 @@
                                     <Grid Grid.Column="0" Grid.Row="0"
                                           Width="48" Height="48"
                                           VerticalAlignment="Center"
-                                          Margin="0,0,12,0">
+                                          Margin="0,0,6,0">
                                         <Path Data="{StaticResource DeepLMarkGeometry}"
                                               Fill="{DynamicResource AppDeepLMark}"
                                               Stretch="Uniform"
-                                              Width="36"/>
+                                              Width="32"/>
                                     </Grid>
 
                                     <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
@@ -482,7 +482,7 @@
                                     <Grid Grid.Column="0" Grid.Row="0"
                                           Width="48" Height="48"
                                           VerticalAlignment="Center"
-                                          Margin="0,0,12,0">
+                                          Margin="0,0,6,0">
                                         <!-- Wider than the DeepL mark on purpose. That one is a
                                              solid shape that fills its box; this one is thin open
                                              strokes with most of its box empty, and its widest
@@ -493,7 +493,7 @@
                                         <Path Data="{StaticResource OpenAiMarkGeometry}"
                                               Fill="{DynamicResource AppOpenAiMark}"
                                               Stretch="Uniform"
-                                              Width="40"/>
+                                              Width="36"/>
                                     </Grid>
 
                                     <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
