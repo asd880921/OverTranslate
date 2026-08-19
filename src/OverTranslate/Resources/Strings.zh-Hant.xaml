@@ -103,6 +103,16 @@
     <sys:String x:Key="S.Toolbar.ShowTranslation">顯示譯文</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">截圖</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">開啟翻譯視窗</sys:String>
+    <sys:String x:Key="S.Toolbar.Swap">對調原文與譯文語言</sys:String>
+    <sys:String x:Key="S.Toolbar.Close">結束截圖翻譯</sys:String>
+    <sys:String x:Key="S.Toolbar.Speak">朗讀</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakStopLabel">停止</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakHint">朗讀辨識到的原文</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakStop">停止朗讀</sys:String>
+    <!-- 朗讀鈕在自動模式下是停用的，這句就是使用者唯一能得知原因的地方－－辨識可以在「自動」下進行，
+         因為它是對看得見的字形做選擇；聲音沒有東西可以看。 -->
+    <sys:String x:Key="S.Toolbar.SpeakAutomatic">原文語言為「自動」時無法朗讀，請先選擇實際的語言</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakNoText">尚未辨識到可朗讀的文字</sys:String>
     <sys:String x:Key="S.Toolbar.BackupBadge">⚡備援 {0}</sys:String>
     <sys:String x:Key="S.Toolbar.BackupTooltip">「{0}」未能完整翻譯，已由備援「{1}」進行部分翻譯。
 本次實際翻譯：{2}</sys:String>
@@ -145,6 +155,8 @@
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">已複製到剪貼簿，但無法儲存到本機：{0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">複製失敗</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">無法複製截圖：{0}</sys:String>
+    <sys:String x:Key="S.Main.SpeakFailedTitle">朗讀失敗</sys:String>
+    <sys:String x:Key="S.Main.SpeakFailedBody">無法朗讀這段文字：{0}</sys:String>
 
     <!-- ── Realtime translation ── -->
     <sys:String x:Key="S.Realtime.Title">即時翻譯</sys:String>

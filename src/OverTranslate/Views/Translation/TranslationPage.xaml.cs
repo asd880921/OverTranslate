@@ -343,8 +343,8 @@ public partial class TranslationPage : UserControl
     /// Icon-font glyphs rather than the emoji these used to be, so that they share a vertical axis
     /// with the clear button beside them — see the comment on the 原文 header in the XAML.
     /// </remarks>
-    private const string SpeakerGlyph = "\uE767";
-    private const string StopGlyph = "\uE71A";
+    private const string SpeakerGlyph = Views.Controls.TtsGlyphs.Speak;
+    private const string StopGlyph = Views.Controls.TtsGlyphs.Stop;
 
     private void UpdateTtsIcons()
     {

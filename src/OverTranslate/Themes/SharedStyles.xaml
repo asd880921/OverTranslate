@@ -1148,8 +1148,136 @@
     <!--  TOOLBAR VARIANTS (compact height=28)       -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="ToolbarComboBox" TargetType="ComboBox" BasedOn="{StaticResource ModernComboBox}">
-        <Setter Property="Height"      Value="28"/>
-        <Setter Property="FontSize"    Value="12"/>
+        <Setter Property="Height"      Value="34"/>
+        <Setter Property="FontSize"    Value="12.5"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  CAPTURE TOOLBAR                            -->
+    <!-- ═══════════════════════════════════════════ -->
+
+    <!-- The one button on the capture toolbar that starts work. A full-radius pill rather than the
+         6px corner every other button here has: colour alone stopped separating it once the actions
+         beside it grew their own icons, and shape survives being looked at out of the corner of an
+         eye, which is how a bar floating over the user's own screen is read. -->
+    <Style x:Key="ToolbarPrimaryButton" TargetType="Button" BasedOn="{StaticResource AccentButton}">
+        <Setter Property="Height"   Value="38"/>
+        <Setter Property="Padding"  Value="16,0"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="19"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentPressed}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A secondary action on the capture toolbar: its icon over its name, both centred. The label
+         stays because none of these icons is standard enough to be read cold — and a toolbar the
+         user meets mid-task, over their own screen, is the wrong place to make them hover to find
+         out. The icon carries the accent and the label stays plain text, so a row of them reads as
+         one rhythm instead of four coloured words. -->
+    <Style x:Key="ToolbarStackButton" TargetType="Button">
+        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"        Value="11.5"/>
+        <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="MinWidth"        Value="54"/>
+        <Setter Property="Height"          Value="46"/>
+        <Setter Property="Padding"         Value="8,0"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="9"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonPressedBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The same shape on a raised surface, for the one secondary action that ends the capture
+         session rather than acting inside it. Given an edge of its own so that leaving is not one
+         more thing in the row of things that stay. -->
+    <Style x:Key="ToolbarStackRaisedButton" TargetType="Button" BasedOn="{StaticResource ToolbarStackButton}">
+        <Setter Property="Background"      Value="{DynamicResource ToolbarGroupBg}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource ToolbarBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding"         Value="12,0"/>
+        <!-- Its own template, for the same reason ToastIconButton has one: BasedOn cannot reach the
+             hover and pressed brushes named inside the inherited one, and the bar's steps are
+             measured against the bar — against this raised surface the light theme's would be a
+             four-value change nobody can see. -->
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="9"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource ToolbarGroupHoverBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource ToolbarGroupPressedBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="ToolbarFlatButton" TargetType="Button" BasedOn="{StaticResource FlatButton}">

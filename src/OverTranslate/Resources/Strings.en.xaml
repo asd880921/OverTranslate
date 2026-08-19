@@ -98,6 +98,14 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Toolbar.ShowTranslation">Show translation</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">Screenshot</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">Open in window</sys:String>
+    <sys:String x:Key="S.Toolbar.Swap">Swap source and target languages</sys:String>
+    <sys:String x:Key="S.Toolbar.Close">End screenshot translation</sys:String>
+    <sys:String x:Key="S.Toolbar.Speak">Speak</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakStopLabel">Stop</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakHint">Read the recognised source text aloud</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakStop">Stop reading</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakAutomatic">Cannot read aloud while the source language is Automatic. Choose the actual language first.</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakNoText">No recognised text to read yet</sys:String>
     <sys:String x:Key="S.Toolbar.BackupBadge">⚡Backup {0}</sys:String>
     <sys:String x:Key="S.Toolbar.BackupTooltip">"{0}" could not translate everything, so "{1}" filled in the rest.
 Actually used this time: {2}</sys:String>
@@ -139,6 +147,8 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">Copied to the clipboard, but could not be saved: {0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">Copy failed</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">Could not copy the screenshot: {0}</sys:String>
+    <sys:String x:Key="S.Main.SpeakFailedTitle">Could not read aloud</sys:String>
+    <sys:String x:Key="S.Main.SpeakFailedBody">This text could not be read aloud: {0}</sys:String>
 
     <!-- ── Realtime translation ── -->
     <sys:String x:Key="S.Realtime.Title">Realtime translation</sys:String>

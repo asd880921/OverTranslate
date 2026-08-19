@@ -15,44 +15,53 @@
         <Border Background="{DynamicResource ToolbarBg}"
                 BorderBrush="{DynamicResource ToolbarBorder}"
                 BorderThickness="1"
-                CornerRadius="10"
-                Padding="8,5">
+                CornerRadius="18"
+                Padding="10,8">
             <Border.Effect>
                 <!-- Shadow color is black in both themes; hardcoded avoids Freezable binding edge cases -->
-                <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.18" Color="#000000"/>
+                <DropShadowEffect BlurRadius="22" ShadowDepth="4" Opacity="0.22" Color="#000000"/>
             </Border.Effect>
 
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
 
-                <!-- Source language (140px — fits longest entry + arrow) -->
+                <!-- Marks the pair that follows as the languages, so neither picker has to carry the
+                     word. Muted rather than accent: it names a group, it is not something to press. -->
+                <TextBlock Text="&#xE774;"
+                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                           FontSize="15"
+                           Margin="4,0,8,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource AppTextSecondary}"/>
+
+                <!-- Source language (140px - fits longest entry + arrow) -->
                 <ComboBox x:Name="SrcLangBox"
                           Style="{StaticResource ToolbarComboBox}"
                           Width="140"
-                          
                           SelectedValuePath="Code"
                           VerticalContentAlignment="Center"/>
 
                 <!-- Swap -->
-                <Button Content="⇄"
+                <Button Content="&#xE8AB;"
                         Style="{StaticResource ToolbarIconButton}"
-                        Margin="2,0"
+                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                        FontSize="15"
+                        Margin="4,0"
+                        ToolTip="{DynamicResource S.Toolbar.Swap}"
+                        AutomationProperties.Name="{DynamicResource S.Toolbar.Swap}"
                         Click="SwapBtn_Click"/>
 
                 <!-- Target language -->
                 <ComboBox x:Name="TgtLangBox"
                           Style="{StaticResource ToolbarComboBox}"
                           Width="140"
-                          
+                          Margin="0,0,8,0"
                           SelectedValuePath="Code"
                           VerticalContentAlignment="Center"/>
 
-                <Separator Style="{StaticResource VerticalSeparator}"/>
-
-                <!-- Provider (longest entry is "DeepL 翻譯（需 API Key）" ≈ 145px) -->
+                <!-- Provider -->
                 <ComboBox x:Name="ProviderBox"
                           Style="{StaticResource ToolbarComboBox}"
                           Width="150"
-
                           SelectedValuePath="Provider"
                           VerticalContentAlignment="Center"/>
 
@@ -72,42 +81,110 @@
                                VerticalAlignment="Center"/>
                 </Border>
 
-                <Separator Style="{StaticResource VerticalSeparator}"/>
+                <!-- No rule between the settings and the actions: the gap says it, and a bar this
+                     wide floating over the user's own screen does not need more lines drawn on it. -->
 
                 <!-- Translate -->
                 <Button x:Name="TranslateBtn"
-                        Content="{DynamicResource S.Toolbar.Translate}"
-                        Style="{StaticResource ToolbarAccentButton}"
-                        Margin="0,0,4,0"
-                        Click="TranslateBtn_Click"/>
+                        Style="{StaticResource ToolbarPrimaryButton}"
+                        Margin="14,0,10,0"
+                        Click="TranslateBtn_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Drawn rather than typed: there is no sparkle in Segoe MDL2, which is all
+                             Windows 10 has, and a missing glyph on the primary button is the worst
+                             place for one. -->
+                        <Path Width="14" Height="14"
+                              Stretch="None"
+                              VerticalAlignment="Center"
+                              Margin="0,0,7,0"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              Data="M7,0.6 C7.7,4.2 9.8,6.3 13.4,7 C9.8,7.7 7.7,9.8 7,13.4 C6.3,9.8 4.2,7.7 0.6,7 C4.2,6.3 6.3,4.2 7,0.6 Z M12.1,9.6 C12.3,10.8 12.6,11.1 13.8,11.3 C12.6,11.5 12.3,11.8 12.1,13 C11.9,11.8 11.6,11.5 10.4,11.3 C11.6,11.1 11.9,10.8 12.1,9.6 Z"/>
+                        <TextBlock x:Name="TranslateLabel"
+                                   VerticalAlignment="Center"
+                                   Text="{DynamicResource S.Toolbar.Translate}"/>
+                    </StackPanel>
+                </Button>
 
                 <!-- Toggle original / translated bubbles -->
                 <Button x:Name="ToggleBtn"
-                        Content="{DynamicResource S.Toolbar.ShowSource}"
-                        Style="{StaticResource ToolbarFlatButton}"
+                        Style="{StaticResource ToolbarStackButton}"
                         IsEnabled="False"
-                        Margin="0,0,4,0"
-                        Click="ToggleBtn_Click"/>
+                        Click="ToggleBtn_Click">
+                    <StackPanel>
+                        <TextBlock Text="&#xE890;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource AppAccent}"/>
+                        <TextBlock x:Name="ToggleLabel"
+                                   Margin="0,3,0,0"
+                                   HorizontalAlignment="Center"
+                                   Text="{DynamicResource S.Toolbar.ShowSource}"/>
+                    </StackPanel>
+                </Button>
 
-                <!-- Copy current selection screenshot to clipboard (subtle accent: tonal, not primary) -->
+                <!-- Reads the recognised source text aloud. The whole text at once, not block by
+                     block: the blocks are how the picture was cut up for recognition, not how the
+                     sentence was written, and read one at a time they come out as fragments. Same
+                     text the translation window is opened with. -->
+                <Button x:Name="TtsBtn"
+                        Style="{StaticResource ToolbarStackButton}"
+                        IsEnabled="False"
+                        Click="TtsBtn_Click">
+                    <StackPanel>
+                        <TextBlock x:Name="TtsGlyph"
+                                   Text="&#xE767;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource AppAccent}"/>
+                        <TextBlock x:Name="TtsLabel"
+                                   Margin="0,3,0,0"
+                                   HorizontalAlignment="Center"
+                                   Text="{DynamicResource S.Toolbar.Speak}"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Copy current selection screenshot to clipboard -->
                 <Button x:Name="CopyShotBtn"
-                        Content="{DynamicResource S.Toolbar.Screenshot}"
-                        Style="{StaticResource ToolbarSubtleAccentButton}"
-                        Margin="0,0,4,0"
-                        Click="CopyShotBtn_Click"/>
+                        Style="{StaticResource ToolbarStackButton}"
+                        Click="CopyShotBtn_Click">
+                    <StackPanel>
+                        <TextBlock Text="&#xE8FF;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource AppAccent}"/>
+                        <TextBlock Margin="0,3,0,0"
+                                   HorizontalAlignment="Center"
+                                   Text="{DynamicResource S.Toolbar.Screenshot}"/>
+                    </StackPanel>
+                </Button>
 
                 <!-- Open translation window -->
                 <Button x:Name="OpenWindowBtn"
-                        Content="{DynamicResource S.Toolbar.OpenWindow}"
-                        Style="{StaticResource ToolbarFlatButton}"
-                        Margin="0,0,4,0"
-                        Click="OpenWindowBtn_Click"/>
+                        Style="{StaticResource ToolbarStackRaisedButton}"
+                        Margin="8,0,0,0"
+                        Click="OpenWindowBtn_Click">
+                    <StackPanel>
+                        <TextBlock Text="&#xE8A7;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource AppAccent}"/>
+                        <TextBlock Margin="0,3,0,0"
+                                   HorizontalAlignment="Center"
+                                   Text="{DynamicResource S.Toolbar.OpenWindow}"/>
+                    </StackPanel>
+                </Button>
 
-                <Separator Style="{StaticResource VerticalSeparator}"/>
-
-                <!-- Close -->
-                <Button Content="✕"
+                <!-- Close, set apart by the gap: everything left of it acts inside the session. -->
+                <Button Content="&#x2715;"
                         Style="{StaticResource ToolbarIconButton}"
+                        Width="34" Height="34"
+                        Margin="12,0,0,0"
+                        ToolTip="{DynamicResource S.Toolbar.Close}"
+                        AutomationProperties.Name="{DynamicResource S.Toolbar.Close}"
                         Click="CloseBtn_Click"/>
 
             </StackPanel>
