@@ -241,7 +241,9 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Realtime.ChooseWindowFirst">Choose the window to translate first</sys:String>
     <sys:String x:Key="S.Realtime.WindowCaptureUnsupported">This PC cannot capture a window (Windows 10 1903 or later is required) - use the whole screen instead</sys:String>
     <sys:String x:Key="S.Realtime.WindowCaptureGone">That window has closed or been minimised - refresh the list and pick it again</sys:String>
-    <sys:String x:Key="S.Realtime.WindowCaptureFailed">That window cannot be captured, which usually means a game in exclusive fullscreen. Use the whole screen instead</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFailed">That window cannot be captured - pick another window and try again</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFullscreen">That program is presenting in exclusive fullscreen, which cannot be captured. Set its display mode to windowed or borderless window and try again</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureNoFrame">That window sent no picture at all. A game running fullscreen is the usual cause - set its display mode to windowed or borderless window and try again. If every window behaves this way, please report it with app.log attached</sys:String>
     <sys:String x:Key="S.Realtime.SessionEndedTitle">Realtime translation ended</sys:String>
     <sys:String x:Key="S.Realtime.RemoveBlock">Remove this block</sys:String>
 
