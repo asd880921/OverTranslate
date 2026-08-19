@@ -126,7 +126,7 @@ public partial class App
         catch { /* event disposed on exit — normal shutdown */ }
     }
 
-    internal static void ShowOrActivateShell() => ShellWindow.ShowOrActivate(ShellPage.Translation);
+    internal static void ShowOrActivateShell() => ShellWindow.ShowOrActivate();
 
     protected override void OnExit(ExitEventArgs e)
     {

@@ -959,8 +959,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Opens the translation window, or — while a realtime session owns the screen — puts its
-    /// layers back on top instead.
+    /// Opens the shell, or — while a realtime session owns the screen — puts its layers back on
+    /// top instead.
     /// </summary>
     /// <remarks>
     /// The window is no use during a session: the layers cover the screen and the session's own
@@ -977,11 +977,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        OpenTranslationWindow();
+        OpenShell();
     }
 
-    private static void OpenTranslationWindow() =>
-        ShellWindow.ShowOrActivate(ShellPage.Translation);
+    /// <remarks>
+    /// No page named: both ways in here — this shortcut and the tray's left click — mean "show me
+    /// the window", so it opens on whichever page it was last left on.
+    /// </remarks>
+    private static void OpenShell() => ShellWindow.ShowOrActivate();
 
     private void ExitApp()
     {
