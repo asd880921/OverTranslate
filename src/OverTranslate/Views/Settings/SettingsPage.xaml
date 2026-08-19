@@ -159,10 +159,20 @@
                         <Border Style="{StaticResource HotkeyRow}">
                             <StackPanel>
                                 <Grid>
+                                    <!-- The shortcut box grows with the window rather than sitting
+                                         at a fixed width: while recording it holds a whole sentence
+                                         asking for a key, which no width that also suits a card
+                                         beside another card can show in full. MinWidth is on the
+                                         column, not the box — a star column will squeeze a child
+                                         past its own minimum and clip it, and the three rows have
+                                         to keep ending at the same place. The description carries a
+                                         minimum for the same reason: two star columns competing at
+                                         the narrowest window drove it to zero, and a wrapping block
+                                         given no width wraps into nothing. -->
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*" MinWidth="128"/>
+                                        <ColumnDefinition Width="*" MinWidth="140"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                     </Grid.ColumnDefinitions>
 
@@ -179,7 +189,6 @@
 
                                     <TextBox Grid.Column="2" x:Name="HotkeyBox"
                                              Style="{StaticResource HotkeyBox}"
-                                             Width="140"
                                              PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                              PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                              GotFocus="HotkeyBox_GotFocus"
@@ -194,10 +203,20 @@
                         <Border Style="{StaticResource HotkeyRow}">
                             <StackPanel>
                                 <Grid>
+                                    <!-- The shortcut box grows with the window rather than sitting
+                                         at a fixed width: while recording it holds a whole sentence
+                                         asking for a key, which no width that also suits a card
+                                         beside another card can show in full. MinWidth is on the
+                                         column, not the box — a star column will squeeze a child
+                                         past its own minimum and clip it, and the three rows have
+                                         to keep ending at the same place. The description carries a
+                                         minimum for the same reason: two star columns competing at
+                                         the narrowest window drove it to zero, and a wrapping block
+                                         given no width wraps into nothing. -->
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*" MinWidth="128"/>
+                                        <ColumnDefinition Width="*" MinWidth="140"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                     </Grid.ColumnDefinitions>
 
@@ -214,7 +233,6 @@
 
                                     <TextBox Grid.Column="2" x:Name="WindowHotkeyBox"
                                              Style="{StaticResource HotkeyBox}"
-                                             Width="140"
                                              PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                              PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                              GotFocus="HotkeyBox_GotFocus"
@@ -247,10 +265,20 @@
                         <Border Style="{StaticResource HotkeyRow}">
                             <StackPanel>
                                 <Grid>
+                                    <!-- The shortcut box grows with the window rather than sitting
+                                         at a fixed width: while recording it holds a whole sentence
+                                         asking for a key, which no width that also suits a card
+                                         beside another card can show in full. MinWidth is on the
+                                         column, not the box — a star column will squeeze a child
+                                         past its own minimum and clip it, and the three rows have
+                                         to keep ending at the same place. The description carries a
+                                         minimum for the same reason: two star columns competing at
+                                         the narrowest window drove it to zero, and a wrapping block
+                                         given no width wraps into nothing. -->
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*" MinWidth="128"/>
+                                        <ColumnDefinition Width="*" MinWidth="140"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                     </Grid.ColumnDefinitions>
 
@@ -267,7 +295,6 @@
 
                                     <TextBox Grid.Column="2" x:Name="RealtimePauseHotkeyBox"
                                              Style="{StaticResource HotkeyBox}"
-                                             Width="140"
                                              PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                              PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                              GotFocus="HotkeyBox_GotFocus"
