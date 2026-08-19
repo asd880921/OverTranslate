@@ -47,31 +47,35 @@
         </Style>
 
         <!-- ══════════ Advanced toggle ══════════ -->
-        <!-- Its own template rather than FlatButton, whose content presenter is centred: the label
-             and the chevron have to be pushed to opposite ends of the row, which a presenter sized
-             to its content cannot do however the button itself is aligned. -->
+        <!-- Nothing is painted under the pointer, only the words brighten: this sits alone between
+             the fields and the prompt, and a filled box coming up around two characters there reads
+             as damage rather than as a control. Its own template because FlatButton is built the
+             other way round — a surface that fills. -->
         <Style x:Key="AdvancedToggleRow" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Cursor"     Value="Hand"/>
-            <Setter Property="Height"     Value="34"/>
-            <Setter Property="Padding"    Value="8,0"/>
+            <Setter Property="FontFamily"          Value="{StaticResource AppFont}"/>
+            <Setter Property="FontSize"            Value="{StaticResource AppFontSize}"/>
+            <Setter Property="Foreground"          Value="{DynamicResource AppTextSecondary}"/>
+            <Setter Property="Background"          Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Cursor"              Value="Hand"/>
+            <Setter Property="Height"              Value="30"/>
+            <Setter Property="Padding"             Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Root"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6"
+                        <!-- Transparent rather than left unpainted: an unpainted Border is only
+                             hit-testable where its child's own strokes are, so the pointer would
+                             find the row between the letters and nowhere else. -->
+                        <Border Background="{TemplateBinding Background}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background"
-                                        Value="{DynamicResource AppButtonHoverBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background"
-                                        Value="{DynamicResource AppButtonPressedBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -271,37 +275,30 @@
                                  user who never has a model that disagrees with the defaults never
                                  has to read it. Above the prompt rather than after it: the prompt
                                  tab is tall enough that anything under it is off the bottom of the
-                                 card. Spanning both columns so the chevron starts at the panel's
-                                 left edge — sat in the field column it lines up under the boxes and
+                                 card. Spanning both columns so the word starts at the panel's left
+                                 edge — sat in the field column it lines up under the boxes and
                                  reads as one more part of the model row above it. -->
-                            <!-- The whole width, not a pill around the word: sized to its content
-                                 the highlight that comes up under the pointer is a small block
-                                 floating mid-panel, which reads as something having gone wrong
-                                 rather than as a row waiting to be pressed. The negative margins
-                                 let that highlight reach the edges of the fields above, out to
-                                 where the ScrollViewer's own padding starts. -->
                             <Button Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2"
                                     x:Name="OpenAiAdvancedToggle"
                                     Style="{StaticResource AdvancedToggleRow}"
-                                    Margin="-8,12,-8,0"
+                                    Margin="0,12,0,0"
                                     Click="OpenAiAdvancedToggle_Click">
-                                <Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- The word carries no colour of its own so it follows the
+                                         button's, which is what the hover and the press change. -->
                                     <TextBlock Text="{DynamicResource S.Settings.OpenAiAdvanced}"
-                                               FontFamily="{StaticResource AppFont}"
-                                               FontSize="{StaticResource AppFontSize}"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               HorizontalAlignment="Left"
                                                VerticalAlignment="Center"/>
                                     <!-- Drawn rather than set in an icon font, for the same reason
                                          the guide's book above is: the glyph fonts are not on every
-                                         supported build, and a missing chevron reads as damage. -->
+                                         supported build, and a missing chevron reads as damage.
+                                         Stroke follows the button for the same reason the word's
+                                         colour does — a Path inherits neither. -->
                                     <Path x:Name="OpenAiAdvancedChevron"
                                           Width="9" Height="6"
-                                          HorizontalAlignment="Right"
                                           VerticalAlignment="Center"
                                           Margin="8,1,0,0"
                                           Stretch="Uniform"
-                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                           StrokeThickness="1.4"
                                           StrokeStartLineCap="Round"
                                           StrokeEndLineCap="Round"
@@ -312,7 +309,7 @@
                                             <RotateTransform x:Name="OpenAiAdvancedChevronRotation"/>
                                         </Path.RenderTransform>
                                     </Path>
-                                </Grid>
+                                </StackPanel>
                             </Button>
 
                             <!-- Clipped so the content can be animated out of a zero height rather
