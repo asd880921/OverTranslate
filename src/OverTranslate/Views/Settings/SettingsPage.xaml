@@ -179,7 +179,7 @@
 
                                     <TextBox Grid.Column="2" x:Name="HotkeyBox"
                                              Style="{StaticResource HotkeyBox}"
-                                             Width="150"
+                                             Width="140"
                                              PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                              PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                              GotFocus="HotkeyBox_GotFocus"
@@ -214,7 +214,7 @@
 
                                     <TextBox Grid.Column="2" x:Name="WindowHotkeyBox"
                                              Style="{StaticResource HotkeyBox}"
-                                             Width="150"
+                                             Width="140"
                                              PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                              PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                              GotFocus="HotkeyBox_GotFocus"
@@ -267,7 +267,7 @@
 
                                     <TextBox Grid.Column="2" x:Name="RealtimePauseHotkeyBox"
                                              Style="{StaticResource HotkeyBox}"
-                                             Width="150"
+                                             Width="140"
                                              PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                                              PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                                              GotFocus="HotkeyBox_GotFocus"

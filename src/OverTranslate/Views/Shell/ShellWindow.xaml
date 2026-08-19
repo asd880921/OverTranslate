@@ -4,7 +4,7 @@
         xmlns:shell="clr-namespace:OverTranslate.Views.Shell"
         xmlns:settings="clr-namespace:OverTranslate.Views.Settings"
         Title="OverTranslate"
-        Width="1080" Height="640"
+        Width="1200" Height="720"
         MinWidth="840" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
@@ -19,7 +19,7 @@
                  MinWidth still fits an icon and a short label; MaxWidth stops the rail from
                  eating the page beside it. -->
             <ColumnDefinition x:Name="SidebarColumn"
-                              Width="240" MinWidth="200" MaxWidth="380"/>
+                              Width="220" MinWidth="180" MaxWidth="300"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 

@@ -275,15 +275,15 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with any key, or be a single function key, the middle mouse button, or a gamepad button.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+F2, F8, middle mouse. On its own, a key has to be a function key; middle mouse and the gamepad leave the game's own input alone.</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>
-    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">Pause or resume the running [[realtime translation]]</sys:String>
-    <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">"Pause / resume" only works while realtime translation is running.</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">Pause or resume [[realtime translation]]</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">"Pause / resume" only works while realtime translation is running. (a way to read the original text)</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ A single key can only be F1–F24, Pause or Scroll Lock — other keys need Ctrl/Alt/Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkey">Capture</sys:String>
     <sys:String x:Key="S.Settings.CaptureHotkeyHint">Press this shortcut to start a [[screen capture translation]]</sys:String>
     <sys:String x:Key="S.Settings.WindowHotkey">Open window</sys:String>
-    <sys:String x:Key="S.Settings.WindowHotkeyHint">Opens the [[translation window]]</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkeyHint">Press this shortcut to open the [[translation window]]</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslate">Auto</sys:String>
     <sys:String x:Key="S.Settings.AutoTranslateCheck">Translate as soon as a screen capture region is selected, with nothing left to click.</sys:String>
     <sys:String x:Key="S.Settings.Startup">Startup</sys:String>
