@@ -88,11 +88,26 @@
                               StrokeLineJoin="Round"/>
                     </Button>
 
+                    <!-- Icon-only like the rest of the row, but still the accent one: it is the only
+                         thing on this bar the user is meant to press when they are done framing.
+                         A solid triangle, not the outline the pause button's resume state uses —
+                         white outline on a filled accent square reads thin, and the two are never on
+                         screen together to be confused. Drawn rather than typed for the same reason
+                         as the crosshair beside it: the solid play glyph (F5B0) only exists in Segoe
+                         Fluent Icons, which Windows 10 does not ship, and there it would fall back to
+                         MDL2 and come out as a missing-glyph box. The nose sits a touch right of the
+                         box's centre, where a triangle looks centred rather than measuring so. -->
                     <Button x:Name="StartBtn"
-                            Content="{DynamicResource S.Realtime.StartTranslating}"
-                            Style="{StaticResource ToolbarAccentButton}"
+                            Style="{StaticResource ToolbarAccentIconButton}"
                             Margin="0,0,4,0"
-                            Click="StartBtn_Click"/>
+                            ToolTip="{DynamicResource S.Realtime.StartTranslating}"
+                            AutomationProperties.Name="{DynamicResource S.Realtime.StartTranslating}"
+                            Click="StartBtn_Click">
+                        <Path Width="16" Height="16"
+                              Stretch="None"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              Data="M5.8,2.6 L13.4,8 L5.8,13.4 Z"/>
+                    </Button>
 
                     <Button Content="✕"
                             Style="{StaticResource ToolbarIconButton}"

@@ -1170,6 +1170,15 @@
         <Setter Property="FontSize"    Value="13"/>
     </Style>
 
+    <!-- A primary action reduced to its icon: same square as ToolbarIconButton so it sits in the row
+         without breaking its rhythm, but keeping the accent fill, because losing the label is not the
+         same as stepping down from being the one thing on the bar to press. -->
+    <Style x:Key="ToolbarAccentIconButton" TargetType="Button" BasedOn="{StaticResource ToolbarAccentButton}">
+        <Setter Property="Width"       Value="28"/>
+        <Setter Property="Height"      Value="28"/>
+        <Setter Property="Padding"     Value="0"/>
+    </Style>
+
     <!-- The toast is dark in both themes, so its buttons need their own brushes rather than the
          themed ones IconButton carries. Its template is repeated instead of inherited because
          BasedOn cannot reach the hover and pressed brushes named inside that template. -->
