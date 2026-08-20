@@ -41,9 +41,9 @@ public partial class SettingsPage : UserControl
     /// — the one place that decides which of two shortcuts sharing a combination stays on.
     /// </param>
     /// <param name="AdvertisedInShell">
-    /// Whether the shell's nav rail prints this combination beside a button, and so has to be told
-    /// when it changes. True for the capture shortcut, which the interface names in three places;
-    /// false for the other shortcuts, which it names nowhere.
+    /// Whether the shell's nav rail prints this combination beside a 快速工具 row, and so has to be
+    /// told when it changes. True for the two shortcuts those rows name; false for the rest, which
+    /// the interface names nowhere.
     /// </param>
     /// <remarks>
     /// There is no record button in the record because there is none on the page: the box is
@@ -110,7 +110,7 @@ public partial class SettingsPage : UserControl
                 s => s.QuickLookupHotkeyDisplay,
                 s => HotkeyBindings.TriggerFor(s, HotkeyAction.QuickLookup),
                 ApplyQuickLookupTrigger,
-                AdvertisedInShell: false,
+                AdvertisedInShell: true,
                 QuickLookupHotkeyEnabledCheckBox,
                 (s, on) => s.QuickLookupHotkeyEnabled = on,
                 QuickLookupHotkeyEnabledLabel),
@@ -500,6 +500,11 @@ public partial class SettingsPage : UserControl
         // a switch that takes effect later is worse than no switch.
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();
+
+        // A row the rail advertises drops its combination when it is switched off, so the rail is
+        // as wrong after a tick as it is after a re-record.
+        if (field.AdvertisedInShell && Window.GetWindow(this) is Shell.ShellWindow shell)
+            shell.RefreshHotkeyHints();
     }
 
     private static void ApplyCaptureTrigger(AppSettings s, ShortcutTrigger trigger, string display)
@@ -772,10 +777,10 @@ public partial class SettingsPage : UserControl
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.ReRegisterHotkey();
 
-        // The nav rail advertises the capture shortcut beside 截圖翻譯 and is on screen right now, so
-        // it has to be told; nothing else re-reads it until the shell is next shown or activated. The
+        // The nav rail advertises these beside 截圖翻譯 and 取詞翻譯 and is on screen right now, so it
+        // has to be told; nothing else re-reads them until the shell is next shown or activated. The
         // other shortcuts are advertised nowhere, so there is nothing to refresh.
         if (recording.AdvertisedInShell && Window.GetWindow(this) is Shell.ShellWindow shell)
-            shell.RefreshHotkeyHint();
+            shell.RefreshHotkeyHints();
     }
 }

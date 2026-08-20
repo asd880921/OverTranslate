@@ -14,11 +14,14 @@
 
     <!-- ── Shell window ── -->
     <sys:String x:Key="S.Shell.About">關於</sys:String>
+    <sys:String x:Key="S.Shell.QuickTools">快速工具</sys:String>
     <sys:String x:Key="S.Shell.CaptureTranslate">截圖翻譯</sys:String>
+    <sys:String x:Key="S.Shell.QuickLookup">取詞翻譯</sys:String>
     <sys:String x:Key="S.Shell.TextTranslate">文字翻譯</sys:String>
     <sys:String x:Key="S.Shell.RealtimeTranslate">即時翻譯</sys:String>
     <sys:String x:Key="S.Shell.Settings">設定</sys:String>
     <sys:String x:Key="S.Shell.CaptureBlockedByRealtime">即時翻譯進行中，請先結束後再使用截圖翻譯</sys:String>
+    <sys:String x:Key="S.Shell.QuickLookupBlockedByRealtime">即時翻譯進行中，請先結束後再使用取詞翻譯</sys:String>
     <sys:String x:Key="S.Shell.UpdateAvailable">可更新至 v{0}</sys:String>
 
     <!-- ── Tray menu ── -->

@@ -1565,6 +1565,88 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->
+    <!--  SHELL SURFACES                             -->
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- The two panels the shell window is built from: the nav rail and the page. Both are cards
+         floating on the window's own surface with a gap between them, rather than two regions
+         meeting at a seam — so no edge here is ever drawn on the side that faces the other panel,
+         and the boundary the user sees is the gap itself.
+
+         Opaque, not tinted: the page card is what the content transition's bitmap cache renders
+         into, and ClearType cannot run over a surface WPF believes may be transparent. -->
+    <Style x:Key="ShellCard" TargetType="Border">
+        <Setter Property="Background"      Value="{DynamicResource AppCardBg}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="10"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  WINDOW CAPTION BUTTONS                     -->
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- Windows' own geometry — 46x32, glyph-only, square, flush to the window's top-right corner —
+         because this strip is the one part of an application nobody wants redesigned. Only the
+         colours are the application's.
+
+         Square, unlike every other control here: these run to the window's edges, and a rounded
+         corner would leave a wedge of window background outside a button that the user still
+         expects to hit. -->
+    <Style x:Key="WindowCaptionButton" TargetType="Button">
+        <Setter Property="FontFamily"  Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize"    Value="10"/>
+        <Setter Property="Foreground"  Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Background"  Value="Transparent"/>
+        <Setter Property="Width"       Value="46"/>
+        <Setter Property="Height"      Value="40"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root" Background="{TemplateBinding Background}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonPressedBg}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Close is the one caption button with a colour of its own, and it is the system's red rather
+         than the application's accent: it means "this is the destructive one" in every window the
+         user has ever closed, and the accent means "this is the one we would like you to press". -->
+    <Style x:Key="WindowCloseButton" TargetType="Button" BasedOn="{StaticResource WindowCaptionButton}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root" Background="{TemplateBinding Background}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="#E81123"/>
+                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="#F1707A"/>
+                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════ -->
     <!--  SIDEBAR NAV                                -->
     <!--  Selected state lives on RadioButton's      -->
     <!--  IsChecked, so grouping is free. Icon and   -->
@@ -1613,10 +1695,10 @@
          true. Sizing follows the version label it hangs off (11px) rather than the nav items, so it
          reads as an annotation on the brand block instead of a fourth destination.
 
-         Tonal fill with no accent outline. NavPrimaryAction's outlined treatment is what 截圖翻譯
-         uses to claim the rail's primary action, and repeating it here would have news out-shouting
-         the button the user actually came for. The border is one step up the same tonal ramp — just
-         enough to give the fill an edge on the sidebar's own background.
+         Tonal fill with no accent outline. RailQuickTool's accent-tinted icon tile is what the
+         快速工具 rows use to claim the rail's actions, and competing with it here would have news
+         out-shouting the buttons the user actually came for. The border is one step up the same
+         tonal ramp — just enough to give the fill an edge on the sidebar's own background.
 
          Fully rounded, unlike every other surface in the app at 6. That is the point: a pill is the
          shape of a label, a 6px rectangle is the shape of a button, and this is a statement about
@@ -1695,74 +1777,100 @@
         </Setter>
     </Style>
 
-    <!-- The nav rail's one primary action (截圖翻譯). Borrows the app's existing tonal-accent
-         surface — 1px AppAccent border over an AppAccentSubtle fill, the same pair
-         ToolbarSubtleAccentButton and the theme picker already use — rather than inventing a
-         material for one control. The accent outline is what separates it from NavItem's selected
-         state, which shares the tint but is never bordered, and the drop shadow is what keeps it
-         reading as a raised, pressable object instead of a highlighted row.
-         The shadow is allowed to spill past the 8,2 margin: nothing in the rail's DockPanel or
-         StackPanel clips its children, so it renders in full without extra reserved space. -->
-    <Style x:Key="NavPrimaryAction" TargetType="Button">
-        <Setter Property="FontFamily"   Value="{StaticResource AppFont}"/>
-        <Setter Property="FontSize"     Value="{StaticResource AppFontSize}"/>
-        <Setter Property="Foreground"   Value="{DynamicResource AppTextPrimary}"/>
-        <Setter Property="Background"   Value="{DynamicResource AppAccentSubtle}"/>
-        <Setter Property="Cursor"       Value="Hand"/>
+    <!-- The 快速工具 rows (截圖翻譯, 取詞翻譯) — the rail's actions, as opposed to the destinations
+         NavItem carries below them. A card rather than a bare row is what says so: a neutral
+         surface lifted one step off the rail's own background, with the accent living only in the
+         icon tile, so two of these side by side stay a group instead of two walls of colour.
+
+         Both rows carry the identical treatment on purpose. Neither one is the primary — the shell
+         is the only place either shortcut is named, and ranking them here would leave the loser
+         looking like a lesser copy of the winner.
+
+         Deliberately NOT ToolbarSubtleAccentButton's flip to a solid accent fill on hover: at
+         full-rail width that is a wall of colour. Hover walks the accent's own tonal ramp and
+         brings the border with it, so the card lights up without changing material.
+
+         No drop shadow, and no effect anywhere in the template: any element carrying an Effect
+         pushes its whole subtree through an intermediate render surface, where ClearType sub-pixel
+         antialiasing cannot run — text inside a shadowed Border came out visibly soft next to the
+         nav items. Same trap ShellWindow's page transition documents for BitmapCache. -->
+    <Style x:Key="RailQuickTool" TargetType="Button">
+        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"        Value="{StaticResource AppFontSize}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Background"      Value="{DynamicResource AppCardBg}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource AppSubtleBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor"          Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <!-- The content is a SIBLING of the material, never its child. Any element
-                         carrying an Effect pushes its whole subtree through an intermediate render
-                         surface, and ClearType sub-pixel antialiasing cannot run there — text
-                         nested inside this Border came out visibly soft next to the nav items.
-                         Same trap ShellWindow's page transition documents for BitmapCache. -->
-                    <Grid Margin="8,2" Height="44">
-                        <Border x:Name="Root"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{DynamicResource AppAccent}"
-                                BorderThickness="1"
-                                CornerRadius="8">
-                            <!-- Effects are Freezables, so they have no template namescope entry
-                                 and cannot be reached by TargetName. Each state swaps the whole
-                                 effect rather than one of its properties. -->
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Direction="270"
-                                                  Opacity="0.14" Color="#000000"/>
-                            </Border.Effect>
-                        </Border>
-                        <ContentPresenter Margin="12,0" VerticalAlignment="Center"/>
-                    </Grid>
+                    <!-- 8 margin + 1 border + 11 of padding = 20, which is where NavItem's own
+                         12 puts its glyph: one left edge down the whole rail. -->
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8"
+                            Margin="8,3"
+                            Padding="11,0"
+                            Height="46">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
                     <ControlTemplate.Triggers>
-                        <!-- Rises toward the pointer: one step deeper tint, one step more shadow.
-                             Deliberately NOT ToolbarSubtleAccentButton's flip to a solid accent
-                             fill — at 44px full-rail width that is a wall of colour, which is the
-                             very thing the tonal treatment exists to avoid. -->
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentSubtle}"/>
+                            <Setter TargetName="Root" Property="BorderBrush"
                                     Value="{DynamicResource AppAccentSubtleHover}"/>
-                            <Setter TargetName="Root" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270"
-                                                      Opacity="0.20" Color="#000000"/>
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
-                        <!-- and settles back down when pressed, rather than only changing colour -->
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Root" Property="Background"
                                     Value="{DynamicResource AppAccentSubtlePressed}"/>
-                            <Setter TargetName="Root" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270"
-                                                      Opacity="0.10" Color="#000000"/>
-                                </Setter.Value>
-                            </Setter>
+                        </Trigger>
+                        <!-- 截圖翻譯 is switched off for the length of a realtime session, and its
+                             tooltip is then the only place that reason exists — so the card has to
+                             read as unavailable rather than as missing. -->
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.4"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- The accent-tinted square behind a 快速工具 row's glyph. A tile here and a bare glyph on the
+         nav items below is what separates the rail's two halves at a glance, without a second
+         divider or a second type size. -->
+    <Style x:Key="RailQuickToolIcon" TargetType="Border">
+        <Setter Property="Width"               Value="30"/>
+        <Setter Property="Height"              Value="30"/>
+        <Setter Property="CornerRadius"        Value="7"/>
+        <Setter Property="Background"          Value="{DynamicResource AppAccentSubtle}"/>
+        <Setter Property="BorderBrush"         Value="{DynamicResource AppAccentSubtleHover}"/>
+        <Setter Property="BorderThickness"     Value="1"/>
+        <Setter Property="VerticalAlignment"   Value="Center"/>
+        <Setter Property="Margin"              Value="0,0,10,0"/>
+    </Style>
+
+    <Style x:Key="RailQuickToolGlyph" TargetType="TextBlock">
+        <Setter Property="FontFamily"          Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize"            Value="15"/>
+        <Setter Property="Foreground"          Value="{DynamicResource AppAccent}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment"   Value="Center"/>
+    </Style>
+
+    <!-- The shortcut trailing a 快速工具 row: a reference the user reads once, not a second label
+         competing with the row's name. -->
+    <Style x:Key="RailQuickToolHotkey" TargetType="TextBlock">
+        <Setter Property="FontFamily"        Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"          Value="11"/>
+        <Setter Property="Foreground"        Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin"            Value="8,0,0,0"/>
     </Style>
 
     <!-- Circular close button for the modal overlay -->

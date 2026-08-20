@@ -1,0 +1,171 @@
+﻿using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+
+namespace OverTranslate.Views.Shell;
+
+/// <summary>
+/// The parts of the system window frame a shell window still needs once it draws its own title bar:
+/// the maximised size, and the outer edge the desktop compositor draws around it.
+/// </summary>
+/// <remarks>
+/// Windows maximises such a window to the monitor's full size plus its own resize border, on the
+/// assumption that the border is non-client and therefore off-screen. Under WindowChrome it is not
+/// — it is the application's own content — so the window's edges, and part of the caption buttons
+/// with them, end up past the screen, and the taskbar is covered.
+///
+/// WM_GETMINMAXINFO is where that size is decided, so it is the one place to answer it: the work
+/// area of the monitor the window is on, in physical pixels, which is exactly what the message asks
+/// for. Insetting the content by a guessed number of device-independent units instead would be
+/// wrong at every scale factor other than 100%, and wrong again on a second monitor whose taskbar
+/// is somewhere else.
+/// </remarks>
+internal static class WindowFrame
+{
+    private const int WM_GETMINMAXINFO = 0x0024;
+    private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWCP_ROUND = 2;
+
+    /// <summary>
+    /// Takes the frame over for as long as <paramref name="window"/> lives. Safe to call before the
+    /// window has a handle — everything that needs one waits for it.
+    /// </summary>
+    public static void Attach(Window window)
+    {
+        if (PresentationSource.FromVisual(window) is HwndSource existing)
+        {
+            existing.AddHook(HookFor(window));
+            ApplyAppearance(window);
+            return;
+        }
+
+        window.SourceInitialized += OnSourceInitialized;
+
+        void OnSourceInitialized(object? sender, EventArgs e)
+        {
+            window.SourceInitialized -= OnSourceInitialized;
+            if (PresentationSource.FromVisual(window) is HwndSource source) source.AddHook(HookFor(window));
+            ApplyAppearance(window);
+        }
+    }
+
+    /// <summary>
+    /// Rounds the window's corners and paints its outer edge in the application's own border
+    /// colour. Call again when the theme changes — the edge is drawn by the compositor, so a
+    /// DynamicResource never reaches it.
+    /// </summary>
+    /// <remarks>
+    /// The compositor draws this frame, rather than the window drawing a rounded border of its own
+    /// the way 取詞翻譯 does. That popup can afford AllowsTransparency because it is a small,
+    /// fixed-size card; here it would make the whole window a layered surface, which costs
+    /// ClearType on every glyph in the application and hardware acceleration with it — a bad trade
+    /// for a window that is mostly text. Asking DWM for the same shape keeps the text sharp, and
+    /// keeps the corners the ones the rest of Windows 11 draws.
+    /// </remarks>
+    public static void ApplyAppearance(Window window)
+    {
+        var hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        var round = DWMWCP_ROUND;
+        DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref round, sizeof(int));
+
+        if (window.TryFindResource("AppBorder") is not SolidColorBrush border) return;
+
+        // COLORREF: 0x00BBGGRR, and the alpha byte is not an alpha — a non-zero one asks for the
+        // system default colour instead of the one named here.
+        var colorRef = border.Color.R | (border.Color.G << 8) | (border.Color.B << 16);
+        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
+    }
+
+    private static HwndSourceHook HookFor(Window window) =>
+        (IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled) =>
+            Hook(window, hwnd, msg, lParam, ref handled);
+
+    private static IntPtr Hook(Window window, IntPtr hwnd, int msg, IntPtr lParam, ref bool handled)
+    {
+        if (msg != WM_GETMINMAXINFO) return IntPtr.Zero;
+
+        var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (monitor == IntPtr.Zero) return IntPtr.Zero;
+
+        var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(monitor, ref info)) return IntPtr.Zero;
+
+        var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+
+        // Relative to the monitor's own origin, which is what the message is expressed in — the
+        // work area's absolute coordinates would place the window off a secondary monitor.
+        mmi.ptMaxPosition.x = info.rcWork.left - info.rcMonitor.left;
+        mmi.ptMaxPosition.y = info.rcWork.top - info.rcMonitor.top;
+        mmi.ptMaxSize.x = info.rcWork.right - info.rcWork.left;
+        mmi.ptMaxSize.y = info.rcWork.bottom - info.rcWork.top;
+
+        // Without this a maximised window cannot be dragged wider than the monitor it started on,
+        // which is what the tracking size, not the maximised size, is for.
+        mmi.ptMaxTrackSize.x = Math.Max(mmi.ptMaxTrackSize.x, mmi.ptMaxSize.x);
+        mmi.ptMaxTrackSize.y = Math.Max(mmi.ptMaxTrackSize.y, mmi.ptMaxSize.y);
+
+        // This message is also where WPF enforces MinWidth and MinHeight, and answering it takes
+        // that away — a window with no floor can be dragged down to a title bar with nothing under
+        // it. Same numbers, in the physical pixels this message is expressed in.
+        var dpi = VisualTreeHelper.GetDpi(window);
+        if (window.MinWidth > 0 && !double.IsInfinity(window.MinWidth))
+            mmi.ptMinTrackSize.x = (int)Math.Ceiling(window.MinWidth * dpi.DpiScaleX);
+        if (window.MinHeight > 0 && !double.IsInfinity(window.MinHeight))
+            mmi.ptMinTrackSize.y = (int)Math.Ceiling(window.MinHeight * dpi.DpiScaleY);
+
+        Marshal.StructureToPtr(mmi, lParam, true);
+        handled = true;
+        return IntPtr.Zero;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int x;
+        public int y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MINMAXINFO
+    {
+        public POINT ptReserved;
+        public POINT ptMaxSize;
+        public POINT ptMaxPosition;
+        public POINT ptMinTrackSize;
+        public POINT ptMaxTrackSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int left;
+        public int top;
+        public int right;
+        public int bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+}

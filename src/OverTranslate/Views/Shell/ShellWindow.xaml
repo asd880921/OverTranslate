@@ -8,29 +8,104 @@
         MinWidth="840" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
+        WindowStyle="None"
         Background="{DynamicResource AppWindowBg}">
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <!-- 208 was sized to the Chinese labels, which fit the rail's primary action and its
-                 shortcut on one line with room to spare. English does not — "Screen capture" and
-                 "Ctrl+Alt+A" share that line, and the shortcut is docked first — so the default
-                 is wider and the user can settle it themselves with the splitter below.
-                 MinWidth still fits an icon and a short label; MaxWidth stops the rail from
-                 eating the page beside it. -->
-            <ColumnDefinition x:Name="SidebarColumn"
-                              Width="230" MinWidth="180" MaxWidth="300"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <!-- The system title bar is replaced rather than hidden. WindowChrome keeps everything the
+         non-client area does — drag, double-click to maximise, Aero Snap, the resize borders and
+         the taskbar preview — and hands the strip itself over to be drawn in the application's own
+         theme, which the system one cannot follow.
 
-        <!-- ══════════ Sidebar ══════════ -->
-        <Border Grid.Column="0"
-                Background="{DynamicResource AppHeaderBg}"
-                BorderBrush="{DynamicResource AppBorder}"
-                BorderThickness="0,0,1,0">
-            <DockPanel>
+         CaptionHeight matches the title row below exactly: it is what makes that strip draggable,
+         and anything in it that must stay clickable says so with IsHitTestVisibleInChrome.
+         GlassFrameThickness 0 drops the system's own frame drawing; UseAeroCaptionButtons 0 stops
+         it from drawing its buttons over the ones this window paints. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40"
+                      ResizeBorderThickness="6"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <!-- Maximised, a WindowChrome window is sized to the monitor plus its own resize border, so the
+         edges fall off the screen. WindowRoot carries the inset that pulls them back; it is applied
+         from code (ApplyMaximizedInset) because the amount is the system's, not a number to guess. -->
+    <Grid x:Name="WindowRoot">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ══════════ Title bar ══════════ -->
+        <Grid Grid.Row="0">
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0">
+                <Image x:Name="TitleIcon"
+                       Width="16" Height="16"
+                       VerticalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                <TextBlock Text="OverTranslate"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="12"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource AppTextSecondary}"/>
+            </StackPanel>
+
+            <!-- Windows' own order, left to right, because muscle memory for this strip is older
+                 than any application: minimise, restore/maximise, close. -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button x:Name="MinimizeBtn"
+                        Style="{StaticResource WindowCaptionButton}"
+                        Content="&#xE921;"
+                        Click="MinimizeBtn_Click"/>
+                <!-- One button, two meanings, so its glyph is set from the window state rather than
+                     fixed here: a maximised window offering "maximise" is a control that lies. -->
+                <Button x:Name="MaximizeBtn"
+                        Style="{StaticResource WindowCaptionButton}"
+                        Content="&#xE922;"
+                        Click="MaximizeBtn_Click"/>
+                <Button x:Name="CloseBtn"
+                        Style="{StaticResource WindowCloseButton}"
+                        Content="&#xE8BB;"
+                        Click="CloseBtn_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- 248 was sized to the Chinese labels, which fit a 快速工具 row and its shortcut on
+                     one line with room to spare. English does not — "Screen capture" and
+                     "Ctrl+Alt+A" share that line, and the shortcut is docked first — so the default
+                     is wider and the user can settle it themselves with the splitter.
+
+                     MaxWidth is the rail's ceiling and is enforced here; its floor is not, and is 0
+                     on purpose. The rail has to be able to reach nothing at all — that is the only
+                     way this window has of giving the page the whole width — and a column with a
+                     MinWidth can never be taken there, not even from code. RailMinWidth is what
+                     holds the floor instead, on the drag itself. -->
+                <ColumnDefinition x:Name="SidebarColumn"
+                                  Width="248" MinWidth="0" MaxWidth="340"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ══════════ Rail ══════════ -->
+            <!-- Clipped, because the column is allowed down to zero: without this the rail's
+                 contents would keep their measured width and spill across the page beside them. -->
+            <DockPanel Grid.Column="0"
+                       x:Name="RailPanel"
+                       ClipToBounds="True"
+                       Margin="16,4,0,16">
 
                 <!-- Brand.
+                     On the window's own surface rather than on the card below it, so the card
+                     starts at the first thing the user can act on. Same reason the page's title is
+                     inside its card and this is not: this names the application, not the panel.
 
                      A two-row grid rather than nested stacks, so both of the alignments here hold
                      themselves together instead of being maintained by hand.
@@ -46,7 +121,7 @@
                      width. It is deliberately outside the height binding: the mark answers to the
                      name and version, which are always there, and not to a badge that comes and
                      goes — otherwise the mark would resize itself every time a release appeared. -->
-                <Grid DockPanel.Dock="Top" Margin="18,18,16,20">
+                <Grid DockPanel.Dock="Top" Margin="8,10,8,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -63,16 +138,16 @@
                          would report the source bitmap's and take the whole rail. -->
                     <Image x:Name="BrandIcon"
                            Grid.Row="0" Grid.Column="0"
-                           Width="34" Height="34"
+                           Width="38" Height="38"
                            VerticalAlignment="Top"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
                     <StackPanel x:Name="BrandText"
                                 Grid.Row="0" Grid.Column="1"
-                                Margin="10,0,0,0">
+                                Margin="12,0,0,0">
                         <TextBlock Text="OverTranslate"
                                    FontFamily="{StaticResource AppFont}"
-                                   FontSize="14"
+                                   FontSize="15"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource AppTextPrimary}"/>
                         <TextBlock x:Name="VersionText"
@@ -102,7 +177,7 @@
                             Grid.Row="1" Grid.Column="1"
                             Style="{StaticResource RailUpdateChip}"
                             HorizontalAlignment="Left"
-                            Margin="10,5,0,0"
+                            Margin="12,6,0,0"
                             Visibility="Collapsed"
                             Click="UpdateBtn_Click">
                         <DockPanel>
@@ -138,166 +213,217 @@
                     </Button>
                 </Grid>
 
-                <!-- 關於 opens a modal overlay rather than switching pages, so it sits
-                     apart from the nav list and never takes the selected state -->
-                <Button x:Name="AboutBtn"
-                        DockPanel.Dock="Bottom"
-                        Style="{StaticResource NavActionItem}"
-                        Margin="8,0,8,12"
-                        Click="AboutBtn_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                   FontSize="14" Text="&#xE946;"
-                                   Width="24" VerticalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource S.Shell.About}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-
-                <!-- Docked after 關於 so it lands above it. 關於 is the one item down here and the
-                     nav list ends a long way above it, so without a line the two read as one list
-                     with a large accidental gap in it. Inset to 16 so it starts and ends on the
-                     same vertical as the nav rows' own edges, which is what makes it read as
-                     dividing them rather than as a stray rule. -->
-                <Border DockPanel.Dock="Bottom"
-                        Height="1"
-                        Margin="16,0,16,10"
-                        Background="{DynamicResource AppBorder}"/>
-
-                <!-- 截圖翻譯 — the app's primary action, and since the tray menu no longer
-                     offers it, the only place other than the shortcut itself. It sits above the
-                     nav list rather than inside it because it performs an action instead of
-                     choosing a destination, and it lives on the shell rather than on a page so
-                     it stays reachable from 設定 too. Whitespace, not a rule, separates it: a
-                     divider would imply these are sections of one list. -->
-                <Button x:Name="CaptureBtn"
-                        DockPanel.Dock="Top"
-                        Style="{StaticResource NavPrimaryAction}"
-                        Margin="0,0,0,12"
-                        ToolTipService.ShowOnDisabled="True"
-                        Click="CaptureBtn_Click">
+                <!-- The rail's card. Nothing draws the boundary between this and the page: the gap
+                     between the two cards is the boundary, which is why neither of them carries an
+                     edge on the side that faces the other. -->
+                <Border Style="{StaticResource ShellCard}">
                     <DockPanel>
-                        <!-- Bare 24px glyph, identical geometry to the nav items below, so icons
-                             and labels share one column down the whole rail. A filled tile would
-                             need a gap a glyph gets for free and would knock this label out of
-                             that column. -->
-                        <TextBlock DockPanel.Dock="Left"
-                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                   FontSize="15" Text="&#xE123;"
-                                   Width="24" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource AppAccent}"/>
 
-                        <!-- Trailing, muted, and on the same line: the shortcut is a reference the
-                             user reads once, not a second label competing with 截圖翻譯. Filled in
-                             on every ShowOrActivate so a shortcut changed in 設定 is never stale. -->
-                        <TextBlock x:Name="CaptureHotkeyText"
-                                   DockPanel.Dock="Right"
-                                   FontSize="11"
-                                   Margin="8,0,0,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource AppTextSecondary}"/>
+                        <!-- 關於 opens a modal overlay rather than switching pages, so it sits
+                             apart from the nav list and never takes the selected state -->
+                        <Button x:Name="AboutBtn"
+                                DockPanel.Dock="Bottom"
+                                Style="{StaticResource NavActionItem}"
+                                Margin="8,0,8,12"
+                                Click="AboutBtn_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="14" Text="&#xE946;"
+                                           Width="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource S.Shell.About}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
 
-                        <TextBlock Text="{DynamicResource S.Shell.CaptureTranslate}"
-                                   FontWeight="SemiBold"
-                                   VerticalAlignment="Center"/>
+                        <!-- Docked after 關於 so it lands above it. 關於 is the one item down here
+                             and the nav list ends a long way above it, so without a line the two
+                             read as one list with a large accidental gap in it. Inset to 16 so it
+                             starts and ends on the same vertical as the nav rows' own edges, which
+                             is what makes it read as dividing them rather than as a stray rule. -->
+                        <Border DockPanel.Dock="Bottom"
+                                Height="1"
+                                Margin="16,0,16,10"
+                                Background="{DynamicResource AppSeparator}"/>
+
+                        <!-- 快速工具 — the two shortcut-driven actions, above the nav list rather
+                             than inside it because they perform an action instead of choosing a
+                             destination, and on the shell rather than on a page so they stay
+                             reachable from 設定 too. Since the tray menu no longer offers either,
+                             this is the only place other than the shortcuts themselves.
+
+                             A heading here and a rule below: two cards with no caption read as a
+                             list whose first two rows are inexplicably taller than the rest, and
+                             naming the group is what says these do something rather than go
+                             somewhere. -->
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="{DynamicResource S.Shell.QuickTools}"
+                                   Style="{StaticResource SectionHeader}"
+                                   Margin="20,16,16,8"/>
+
+                        <Button x:Name="CaptureBtn"
+                                DockPanel.Dock="Top"
+                                Style="{StaticResource RailQuickTool}"
+                                ToolTipService.ShowOnDisabled="True"
+                                Click="CaptureBtn_Click">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Left" Style="{StaticResource RailQuickToolIcon}">
+                                    <TextBlock Text="&#xE123;" Style="{StaticResource RailQuickToolGlyph}"/>
+                                </Border>
+
+                                <!-- Filled in on every ShowOrActivate so a shortcut changed in 設定
+                                     is never stale. Docked before the label so the label is the
+                                     part that trims when the rail is dragged narrow — a
+                                     half-written shortcut is worse than none. -->
+                                <TextBlock x:Name="CaptureHotkeyText"
+                                           DockPanel.Dock="Right"
+                                           Style="{StaticResource RailQuickToolHotkey}"/>
+
+                                <TextBlock Text="{DynamicResource S.Shell.CaptureTranslate}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Button>
+
+                        <!-- Same glyph 設定 gives this shortcut, so the row and the row that
+                             configures it are recognisably the same feature. -->
+                        <Button x:Name="QuickLookupBtn"
+                                DockPanel.Dock="Top"
+                                Style="{StaticResource RailQuickTool}"
+                                ToolTipService.ShowOnDisabled="True"
+                                Click="QuickLookupBtn_Click">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Left" Style="{StaticResource RailQuickToolIcon}">
+                                    <TextBlock Text="&#xE721;" Style="{StaticResource RailQuickToolGlyph}"/>
+                                </Border>
+
+                                <TextBlock x:Name="QuickLookupHotkeyText"
+                                           DockPanel.Dock="Right"
+                                           Style="{StaticResource RailQuickToolHotkey}"/>
+
+                                <TextBlock Text="{DynamicResource S.Shell.QuickLookup}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Button>
+
+                        <Border DockPanel.Dock="Top"
+                                Height="1"
+                                Margin="16,14,16,10"
+                                Background="{DynamicResource AppSeparator}"/>
+
+                        <!-- Nav list + sliding selection indicator -->
+                        <Grid VerticalAlignment="Top">
+                            <Border x:Name="NavIndicator"
+                                    Width="3" Height="18"
+                                    CornerRadius="1.5"
+                                    Background="{DynamicResource AppAccent}"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Margin="4,0,0,0">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="NavIndicatorTransform"/>
+                                </Border.RenderTransform>
+                            </Border>
+
+                            <StackPanel x:Name="NavPanel">
+                                <RadioButton x:Name="TranslationNav"
+                                             Style="{StaticResource NavItem}"
+                                             GroupName="ShellNav"
+                                             Checked="Nav_Checked">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="15" Text="&#xE8C1;"
+                                                   Width="24" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{DynamicResource S.Shell.TextTranslate}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </RadioButton>
+
+                                <!-- Its own destination rather than a mode of 文字翻譯: nothing on
+                                     that page applies here, and a session started from it keeps
+                                     running long after the user has navigated away. -->
+                                <RadioButton x:Name="RealtimeNav"
+                                             Style="{StaticResource NavItem}"
+                                             GroupName="ShellNav"
+                                             Checked="Nav_Checked">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="15" Text="&#xE9D9;"
+                                                   Width="24" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{DynamicResource S.Shell.RealtimeTranslate}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </RadioButton>
+
+                                <RadioButton x:Name="SettingsNav"
+                                             Style="{StaticResource NavItem}"
+                                             GroupName="ShellNav"
+                                             Checked="Nav_Checked">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="15" Text="&#xE713;"
+                                                   Width="24" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{DynamicResource S.Shell.Settings}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </RadioButton>
+                            </StackPanel>
+                        </Grid>
                     </DockPanel>
-                </Button>
-
-                <!-- Nav list + sliding selection indicator -->
-                <Grid VerticalAlignment="Top">
-                    <Border x:Name="NavIndicator"
-                            Width="3" Height="18"
-                            CornerRadius="1.5"
-                            Background="{DynamicResource AppAccent}"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top"
-                            Margin="4,0,0,0">
-                        <Border.RenderTransform>
-                            <TranslateTransform x:Name="NavIndicatorTransform"/>
-                        </Border.RenderTransform>
-                    </Border>
-
-                    <StackPanel x:Name="NavPanel">
-                        <RadioButton x:Name="TranslationNav"
-                                     Style="{StaticResource NavItem}"
-                                     GroupName="ShellNav"
-                                     Checked="Nav_Checked">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                           FontSize="15" Text="&#xE8C1;"
-                                           Width="24" VerticalAlignment="Center"/>
-                                <TextBlock Text="{DynamicResource S.Shell.TextTranslate}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </RadioButton>
-
-                        <!-- Its own destination rather than a mode of 文字翻譯: nothing on that page
-                             applies here, and a session started from it keeps running long after
-                             the user has navigated away. -->
-                        <RadioButton x:Name="RealtimeNav"
-                                     Style="{StaticResource NavItem}"
-                                     GroupName="ShellNav"
-                                     Checked="Nav_Checked">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                           FontSize="15" Text="&#xE9D9;"
-                                           Width="24" VerticalAlignment="Center"/>
-                                <TextBlock Text="{DynamicResource S.Shell.RealtimeTranslate}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </RadioButton>
-
-                        <RadioButton x:Name="SettingsNav"
-                                     Style="{StaticResource NavItem}"
-                                     GroupName="ShellNav"
-                                     Checked="Nav_Checked">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                           FontSize="15" Text="&#xE713;"
-                                           Width="24" VerticalAlignment="Center"/>
-                                <TextBlock Text="{DynamicResource S.Shell.Settings}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </RadioButton>
-                    </StackPanel>
-                </Grid>
+                </Border>
             </DockPanel>
-        </Border>
 
-        <!-- ══════════ Content ══════════ -->
-        <!-- A Border rather than a ContentControl so the animated layer has an opaque background of
-             its own: the slide runs this subtree through a bitmap cache (see AnimateContentIn) and
-             through an opacity animation, both of which are intermediate surfaces that WPF assumes
-             may be transparent, and ClearType sub-pixel antialiasing cannot run over transparent
-             pixels. An opaque backing plus ClearTypeHint tells WPF the surface really is opaque, so
-             ClearType stays on for the whole transition. -->
-        <Border Grid.Column="1"
-                x:Name="ContentHost"
-                Background="{DynamicResource AppWindowBg}"
-                RenderOptions.ClearTypeHint="Enabled">
-            <Border.RenderTransform>
-                <TranslateTransform x:Name="ContentTransform"/>
-            </Border.RenderTransform>
-        </Border>
+            <!-- ══════════ Content ══════════ -->
+            <!-- A Border rather than a ContentControl so the animated layer has an opaque background
+                 of its own: the slide runs this subtree through a bitmap cache (see
+                 AnimateContentIn) and through an opacity animation, both of which are intermediate
+                 surfaces that WPF assumes may be transparent, and ClearType sub-pixel antialiasing
+                 cannot run over transparent pixels. An opaque backing plus ClearTypeHint tells WPF
+                 the surface really is opaque, so ClearType stays on for the whole transition. -->
+            <Border Grid.Column="1"
+                    x:Name="ContentHost"
+                    Style="{StaticResource ShellCard}"
+                    Margin="16,4,16,16"
+                    RenderOptions.ClearTypeHint="Enabled">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="ContentTransform"/>
+                </Border.RenderTransform>
+            </Border>
 
-        <!-- ══════════ Sidebar splitter ══════════ -->
-        <!-- Sits on the rail's trailing edge rather than in a column of its own, so it costs no
-             layout width and the seam stays exactly where the two backgrounds meet. Transparent
-             with a wider hit area than it looks: the visible boundary is the Border's edge, and a
-             drawn handle would be a permanent line across a window that otherwise has none.
-             Declared after both panels so it takes the mouse ahead of them, and before the About
-             overlay so a modal still covers it. -->
-        <GridSplitter Grid.Column="0"
-                      x:Name="SidebarSplitter"
-                      Width="6"
-                      HorizontalAlignment="Right"
-                      VerticalAlignment="Stretch"
-                      Background="Transparent"
-                      Focusable="False"
-                      ResizeDirection="Columns"
-                      ResizeBehavior="CurrentAndNext"
-                      Cursor="SizeWE"/>
+            <!-- ══════════ Rail splitter ══════════ -->
+            <!-- Invisible, and in the gap between the two cards rather than on either card's edge:
+                 there is no seam here to put a handle on, and a drawn one would be the only line in
+                 a window built out of gaps. The hit area is what the user finds, and the cursor is
+                 what tells them it is there.
 
-        <!-- ══════════ Modals ══════════ -->
-        <!-- Declared last and spanning both columns so a modal covers the nav rail as well as the
-             page: one the user can navigate out from behind is not modal. -->
-        <shell:AboutOverlay Grid.ColumnSpan="2" x:Name="About"/>
-        <settings:ServiceSettingsOverlay Grid.ColumnSpan="2" x:Name="ServiceSettings"/>
+                 In the page's column rather than the rail's, filling the gap from edge to edge.
+                 That is what keeps it reachable when the rail is collapsed to nothing: on the
+                 rail's own trailing edge it would sit at x=0 and extend off the window, leaving a
+                 collapsed rail with no way back short of restarting. It is wider than the gap looks
+                 for the same reason — collapsed, its first few pixels are underneath the window's
+                 own resize border, and what is left has to stay big enough to hit.
+
+                 Declared after both panels so it takes the mouse ahead of them, and before the
+                 modals so an overlay still covers it. -->
+            <GridSplitter Grid.Column="1"
+                          x:Name="SidebarSplitter"
+                          Width="16"
+                          Margin="0,4,0,16"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          Focusable="False"
+                          ResizeDirection="Columns"
+                          ResizeBehavior="PreviousAndCurrent"
+                          DragDelta="Splitter_DragDelta"
+                          DragCompleted="Splitter_DragCompleted"
+                          Cursor="SizeWE"/>
+
+            <!-- ══════════ Modals ══════════ -->
+            <!-- Declared last and spanning both columns so a modal covers the nav rail as well as
+                 the page: one the user can navigate out from behind is not modal. Inside the body
+                 row, so the window's own buttons stay reachable — a modal that could close the
+                 window is not what the scrim is protecting. -->
+            <shell:AboutOverlay Grid.ColumnSpan="2" x:Name="About"/>
+            <settings:ServiceSettingsOverlay Grid.ColumnSpan="2" x:Name="ServiceSettings"/>
+        </Grid>
     </Grid>
 </Window>
