@@ -318,11 +318,27 @@
                         <!-- Result -->
                         <StackPanel x:Name="ResultPanel" Margin="18,14,18,14">
                             <StackPanel Orientation="Horizontal">
+                                <!-- The one piece of large text in the window, and the only place
+                                     that opts out of the window's Display text formatting. That mode
+                                     pins glyphs to whole pixels, which is what keeps 12px labels
+                                     crisp and what wrecks this line: at 24px the hinting drags CJK
+                                     strokes onto the same few pixel columns, so the character
+                                     spacing comes out uneven and the strokes come out different
+                                     weights. Ideal formatting positions glyphs where the typeface
+                                     says, which is what large text is drawn for.
+
+                                     Segoe UI Variable Display for the same reason, ahead of the
+                                     shared stack's Text optical size: the two are the same typeface
+                                     cut for different sizes, and Text is drawn for 8-16px. Windows
+                                     10 has neither and falls through to Segoe UI, as the shared
+                                     stack already does. -->
                                 <TextBlock x:Name="TranslatedText"
-                                           FontFamily="{StaticResource AppFont}"
+                                           FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft JhengHei UI, Sans-Serif"
                                            FontSize="24"
                                            FontWeight="SemiBold"
-                                           LineHeight="30"
+                                           LineHeight="32"
+                                           TextOptions.TextFormattingMode="Ideal"
+                                           TextOptions.TextRenderingMode="ClearType"
                                            Foreground="{DynamicResource AppTextPrimary}"
                                            TextWrapping="Wrap"
                                            MaxWidth="440"/>
