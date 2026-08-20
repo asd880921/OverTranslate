@@ -115,13 +115,50 @@
             <Setter Property="Height"     Value="30"/>
         </Style>
 
-        <!-- The two actions under a result. Text beside the glyph rather than a bare icon: they are
-             read once and then recognised, and the row has the width for words. -->
-        <Style x:Key="ResultActionButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
-            <Setter Property="Width"   Value="Auto"/>
-            <Setter Property="Height"  Value="28"/>
-            <Setter Property="Padding" Value="8,0"/>
-            <Setter Property="FontSize" Value="12"/>
+        <!-- The text-and-glyph actions: 複製, 朗讀原文, 完整設定. Text beside the glyph rather than a
+             bare icon, because they are read once and recognised after that, and the row has the
+             width for words.
+
+             Its own template rather than IconButton's. That one draws a fixed 32x32 square and its
+             border ignores Padding, which for a button sized to its text meant the hover fill was
+             laid tight against the words on the left and right and clipped the descenders — a
+             highlight that looked like a rendering fault rather than a button. -->
+        <Style x:Key="ResultActionButton" TargetType="Button">
+            <Setter Property="FontFamily"       Value="{StaticResource AppFont}"/>
+            <Setter Property="FontSize"         Value="12"/>
+            <Setter Property="Foreground"       Value="{DynamicResource AppTextSecondary}"/>
+            <Setter Property="Background"       Value="Transparent"/>
+            <Setter Property="BorderThickness"  Value="0"/>
+            <Setter Property="Padding"          Value="10,6"/>
+            <Setter Property="Cursor"           Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="8"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background"
+                                        Value="{DynamicResource AppButtonHoverBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background"
+                                        Value="{DynamicResource AppButtonPressedBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="ActionGlyph" TargetType="TextBlock">
@@ -195,11 +232,15 @@
                                  Padding="8,0"
                                  TextChanged="SourceTextBox_TextChanged"/>
 
+                        <!-- Fainter than secondary text: this is a prompt standing in for content
+                             that is not there, and at the weight of something written it reads as
+                             text the user has to clear before typing. -->
                         <TextBlock x:Name="Placeholder"
                                    Text="{DynamicResource S.QuickLookup.Placeholder}"
                                    FontFamily="{StaticResource AppFont}"
                                    FontSize="15"
                                    Foreground="{DynamicResource AppTextSecondary}"
+                                   Opacity="0.55"
                                    IsHitTestVisible="False"
                                    Margin="10,0,0,0"
                                    VerticalAlignment="Center"/>
@@ -216,12 +257,16 @@
                                   Width="78"
                                   SelectedValuePath="Code"/>
 
+                        <!-- Quieter than the two names it sits between: it is punctuation, not a
+                             third thing to read, and at the same weight it was the darkest mark in
+                             a header made of light ones. -->
                         <TextBlock Text="→"
                                    FontFamily="{StaticResource AppFont}"
-                                   FontSize="12"
+                                   FontSize="11"
                                    Foreground="{DynamicResource AppTextSecondary}"
+                                   Opacity="0.45"
                                    VerticalAlignment="Center"
-                                   Margin="2,0"/>
+                                   Margin="0,1,0,0"/>
 
                         <ComboBox x:Name="TgtLangBox"
                                   Style="{StaticResource QuietComboBox}"
@@ -298,7 +343,9 @@
                                        Margin="0,2,0,0"
                                        Visibility="Collapsed"/>
 
-                            <StackPanel x:Name="ActionRow" Orientation="Horizontal" Margin="-8,10,0,0">
+                            <!-- Pulled left by the button's own padding, so the first label lines
+                                 up with the translation above it rather than with its hover fill. -->
+                            <StackPanel x:Name="ActionRow" Orientation="Horizontal" Margin="-10,8,0,0">
                                 <Button Style="{StaticResource ResultActionButton}" Click="CopyBtn_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE8C8;" Style="{StaticResource ActionGlyph}"/>
@@ -308,7 +355,7 @@
                                     </StackPanel>
                                 </Button>
 
-                                <Rectangle Width="1" Margin="6,7" Fill="{DynamicResource AppSeparator}"/>
+                                <Rectangle Width="1" Margin="4,8" Fill="{DynamicResource AppSeparator}"/>
 
                                 <!-- The design this was drawn from reads the translation aloud and
                                      not the original, which is the half a language learner needs.
@@ -376,7 +423,7 @@
 
                                 <Button Grid.Column="1"
                                         Style="{StaticResource ResultActionButton}"
-                                        Margin="0,0,-8,0"
+                                        Margin="0,0,-10,0"
                                         Click="OpenFullSettingsBtn_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE713;" Style="{StaticResource ActionGlyph}"/>
