@@ -394,6 +394,30 @@
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
+
+                            <!-- Under the actions rather than beside the button, and only in the one
+                                 state that earns it: OpenAI-compatible servers are never asked what
+                                 language the original was in — the prompt they are sent belongs to
+                                 the user and cannot carry a second answer — so with 自動 there is no
+                                 voice to read it in and there never will be. The note is what tells
+                                 the user; the button's own tooltip is the same sentence for whoever
+                                 hovers it. -->
+                            <StackPanel x:Name="SourceTtsNote"
+                                        Orientation="Horizontal"
+                                        Margin="0,6,0,0"
+                                        Visibility="Collapsed">
+                                <TextBlock Text="&#xE946;"
+                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,6,0"/>
+                                <TextBlock Text="{DynamicResource S.QuickLookup.SpeakSourceOpenAi}"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Settings -->

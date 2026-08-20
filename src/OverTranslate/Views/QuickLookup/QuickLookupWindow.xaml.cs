@@ -729,12 +729,14 @@ public partial class QuickLookupWindow : Window
     /// </remarks>
     private void ShowResult()
     {
-        RenderSourceTtsAvailability();
         if (_settingsOpen) return;
 
         ResultPanel.Visibility = Visibility.Visible;
         SettingsPanel.Visibility = Visibility.Collapsed;
         ActionRow.Visibility = TranslatedText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // After ActionRow, which the note's own visibility is measured against.
+        RenderSourceTtsAvailability();
         ShowBody(true);
     }
 
@@ -760,13 +762,41 @@ public partial class QuickLookupWindow : Window
         return _detectedLang;
     }
 
+    /// <summary>
+    /// Settles 朗讀原文 against whether there is a language to read the original in.
+    /// </summary>
+    /// <remarks>
+    /// The OpenAI case is called out on its own because it is the one that never resolves. Every
+    /// other engine answers "what language was that" as a by-product of translating, so 自動 is a
+    /// state the next result gets the popup out of; an OpenAI-compatible server is never asked, and
+    /// cannot be — the prompt it is sent is the user's to write, so the reply cannot be made to
+    /// carry a second field. Waiting there is not going to help, and telling someone to wait for
+    /// something that will not arrive is worse than telling them nothing.
+    ///
+    /// So that state gets the note under the actions and a matching tooltip, both of which name the
+    /// thing that does fix it: choose a source language. The other unresolved state — an engine that
+    /// simply has not answered yet — keeps the message that says to wait, which there is true.
+    /// </remarks>
     private void RenderSourceTtsAvailability()
     {
-        var available = SourceVoiceLanguage().Length > 0 && SourceTextBox.Text.Length > 0;
+        var openAiAutomatic =
+            SettingsService.Instance.Current.Provider == TranslationProvider.OpenAI &&
+            LanguageData.IsAutomaticSource(SrcLangBox.SelectedValue as string);
+
+        var available = !openAiAutomatic &&
+                        SourceVoiceLanguage().Length > 0 &&
+                        SourceTextBox.Text.Length > 0;
 
         SrcTtsBtn.IsEnabled = available;
         SrcTtsBtn.ToolTip = LocalizationService.Get(
-            available ? "S.QuickLookup.SpeakSourceTip" : "S.QuickLookup.SpeakSourceUnknown");
+            available ? "S.QuickLookup.SpeakSourceTip"
+            : openAiAutomatic ? "S.QuickLookup.SpeakSourceOpenAi"
+            : "S.QuickLookup.SpeakSourceUnknown");
+
+        // Beside the actions it explains, so it is absent while they are.
+        SourceTtsNote.Visibility = openAiAutomatic && ActionRow.Visibility == Visibility.Visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private async void SrcTtsBtn_Click(object sender, RoutedEventArgs e)
@@ -912,6 +942,7 @@ public partial class QuickLookupWindow : Window
 
         // The engine's answer belongs to the language pair it was asked about.
         _detectedLang = "";
+        RenderSourceTtsAvailability();
         RequestTranslate();
     }
 
@@ -921,6 +952,11 @@ public partial class QuickLookupWindow : Window
 
         SettingsService.Instance.Current.Provider = provider;
         SettingsService.Instance.Save();
+
+        // The engine's answer belongs to the engine that gave it, and the new one may not answer at
+        // all — see RenderSourceTtsAvailability.
+        _detectedLang = "";
+        RenderSourceTtsAvailability();
         RequestTranslate();
     }
 
