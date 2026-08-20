@@ -8,7 +8,6 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- ── Page header ── -->
@@ -217,6 +216,43 @@
                     Visibility="Collapsed"
                     Margin="0,0,12,0"
                     Click="RetryBtn_Click"/>
+
+            <!-- Why 朗讀原文 is greyed, and only in the one state that earns saying it:
+                 OpenAI-compatible servers are never asked what language the original was in — the
+                 prompt they are sent belongs to the user and cannot carry a second answer — so with
+                 自動 there is no voice to read it in and there never will be. Every other engine
+                 answers as a by-product of translating, which is a wait rather than a wall and needs
+                 no note.
+
+                 The same line as the status text, not a row of its own. This line is empty almost
+                 all of the time, so the note lives in it rather than adding height the page has to
+                 keep whether or not anything is being said — see RenderFooter for which of the two
+                 wins when both have something.
+
+                 The same wording and the same ⓘ as 取詞翻譯's, because it is the same rule and
+                 someone who has met it once should recognise it rather than read it again.
+
+                 AppTextSecondary rather than AppError: nothing has gone wrong, a combination simply
+                 cannot do a thing. An alarm colour on a line that is on screen for the whole session
+                 would be shouting. -->
+            <StackPanel x:Name="SrcTtsNote"
+                        DockPanel.Dock="Left"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                <TextBlock Text="&#xE946;"
+                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                           FontSize="11"
+                           Foreground="{DynamicResource AppTextSecondary}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,6,0"/>
+                <TextBlock Text="{DynamicResource S.Translation.SpeakSourceOpenAi}"
+                           Style="{StaticResource FieldHint}"
+                           Margin="0"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
             <!-- Wraps so a long engine error keeps its second line inside the window
                  instead of being clipped at the right edge. -->
             <TextBlock x:Name="StatusText"
@@ -226,40 +262,5 @@
                        FontSize="12"
                        Foreground="{DynamicResource AppTextSecondary}"/>
         </DockPanel>
-
-        <!-- Why 朗讀原文 is greyed, and only in the one state that earns saying it: OpenAI-compatible
-             servers are never asked what language the original was in — the prompt they are sent
-             belongs to the user and cannot carry a second answer — so with 自動 there is no voice to
-             read it in and there never will be. Every other engine answers as a by-product of
-             translating, which is a wait rather than a wall and needs no note.
-
-             A row of its own below the footer rather than a share of it: this stays for as long as
-             the engine and the source language do, while the status line beside it comes and goes
-             with each translation, and a permanent sentence that kept resizing around a transient
-             one would read as unstable. Auto height, so it costs nothing when it is not there.
-
-             The same wording and the same ⓘ as 取詞翻譯's, because it is the same rule and someone
-             who has met it once should recognise it rather than have to read it again.
-
-             AppTextSecondary rather than AppError: nothing has gone wrong, a combination simply
-             cannot do a thing. An alarm colour on a line that is on screen for the whole session
-             would be shouting. -->
-        <StackPanel Grid.Row="4"
-                    x:Name="SrcTtsNote"
-                    Orientation="Horizontal"
-                    Margin="0,10,0,0"
-                    Visibility="Collapsed">
-            <TextBlock Text="&#xE946;"
-                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                       FontSize="11"
-                       Foreground="{DynamicResource AppTextSecondary}"
-                       VerticalAlignment="Center"
-                       Margin="0,0,6,0"/>
-            <TextBlock Text="{DynamicResource S.Translation.SpeakSourceOpenAi}"
-                       Style="{StaticResource FieldHint}"
-                       Margin="0"
-                       TextWrapping="Wrap"
-                       VerticalAlignment="Center"/>
-        </StackPanel>
     </Grid>
 </UserControl>

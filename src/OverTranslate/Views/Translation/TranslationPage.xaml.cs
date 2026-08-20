@@ -44,6 +44,15 @@ public partial class TranslationPage : UserControl
     /// </remarks>
     private string _detectedLang = "";
 
+    /// <summary>True while the engine and source language are the pair that has no voice coming.</summary>
+    /// <remarks>
+    /// Kept rather than recomputed, because the footer is settled from two directions: this is
+    /// decided by <see cref="RenderSourceActions"/>, and the line it has to share is written by
+    /// <see cref="SetStatus"/> and <see cref="SetTranslating"/>, neither of which has any business
+    /// working out which engine is selected.
+    /// </remarks>
+    private bool _srcTtsBlocked;
+
     public TranslationPage()
     {
         InitializeComponent();
@@ -122,7 +131,8 @@ public partial class TranslationPage : UserControl
         //
         // Only for the state that stays: an engine that simply has not answered yet is a second or
         // two, and a note appearing and going again on its own is noise rather than information.
-        SrcTtsNote.Visibility = openAiAutomatic ? Visibility.Visible : Visibility.Collapsed;
+        _srcTtsBlocked = openAiAutomatic;
+        RenderFooter();
 
         // Read through the service rather than bound with DynamicResource, because which string
         // applies is a state and not a constant. Re-read on Reload, which is where a change of
@@ -381,6 +391,11 @@ public partial class TranslationPage : UserControl
         {
             StatusText.Text       = LocalizationService.Get("S.Translation.Translating");
             StatusText.Foreground = (System.Windows.Media.Brush)FindResource("AppAccent");
+
+            // 翻譯中 has taken the footer, so whatever was sharing it steps aside. Only on the way
+            // in: switching off leaves the text for the caller to clear or replace, which is where
+            // the note gets its line back.
+            RenderFooter();
         }
     }
 
@@ -463,6 +478,29 @@ public partial class TranslationPage : UserControl
         StatusText.Foreground = isError
             ? (System.Windows.Media.Brush)FindResource("AppError")
             : (System.Windows.Media.Brush)FindResource("AppTextSecondary");
+
+        RenderFooter();
+    }
+
+    /// <summary>
+    /// Settles the single line at the foot of the page, which two things want.
+    /// </summary>
+    /// <remarks>
+    /// The status text wins whenever it has anything to say. It is the answer to what the user just
+    /// did — a translation running, an engine that failed — and it is gone again a moment later,
+    /// while the note is a standing condition that will still be true once it goes. Covering the
+    /// note for those few seconds costs nothing; making the reader find the status somewhere else,
+    /// or read the two side by side, costs them the thing they were waiting for.
+    ///
+    /// One line rather than two rows, because the status line is empty almost all of the time. A row
+    /// of its own would have the page grow the moment somebody picks OpenAI and shuffle again on
+    /// every translation, which is movement in return for nothing.
+    /// </remarks>
+    private void RenderFooter()
+    {
+        SrcTtsNote.Visibility = _srcTtsBlocked && StatusText.Text.Length == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void InitializeSelectors(string sourceLang, string targetLang)
