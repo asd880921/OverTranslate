@@ -26,6 +26,9 @@ internal static class WindowFrame
     private const int WM_GETMINMAXINFO = 0x0024;
     private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
 
+    private const int GWL_STYLE = -16;
+    private const int WS_CAPTION = 0x00C00000;
+
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWA_BORDER_COLOR = 34;
     private const int DWMWCP_ROUND = 2;
@@ -39,6 +42,7 @@ internal static class WindowFrame
         if (PresentationSource.FromVisual(window) is HwndSource existing)
         {
             existing.AddHook(HookFor(window));
+            RestoreSystemAnimations(existing.Handle);
             ApplyAppearance(window);
             return;
         }
@@ -48,7 +52,11 @@ internal static class WindowFrame
         void OnSourceInitialized(object? sender, EventArgs e)
         {
             window.SourceInitialized -= OnSourceInitialized;
-            if (PresentationSource.FromVisual(window) is HwndSource source) source.AddHook(HookFor(window));
+            if (PresentationSource.FromVisual(window) is HwndSource source)
+            {
+                source.AddHook(HookFor(window));
+                RestoreSystemAnimations(source.Handle);
+            }
             ApplyAppearance(window);
         }
     }
@@ -80,6 +88,35 @@ internal static class WindowFrame
         // system default colour instead of the one named here.
         var colorRef = border.Color.R | (border.Color.G << 8) | (border.Color.B << 16);
         DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
+    }
+
+    /// <summary>
+    /// Gives the window back the maximise, restore and minimise animations the system plays for
+    /// every other window.
+    /// </summary>
+    /// <remarks>
+    /// Those animations are DWM's, and DWM plays them only for a window whose style says it has a
+    /// caption. WindowStyle="None" takes WS_CAPTION off, which is why this window used to snap
+    /// between normal and maximised in a single frame while every other window on the desktop
+    /// eased — the application looked like it had drawn the new size rather than moved to it.
+    ///
+    /// Putting the bit back does not put a caption back: WindowChrome answers WM_NCCALCSIZE by
+    /// giving the client area the whole window, so there is no non-client strip left for the system
+    /// to draw one in. The bit is read by DWM for the animation and by the shell for Snap Layouts;
+    /// nothing draws from it.
+    ///
+    /// WS_CAPTION only, and never WS_THICKFRAME: that one is what makes a window resizable, and
+    /// 更新視窗 is deliberately not. Whether a window can be resized stays WPF's decision, taken
+    /// from ResizeMode.
+    /// </remarks>
+    private static void RestoreSystemAnimations(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        var style = GetWindowLong(hwnd, GWL_STYLE);
+        if (style == 0 || (style & WS_CAPTION) == WS_CAPTION) return;
+
+        SetWindowLong(hwnd, GWL_STYLE, style | WS_CAPTION);
     }
 
     private static HwndSourceHook HookFor(Window window) =>
@@ -161,6 +198,12 @@ internal static class WindowFrame
 
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+    private static extern int GetWindowLong(IntPtr hwnd, int index);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
+    private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
