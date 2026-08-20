@@ -72,9 +72,9 @@ public class AppSettings
     /// Summons 取詞翻譯's popup over whatever the user is reading. Ctrl+Alt+Q by default.
     /// </summary>
     /// <remarks>
-    /// Flat rather than under <see cref="QuickLookup"/>, with every other shortcut: 設定 owns them
-    /// as one set on one page, and a shortcut filed under the feature it starts would be the only
-    /// one of the four the user could not find beside its siblings.
+    /// Flat, with every other shortcut: 設定 owns them as one set on one page, and a shortcut filed
+    /// under the feature it starts would be the only one of the four the user could not find beside
+    /// its siblings.
     ///
     /// Q because the three combinations already taken are the letters of what they do (A, W, S) and
     /// this one is the 取 of 取詞 — and because Ctrl+Alt+Q is claimed by nothing on a stock Windows.
@@ -199,8 +199,4 @@ public class AppSettings
     /// would have to find a home in the middle of the flat keys.
     /// </remarks>
     public RealtimeSettings Realtime { get; set; } = new();
-
-    /// <summary>What 取詞翻譯 keeps between sittings, grouped.</summary>
-    /// <inheritdoc cref="Realtime"/>
-    public QuickLookupSettings QuickLookup { get; set; } = new();
 }

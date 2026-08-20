@@ -335,7 +335,7 @@
 
                         <!-- Settings -->
                         <StackPanel x:Name="SettingsPanel" Margin="18,14,18,16" Visibility="Collapsed">
-                            <Grid Margin="0,0,0,12">
+                            <Grid Margin="0,0,0,14">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -354,24 +354,6 @@
                                           Style="{StaticResource ModernComboBox}"
                                           Width="180" Height="30"
                                           SelectedValuePath="Provider"/>
-                            </Grid>
-
-                            <Grid Margin="0,0,0,14">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="0"
-                                           Text="{DynamicResource S.QuickLookup.AutoSpeak}"
-                                           Style="{StaticResource SettingRowLabel}"
-                                           Margin="0,0,12,0"/>
-
-                                <CheckBox x:Name="AutoSpeakCheckBox"
-                                          Grid.Column="1"
-                                          Style="{StaticResource ToggleSwitch}"
-                                          Checked="AutoSpeak_Toggled"
-                                          Unchecked="AutoSpeak_Toggled"/>
                             </Grid>
 
                             <Rectangle Height="1" Fill="{DynamicResource AppSeparator}" Margin="0,0,0,12"/>

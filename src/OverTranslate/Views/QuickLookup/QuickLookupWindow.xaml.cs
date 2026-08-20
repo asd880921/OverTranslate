@@ -30,12 +30,12 @@ namespace OverTranslate.Views.QuickLookup;
 /// The lightest of the three translation surfaces, and the only one with no way in but a shortcut.
 /// It exists for the case the other two are too heavy for — a word in a sentence someone is halfway
 /// through — so everything here is arranged around not making them leave what they were doing: the
-/// selection is carried in for them, the popup lands where their pointer already is, and it takes
-/// itself off the screen a second after they look away.
+/// selection is carried in for them, the popup lands where their pointer already is, and it goes
+/// away the moment they turn back to what they were doing.
 ///
-/// One at a time, deliberately. Several of these would each be counting down to their own
-/// disappearance on top of somebody's work, and the state that decides whether one closes — where
-/// the pointer is — cannot be read for a window that is not the one under it.
+/// One at a time, deliberately. Several of these would each be waiting to dismiss themselves on top
+/// of somebody's work, and only one window at a time can be the one the user is attending to —
+/// which is the whole of what decides whether this one is still wanted.
 ///
 /// It reads the same source language, target language and translation service as 截圖翻譯 and
 /// 文字翻譯, so a change made here is a change everywhere. See <see cref="QuickLookupSettings"/> for
@@ -47,28 +47,6 @@ public partial class QuickLookupWindow : Window
 
     /// <inheritdoc cref="QuickLookupWindow"/>
     private static QuickLookupWindow? _current;
-
-    /// <summary>
-    /// How long the popup outlives the pointer leaving it.
-    /// </summary>
-    /// <remarks>
-    /// Hardcoded rather than offered as a setting, and short on purpose: this window is uninvited
-    /// chrome over somebody else's screen, and the cost of it lingering is higher than the cost of
-    /// it going too soon — the shortcut brings it straight back. Every way of saying "I am still
-    /// using this" holds it open instead; see <see cref="MayDismiss"/>.
-    /// </remarks>
-    private static readonly TimeSpan DismissDelay = TimeSpan.FromSeconds(1);
-
-    /// <summary>
-    /// How often the countdown is re-examined once the pointer has left.
-    /// </summary>
-    /// <remarks>
-    /// A repeating tick rather than a one-shot timer set to <see cref="DismissDelay"/>, because the
-    /// conditions that hold the popup open end at moments nothing here is told about — playback
-    /// finishing, a translation arriving. Re-asking gives each of them the full delay afterwards
-    /// without every one of them having to remember to restart a timer.
-    /// </remarks>
-    private static readonly TimeSpan DismissTick = TimeSpan.FromMilliseconds(200);
 
     /// <inheritdoc cref="Views.Translation.TranslationPage"/>
     private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(300);
@@ -82,13 +60,9 @@ public partial class QuickLookupWindow : Window
 
     private readonly TtsService _tts = new();
     private readonly DispatcherTimer _debounce;
-    private readonly DispatcherTimer _dismiss;
     private readonly DispatcherTimer _copiedHold;
 
-    /// <summary>When the pointer last left the window, for the countdown above.</summary>
-    private DateTime _pointerLeftAt;
-
-    /// <summary>True while the popup is pinned, which is what turns the countdown off entirely.</summary>
+    /// <summary>True while the popup is pinned, which is what keeps it through a deactivation.</summary>
     private bool _pinned;
 
     /// <summary>True while the gear panel is showing instead of the result.</summary>
@@ -96,9 +70,6 @@ public partial class QuickLookupWindow : Window
 
     /// <summary>True while one of the pickers has its list down — see <see cref="OnDeactivated"/>.</summary>
     private bool _dropDownOpen;
-
-    /// <summary>True while a translation is in flight, so the popup does not close on top of it.</summary>
-    private bool _translating;
 
     /// <summary>True while the window is writing to its own controls, so that does not auto-translate.</summary>
     private bool _suppressAuto;
@@ -218,9 +189,6 @@ public partial class QuickLookupWindow : Window
         _debounce = new DispatcherTimer { Interval = DebounceDelay };
         _debounce.Tick += (_, _) => { _debounce.Stop(); _ = TranslateNowAsync(); };
 
-        _dismiss = new DispatcherTimer { Interval = DismissTick };
-        _dismiss.Tick += (_, _) => TickDismiss();
-
         _copiedHold = new DispatcherTimer { Interval = CopiedHold };
         _copiedHold.Tick += (_, _) => { _copiedHold.Stop(); RenderCopyLabel(copied: false); };
 
@@ -231,7 +199,6 @@ public partial class QuickLookupWindow : Window
         LocalizationService.BindLocalizedItems(TgtLangBox, LanguageData.TargetLanguages);
         LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
         LoadSharedPreferences();
-        AutoSpeakCheckBox.IsChecked = SettingsService.Instance.Current.QuickLookup.AutoSpeakResult;
         _suppressAuto = false;
 
         // Attached after the initial values are in, so setting them up neither saves nor translates.
@@ -257,7 +224,6 @@ public partial class QuickLookupWindow : Window
         Loaded += (_, _) =>
         {
             PositionAtPointer();
-            StartCountdownIfPointerIsAway();
             AnimateIn();
         };
 
@@ -273,18 +239,13 @@ public partial class QuickLookupWindow : Window
     /// A pinned popup keeps its place: the user put it there, and the point of pinning is that it
     /// stops behaving like a thing that follows the pointer around.
     ///
-    /// With no selection the box is left for typing and takes keyboard focus. With one it does not,
-    /// and that is what lets the popup ever close on its own — the box holding focus is one of the
-    /// things that holds the countdown, so a popup that focused itself every time would only ever
-    /// go away by being clicked.
+    /// The box takes keyboard focus either way, with a carried-in selection left selected: whoever
+    /// pressed the shortcut on the wrong word can type the right one over it without reaching for
+    /// the pointer, and whoever pressed it on the right one never touches the keyboard again.
     /// </remarks>
     private void Refill(string selection)
     {
-        if (!_pinned && IsLoaded)
-        {
-            PositionAtPointer();
-            StartCountdownIfPointerIsAway();
-        }
+        if (!_pinned && IsLoaded) PositionAtPointer();
 
         ShowSettings(false);
 
@@ -296,25 +257,16 @@ public partial class QuickLookupWindow : Window
         _detectedLang = "";
         _seq++;
 
-        if (selection.Length == 0)
-        {
-            ShowBody(false);
-            SourceTextBox.Focus();
-        }
-        else
-        {
-            Keyboard.ClearFocus();
-            RequestTranslate();
-        }
+        if (selection.Length == 0) ShowBody(false);
+        else RequestTranslate();
+
+        SourceTextBox.Focus();
+        SourceTextBox.SelectAll();
 
         RenderChrome();
     }
 
     // ══════════════════════════ Placement and motion ══════════════════════════
-
-    /// <summary>Where the popup was last placed, in physical pixels.</summary>
-    /// <inheritdoc cref="StartCountdownIfPointerIsAway"/>
-    private Rect _placedBounds;
 
     /// <summary>
     /// Drops the popup around the pointer, inside the monitor the pointer is on.
@@ -324,11 +276,9 @@ public partial class QuickLookupWindow : Window
     /// reading the scale off this window reports the monitor it currently sits on, which before the
     /// first placement is whichever one WPF happened to open it on.
     ///
-    /// The pointer ends up just inside the popup's top-left rather than above it, and that is not
-    /// cosmetic: the countdown that closes this window is driven by the pointer leaving, so a popup
-    /// that opened next to the pointer instead of under it would begin dying the moment it appeared.
-    /// The offsets put the pointer over the corner the brand mark occupies, which is the one part of
-    /// the header nobody needs to click.
+    /// The pointer ends up just inside the popup's top-left rather than beside it, so that reaching
+    /// any of the controls is a small movement from where the hand already is. The offsets put it
+    /// over the corner the brand mark occupies, which is the one part of the header nobody clicks.
     ///
     /// Nothing about the placement is remembered between summons. This window goes where the pointer
     /// already is, so a stored position would be a worse answer to the same question every time.
@@ -354,34 +304,12 @@ public partial class QuickLookupWindow : Window
         var y = Math.Clamp(pointer.Y - 8 * scale, minY, maxY);
 
         ScreenGeometry.MoveToPhysical(this, (int)Math.Round(x), (int)Math.Round(y));
-        _placedBounds = new Rect(x, y, w, h);
 
         // Anchored to the pointer rather than to a corner: the popup should look like it came out of
         // the place it was asked for, and go back into it.
         Surface.RenderTransformOrigin = new Point(
             Math.Clamp((pointer.X - x) / Math.Max(w, 1), 0, 1),
             Math.Clamp((pointer.Y - y) / Math.Max(h, 1), 0, 1));
-    }
-
-    /// <summary>
-    /// Starts the countdown when the popup could not be placed under the pointer after all.
-    /// </summary>
-    /// <remarks>
-    /// Every other way into the countdown is <see cref="OnPointerLeave"/>, which cannot fire for a
-    /// pointer that was never inside — and near a screen edge the clamping above pushes the popup
-    /// out from under it. Without this the popup would sit there until it was clicked, which is the
-    /// one thing a window that exists to get out of the way must not do.
-    ///
-    /// Measured against the placement rather than asked of <c>IsMouseOver</c>: that property is set
-    /// from mouse input, and a window appearing under a pointer nobody has moved has had none.
-    /// </remarks>
-    private void StartCountdownIfPointerIsAway()
-    {
-        var pointer = System.Windows.Forms.Cursor.Position;
-        if (_placedBounds.Contains(pointer.X, pointer.Y)) return;
-
-        _pointerLeftAt = DateTime.UtcNow;
-        _dismiss.Start();
     }
 
     /// <remarks>
@@ -428,7 +356,6 @@ public partial class QuickLookupWindow : Window
         _closing = true;
 
         _debounce.Stop();
-        _dismiss.Stop();
         _tts.Stop();
 
         if (!SystemParameters.ClientAreaAnimation)
@@ -483,61 +410,28 @@ public partial class QuickLookupWindow : Window
 
     // ══════════════════════════ Staying and going ══════════════════════════
 
-    private void OnPointerEnter(object sender, MouseEventArgs e)
-    {
-        _dismiss.Stop();
-        RenderChrome();
-    }
+    // The pointer only decides how the header draws itself; what decides whether this window still
+    // exists is OnDeactivated.
+    private void OnPointerEnter(object sender, MouseEventArgs e) => RenderChrome();
 
-    private void OnPointerLeave(object sender, MouseEventArgs e)
-    {
-        _pointerLeftAt = DateTime.UtcNow;
-        _dismiss.Start();
-        RenderChrome();
-    }
-
-    /// <remarks>
-    /// The countdown is restarted rather than merely paused by anything holding the popup open, so
-    /// each of those things is followed by the full delay instead of by whatever was left of it.
-    /// </remarks>
-    private void TickDismiss()
-    {
-        if (!MayDismiss())
-        {
-            _pointerLeftAt = DateTime.UtcNow;
-            return;
-        }
-
-        if (DateTime.UtcNow - _pointerLeftAt < DismissDelay) return;
-
-        _dismiss.Stop();
-        BeginClose();
-    }
+    private void OnPointerLeave(object sender, MouseEventArgs e) => RenderChrome();
 
     /// <summary>
-    /// Whether the popup is free to take itself off the screen.
+    /// Closes the popup as soon as the user's attention goes back to something else.
     /// </summary>
     /// <remarks>
-    /// Every entry here is a way of saying "I am still using this" that the pointer's position does
-    /// not report. Reading a result aloud and waiting for one are the two where closing would
-    /// destroy work already under way; a picker with its list down and the gear panel are places the
-    /// pointer legitimately travels outside the window's own bounds.
-    /// </remarks>
-    private bool MayDismiss() =>
-        !_pinned &&
-        !IsMouseOver &&
-        !_settingsOpen &&
-        !_dropDownOpen &&
-        !_translating &&
-        !_tts.IsActive &&
-        !SourceTextBox.IsKeyboardFocusWithin;
-
-    /// <remarks>
-    /// Clicking into another window is a clearer statement than the pointer wandering off, so it is
-    /// answered at once rather than after the delay — but it is still only a statement about
-    /// attention, and a pinned popup is one the user has said to keep regardless.
+    /// Losing activation is the whole dismissal rule, and it is a better one than a timer watching
+    /// the pointer: a pointer that has wandered off the window says nothing about whether the person
+    /// is still reading it, while clicking into another window is them saying they are finished, at
+    /// the moment they finish. Nothing has to be guessed and nothing has to be waited out.
     ///
-    /// The picker guard is what keeps a dropped-down list from closing the window underneath it.
+    /// It also means the popup never closes while it is the window being used — typing in it, waiting
+    /// for a translation, listening to one — so none of those needs a rule of its own.
+    ///
+    /// Two exceptions. A pinned popup is one the user has said to keep regardless, which is what
+    /// pinning is for. And a picker with its list down has not lost anybody's attention: the list is
+    /// its own window, and answering that deactivation would close the popup out from under the
+    /// language someone is in the middle of choosing.
     /// </remarks>
     protected override void OnDeactivated(EventArgs e)
     {
@@ -557,12 +451,9 @@ public partial class QuickLookupWindow : Window
 
         if (e.Key is not (Key.Enter or Key.Return)) return;
 
+        // Enter translates what is in the box now, rather than waiting out the debounce.
         e.Handled = true;
         _debounce.Stop();
-
-        // Focus is handed back deliberately: while the box holds it the popup cannot close on its
-        // own, and pressing Enter is how someone says they are finished typing.
-        Keyboard.ClearFocus();
         _ = TranslateNowAsync();
     }
 
@@ -615,13 +506,6 @@ public partial class QuickLookupWindow : Window
     private void SetPinned(bool pinned)
     {
         _pinned = pinned;
-        if (pinned) _dismiss.Stop();
-        else if (!IsMouseOver)
-        {
-            _pointerLeftAt = DateTime.UtcNow;
-            _dismiss.Start();
-        }
-
         RenderChrome();
     }
 
@@ -641,7 +525,7 @@ public partial class QuickLookupWindow : Window
         // Which glyph shows is the action, not the state — the way every other toggle in this
         // application draws itself. Segoe MDL2 codepoints so they survive Windows 10, where Segoe
         // Fluent Icons is not installed; see Views/Controls/TtsGlyphs.
-        PinBtn.Content = _pinned ? "" : "";
+        PinBtn.Content = _pinned ? "\uE77A" : "\uE718";
         PinBtn.ToolTip = LocalizationService.Get(
             _pinned ? "S.QuickLookup.Unpin" : "S.QuickLookup.Pin");
         PinBtn.SetResourceReference(
@@ -694,7 +578,6 @@ public partial class QuickLookupWindow : Window
         if (string.IsNullOrWhiteSpace(SourceTextBox.Text))
         {
             _seq++;
-            _translating = false;
             _detectedLang = "";
             ShowBody(_settingsOpen);
             return;
@@ -726,7 +609,6 @@ public partial class QuickLookupWindow : Window
         }
 
         var seq = ++_seq;
-        _translating = true;
         ShowStatus(LocalizationService.Get("S.Translation.Translating"), isError: false);
 
         try
@@ -736,19 +618,14 @@ public partial class QuickLookupWindow : Window
 
             if (seq != _seq) return;
 
-            _translating = false;
             _detectedLang = detected ?? "";
             TranslatedText.Text = results.FirstOrDefault()?.TranslatedText ?? "";
             StatusText.Visibility = Visibility.Collapsed;
             ShowResult();
-
-            if (settings.QuickLookup.AutoSpeakResult && TranslatedText.Text.Length > 0)
-                await ToggleTtsAsync(TgtTtsBtn, TranslatedText.Text, tgtLang);
         }
         catch (Exception ex)
         {
             if (seq != _seq) return;
-            _translating = false;
 
             Log.Warn(ex, "取詞翻譯 could not translate");
             TranslatedText.Text = "";
@@ -900,7 +777,6 @@ public partial class QuickLookupWindow : Window
         {
             _suppressAuto = true;
             LoadSharedPreferences();
-            AutoSpeakCheckBox.IsChecked = SettingsService.Instance.Current.QuickLookup.AutoSpeakResult;
             _suppressAuto = false;
 
             RenderSettingsHint();
@@ -926,14 +802,6 @@ public partial class QuickLookupWindow : Window
         // doing it first means the popup does not flash behind the window that replaced it.
         BeginClose();
         ShellWindow.ShowOrActivate(ShellPage.Settings);
-    }
-
-    private void AutoSpeak_Toggled(object sender, RoutedEventArgs e)
-    {
-        if (_suppressAuto) return;
-
-        SettingsService.Instance.Current.QuickLookup.AutoSpeakResult = AutoSpeakCheckBox.IsChecked == true;
-        SettingsService.Instance.Save();
     }
 
     // ══════════════════════════ Shared preferences ══════════════════════════
@@ -984,7 +852,6 @@ public partial class QuickLookupWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _debounce.Stop();
-        _dismiss.Stop();
         _copiedHold.Stop();
         _tts.Dispose();
 
