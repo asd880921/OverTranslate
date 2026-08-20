@@ -372,8 +372,10 @@ public partial class QuickLookupWindow : Window
         var minY = area.Top + edge;
         var maxY = Math.Max(minY, area.Bottom - h - edge);
 
-        var x = Math.Clamp(pointer.X - 36 * scale, minX, maxX);
-        var y = Math.Clamp(pointer.Y - 8 * scale, minY, maxY);
+        // Measured from the window, which is wider and taller than the card by the shadow margin —
+        // so these are the card's own inset plus that margin, and they move together with it.
+        var x = Math.Clamp(pointer.X - 48 * scale, minX, maxX);
+        var y = Math.Clamp(pointer.Y - 30 * scale, minY, maxY);
 
         ScreenGeometry.MoveToPhysical(this, (int)Math.Round(x), (int)Math.Round(y));
 
