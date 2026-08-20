@@ -644,7 +644,8 @@ public partial class QuickLookupWindow : Window
     }
 
     /// <summary>
-    /// Settles the header's quiet controls against where the pointer is and whether it is pinned.
+    /// Settles the header against where the pointer is, whether it is pinned, and whether the box
+    /// has anything in it.
     /// </summary>
     /// <remarks>
     /// The pin is always on the header. It was faded in on hover while dragging was the main way to
@@ -671,9 +672,29 @@ public partial class QuickLookupWindow : Window
         SourceTextBox.SetResourceReference(
             BorderBrushProperty, showField ? "AppInputBorder" : "AppSurfaceBg");
 
-        Placeholder.Visibility = SourceTextBox.Text.Length == 0
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        var empty = SourceTextBox.Text.Length == 0;
+        Placeholder.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+
+        // On the text alone, not on the pointer, unlike everything else this method settles. The
+        // controls above are chrome the user goes looking for; this one is the answer to a box that
+        // already has the wrong words in it, and it has to be there when they look down at it.
+        ClearBtn.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <remarks>
+    /// Cleared through the selection rather than by assigning Text, so it lands on the TextBox's own
+    /// undo stack and Ctrl+Z puts the text back — the same reasoning as 文字翻譯's clear button, and
+    /// it applies harder here: the text this destroys is usually a selection the user carried in
+    /// from somewhere else, and retyping it means going back for it.
+    /// </remarks>
+    private void ClearBtn_Click(object sender, RoutedEventArgs e)
+    {
+        SourceTextBox.SelectAll();
+        SourceTextBox.SelectedText = "";
+
+        // They cleared it in order to type something else, and the button they clicked has just
+        // gone — without this they would have to click into the box before typing.
+        SourceTextBox.Focus();
     }
 
     // ══════════════════════════ Translating ══════════════════════════
