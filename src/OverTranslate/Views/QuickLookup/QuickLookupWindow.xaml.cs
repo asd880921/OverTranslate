@@ -93,10 +93,14 @@ public partial class QuickLookupWindow : Window
 
     /// <summary>True while the popup is pinned, which is what keeps it through a deactivation.</summary>
     /// <remarks>
-    /// Per window and stored nowhere. Pinning answers "keep this one on screen while I work", which
-    /// is a statement about the popup in front of the user right now — a remembered pin would mean
-    /// every later summon opened a window that never goes away, which is the opposite of what this
-    /// feature is.
+    /// Pinning answers "keep this one on screen while I work". Everything it holds against is the
+    /// popup acting on its own — closing itself when attention moves, moving itself to the pointer
+    /// on the next summon — and nothing it holds against is the user: a pinned popup still drags,
+    /// and the close button still closes it.
+    ///
+    /// Per window and stored nowhere, because it is a statement about the popup in front of the
+    /// user right now. What sets it on the way in is which door was used, not what was set last
+    /// time — see <see cref="SummonAsync"/>.
     /// </remarks>
     private bool _pinned;
 
@@ -139,19 +143,39 @@ public partial class QuickLookupWindow : Window
     /// An already-open popup is refilled rather than replaced, so pressing the shortcut twice does
     /// not throw away a pin or a position the user has set.
     /// </remarks>
-    public static async Task SummonAsync()
+    /// <param name="pinned">
+    /// Whether to open the popup already pinned, which is how the two doors differ.
+    /// <para>
+    /// The shortcut is used mid-sentence, on a word, and the popup that answers it is meant to be
+    /// glanced at and gone — dismissing itself is the whole of why it costs nothing to press. The
+    /// entry on the main window is the opposite errand: the user went looking for the feature and
+    /// clicked it, and a window that disappeared while they were still turning back to their text
+    /// would look broken to someone who has not yet met the shortcut.
+    /// </para>
+    /// <para>
+    /// It only ever turns the pin on. Off is the user's word, and a shortcut press landing on a
+    /// popup they pinned must not quietly take that back.
+    /// </para>
+    /// </param>
+    public static async Task SummonAsync(bool pinned = false)
     {
         var selection = await SelectedTextReader.ReadAsync();
 
         if (_current is { _closing: false } open)
         {
             open.Refill(selection);
+            if (pinned) open.SetPinned(true);
             open.ReacquireForeground();
             return;
         }
 
         var window = new QuickLookupWindow();
         _current = window;
+
+        // Before Show: showing a window can hand activation straight back, and OnDeactivated closes
+        // an unpinned popup without asking how old it is.
+        if (pinned) window.SetPinned(true);
+
         window.Show();
         window.ReacquireForeground();
         window.Refill(selection);
@@ -591,15 +615,14 @@ public partial class QuickLookupWindow : Window
     /// want it to stay there — but the pin is on the header at all times now, so the guess buys
     /// nothing, and a window that pins itself is one the user has to notice and undo.
     ///
-    /// The relationship runs the other way instead: pinning stops the dragging.
+    /// Pinning does not stop dragging either, which it briefly did. A pinned popup is the one the
+    /// user is going to keep for a while, so it is the one they most need to move out of the way of
+    /// what they are reading — locking it in place took that away from exactly the case that wanted
+    /// it. What the pin holds against is the popup moving on its own, which is a different thing
+    /// from the user moving it: see <see cref="Refill"/>.
     /// </remarks>
     private void Surface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // Pinning fixes the window where it is, so it also takes dragging away: the same pin already
-        // stops a later summon from moving the popup to the pointer, and a pin that held against one
-        // way of moving it but not the other would mean two different things.
-        if (_pinned) return;
-
         try
         {
             DragMove();
@@ -611,9 +634,12 @@ public partial class QuickLookupWindow : Window
         }
     }
 
-    private void PinBtn_Click(object sender, RoutedEventArgs e)
+    private void PinBtn_Click(object sender, RoutedEventArgs e) => SetPinned(!_pinned);
+
+    /// <summary>Sets the pin and redraws the header, which is the only thing that reports it.</summary>
+    private void SetPinned(bool pinned)
     {
-        _pinned = !_pinned;
+        _pinned = pinned;
         RenderChrome();
     }
 
