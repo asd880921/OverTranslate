@@ -59,7 +59,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
     private readonly Func<IntPtr> _resolveMonitor;
     private readonly Func<IReadOnlyList<IntPtr>> _resolveOverlays;
     private readonly IDirect3DDevice _device;
-    private readonly IntPtr _rawDevice;
+    private readonly WgcSurfaceReader _reader;
 
     private readonly object _sync = new();
     private GraphicsCaptureItem? _item;
@@ -95,12 +95,12 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
         Func<IntPtr> resolveMonitor,
         Func<IReadOnlyList<IntPtr>> resolveOverlays,
         IDirect3DDevice device,
-        IntPtr rawDevice)
+        WgcSurfaceReader reader)
     {
         _resolveMonitor = resolveMonitor;
         _resolveOverlays = resolveOverlays;
         _device = device;
-        _rawDevice = rawDevice;
+        _reader = reader;
     }
 
     /// <summary>
@@ -144,16 +144,18 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
         if (monitor == IntPtr.Zero) return null;
 
         IDirect3DDevice? device = null;
-        var rawDevice = IntPtr.Zero;
+        WgcSurfaceReader? reader = null;
         WgcMonitorCaptureBackend? backend = null;
         try
         {
             // On the adapter driving this monitor rather than on whichever one is listed first: a
             // capture served by another adapter is not refused, it simply never delivers a frame.
-            device = WgcInterop.CreateDirect3DDevice(monitor, false, out rawDevice, out var adapter);
+            device = WgcInterop.CreateDirect3DDevice(
+                monitor, false, out var rawDevice, out var context, out var adapter);
             Log.Debug("Realtime monitor capture using {Adapter}", adapter);
 
-            backend = new WgcMonitorCaptureBackend(resolveMonitor, resolveOverlays, device, rawDevice);
+            reader = new WgcSurfaceReader(rawDevice, context);
+            backend = new WgcMonitorCaptureBackend(resolveMonitor, resolveOverlays, device, reader);
             if (!backend.Attach(monitor)) throw new InvalidOperationException("the monitor refused capture");
             if (!backend.WaitForIsolatedFrame(FirstFrameTimeout))
                 throw new InvalidOperationException("no frame arrived with the exclusion list in effect");
@@ -170,7 +172,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
             if (backend is null)
             {
                 (device as IDisposable)?.Dispose();
-                if (rawDevice != IntPtr.Zero) Marshal.Release(rawDevice);
+                reader?.Dispose();
             }
             return null;
         }
@@ -438,7 +440,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
             }
 
             var started = Stopwatch.GetTimestamp();
-            var bitmap = WgcInterop.ReadBack(frame.Surface, content.Width, content.Height);
+            var bitmap = _reader.Read(frame.Surface, content.Width, content.Height);
             Interlocked.Add(ref _readbackTicks, Stopwatch.GetTimestamp() - started);
             Interlocked.Increment(ref _framesRead);
 
@@ -606,7 +608,7 @@ public sealed class WgcMonitorCaptureBackend : IRealtimeCaptureBackend
 
         _frameSignal.Dispose();
         (_device as IDisposable)?.Dispose();
-        if (_rawDevice != IntPtr.Zero) Marshal.Release(_rawDevice);
+        _reader.Dispose();
     }
 
     [StructLayout(LayoutKind.Sequential)]

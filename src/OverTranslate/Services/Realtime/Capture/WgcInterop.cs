@@ -2,22 +2,19 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX.Direct3D11;
-using Windows.Graphics.Imaging;
 
 namespace OverTranslate.Services.Realtime.Capture;
 
 /// <summary>
 /// The COM plumbing between WPF and Windows.Graphics.Capture: the two things the projection cannot
-/// give on its own — a capture item for an HWND, and a Direct3D device to receive frames on — plus
-/// the readback that turns a captured surface into the <see cref="System.Drawing.Bitmap"/> the rest
-/// of this application already speaks.
+/// give on its own — a capture item for an HWND, and a Direct3D device to receive frames on. Turning
+/// the frames themselves into bitmaps is <see cref="WgcSurfaceReader"/>'s.
 /// </summary>
 /// <remarks>
 /// Hand-written rather than pulled in with a D3D wrapper library. What is needed here is narrow —
 /// create a device, hold it, hand it to the frame pool, never draw anything — and the surface a
 /// wrapper would add is much wider than that, on a project whose whole dependency list is five
-/// packages. The one thing worth borrowing from D3D, a GPU-side crop, is deliberately not done yet:
-/// correctness of the capture semantics comes first and readback is measured afterwards.
+/// packages.
 ///
 /// Everything here is 1903 or older. The types are attributed accordingly so the callers are forced
 /// to say out loud which Windows they need, because the application itself still runs on 1809.
@@ -91,19 +88,21 @@ internal static class WgcInterop
     }
 
     /// <summary>
-    /// A Direct3D device for the frame pool to hand frames back on, and the raw D3D11 device behind
-    /// it, which the caller must release when it is done.
+    /// A Direct3D device for the frame pool to hand frames back on, plus the raw D3D11 device and
+    /// its immediate context behind it, which the caller must release when it is done — usually by
+    /// handing both to a <see cref="WgcSurfaceReader"/>, which owns them from then on.
     /// </summary>
     /// <remarks>
     /// BGRA support is required, not optional: the frame pool is created for
     /// <c>B8G8R8A8UIntNormalized</c>, which is also the one format that maps onto a 32bpp GDI bitmap
     /// without a channel shuffle. The device is created without a debug layer and without a swap
     /// chain — nothing here presents anything.
+    ///
+    /// The immediate context used to be released here, on the grounds that frames arrive already
+    /// copied into the pool's textures and nothing needed it. Reading one of those textures back is
+    /// what needs it, and that is now done through D3D rather than through an async WinRT call —
+    /// see <see cref="WgcSurfaceReader"/> for why that had to change.
     /// </remarks>
-    public static IDirect3DDevice CreateDirect3DDevice(out IntPtr rawDevice) =>
-        CreateDirect3DDevice(IntPtr.Zero, false, out rawDevice, out _);
-
-    /// <inheritdoc cref="CreateDirect3DDevice(out IntPtr)"/>
     /// <param name="preferredMonitor">
     /// The monitor the capture source is on, or <see cref="IntPtr.Zero"/> for no preference. Used to
     /// pick the adapter the device is created on.
@@ -127,7 +126,8 @@ internal static class WgcInterop
     /// passing null gets.
     /// </remarks>
     public static IDirect3DDevice CreateDirect3DDevice(
-        IntPtr preferredMonitor, bool forceWarp, out IntPtr rawDevice, out string description)
+        IntPtr preferredMonitor, bool forceWarp, out IntPtr rawDevice, out IntPtr immediateContext,
+        out string description)
     {
         const int DriverTypeUnknown = 0;
         const int DriverTypeHardware = 1;
@@ -180,11 +180,11 @@ internal static class WgcInterop
             if (hr >= 0) description = "WARP (software) adapter";
         }
 
-        if (hr < 0) Marshal.ThrowExceptionForHR(hr);
-
-        // The immediate context is never used here — frames arrive already copied into the pool's
-        // textures — so it is released straight away rather than carried around.
-        if (context != IntPtr.Zero) Marshal.Release(context);
+        if (hr < 0)
+        {
+            if (context != IntPtr.Zero) Marshal.Release(context);
+            Marshal.ThrowExceptionForHR(hr);
+        }
 
         var dxgi = IntPtr.Zero;
         var abi = IntPtr.Zero;
@@ -195,7 +195,9 @@ internal static class WgcInterop
             Marshal.ThrowExceptionForHR(CreateDirect3D11DeviceFromDXGIDevice(dxgi, out abi));
 
             rawDevice = device;
+            immediateContext = context;
             device = IntPtr.Zero;
+            context = IntPtr.Zero;
             return WinRT.MarshalInterface<IDirect3DDevice>.FromAbi(abi);
         }
         finally
@@ -203,91 +205,7 @@ internal static class WgcInterop
             if (abi != IntPtr.Zero) Marshal.Release(abi);
             if (dxgi != IntPtr.Zero) Marshal.Release(dxgi);
             if (device != IntPtr.Zero) Marshal.Release(device);
-        }
-    }
-
-    /// <summary>
-    /// Reads a captured surface back into a bitmap on the CPU, which is what recognition needs.
-    /// </summary>
-    /// <remarks>
-    /// This is the expensive half of the whole path — a full GPU-to-CPU copy of the captured window
-    /// — which is exactly why the backend does it at poll rate and not at frame rate, and why one
-    /// readback serves every region rather than one per region.
-    ///
-    /// <c>CreateCopyFromSurfaceAsync</c> rather than a staging texture and a map: it is the only
-    /// step of the D3D dance the projection will do on our behalf, and doing it by hand would mean
-    /// defining ID3D11Device, ID3D11Texture2D and ID3D11DeviceContext to save one copy that has not
-    /// yet been shown to cost anything. If measurement says otherwise, this is the one function that
-    /// changes.
-    /// </remarks>
-    /// <param name="width">
-    /// How much of the surface is actually the window. A capture texture is allocated to the size
-    /// the pool was created for and is routinely larger than the content in it — the extra columns
-    /// and rows are whatever was last in that memory — so the content size travels with every frame
-    /// and is what gets copied out.
-    /// </param>
-    public static unsafe System.Drawing.Bitmap ReadBack(IDirect3DSurface surface, int width, int height)
-    {
-        using var software = SoftwareBitmap.CreateCopyFromSurfaceAsync(
-            surface, BitmapAlphaMode.Premultiplied).AsTask().GetAwaiter().GetResult();
-
-        var bitmap = new System.Drawing.Bitmap(
-            Math.Clamp(width, 1, software.PixelWidth),
-            Math.Clamp(height, 1, software.PixelHeight),
-            System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
-        try
-        {
-            using var buffer = software.LockBuffer(BitmapBufferAccessMode.Read);
-            using var reference = buffer.CreateReference();
-
-            // Not a plain cast. A projected WinRT object is not a classic COM callable wrapper, so
-            // casting it to a [ComImport] interface throws — the pixels have to be reached by going
-            // out to the ABI pointer and querying for the byte-access interface there.
-            var abi = WinRT.MarshalInspectable<Windows.Foundation.IMemoryBufferReference>.FromManaged(reference);
-            IMemoryBufferByteAccess access;
-            try
-            {
-                access = (IMemoryBufferByteAccess)Marshal.GetObjectForIUnknown(abi);
-            }
-            finally
-            {
-                Marshal.Release(abi);
-            }
-
-            // Valid only while the reference above is open, which is the whole of this scope.
-            access.GetBuffer(out var source, out _);
-
-            var plane = buffer.GetPlaneDescription(0);
-            var locked = bitmap.LockBits(
-                new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
-                System.Drawing.Imaging.ImageLockMode.WriteOnly,
-                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            try
-            {
-                // Row by row: the two strides agree in practice and must not be assumed to, and a
-                // row is a memcpy either way.
-                var rowBytes = bitmap.Width * 4;
-                for (var y = 0; y < bitmap.Height; y++)
-                {
-                    Buffer.MemoryCopy(
-                        source + plane.StartIndex + (plane.Stride * y),
-                        (byte*)locked.Scan0 + (locked.Stride * y),
-                        rowBytes,
-                        rowBytes);
-                }
-            }
-            finally
-            {
-                bitmap.UnlockBits(locked);
-            }
-
-            return bitmap;
-        }
-        catch
-        {
-            bitmap.Dispose();
-            throw;
+            if (context != IntPtr.Zero) Marshal.Release(context);
         }
     }
 
@@ -400,14 +318,6 @@ internal static class WgcInterop
     {
         void CreateForWindow(IntPtr window, ref Guid iid, out IntPtr result);
         void CreateForMonitor(IntPtr monitor, ref Guid iid, out IntPtr result);
-    }
-
-    [ComImport]
-    [Guid("5B0D3235-4DBA-4D44-865E-8F1D0E4FD04D")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMemoryBufferByteAccess
-    {
-        unsafe void GetBuffer(out byte* buffer, out uint capacity);
     }
 
     // ── DXGI, only far enough to name the adapter behind a monitor ───────────────────────────────

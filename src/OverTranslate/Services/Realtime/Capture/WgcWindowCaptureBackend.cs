@@ -69,7 +69,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
 
     private readonly Func<IntPtr> _resolveSource;
     private readonly IDirect3DDevice _device;
-    private readonly IntPtr _rawDevice;
+    private readonly WgcSurfaceReader _reader;
 
     // Guards the whole capture chain below, which is torn down and rebuilt on a resize and on the
     // source window being replaced.
@@ -109,11 +109,12 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
     private string _adapter = "unknown";
     private string? _firstFault;
 
-    private WgcWindowCaptureBackend(Func<IntPtr> resolveSource, IDirect3DDevice device, IntPtr rawDevice)
+    private WgcWindowCaptureBackend(
+        Func<IntPtr> resolveSource, IDirect3DDevice device, WgcSurfaceReader reader)
     {
         _resolveSource = resolveSource;
         _device = device;
-        _rawDevice = rawDevice;
+        _reader = reader;
     }
 
     /// <summary>
@@ -186,16 +187,17 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
         var timeout = forceWarp ? FirstFrameTimeout / 2 : FirstFrameTimeout;
 
         IDirect3DDevice? device = null;
-        var rawDevice = IntPtr.Zero;
+        WgcSurfaceReader? reader = null;
         WgcWindowCaptureBackend? backend = null;
         var outcome = WindowCaptureOutcome.Refused;
         try
         {
             device = WgcInterop.CreateDirect3DDevice(
                 MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), forceWarp,
-                out rawDevice, out var adapter);
+                out var rawDevice, out var context, out var adapter);
 
-            backend = new WgcWindowCaptureBackend(resolveSource, device, rawDevice) { _adapter = adapter };
+            reader = new WgcSurfaceReader(rawDevice, context);
+            backend = new WgcWindowCaptureBackend(resolveSource, device, reader) { _adapter = adapter };
             if (!backend.Attach(hwnd)) throw new InvalidOperationException("the window refused capture");
 
             outcome = backend.WaitForUsableFrame(timeout);
@@ -218,7 +220,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
             if (backend is null)
             {
                 (device as IDisposable)?.Dispose();
-                if (rawDevice != IntPtr.Zero) Marshal.Release(rawDevice);
+                reader?.Dispose();
             }
             return (null, outcome);
         }
@@ -419,7 +421,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
             }
 
             var started = Stopwatch.GetTimestamp();
-            var bitmap = WgcInterop.ReadBack(frame.Surface, content.Width, content.Height);
+            var bitmap = _reader.Read(frame.Surface, content.Width, content.Height);
             Interlocked.Add(ref _readbackTicks, Stopwatch.GetTimestamp() - started);
             Interlocked.Increment(ref _framesRead);
 
@@ -669,7 +671,7 @@ public sealed class WgcWindowCaptureBackend : IRealtimeCaptureBackend
 
         _frameSignal.Dispose();
         (_device as IDisposable)?.Dispose();
-        if (_rawDevice != IntPtr.Zero) Marshal.Release(_rawDevice);
+        _reader.Dispose();
     }
 
     private const uint DWMWA_EXTENDED_FRAME_BOUNDS = 9;
