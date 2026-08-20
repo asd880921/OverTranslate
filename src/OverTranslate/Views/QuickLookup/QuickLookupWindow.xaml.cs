@@ -55,6 +55,18 @@ public partial class QuickLookupWindow : Window
     private const int BodyMs  = 150;
 
     /// <summary>
+    /// The transparent band above and below the card, in DIP.
+    /// </summary>
+    /// <remarks>
+    /// These are the top and bottom of the shadow margin on the root Grid — <c>Margin="26,24,26,30"</c>
+    /// in the XAML, which says why it is there. They have to be kept in step with it: they are what
+    /// <see cref="KeepBodyOnScreen"/> subtracts to find the card inside the window, and a stale value
+    /// would put the card that far off the edge it was told to sit against.
+    /// </remarks>
+    private const double ShadowMarginTop    = 24;
+    private const double ShadowMarginBottom = 30;
+
+    /// <summary>
     /// How often Windows is asked which window is actually in front.
     /// </summary>
     /// <remarks>
@@ -317,9 +329,12 @@ public partial class QuickLookupWindow : Window
             };
         }
 
-        // Every change of height, not just the result opening: the settings panel is a different
-        // height again, and a long enough original wraps the box onto a second line. All of them
-        // grow out of the bottom, so all of them can run off it.
+        // The mop-up half of the lift. OnWindowPosChanging does the work, and does it atomically,
+        // but the height it is offered is the one Windows is about to apply and that is occasionally
+        // a pixel or two short of where the resize settles — enough to leave the bottom row of the
+        // card over the edge. By here the resize has landed and the window can be asked how tall it
+        // really is. A correction this small is not a movement anybody sees; the lift it is
+        // correcting already happened in the same frame as the resize.
         SizeChanged += (_, e) => { if (e.HeightChanged) KeepBodyOnScreen(); };
 
         MouseEnter += OnPointerEnter;
@@ -430,6 +445,17 @@ public partial class QuickLookupWindow : Window
             Math.Clamp((pointer.Y - y) / Math.Max(h, 1), 0, 1));
     }
 
+    /// <remarks>
+    /// The handle is what the message hook needs, and this is the first moment there is one.
+    /// </remarks>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        if (PresentationSource.FromVisual(this) is HwndSource source)
+            source.AddHook(OnWindowPosChanging);
+    }
+
     /// <summary>
     /// Lifts the popup off the bottom edge while the result is open, and puts it back after.
     /// </summary>
@@ -439,10 +465,78 @@ public partial class QuickLookupWindow : Window
     /// A popup summoned or dragged near the foot of the screen therefore grows the answer straight
     /// off the desktop: the user typed a word, something happened, and there is nothing to read.
     ///
+    /// Caught on the way in, in <c>WM_WINDOWPOSCHANGING</c>, rather than answered afterwards from
+    /// <c>SizeChanged</c>. Two reasons, and the first is that afterwards does not work: WPF resizes
+    /// the HWND after the layout pass, so a handler that asked Windows how tall the window was would
+    /// be told the height it had a moment ago, wave the grow through, and only catch it on some
+    /// later pass — the window visibly drops off the bottom of the screen and is then yanked back.
+    /// The second is that this is one operation instead of two: Windows is already about to move and
+    /// size this window, and editing the rectangle it is going to use means there is never a frame
+    /// where the popup has grown but not yet moved.
+    ///
     /// The arithmetic is <see cref="QuickLookupLift"/>'s, which is where it can be tested; this is
     /// the half that has to ask Windows where the window and the monitor actually are.
     ///
-    /// Physical pixels throughout, for the reason <see cref="PositionAtPointer"/> gives.
+    /// Physical pixels throughout — which is what <c>WINDOWPOS</c> is already in, for the reason
+    /// <see cref="PositionAtPointer"/> gives.
+    /// </remarks>
+    private IntPtr OnWindowPosChanging(
+        IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != WmWindowPosChanging || _closing) return IntPtr.Zero;
+
+        var pos = Marshal.PtrToStructure<WINDOWPOS>(lParam);
+
+        // Nothing to catch when the height is not changing: our own corrections come through here
+        // as pure moves, and answering them would be a loop.
+        if ((pos.flags & SwpNoSize) != 0) return IntPtr.Zero;
+
+        var bounds = ScreenGeometry.PhysicalBounds(this);
+        if (bounds.IsEmpty) return IntPtr.Zero;
+
+        // x and y are undefined when the caller said not to move, so the window's own position is
+        // what the new height has to be judged against.
+        var moving = (pos.flags & SwpNoMove) == 0;
+        var left = moving ? pos.x : bounds.Left;
+        var top  = moving ? pos.y : bounds.Top;
+
+        // A drag arrives here as a move that carries the size along with it, one message per step,
+        // and pos.y is where the drag wants the window rather than where it has been allowed to sit.
+        // That is the definition of the resting place, so each step replaces it: without this, the
+        // first step that overflowed would be remembered as home and the rest of the drag ignored.
+        if (moving) _restingTop = null;
+
+        var area = System.Windows.Forms.Screen.FromRectangle(bounds).WorkingArea;
+        var scale = ScreenGeometry.ScaleAt(left, top);
+
+        // The card may go all the way to the edge; the window may go further, because the last
+        // ShadowMargin* pixels of it are the transparent border the shadow fades out into. Holding
+        // the window itself inside the work area would keep the card that much clear of the bottom
+        // of every screen, which is a band of empty desktop under a popup for no stated reason.
+        var (wanted, resting) = QuickLookupLift.Place(
+            top,
+            _restingTop,
+            pos.cy,
+            area.Top - (int)Math.Round(ShadowMarginTop * scale),
+            area.Bottom + (int)Math.Round(ShadowMarginBottom * scale));
+
+        _restingTop = resting;
+
+        if (wanted == top) return IntPtr.Zero;
+
+        pos.x = left;
+        pos.y = wanted;
+        pos.flags &= ~SwpNoMove;
+        Marshal.StructureToPtr(pos, lParam, fDeleteOld: false);
+
+        return IntPtr.Zero;
+    }
+
+    /// <summary>Re-checks the fit after something moved the window without resizing it.</summary>
+    /// <remarks>
+    /// <see cref="OnWindowPosChanging"/> only hears about resizes, and a drag is not one. Reading
+    /// the height back from the window is safe here for the same reason it is wrong there: nothing
+    /// is in flight, so what Windows reports is what is on the screen.
     /// </remarks>
     private void KeepBodyOnScreen()
     {
@@ -452,14 +546,34 @@ public partial class QuickLookupWindow : Window
         if (bounds.IsEmpty) return;
 
         var area = System.Windows.Forms.Screen.FromRectangle(bounds).WorkingArea;
-        var edge = (int)Math.Round(4 * ScreenGeometry.ScaleAt(bounds.Left, bounds.Top));
+        var scale = ScreenGeometry.ScaleAt(bounds.Left, bounds.Top);
 
         var (top, resting) = QuickLookupLift.Place(
-            bounds.Top, _restingTop, bounds.Height, area.Top, area.Bottom, edge);
+            bounds.Top,
+            _restingTop,
+            bounds.Height,
+            area.Top - (int)Math.Round(ShadowMarginTop * scale),
+            area.Bottom + (int)Math.Round(ShadowMarginBottom * scale));
 
         _restingTop = resting;
 
         if (top != bounds.Top) ScreenGeometry.MoveToPhysical(this, bounds.Left, top);
+    }
+
+    private const int WmWindowPosChanging = 0x0046;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WINDOWPOS
+    {
+        public IntPtr hwnd;
+        public IntPtr hwndInsertAfter;
+        public int x;
+        public int y;
+        public int cx;
+        public int cy;
+        public uint flags;
     }
 
     /// <remarks>
@@ -685,10 +799,9 @@ public partial class QuickLookupWindow : Window
             // can manage. There is nothing to move and nothing to report.
         }
 
-        // Wherever they let go is the resting place now. Keeping the old one would send the popup
-        // back to somewhere they had already moved it away from, the next time the result closed.
-        _restingTop = null;
-        KeepBodyOnScreen();
+        // Nothing to do afterwards. Windows sends the drag through OnWindowPosChanging step by step,
+        // so the popup has been kept on screen the whole way down and the place they let go of it is
+        // already recorded. Resetting anything here would throw that away.
     }
 
     private void PinBtn_Click(object sender, RoutedEventArgs e) => SetPinned(!_pinned);
