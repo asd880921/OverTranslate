@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -57,7 +58,7 @@ public partial class ShellWindow : Window
     private static WindowState _lastWindowState = WindowState.Normal;
 
     /// <inheritdoc cref="_lastSize"/>
-    private static double? _lastSidebarWidth;
+    private static bool _lastRailCollapsed;
 
     /// <summary>
     /// The page the shell was last showing, so opening it again lands where the user left off
@@ -106,8 +107,8 @@ public partial class ShellWindow : Window
         }
 
         _instance.Navigate(target);
-        _instance.RefreshHotkeyHint();
-        _instance.RefreshCaptureAvailability();
+        _instance.RefreshHotkeyHints();
+        _instance.RefreshQuickToolAvailability();
 
         var shell = _instance;
         shell.Dispatcher.BeginInvoke(shell.Activate, DispatcherPriority.ApplicationIdle);
@@ -121,11 +122,12 @@ public partial class ShellWindow : Window
         var icon = AppIconService.CreateWindowIcon();
         Icon = icon;
         BrandIcon.Source = icon;
+        TitleIcon.Source = icon;
         VersionText.Text = $"v{Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0"}";
 
         _instance = this;
         MatchBrandIconToText();
-        RefreshHotkeyHint();
+        RefreshHotkeyHints();
 
         // Subscribed once here rather than per open, so the handler is not stacked up by a user who
         // opens the service panel more than once.
@@ -135,19 +137,28 @@ public partial class ShellWindow : Window
         // Show(), not through ShowOrActivate, so nothing else would clear the disabled state and
         // the button would stay greyed out for as long as the shell stayed open.
         Realtime.RealtimeSessionController.Instance.StateChanged += OnRealtimeStateChanged;
-        RefreshCaptureAvailability();
+        RefreshQuickToolAvailability();
 
         // Same reasoning, and one more: the periodic check runs whether or not this window exists,
         // so the rail has to be able to gain the row while the user is sitting in front of it.
         UpdateNotifier.AvailabilityChanged += OnUpdateAvailabilityChanged;
         RefreshUpdateAvailability();
 
-        // The rail's two composed strings — the update row's version and the capture button's
-        // blocked-by-realtime tooltip — are set from code, so DynamicResource does not reach them
+        // The rail's composed strings — the update row's version and the 快速工具 rows'
+        // blocked-by-realtime tooltips — are set from code, so DynamicResource does not reach them
         // and they would keep the language they were built in. The settings page that changes the
         // language lives inside this window, so they are always on screen when it happens.
         LocalizationService.LanguageChanged += OnLanguageChanged;
         Closed += (_, _) => LocalizationService.LanguageChanged -= OnLanguageChanged;
+
+        // The system title bar is gone, so what it used to do for itself is done here: maximising
+        // to the work area rather than over it, rounding the window and colouring its outer edge,
+        // and saying which of maximise or restore this window is currently offering.
+        WindowFrame.Attach(this);
+        ThemeService.Changed += OnThemeChanged;
+        Closed += (_, _) => ThemeService.Changed -= OnThemeChanged;
+        StateChanged += (_, _) => RefreshMaximizeButton();
+        RefreshMaximizeButton();
 
         RestoreSessionLayout();
 
@@ -166,17 +177,20 @@ public partial class ShellWindow : Window
 
         if (_lastWindowState == WindowState.Maximized) WindowState = WindowState.Maximized;
 
-        if (_lastSidebarWidth is { } railWidth)
-        {
-            SidebarColumn.Width = new GridLength(
-                Math.Clamp(railWidth, SidebarColumn.MinWidth, SidebarColumn.MaxWidth));
-        }
+        _railCollapsed = _lastRailCollapsed;
+        SetRailWidth(_railCollapsed ? 0 : RailWidth);
+        RefreshSidebarToggle();
     }
+
+    // The window's outer edge is the compositor's, not this window's, so it is the one colour in
+    // the application that has to be handed over again rather than re-resolved.
+    private void OnThemeChanged(object? sender, EventArgs e) => WindowFrame.ApplyAppearance(this);
 
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
-        RefreshCaptureAvailability();
+        RefreshQuickToolAvailability();
         RefreshUpdateAvailability();
+        RefreshSidebarToggle();
     }
 
     /// <summary>
@@ -204,41 +218,60 @@ public partial class ShellWindow : Window
     }
 
     /// <summary>
-    /// Re-reads the shortcut into the capture button's trailing hint. Called on construction and on
+    /// Re-reads the shortcuts into the 快速工具 rows' trailing hints. Called on construction and on
     /// every ShowOrActivate, and directly by <see cref="Settings.SettingsPage"/> the moment a new
     /// shortcut is recorded — the rail is visible the whole time the user is on 設定, so waiting
     /// for the next navigation would leave the wrong shortcut on screen next to the button.
     /// </summary>
-    public void RefreshHotkeyHint()
+    public void RefreshHotkeyHints()
     {
-        var hotkey = SettingsService.Instance.Current.HotkeyDisplay;
+        var settings = SettingsService.Instance.Current;
+
         // Blank rather than a "未設定" placeholder: the label already says what the button does,
         // and a slot that only ever holds a shortcut should be empty when there is none.
-        CaptureHotkeyText.Text = string.IsNullOrWhiteSpace(hotkey) ? "" : hotkey;
+        CaptureHotkeyText.Text = string.IsNullOrWhiteSpace(settings.HotkeyDisplay)
+            ? ""
+            : settings.HotkeyDisplay;
+
+        // Also blank when the shortcut is switched off in 設定: this row is not registered then, so
+        // printing the combination would advertise a key press that does nothing. The button
+        // itself stays — it is a way in of its own, not a reminder of the shortcut.
+        QuickLookupHotkeyText.Text =
+            settings.QuickLookupHotkeyEnabled && !string.IsNullOrWhiteSpace(settings.QuickLookupHotkeyDisplay)
+                ? settings.QuickLookupHotkeyDisplay
+                : "";
     }
 
     /// <summary>
-    /// Greys out the rail's capture button while a realtime session is running, and says why.
+    /// Greys out the rail's 快速工具 rows while a realtime session is running, and says why.
     /// </summary>
     /// <remarks>
-    /// The two features share one OCR engine and one pool of inference slots, so they are exclusive
-    /// — see MainWindow.RefuseWhileRealtimeRuns, which is what actually enforces it. This is the
-    /// half the user sees: a button that refuses when pressed teaches nothing, while a disabled one
-    /// carrying its reason answers the question before it is asked.
+    /// All three features share one OCR engine and one pool of inference slots, so they are
+    /// exclusive — see MainWindow.RefuseWhileRealtimeRuns, which is what actually enforces it. This
+    /// is the half the user sees: a button that refuses when pressed teaches nothing, while a
+    /// disabled one carrying its reason answers the question before it is asked.
     ///
     /// The shell is hidden for the duration of a session, so this matters in one specific way in: a
-    /// user who opens 設定 from the tray mid-session gets the rail, and its primary action with it.
+    /// user who opens 設定 from the tray mid-session gets the rail, and its actions with it.
     /// </remarks>
     private void OnRealtimeStateChanged(object? sender, EventArgs e) =>
-        Dispatcher.BeginInvoke(RefreshCaptureAvailability);
+        Dispatcher.BeginInvoke(RefreshQuickToolAvailability);
 
-    public void RefreshCaptureAvailability()
+    public void RefreshQuickToolAvailability()
     {
         var running = Realtime.RealtimeSessionController.Instance.IsActive;
 
         CaptureBtn.IsEnabled = !running;
         CaptureBtn.ToolTip = running
             ? LocalizationService.Get("S.Shell.CaptureBlockedByRealtime")
+            : null;
+
+        // 取詞翻譯 is not merely refused during a session — a session already dismisses the popup
+        // when it starts (MainWindow.OnRealtimeStateChanged), so a row that still looked available
+        // would open a window that closes itself.
+        QuickLookupBtn.IsEnabled = !running;
+        QuickLookupBtn.ToolTip = running
+            ? LocalizationService.Get("S.Shell.QuickLookupBlockedByRealtime")
             : null;
     }
 
@@ -277,12 +310,154 @@ public partial class ShellWindow : Window
         UpdateWindow.ShowOrActivate(update);
     }
 
+    private void MinimizeBtn_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void MaximizeBtn_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+
+    private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
+
+    /// <summary>
+    /// Puts the right one of maximise and restore on the middle caption button.
+    /// </summary>
+    /// <remarks>
+    /// Driven from StateChanged rather than only from the button's own click: double-clicking the
+    /// title bar and Aero Snap both maximise this window without going anywhere near it.
+    /// </remarks>
+    private void RefreshMaximizeButton() =>
+        MaximizeBtn.Content = WindowState == WindowState.Maximized ? "" : "";
+
+    /// <summary>The rail's width whenever it is showing.</summary>
+    /// <remarks>
+    /// One width rather than a range. The rail holds a fixed set of rows whose widest line is a
+    /// 快速工具 label and its shortcut, so there is one width that fits them — every other width is
+    /// either wasting the page's or trimming the rail's own labels. What a user dragging the rail
+    /// narrow actually wants is the width back, and the toggle in the title bar gives them all of
+    /// it in one press.
+    /// </remarks>
+    private const double RailWidth = 248;
+
+    private static readonly Duration RailDuration = new(TimeSpan.FromMilliseconds(320));
+
+    /// <summary>
+    /// The rail column's width, as something that can be animated.
+    /// </summary>
+    /// <remarks>
+    /// GridLength is not a double and WPF ships no animation for it, so a column driven directly
+    /// can only jump. Animating a plain double here and writing the column from it is what lets the
+    /// rail settle into place instead.
+    /// </remarks>
+    private static readonly DependencyProperty RailWidthProperty = DependencyProperty.Register(
+        "RailWidth", typeof(double), typeof(ShellWindow),
+        new PropertyMetadata(0.0, (d, e) => ((ShellWindow)d).ApplyRailWidth((double)e.NewValue)));
+
+    /// <summary>
+    /// The rail's width as it has just been written, animation included.
+    /// </summary>
+    /// <remarks>
+    /// Not ActualWidth: the column's own Width is what the animation writes, and it is read here
+    /// before the layout pass that would make ActualWidth agree — so a toggle pressed mid-slide
+    /// would otherwise carry on from the width the rail had a frame ago and jump.
+    /// </remarks>
+    private double CurrentRailWidth => SidebarColumn.Width.IsAbsolute
+        ? SidebarColumn.Width.Value
+        : SidebarColumn.ActualWidth;
+
+    private void ApplyRailWidth(double width)
+    {
+        SidebarColumn.Width = new GridLength(Math.Max(0, width));
+
+        // Only once there is nothing left to draw. The rail is clipped to its column, so the
+        // collapse reads as the card being wiped off the edge rather than as it shrinking — and a
+        // panel left visible at zero width would still take a hit test in the page's first pixel.
+        RailPanel.Visibility = width < 1
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    /// <summary>Puts the rail at <paramref name="width"/> at once, for a layout being restored.</summary>
+    private void SetRailWidth(double width)
+    {
+        BeginAnimation(RailWidthProperty, null);
+        ApplyRailWidth(width);
+    }
+
+    private void AnimateRailTo(double width)
+    {
+        var from = CurrentRailWidth;
+        if (Math.Abs(from - width) < 0.5)
+        {
+            SetRailWidth(width);
+            return;
+        }
+
+        // From wherever the rail is on screen right now, not from where the animation in flight was
+        // headed: pressing the button again mid-slide reverses it instead of finishing first.
+        // Critically damped — eased out with no overshoot. The rail is a panel being put somewhere,
+        // not something thrown, and a bounce here would read as it having missed.
+        BeginAnimation(RailWidthProperty, new DoubleAnimation
+        {
+            From = from,
+            To = width,
+            Duration = RailDuration,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
+    }
+
+    /// <summary>Whether the rail is currently put away.</summary>
+    /// <remarks>
+    /// Held here rather than read back off the column, so a press that lands while the slide is
+    /// still running toggles what the rail is going to be rather than whatever width it happens to
+    /// be passing through at that instant.
+    /// </remarks>
+    private bool _railCollapsed;
+
+    private void SidebarToggleBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _railCollapsed = !_railCollapsed;
+        AnimateRailTo(_railCollapsed ? 0 : RailWidth);
+        // Now, rather than when the slide lands: the button already offers the opposite of what it
+        // just did, and a tooltip that only caught up 320ms later would be wrong for the whole of
+        // the one moment the pointer is still sitting on it.
+        RefreshSidebarToggle();
+    }
+
+    /// <summary>
+    /// Says what pressing the toggle would do next, in the language the window is currently in.
+    /// </summary>
+    /// <remarks>
+    /// The glyph does not change with the state — it names the rail rather than a direction, the
+    /// way Windows' own pane toggle does — so this text is the only place that direction is stated.
+    /// It is the accessible name as well as the tooltip: a glyph-only button has nothing else for a
+    /// screen reader to read out.
+    /// </remarks>
+    private void RefreshSidebarToggle()
+    {
+        var label = LocalizationService.Get(_railCollapsed
+            ? "S.Shell.ShowSidebar"
+            : "S.Shell.HideSidebar");
+
+        SidebarToggleBtn.ToolTip = label;
+        AutomationProperties.SetName(SidebarToggleBtn, label);
+    }
+
     private void CaptureBtn_Click(object sender, RoutedEventArgs e)
     {
         // MainWindow owns the whole capture session (hotkey, screenshot, overlay, teardown), so
         // the shell only asks for one and hands itself over to be hidden and brought back.
         if (System.Windows.Application.Current.MainWindow is MainWindow main)
             main.StartCaptureFromShell(this);
+    }
+
+    private void QuickLookupBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // MainWindow owns 取詞翻譯's guards the same way it owns the capture session's, so the shell
+        // asks for the popup rather than summoning one behind them.
+        if (System.Windows.Application.Current.MainWindow is MainWindow main)
+            main.StartQuickLookupFromShell();
     }
 
     public void Navigate(ShellPage page)
@@ -443,7 +618,7 @@ public partial class ShellWindow : Window
         _lastSize = new Size(bounds.Width, bounds.Height);
         // Minimised is a state to reopen out of, not into.
         _lastWindowState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
-        _lastSidebarWidth = SidebarColumn.ActualWidth;
+        _lastRailCollapsed = _railCollapsed;
 
         base.OnClosing(e);
     }

@@ -12,6 +12,15 @@ public static class ThemeService
 
     public static string Current => SettingsService.Instance.Current.Theme;
 
+    /// <summary>
+    /// Raised once the new dictionary is in place.
+    /// </summary>
+    /// <remarks>
+    /// For the colours a DynamicResource cannot reach — the shell window's outer edge is drawn by
+    /// the desktop compositor from a value handed over once, so nothing repaints it on its own.
+    /// </remarks>
+    public static event EventHandler? Changed;
+
     public static void Apply(string theme)
     {
         var dicts = System.Windows.Application.Current.Resources.MergedDictionaries;
@@ -24,5 +33,7 @@ public static class ThemeService
         {
             Source = theme == Dark ? DarkUri : LightUri
         });
+
+        Changed?.Invoke(null, EventArgs.Empty);
     }
 }

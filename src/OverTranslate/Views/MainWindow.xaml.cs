@@ -330,6 +330,21 @@ public partial class MainWindow : Window
         });
 
     /// <summary>
+    /// Opens 取詞翻譯 from the shell window's nav rail.
+    /// </summary>
+    /// <remarks>
+    /// Straight through <see cref="OnQuickLookupHotkeyPressed"/> rather than calling
+    /// <c>SummonAsync</c> itself: the two states a popup must not appear in are about the screen,
+    /// not about which control asked, and a second entry point with its own guards is one that can
+    /// fall out of step with them. The rail's own button being disabled during a realtime session
+    /// is a presentation detail on top of this, not a replacement for it.
+    ///
+    /// The shell stays where it is. Unlike a capture, this puts a popup over the screen rather than
+    /// photographing it, so there is nothing to get out of the way of.
+    /// </remarks>
+    public void StartQuickLookupFromShell() => OnQuickLookupHotkeyPressed(this, EventArgs.Empty);
+
+    /// <summary>
     /// Opens the translation window, and during a realtime session brings its layers to the front
     /// instead — the same two answers the tray icon gives, for the same reasons.
     /// </summary>

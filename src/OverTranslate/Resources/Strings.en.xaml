@@ -17,11 +17,16 @@
 
     <!-- ── Shell window ── -->
     <sys:String x:Key="S.Shell.About">About</sys:String>
+    <sys:String x:Key="S.Shell.QuickTools">Quick tools</sys:String>
     <sys:String x:Key="S.Shell.CaptureTranslate">Screen capture</sys:String>
+    <sys:String x:Key="S.Shell.QuickLookup">Quick lookup</sys:String>
     <sys:String x:Key="S.Shell.TextTranslate">Text</sys:String>
     <sys:String x:Key="S.Shell.RealtimeTranslate">Realtime</sys:String>
     <sys:String x:Key="S.Shell.Settings">Settings</sys:String>
+    <sys:String x:Key="S.Shell.HideSidebar">Hide sidebar</sys:String>
+    <sys:String x:Key="S.Shell.ShowSidebar">Show sidebar</sys:String>
     <sys:String x:Key="S.Shell.CaptureBlockedByRealtime">Realtime translation is running — stop it before using screen capture</sys:String>
+    <sys:String x:Key="S.Shell.QuickLookupBlockedByRealtime">Realtime translation is running — stop it before using quick lookup</sys:String>
     <sys:String x:Key="S.Shell.UpdateAvailable">Update to v{0}</sys:String>
 
     <!-- ── Tray menu ── -->
@@ -44,18 +49,17 @@
     <!-- ── Update ── -->
     <sys:String x:Key="S.Update.WindowTitle">Update available</sys:String>
     <sys:String x:Key="S.Update.Heading">Update available</sys:String>
-    <sys:String x:Key="S.Update.CurrentVersion">Current</sys:String>
-    <sys:String x:Key="S.Update.LatestVersion">Latest</sys:String>
     <sys:String x:Key="S.Update.Explanation">"Update now" downloads and applies the update, then restarts the app.</sys:String>
     <sys:String x:Key="S.Update.NotesBefore" xml:space="preserve">Curious what changed? </sys:String>
     <sys:String x:Key="S.Update.NotesLink">See the release notes</sys:String>
     <sys:String x:Key="S.Update.Later">Later</sys:String>
     <sys:String x:Key="S.Update.Now">Update now</sys:String>
     <sys:String x:Key="S.Update.Skip">Skip this version and stop reminding me</sys:String>
-    <sys:String x:Key="S.Update.Downloading">Downloading {0}%</sys:String>
+    <sys:String x:Key="S.Update.Downloading">Downloading {0}</sys:String>
     <sys:String x:Key="S.Update.Applying">Applying...</sys:String>
     <sys:String x:Key="S.Update.Retry">Retry</sys:String>
     <sys:String x:Key="S.Update.Failed">Could not download the update: {0}</sys:String>
+    <sys:String x:Key="S.Update.CloseBlocked">The update is running — the app restarts itself when it finishes</sys:String>
 
     <!-- ── Service errors ── -->
     <sys:String x:Key="S.Error.OpenAiHttp">The OpenAI-compatible API returned {0}: {1}</sys:String>
