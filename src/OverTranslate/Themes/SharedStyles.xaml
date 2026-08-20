@@ -1620,6 +1620,50 @@
         </Setter>
     </Style>
 
+    <!-- The rail's show/hide switch, at the caption strip's leading edge. Deliberately not one of
+         the caption buttons opposite it: those are the system's strip, square and flush to the
+         window's corner because that is what every window does with that corner. This one belongs
+         to the application, so it takes the application's shape — a 6-radius tile, inset from the
+         edge, sized to the 40 strip with room left around it.
+
+         Quieter than the caption glyphs until it is pointed at: it is a preference about the
+         window's layout, and one that sits beside the app's own name and icon. Hover brings it to
+         full strength, so the strip does not carry a control at full contrast that most sessions
+         never touch. -->
+    <Style x:Key="WindowSidebarToggle" TargetType="Button">
+        <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize"   Value="14"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor"     Value="Hand"/>
+        <Setter Property="Width"      Value="32"/>
+        <Setter Property="Height"     Value="32"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource AppTextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonPressedBg}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Close is the one caption button with a colour of its own, and it is the system's red rather
          than the application's accent: it means "this is the destructive one" in every window the
          user has ever closed, and the accent means "this is the one we would like you to press". -->

@@ -32,8 +32,8 @@ public class ShellWindowMarkupTests
     }
 
     /// <summary>
-    /// The shortcut is docked before the label, so the label is what trims when the rail is dragged
-    /// to its minimum width. A shortcut trimmed to "Ctrl+Al..." names no key the user can press.
+    /// The shortcut is docked before the label, so the label is what trims when a row's two halves
+    /// do not both fit. A shortcut trimmed to "Ctrl+Al..." names no key the user can press.
     /// </summary>
     [Theory]
     [InlineData("CaptureBtn", "CaptureHotkeyText")]
@@ -80,16 +80,39 @@ public class ShellWindowMarkupTests
     }
 
     /// <summary>
-    /// The rail can be dragged away entirely, and the splitter is the only way back. In the rail's
-    /// own column it would sit at x=0 and reach off the window, so a collapsed rail could never be
-    /// brought back.
+    /// The rail can be put away entirely, and this button is the only way back — so it has to live
+    /// outside the rail. Anywhere inside it would go away with it and strand a collapsed rail.
     /// </summary>
     [Fact]
-    public void The_splitter_stays_reachable_with_the_rail_collapsed()
+    public void The_rail_toggle_lives_outside_the_rail()
     {
-        var splitter = Row("SidebarSplitter");
+        var ancestors = Row("SidebarToggleBtn").Ancestors()
+            .Select(e => (string?)e.Attribute(X + "Name"));
 
-        Assert.Equal("1", (string?)splitter.Attribute("Grid.Column"));
-        Assert.Equal("Left", (string?)splitter.Attribute("HorizontalAlignment"));
+        Assert.DoesNotContain("RailPanel", ancestors);
+    }
+
+    /// <summary>
+    /// The toggle sits in the caption strip, which is drag surface unless a control says otherwise
+    /// — without this it would move the window instead of putting the rail away.
+    /// </summary>
+    [Fact]
+    public void The_rail_toggle_is_clickable_rather_than_drag_surface()
+    {
+        var toggle = Row("SidebarToggleBtn");
+
+        Assert.Equal("True", (string?)toggle.Attribute(
+            XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml/presentation") + "IsHitTestVisibleInChrome")
+            ?? (string?)toggle.Attribute("WindowChrome.IsHitTestVisibleInChrome"));
+    }
+
+    /// <summary>
+    /// The rail is put away by animating its column to 0, and a column with a MinWidth can never be
+    /// taken there — not even from code.
+    /// </summary>
+    [Fact]
+    public void The_rail_column_can_be_taken_to_nothing()
+    {
+        Assert.Equal("0", (string?)Row("SidebarColumn").Attribute("MinWidth"));
     }
 }

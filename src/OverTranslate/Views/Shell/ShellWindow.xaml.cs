@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -58,7 +58,7 @@ public partial class ShellWindow : Window
     private static WindowState _lastWindowState = WindowState.Normal;
 
     /// <inheritdoc cref="_lastSize"/>
-    private static double? _lastSidebarWidth;
+    private static bool _lastRailCollapsed;
 
     /// <summary>
     /// The page the shell was last showing, so opening it again lands where the user left off
@@ -177,13 +177,9 @@ public partial class ShellWindow : Window
 
         if (_lastWindowState == WindowState.Maximized) WindowState = WindowState.Maximized;
 
-        if (_lastSidebarWidth is { } railWidth)
-        {
-            // Either put away or inside its bounds — the same two states a drag can leave it in.
-            SetRailWidth(railWidth < RailMinWidth
-                ? 0
-                : Math.Clamp(railWidth, RailMinWidth, SidebarColumn.MaxWidth));
-        }
+        _railCollapsed = _lastRailCollapsed;
+        SetRailWidth(_railCollapsed ? 0 : RailWidth);
+        RefreshSidebarToggle();
     }
 
     // The window's outer edge is the compositor's, not this window's, so it is the one colour in
@@ -194,6 +190,7 @@ public partial class ShellWindow : Window
     {
         RefreshQuickToolAvailability();
         RefreshUpdateAvailability();
+        RefreshSidebarToggle();
     }
 
     /// <summary>
@@ -333,18 +330,15 @@ public partial class ShellWindow : Window
     private void RefreshMaximizeButton() =>
         MaximizeBtn.Content = WindowState == WindowState.Maximized ? "" : "";
 
-    /// <summary>
-    /// How far past its minimum the pointer has to be dragged before letting go puts the rail away.
-    /// </summary>
+    /// <summary>The rail's width whenever it is showing.</summary>
     /// <remarks>
-    /// A width the rail is never actually shown at — it stops at <see cref="RailMinWidth"/> and
-    /// stays there while the pointer keeps going. That overshoot is the whole gesture: putting the
-    /// rail away has to be something the user asks for, not somewhere a drag can accidentally stop.
+    /// One width rather than a range. The rail holds a fixed set of rows whose widest line is a
+    /// 快速工具 label and its shortcut, so there is one width that fits them — every other width is
+    /// either wasting the page's or trimming the rail's own labels. What a user dragging the rail
+    /// narrow actually wants is the width back, and the toggle in the title bar gives them all of
+    /// it in one press.
     /// </remarks>
-    private const double RailCollapseThreshold = 120;
-
-    /// <summary>The narrowest the rail is ever shown at — enough for an icon and a short label.</summary>
-    private const double RailMinWidth = 200;
+    private const double RailWidth = 248;
 
     private static readonly Duration RailDuration = new(TimeSpan.FromMilliseconds(320));
 
@@ -361,12 +355,12 @@ public partial class ShellWindow : Window
         new PropertyMetadata(0.0, (d, e) => ((ShellWindow)d).ApplyRailWidth((double)e.NewValue)));
 
     /// <summary>
-    /// The rail's width as the splitter has just set it.
+    /// The rail's width as it has just been written, animation included.
     /// </summary>
     /// <remarks>
-    /// Not ActualWidth: the splitter writes the column's own Width, and a drag that has just ended
-    /// is read before the layout pass that would make ActualWidth agree — so the snap would decide
-    /// on the width the rail had one drag ago.
+    /// Not ActualWidth: the column's own Width is what the animation writes, and it is read here
+    /// before the layout pass that would make ActualWidth agree — so a toggle pressed mid-slide
+    /// would otherwise carry on from the width the rail had a frame ago and jump.
     /// </remarks>
     private double CurrentRailWidth => SidebarColumn.Width.IsAbsolute
         ? SidebarColumn.Width.Value
@@ -400,8 +394,10 @@ public partial class ShellWindow : Window
             return;
         }
 
+        // From wherever the rail is on screen right now, not from where the animation in flight was
+        // headed: pressing the button again mid-slide reverses it instead of finishing first.
         // Critically damped — eased out with no overshoot. The rail is a panel being put somewhere,
-        // not something thrown, and a bounce here would read as the drag having missed.
+        // not something thrown, and a bounce here would read as it having missed.
         BeginAnimation(RailWidthProperty, new DoubleAnimation
         {
             From = from,
@@ -411,44 +407,41 @@ public partial class ShellWindow : Window
         });
     }
 
-    /// <summary>Set while a drag is being held past the point where letting go collapses the rail.</summary>
-    private bool _railDraggedPastCollapse;
-
-    /// <summary>
-    /// Holds the rail between its own bounds for the length of the drag, and dims it once the
-    /// pointer has gone far enough that letting go would put it away.
-    /// </summary>
+    /// <summary>Whether the rail is currently put away.</summary>
     /// <remarks>
-    /// The splitter writes whatever width the pointer asks for, including none at all — the column
-    /// has no MinWidth of its own because the rail has to be able to reach zero. Clamping here is
-    /// what makes the floor and the ceiling real, and the dimming is the only warning the user gets
-    /// before the rail goes.
+    /// Held here rather than read back off the column, so a press that lands while the slide is
+    /// still running toggles what the rail is going to be rather than whatever width it happens to
+    /// be passing through at that instant.
     /// </remarks>
-    private void Splitter_DragDelta(object sender, DragDeltaEventArgs e)
+    private bool _railCollapsed;
+
+    private void SidebarToggleBtn_Click(object sender, RoutedEventArgs e)
     {
-        var wanted = CurrentRailWidth;
-
-        _railDraggedPastCollapse = wanted < RailCollapseThreshold;
-        RailPanel.Opacity = _railDraggedPastCollapse ? 0.45 : 1;
-
-        ApplyRailWidth(Math.Clamp(wanted, RailMinWidth, SidebarColumn.MaxWidth));
+        _railCollapsed = !_railCollapsed;
+        AnimateRailTo(_railCollapsed ? 0 : RailWidth);
+        // Now, rather than when the slide lands: the button already offers the opposite of what it
+        // just did, and a tooltip that only caught up 320ms later would be wrong for the whole of
+        // the one moment the pointer is still sitting on it.
+        RefreshSidebarToggle();
     }
 
     /// <summary>
-    /// Settles the rail where the drag left it: away entirely, or no narrower than its labels need.
+    /// Says what pressing the toggle would do next, in the language the window is currently in.
     /// </summary>
     /// <remarks>
-    /// A rail dragged to nothing is the only way this window has of giving the page its whole
-    /// width, so the splitter is left reachable at the page's edge — see the markup — and dragging
-    /// it back out is what brings the rail back.
+    /// The glyph does not change with the state — it names the rail rather than a direction, the
+    /// way Windows' own pane toggle does — so this text is the only place that direction is stated.
+    /// It is the accessible name as well as the tooltip: a glyph-only button has nothing else for a
+    /// screen reader to read out.
     /// </remarks>
-    private void Splitter_DragCompleted(object sender, DragCompletedEventArgs e)
+    private void RefreshSidebarToggle()
     {
-        RailPanel.Opacity = 1;
-        AnimateRailTo(_railDraggedPastCollapse
-            ? 0
-            : Math.Clamp(CurrentRailWidth, RailMinWidth, SidebarColumn.MaxWidth));
-        _railDraggedPastCollapse = false;
+        var label = LocalizationService.Get(_railCollapsed
+            ? "S.Shell.ShowSidebar"
+            : "S.Shell.HideSidebar");
+
+        SidebarToggleBtn.ToolTip = label;
+        AutomationProperties.SetName(SidebarToggleBtn, label);
     }
 
     private void CaptureBtn_Click(object sender, RoutedEventArgs e)
@@ -625,7 +618,7 @@ public partial class ShellWindow : Window
         _lastSize = new Size(bounds.Width, bounds.Height);
         // Minimised is a state to reopen out of, not into.
         _lastWindowState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
-        _lastSidebarWidth = SidebarColumn.ActualWidth;
+        _lastRailCollapsed = _railCollapsed;
 
         base.OnClosing(e);
     }

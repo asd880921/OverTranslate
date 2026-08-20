@@ -1,3 +1,12 @@
+<!-- MinWidth is the 文字翻譯 toolbar's floor. Its four pickers are fixed widths and cannot give:
+     162 + 32 + 162 + 180 with their gaps is 554, and the rail, the two card margins and the
+     page's own take 354 more before the page sees any of the window at all. 960 clears that
+     with room left for a different DPI or a wider system font, and it is close enough to the
+     1200 this window opens at that shrinking it never passes through a range where the page is
+     merely bad rather than either right or refused.
+
+     MinHeight is the rail's: the brand block, both 快速工具 rows, three nav rows and 關於 need
+     about 480 between them, and 640 leaves the page a card rather than a strip. -->
 <Window x:Class="OverTranslate.Views.Shell.ShellWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -5,7 +14,7 @@
         xmlns:settings="clr-namespace:OverTranslate.Views.Settings"
         Title="OverTranslate"
         Width="1200" Height="720"
-        MinWidth="840" MinHeight="520"
+        MinWidth="960" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         WindowStyle="None"
@@ -41,9 +50,31 @@
         <Grid Grid.Row="0">
             <StackPanel Orientation="Horizontal"
                         VerticalAlignment="Center"
-                        Margin="12,0,0,0">
+                        Margin="6,0,0,0">
+                <!-- The rail's own switch, at the leading edge of the caption strip because that is
+                     where every pane the user has met keeps it — Finder's, Mail's, and Windows'
+                     own navigation view. Here specifically it has to be somewhere outside the rail:
+                     a switch that lived on the rail would go away with it and leave a collapsed
+                     rail with no way back.
+
+                     Hit-test-visible on the button alone rather than on the row: the icon and the
+                     title beside it are drag surface, and the whole point of this strip is that it
+                     still moves the window.
+
+                     One glyph for both states. The hamburger names the pane, not the direction —
+                     what it will do is in the tooltip, which is rewritten with the state.
+
+                     Since 快速工具 has to be reachable, this cannot be the app's only nav: the
+                     rail's rows are the destinations and the hotkeys are the actions, and putting
+                     the rail away is a choice about width, not about features. -->
+                <Button x:Name="SidebarToggleBtn"
+                        Style="{StaticResource WindowSidebarToggle}"
+                        Content="&#xE700;"
+                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        Click="SidebarToggleBtn_Click"/>
                 <Image x:Name="TitleIcon"
                        Width="16" Height="16"
+                       Margin="6,0,0,0"
                        VerticalAlignment="Center"
                        RenderOptions.BitmapScalingMode="HighQuality"/>
                 <TextBlock Text="OverTranslate"
@@ -79,18 +110,17 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <!-- 248 was sized to the Chinese labels, which fit a 快速工具 row and its shortcut on
-                     one line with room to spare. English does not — "Screen capture" and
-                     "Ctrl+Alt+A" share that line, and the shortcut is docked first — so the default
-                     is wider and the user can settle it themselves with the splitter.
+                <!-- 248 is sized to the 快速工具 rows, which are the widest thing the rail holds: a
+                     label and its shortcut on one line. The width is fixed and the user's only
+                     choice about it is whether the rail is there at all — a rail that can be any
+                     width is a rail whose contents have to survive every one of them, and what the
+                     user actually wants from dragging it narrow is the width back for the page.
 
-                     MaxWidth is the rail's ceiling and is enforced here; its floor is not, and is 0
-                     on purpose. The rail has to be able to reach nothing at all — that is the only
-                     way this window has of giving the page the whole width — and a column with a
-                     MinWidth can never be taken there, not even from code. RailMinWidth is what
-                     holds the floor instead, on the drag itself. -->
+                     No MinWidth, on purpose: 0 is a width this column is asked for every time the
+                     rail is put away, and a column with a MinWidth can never be taken there, not
+                     even from code. The animation writes it; nothing else does. -->
                 <ColumnDefinition x:Name="SidebarColumn"
-                                  Width="248" MinWidth="0" MaxWidth="340"/>
+                                  Width="248" MinWidth="0"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -271,7 +301,7 @@
 
                                 <!-- Filled in on every ShowOrActivate so a shortcut changed in 設定
                                      is never stale. Docked before the label so the label is the
-                                     part that trims when the rail is dragged narrow — a
+                                     part that gives way when the two do not both fit — a
                                      half-written shortcut is worse than none. -->
                                 <TextBlock x:Name="CaptureHotkeyText"
                                            DockPanel.Dock="Right"
@@ -387,35 +417,6 @@
                     <TranslateTransform x:Name="ContentTransform"/>
                 </Border.RenderTransform>
             </Border>
-
-            <!-- ══════════ Rail splitter ══════════ -->
-            <!-- Invisible, and in the gap between the two cards rather than on either card's edge:
-                 there is no seam here to put a handle on, and a drawn one would be the only line in
-                 a window built out of gaps. The hit area is what the user finds, and the cursor is
-                 what tells them it is there.
-
-                 In the page's column rather than the rail's, filling the gap from edge to edge.
-                 That is what keeps it reachable when the rail is collapsed to nothing: on the
-                 rail's own trailing edge it would sit at x=0 and extend off the window, leaving a
-                 collapsed rail with no way back short of restarting. It is wider than the gap looks
-                 for the same reason — collapsed, its first few pixels are underneath the window's
-                 own resize border, and what is left has to stay big enough to hit.
-
-                 Declared after both panels so it takes the mouse ahead of them, and before the
-                 modals so an overlay still covers it. -->
-            <GridSplitter Grid.Column="1"
-                          x:Name="SidebarSplitter"
-                          Width="16"
-                          Margin="0,4,0,16"
-                          HorizontalAlignment="Left"
-                          VerticalAlignment="Stretch"
-                          Background="Transparent"
-                          Focusable="False"
-                          ResizeDirection="Columns"
-                          ResizeBehavior="PreviousAndCurrent"
-                          DragDelta="Splitter_DragDelta"
-                          DragCompleted="Splitter_DragCompleted"
-                          Cursor="SizeWE"/>
 
             <!-- ══════════ Modals ══════════ -->
             <!-- Declared last and spanning both columns so a modal covers the nav rail as well as
