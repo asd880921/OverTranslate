@@ -81,10 +81,9 @@
     <sys:String x:Key="S.Translation.ClearSource">Clear the source text</sys:String>
     <sys:String x:Key="S.Translation.SpeakSource">Read the source aloud</sys:String>
     <sys:String x:Key="S.Translation.SpeakSourceOpenAi">With the OpenAI service, choose a source language to read the source aloud.</sys:String>
-    <sys:String x:Key="S.Translation.SpeakSourceOpenAiShort">OpenAI needs a source language</sys:String>
     <sys:String x:Key="S.Translation.SpeakSourceUnknown">The language of the source is not known yet. It can be read aloud once the translation is back.</sys:String>
-    <!-- The short note and the tooltip say the same thing at two lengths; the note is what is read,
-         the tooltip is for whoever hovers the greyed speaker. -->
+    <!-- The note at the foot of the page and the greyed speaker's tooltip are the same sentence:
+         the note is what is read, the tooltip is for whoever hovers the button instead. -->
     <sys:String x:Key="S.Translation.Source">Source</sys:String>
     <sys:String x:Key="S.Translation.SpeakResult">Read the translation aloud</sys:String>
     <sys:String x:Key="S.Translation.Result">Translation</sys:String>

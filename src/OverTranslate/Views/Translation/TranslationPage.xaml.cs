@@ -116,7 +116,7 @@ public partial class TranslationPage : UserControl
 
         SrcTtsBtn.IsEnabled = available;
 
-        // The note is what tells the user; the tooltip is the longer sentence for whoever hovers.
+        // The note at the foot of the page says the same sentence the greyed speaker's tooltip does.
         // A tooltip alone would have been found only by someone who already suspected there was
         // something to find, which is the wrong bar for the one explanation that exists.
         //

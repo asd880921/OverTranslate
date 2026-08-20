@@ -8,6 +8,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- ── Page header ── -->
@@ -85,7 +86,13 @@
                              where E711 and the rest of the ✕ glyphs come in 0.41px high. The sizes
                              differ only to make the two inks the same height (11.00 against 10.96);
                              neither affects the alignment. -->
-                        <DockPanel VerticalAlignment="Center">
+                        <!-- LastChildFill="False" because there is no longer a child meant to take
+                             the middle. A DockPanel hands the leftover width to its last child
+                             whatever that child asked for, so with the note gone the clear button
+                             inherited the gap and centred itself in it, adrift from the speaker it
+                             belongs beside. The 譯文 header opposite still fills, and should: its
+                             last child is the label, which is what the space there is for. -->
+                        <DockPanel VerticalAlignment="Center" LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left"
                                        Text="{DynamicResource S.Translation.Source}"
                                        FontFamily="{StaticResource AppFont}"
@@ -125,35 +132,12 @@
                                     AutomationProperties.Name="{DynamicResource S.Translation.ClearSource}"
                                     Click="SrcClearBtn_Click"/>
 
-                            <!-- Why the speaker is greyed, said where the greyed button is rather
-                                 than behind a hover: a tooltip on a disabled control is found only
-                                 by someone who already suspects there is something to find. Fills
-                                 the row's spare width and is right-aligned against the buttons, so
-                                 the header's height never changes and nothing moves when the engine
-                                 or the source language does. Trims rather than pushes when the pane
-                                 is narrow.
-
-                                 The same font size as the 原文 label beside it, and that is the
-                                 point rather than an accident. At 11 against the label's 12 both
-                                 were centred to within 0.02px and it still read as sitting low:
-                                 centring two different sizes separately puts their baselines half a
-                                 pixel apart, and the eye lines text up by its baseline, so the
-                                 shorter one looks dropped. Matching the size makes the baselines
-                                 identical by construction; the hierarchy is carried by weight
-                                 instead, which the label already had. -->
-                            <!-- Colour: AppTextSecondary rather than AppError, because nothing has
-                                 gone wrong — a mode simply cannot do a thing. An alarm colour in a
-                                 header that is on screen for the whole session would be shouting. -->
-                            <TextBlock x:Name="SrcTtsNote"
-                                       Text="{DynamicResource S.Translation.SpeakSourceOpenAiShort}"
-                                       FontFamily="{StaticResource AppFont}"
-                                       FontSize="12"
-                                       Foreground="{DynamicResource AppTextSecondary}"
-                                       HorizontalAlignment="Right"
-                                       VerticalAlignment="Center"
-                                       Margin="10,0,8,0"
-                                       TextTrimming="CharacterEllipsis"
-                                       Visibility="Collapsed"/>
+                            <!-- The 原文 label used to share this row with a note explaining the
+                                 greyed speaker. It has moved to the foot of the page: a short
+                                 sentence squeezed between the label and the buttons had to be cut
+                                 down to fit, and the cut-down version named the rule without saying
+                                 what to do about it. The full sentence is downstairs now, where
+                                 there is room for it. -->
                         </DockPanel>
                     </Border>
                     <TextBox Grid.Row="1"
@@ -242,5 +226,40 @@
                        FontSize="12"
                        Foreground="{DynamicResource AppTextSecondary}"/>
         </DockPanel>
+
+        <!-- Why 朗讀原文 is greyed, and only in the one state that earns saying it: OpenAI-compatible
+             servers are never asked what language the original was in — the prompt they are sent
+             belongs to the user and cannot carry a second answer — so with 自動 there is no voice to
+             read it in and there never will be. Every other engine answers as a by-product of
+             translating, which is a wait rather than a wall and needs no note.
+
+             A row of its own below the footer rather than a share of it: this stays for as long as
+             the engine and the source language do, while the status line beside it comes and goes
+             with each translation, and a permanent sentence that kept resizing around a transient
+             one would read as unstable. Auto height, so it costs nothing when it is not there.
+
+             The same wording and the same ⓘ as 取詞翻譯's, because it is the same rule and someone
+             who has met it once should recognise it rather than have to read it again.
+
+             AppTextSecondary rather than AppError: nothing has gone wrong, a combination simply
+             cannot do a thing. An alarm colour on a line that is on screen for the whole session
+             would be shouting. -->
+        <StackPanel Grid.Row="4"
+                    x:Name="SrcTtsNote"
+                    Orientation="Horizontal"
+                    Margin="0,10,0,0"
+                    Visibility="Collapsed">
+            <TextBlock Text="&#xE946;"
+                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                       FontSize="11"
+                       Foreground="{DynamicResource AppTextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,0,6,0"/>
+            <TextBlock Text="{DynamicResource S.Translation.SpeakSourceOpenAi}"
+                       Style="{StaticResource FieldHint}"
+                       Margin="0"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
     </Grid>
 </UserControl>
