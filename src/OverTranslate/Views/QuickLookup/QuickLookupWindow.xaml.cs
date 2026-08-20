@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using NLog;
+using OverTranslate.Layout;
 using OverTranslate.Models;
 using OverTranslate.Services;
 using OverTranslate.Views.Shell;
@@ -132,6 +133,17 @@ public partial class QuickLookupWindow : Window
 
     /// <summary>The button currently driving playback, so a second click stops rather than replays.</summary>
     private Button? _ttsActiveBtn;
+
+    /// <summary>
+    /// Where the popup belongs when nothing is holding it up, or null when nothing is.
+    /// </summary>
+    /// <remarks>
+    /// Physical pixels, because that is what <see cref="KeepBodyOnScreen"/> works in and what the
+    /// window was placed with. Null is the ordinary state and means "where it is now is where it
+    /// belongs"; anything that means the user has chosen a new place — a drag, a re-placement at the
+    /// pointer — sets it back to null rather than sending the popup somewhere they left.
+    /// </remarks>
+    private int? _restingTop;
 
     /// <summary>
     /// Brings the popup up over the foreground application, carrying whatever is selected there.
@@ -305,6 +317,11 @@ public partial class QuickLookupWindow : Window
             };
         }
 
+        // Every change of height, not just the result opening: the settings panel is a different
+        // height again, and a long enough original wraps the box onto a second line. All of them
+        // grow out of the bottom, so all of them can run off it.
+        SizeChanged += (_, e) => { if (e.HeightChanged) KeepBodyOnScreen(); };
+
         MouseEnter += OnPointerEnter;
         MouseLeave += OnPointerLeave;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -382,6 +399,9 @@ public partial class QuickLookupWindow : Window
     /// </remarks>
     private void PositionAtPointer()
     {
+        // A fresh placement is a new resting place, and the old one is not somewhere to go back to.
+        _restingTop = null;
+
         var pointer = System.Windows.Forms.Cursor.Position;
         var area = System.Windows.Forms.Screen.FromPoint(pointer).WorkingArea;
         var scale = ScreenGeometry.ScaleAt(pointer.X, pointer.Y);
@@ -408,6 +428,38 @@ public partial class QuickLookupWindow : Window
         Surface.RenderTransformOrigin = new Point(
             Math.Clamp((pointer.X - x) / Math.Max(w, 1), 0, 1),
             Math.Clamp((pointer.Y - y) / Math.Max(h, 1), 0, 1));
+    }
+
+    /// <summary>
+    /// Lifts the popup off the bottom edge while the result is open, and puts it back after.
+    /// </summary>
+    /// <remarks>
+    /// The header is the whole window until a translation arrives, and the result grows out of the
+    /// bottom of it — <c>SizeToContent="Height"</c>, so the top stays put and the window gets taller.
+    /// A popup summoned or dragged near the foot of the screen therefore grows the answer straight
+    /// off the desktop: the user typed a word, something happened, and there is nothing to read.
+    ///
+    /// The arithmetic is <see cref="QuickLookupLift"/>'s, which is where it can be tested; this is
+    /// the half that has to ask Windows where the window and the monitor actually are.
+    ///
+    /// Physical pixels throughout, for the reason <see cref="PositionAtPointer"/> gives.
+    /// </remarks>
+    private void KeepBodyOnScreen()
+    {
+        if (_closing) return;
+
+        var bounds = ScreenGeometry.PhysicalBounds(this);
+        if (bounds.IsEmpty) return;
+
+        var area = System.Windows.Forms.Screen.FromRectangle(bounds).WorkingArea;
+        var edge = (int)Math.Round(4 * ScreenGeometry.ScaleAt(bounds.Left, bounds.Top));
+
+        var (top, resting) = QuickLookupLift.Place(
+            bounds.Top, _restingTop, bounds.Height, area.Top, area.Bottom, edge);
+
+        _restingTop = resting;
+
+        if (top != bounds.Top) ScreenGeometry.MoveToPhysical(this, bounds.Left, top);
     }
 
     /// <remarks>
@@ -632,6 +684,11 @@ public partial class QuickLookupWindow : Window
             // DragMove throws when the button is already up by the time it runs, which a fast click
             // can manage. There is nothing to move and nothing to report.
         }
+
+        // Wherever they let go is the resting place now. Keeping the old one would send the popup
+        // back to somewhere they had already moved it away from, the next time the result closed.
+        _restingTop = null;
+        KeepBodyOnScreen();
     }
 
     private void PinBtn_Click(object sender, RoutedEventArgs e) => SetPinned(!_pinned);

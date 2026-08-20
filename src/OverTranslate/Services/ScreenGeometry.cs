@@ -74,6 +74,17 @@ internal static class ScreenGeometry
         return 1.0;
     }
 
+    // Where a window actually is, in pixels. The counterpart to MoveToPhysical and needed for the
+    // same reason: Window.Left/Top/ActualHeight are DIP, converted with the DPI of the monitor WPF
+    // believes the window is on, so a window that has been placed with MoveToPhysical cannot be read
+    // back through them without the conversion drifting. Empty when the handle does not exist yet.
+    public static Rectangle PhysicalBounds(Window window)
+    {
+        IntPtr hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero || !GetWindowRect(hwnd, out RECT r)) return Rectangle.Empty;
+        return Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom);
+    }
+
     // Moves a window to an exact pixel position, leaving its size to WPF. Window.Left/Top would be
     // converted with the DPI of the monitor the window is on before the move, so a window crossing
     // to a monitor at another scale lands off by that scale factor.
@@ -104,6 +115,13 @@ internal static class ScreenGeometry
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT { public int X; public int Y; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
