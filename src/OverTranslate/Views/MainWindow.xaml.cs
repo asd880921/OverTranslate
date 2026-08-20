@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private GlobalHotkey? _hotkey;
     private GlobalHotkey? _windowHotkey;
     private GlobalHotkey? _realtimePauseHotkey;
+    private GlobalHotkey? _quickLookupHotkey;
     private GlobalAuxiliaryHotkeys? _auxiliaryHotkeys;
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
@@ -72,7 +73,18 @@ public partial class MainWindow : Window
         // application: the window they were watching closed, so the session is over and they are
         // looking at whatever was behind it.
         RealtimeSessionController.Instance.SessionEnded += OnRealtimeSessionEnded;
+
+        // A session composes the monitor without this application's overlays and cannot be told
+        // about a window created after it started, so a popup left up would be read back into the
+        // subtitles — see OnQuickLookupHotkeyPressed, which is the half that keeps a new one out.
+        RealtimeSessionController.Instance.StateChanged += OnRealtimeStateChanged;
     }
+
+    private void OnRealtimeStateChanged(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (RealtimeSessionController.Instance.IsActive) QuickLookup.QuickLookupWindow.Dismiss();
+        }));
 
     private void OnRealtimeSessionEnded(object? sender, string message) =>
         Dispatcher.Invoke(() => ShowTrayNotification(
@@ -132,11 +144,15 @@ public partial class MainWindow : Window
         _realtimePauseHotkey = new GlobalHotkey(GlobalHotkey.RealtimePauseId);
         _realtimePauseHotkey.HotkeyPressed += OnRealtimePauseHotkeyPressed;
 
+        _quickLookupHotkey = new GlobalHotkey(GlobalHotkey.QuickLookupId);
+        _quickLookupHotkey.HotkeyPressed += OnQuickLookupHotkeyPressed;
+
         var hooks = new Dictionary<HotkeyAction, GlobalHotkey>
         {
             [HotkeyAction.Capture] = _hotkey,
             [HotkeyAction.TranslationWindow] = _windowHotkey,
             [HotkeyAction.RealtimePause] = _realtimePauseHotkey,
+            [HotkeyAction.QuickLookup] = _quickLookupHotkey,
         };
 
         var resolved = HotkeyBindings.Resolve(settings);
@@ -194,6 +210,9 @@ public partial class MainWindow : Window
             case HotkeyAction.RealtimePause:
                 OnRealtimePauseHotkeyPressed(this, EventArgs.Empty);
                 break;
+            case HotkeyAction.QuickLookup:
+                OnQuickLookupHotkeyPressed(this, EventArgs.Empty);
+                break;
         }
     }
 
@@ -242,6 +261,7 @@ public partial class MainWindow : Window
         _hotkey?.Unregister();
         _windowHotkey?.Unregister();
         _realtimePauseHotkey?.Unregister();
+        _quickLookupHotkey?.Unregister();
         _auxiliaryHotkeys?.Dispose();
         _auxiliaryHotkeys = null;
         RegisterHotkey();
@@ -282,6 +302,32 @@ public partial class MainWindow : Window
     /// </remarks>
     private void OnRealtimePauseHotkeyPressed(object? sender, EventArgs e) =>
         Dispatcher.Invoke(() => Views.Realtime.RealtimeSessionController.Instance.TogglePause());
+
+    /// <summary>
+    /// Brings 取詞翻譯's popup up over whatever the user is reading.
+    /// </summary>
+    /// <remarks>
+    /// Not a toggle, unlike the shortcut below it: pressed again it refills the popup with the new
+    /// selection rather than dismissing it, because the popup already goes away on its own and the
+    /// thing a second press means is "this word now".
+    ///
+    /// Turned away in the two states where a window of ours must not appear, and for two different
+    /// reasons. During a capture the user is framing or reading a screen of their own and a popup
+    /// dropped into it takes the foreground away mid-gesture — the same reason the translation
+    /// window stays out, and silent for the same reason. During a realtime session it is the session
+    /// that cannot afford it: a monitor capture is composed without this application's own overlays
+    /// (#94), a popup created afterwards is not on that list, and a session would end up reading and
+    /// translating this window's text back to the user. That one is announced, because the shortcut
+    /// is otherwise available everywhere and silence would read as breakage.
+    /// </remarks>
+    private void OnQuickLookupHotkeyPressed(object? sender, EventArgs e) =>
+        Dispatcher.Invoke(async () =>
+        {
+            if (HasActiveSession) return;
+            if (RefuseWhileRealtimeRuns()) return;
+
+            await Views.QuickLookup.QuickLookupWindow.SummonAsync();
+        });
 
     /// <summary>
     /// Opens the translation window, and during a realtime session brings its layers to the front
@@ -1086,6 +1132,7 @@ public partial class MainWindow : Window
         _hotkey?.Dispose();
         _windowHotkey?.Dispose();
         _realtimePauseHotkey?.Dispose();
+        _quickLookupHotkey?.Dispose();
         _auxiliaryHotkeys?.Dispose();
         _auxiliaryHotkeys = null;
         if (_notifyIcon != null)

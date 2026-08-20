@@ -1,0 +1,944 @@
+﻿using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
+using NLog;
+using OverTranslate.Models;
+using OverTranslate.Services;
+using OverTranslate.Views.Shell;
+// UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
+using Button = System.Windows.Controls.Button;
+using ButtonBase = System.Windows.Controls.Primitives.ButtonBase;
+using Clipboard = System.Windows.Clipboard;
+using ComboBox = System.Windows.Controls.ComboBox;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Point = System.Windows.Point;
+using TextBoxBase = System.Windows.Controls.Primitives.TextBoxBase;
+
+namespace OverTranslate.Views.QuickLookup;
+
+/// <summary>
+/// 取詞翻譯: one line of text translated in place, over whatever the user was reading.
+/// </summary>
+/// <remarks>
+/// The lightest of the three translation surfaces, and the only one with no way in but a shortcut.
+/// It exists for the case the other two are too heavy for — a word in a sentence someone is halfway
+/// through — so everything here is arranged around not making them leave what they were doing: the
+/// selection is carried in for them, the popup lands where their pointer already is, and it takes
+/// itself off the screen a second after they look away.
+///
+/// One at a time, deliberately. Several of these would each be counting down to their own
+/// disappearance on top of somebody's work, and the state that decides whether one closes — where
+/// the pointer is — cannot be read for a window that is not the one under it.
+///
+/// It reads the same source language, target language and translation service as 截圖翻譯 and
+/// 文字翻譯, so a change made here is a change everywhere. See <see cref="QuickLookupSettings"/> for
+/// what it does keep to itself.
+/// </remarks>
+public partial class QuickLookupWindow : Window
+{
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
+    /// <inheritdoc cref="QuickLookupWindow"/>
+    private static QuickLookupWindow? _current;
+
+    /// <summary>
+    /// How long the popup outlives the pointer leaving it.
+    /// </summary>
+    /// <remarks>
+    /// Hardcoded rather than offered as a setting, and short on purpose: this window is uninvited
+    /// chrome over somebody else's screen, and the cost of it lingering is higher than the cost of
+    /// it going too soon — the shortcut brings it straight back. Every way of saying "I am still
+    /// using this" holds it open instead; see <see cref="MayDismiss"/>.
+    /// </remarks>
+    private static readonly TimeSpan DismissDelay = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How often the countdown is re-examined once the pointer has left.
+    /// </summary>
+    /// <remarks>
+    /// A repeating tick rather than a one-shot timer set to <see cref="DismissDelay"/>, because the
+    /// conditions that hold the popup open end at moments nothing here is told about — playback
+    /// finishing, a translation arriving. Re-asking gives each of them the full delay afterwards
+    /// without every one of them having to remember to restart a timer.
+    /// </remarks>
+    private static readonly TimeSpan DismissTick = TimeSpan.FromMilliseconds(200);
+
+    /// <inheritdoc cref="Views.Translation.TranslationPage"/>
+    private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(300);
+
+    private const int EnterMs = 220;
+    private const int ExitMs  = 110;
+    private const int BodyMs  = 150;
+
+    /// <summary>How long 複製 says it copied before going back to offering to.</summary>
+    private static readonly TimeSpan CopiedHold = TimeSpan.FromMilliseconds(1400);
+
+    private readonly TtsService _tts = new();
+    private readonly DispatcherTimer _debounce;
+    private readonly DispatcherTimer _dismiss;
+    private readonly DispatcherTimer _copiedHold;
+
+    /// <summary>When the pointer last left the window, for the countdown above.</summary>
+    private DateTime _pointerLeftAt;
+
+    /// <summary>True while the popup is pinned, which is what turns the countdown off entirely.</summary>
+    private bool _pinned;
+
+    /// <summary>True while the gear panel is showing instead of the result.</summary>
+    private bool _settingsOpen;
+
+    /// <summary>True while one of the pickers has its list down — see <see cref="OnDeactivated"/>.</summary>
+    private bool _dropDownOpen;
+
+    /// <summary>True while a translation is in flight, so the popup does not close on top of it.</summary>
+    private bool _translating;
+
+    /// <summary>True while the window is writing to its own controls, so that does not auto-translate.</summary>
+    private bool _suppressAuto;
+
+    /// <summary>True once the closing animation has started, so nothing restarts it.</summary>
+    private bool _closing;
+
+    /// <summary>Monotonic id, so a slow translation cannot overwrite the result of a newer one.</summary>
+    private int _seq;
+
+    /// <summary>
+    /// The language the engine said the original was in, or empty.
+    /// </summary>
+    /// <remarks>
+    /// This is what makes 朗讀原文 usable at all. The shared source language is 自動 by default and
+    /// most people never change it, and there is no such thing as an automatic voice — 文字翻譯
+    /// answers that by switching its source speaker off. Here the engine has already been asked, and
+    /// its answer is a better one than the picker can give.
+    /// </remarks>
+    private string _detectedLang = "";
+
+    /// <summary>The button currently driving playback, so a second click stops rather than replays.</summary>
+    private Button? _ttsActiveBtn;
+
+    /// <summary>
+    /// Brings the popup up over the foreground application, carrying whatever is selected there.
+    /// </summary>
+    /// <remarks>
+    /// The selection is read before anything is shown: putting a window on the screen takes the
+    /// foreground away from the application holding it, and the copy would then be sent here.
+    ///
+    /// An already-open popup is refilled rather than replaced, so pressing the shortcut twice does
+    /// not throw away a pin or a position the user has set.
+    /// </remarks>
+    public static async Task SummonAsync()
+    {
+        var selection = await SelectedTextReader.ReadAsync();
+
+        if (_current is { _closing: false } open)
+        {
+            open.Refill(selection);
+            open.Activate();
+            return;
+        }
+
+        var window = new QuickLookupWindow();
+        _current = window;
+        window.Show();
+        window.Refill(selection);
+    }
+
+    /// <summary>Takes the popup off the screen, if one is up.</summary>
+    /// <remarks>
+    /// Ignores the pin: this is called when the popup cannot go on existing — a realtime session
+    /// taking the screen — rather than when something merely thinks it has outstayed its welcome.
+    /// </remarks>
+    public static void Dismiss() => _current?.BeginClose();
+
+    private QuickLookupWindow()
+    {
+        InitializeComponent();
+
+        BrandIcon.Source = AppIconService.CreateWindowIcon();
+
+        _debounce = new DispatcherTimer { Interval = DebounceDelay };
+        _debounce.Tick += (_, _) => { _debounce.Stop(); _ = TranslateNowAsync(); };
+
+        _dismiss = new DispatcherTimer { Interval = DismissTick };
+        _dismiss.Tick += (_, _) => TickDismiss();
+
+        _copiedHold = new DispatcherTimer { Interval = CopiedHold };
+        _copiedHold.Tick += (_, _) => { _copiedHold.Stop(); RenderCopyLabel(copied: false); };
+
+        _tts.StateChanged += OnTtsStateChanged;
+
+        _suppressAuto = true;
+        LocalizationService.BindLocalizedItems(SrcLangBox, LanguageData.SourceLanguages);
+        LocalizationService.BindLocalizedItems(TgtLangBox, LanguageData.TargetLanguages);
+        LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
+        LoadSharedPreferences();
+        AutoSpeakCheckBox.IsChecked = SettingsService.Instance.Current.QuickLookup.AutoSpeakResult;
+        _suppressAuto = false;
+
+        // Attached after the initial values are in, so setting them up neither saves nor translates.
+        SrcLangBox.SelectionChanged  += LangBox_SelectionChanged;
+        TgtLangBox.SelectionChanged  += LangBox_SelectionChanged;
+        ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
+
+        foreach (var picker in new[] { SrcLangBox, TgtLangBox, ProviderBox })
+        {
+            picker.DropDownOpened += (_, _) => _dropDownOpen = true;
+            picker.DropDownClosed += (_, _) => _dropDownOpen = false;
+        }
+
+        MouseEnter += OnPointerEnter;
+        MouseLeave += OnPointerLeave;
+        PreviewKeyDown += OnPreviewKeyDown;
+        Surface.PreviewMouseLeftButtonDown += Surface_PreviewMouseLeftButtonDown;
+
+        // Composed in code from the shortcut and the interface language, so DynamicResource cannot
+        // reach them — see LocalizationService.LanguageChanged.
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+
+        Loaded += (_, _) =>
+        {
+            PositionAtPointer();
+            StartCountdownIfPointerIsAway();
+            AnimateIn();
+        };
+
+        RenderChrome();
+        RenderCopyLabel(copied: false);
+        RenderSettingsHint();
+    }
+
+    /// <summary>
+    /// Puts a new selection into an open popup.
+    /// </summary>
+    /// <remarks>
+    /// A pinned popup keeps its place: the user put it there, and the point of pinning is that it
+    /// stops behaving like a thing that follows the pointer around.
+    ///
+    /// With no selection the box is left for typing and takes keyboard focus. With one it does not,
+    /// and that is what lets the popup ever close on its own — the box holding focus is one of the
+    /// things that holds the countdown, so a popup that focused itself every time would only ever
+    /// go away by being clicked.
+    /// </remarks>
+    private void Refill(string selection)
+    {
+        if (!_pinned && IsLoaded)
+        {
+            PositionAtPointer();
+            StartCountdownIfPointerIsAway();
+        }
+
+        ShowSettings(false);
+
+        _suppressAuto = true;
+        SourceTextBox.Text = selection;
+        SourceTextBox.CaretIndex = selection.Length;
+        _suppressAuto = false;
+
+        _detectedLang = "";
+        _seq++;
+
+        if (selection.Length == 0)
+        {
+            ShowBody(false);
+            SourceTextBox.Focus();
+        }
+        else
+        {
+            Keyboard.ClearFocus();
+            RequestTranslate();
+        }
+
+        RenderChrome();
+    }
+
+    // ══════════════════════════ Placement and motion ══════════════════════════
+
+    /// <summary>Where the popup was last placed, in physical pixels.</summary>
+    /// <inheritdoc cref="StartCountdownIfPointerIsAway"/>
+    private Rect _placedBounds;
+
+    /// <summary>
+    /// Drops the popup around the pointer, inside the monitor the pointer is on.
+    /// </summary>
+    /// <remarks>
+    /// All physical pixels and the scale of the monitor being placed on, exactly as the toast does:
+    /// reading the scale off this window reports the monitor it currently sits on, which before the
+    /// first placement is whichever one WPF happened to open it on.
+    ///
+    /// The pointer ends up just inside the popup's top-left rather than above it, and that is not
+    /// cosmetic: the countdown that closes this window is driven by the pointer leaving, so a popup
+    /// that opened next to the pointer instead of under it would begin dying the moment it appeared.
+    /// The offsets put the pointer over the corner the brand mark occupies, which is the one part of
+    /// the header nobody needs to click.
+    ///
+    /// Nothing about the placement is remembered between summons. This window goes where the pointer
+    /// already is, so a stored position would be a worse answer to the same question every time.
+    /// Dragging one pins it, and a pinned popup is not re-placed — see <see cref="Refill"/>.
+    /// </remarks>
+    private void PositionAtPointer()
+    {
+        var pointer = System.Windows.Forms.Cursor.Position;
+        var area = System.Windows.Forms.Screen.FromPoint(pointer).WorkingArea;
+        var scale = ScreenGeometry.ScaleAt(pointer.X, pointer.Y);
+
+        var w = ActualWidth * scale;
+        var h = ActualHeight * scale;
+        var edge = 4 * scale;
+
+        // Math.Clamp throws when the popup is larger than the monitor it has to fit on.
+        var minX = area.Left + edge;
+        var maxX = Math.Max(minX, area.Right - w - edge);
+        var minY = area.Top + edge;
+        var maxY = Math.Max(minY, area.Bottom - h - edge);
+
+        var x = Math.Clamp(pointer.X - 36 * scale, minX, maxX);
+        var y = Math.Clamp(pointer.Y - 8 * scale, minY, maxY);
+
+        ScreenGeometry.MoveToPhysical(this, (int)Math.Round(x), (int)Math.Round(y));
+        _placedBounds = new Rect(x, y, w, h);
+
+        // Anchored to the pointer rather than to a corner: the popup should look like it came out of
+        // the place it was asked for, and go back into it.
+        Surface.RenderTransformOrigin = new Point(
+            Math.Clamp((pointer.X - x) / Math.Max(w, 1), 0, 1),
+            Math.Clamp((pointer.Y - y) / Math.Max(h, 1), 0, 1));
+    }
+
+    /// <summary>
+    /// Starts the countdown when the popup could not be placed under the pointer after all.
+    /// </summary>
+    /// <remarks>
+    /// Every other way into the countdown is <see cref="OnPointerLeave"/>, which cannot fire for a
+    /// pointer that was never inside — and near a screen edge the clamping above pushes the popup
+    /// out from under it. Without this the popup would sit there until it was clicked, which is the
+    /// one thing a window that exists to get out of the way must not do.
+    ///
+    /// Measured against the placement rather than asked of <c>IsMouseOver</c>: that property is set
+    /// from mouse input, and a window appearing under a pointer nobody has moved has had none.
+    /// </remarks>
+    private void StartCountdownIfPointerIsAway()
+    {
+        var pointer = System.Windows.Forms.Cursor.Position;
+        if (_placedBounds.Contains(pointer.X, pointer.Y)) return;
+
+        _pointerLeftAt = DateTime.UtcNow;
+        _dismiss.Start();
+    }
+
+    /// <remarks>
+    /// Blur and scale together rather than a plain fade, so the surface reads as arriving rather
+    /// than as being turned up — the shadow and the border are already drawn, and only the geometry
+    /// is short of its resting value.
+    ///
+    /// No overshoot. Nothing threw this window: it appeared because a key was pressed, and a bounce
+    /// belongs to motion that inherited momentum from a gesture.
+    /// </remarks>
+    private void AnimateIn()
+    {
+        // Windows' "animation effects" setting is this platform's reduced-motion preference.
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            Opacity = 1;
+            return;
+        }
+
+        Opacity = 0;
+        BeginAnimation(OpacityProperty, new DoubleAnimation
+        {
+            From = 0, To = 1,
+            Duration = new Duration(TimeSpan.FromMilliseconds(EnterMs - 80)),
+        });
+
+        var grow = new DoubleAnimation
+        {
+            From = 0.94, To = 1,
+            Duration = new Duration(TimeSpan.FromMilliseconds(EnterMs)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        SurfaceScale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+        SurfaceScale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+    }
+
+    /// <remarks>
+    /// The same path in reverse, ending where it started. Something that leaves along a different
+    /// route than it arrived by reads as a second, unrelated thing happening.
+    /// </remarks>
+    private void BeginClose()
+    {
+        if (_closing) return;
+        _closing = true;
+
+        _debounce.Stop();
+        _dismiss.Stop();
+        _tts.Stop();
+
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            Close();
+            return;
+        }
+
+        var shrink = new DoubleAnimation
+        {
+            To = 0.96,
+            Duration = new Duration(TimeSpan.FromMilliseconds(ExitMs)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn },
+        };
+        SurfaceScale.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
+        SurfaceScale.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
+
+        var fade = new DoubleAnimation
+        {
+            To = 0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(ExitMs)),
+        };
+        fade.Completed += (_, _) => Close();
+        BeginAnimation(OpacityProperty, fade);
+    }
+
+    /// <summary>Slides whichever panel is now current up into place.</summary>
+    private void ShowBody(bool visible)
+    {
+        if (!visible)
+        {
+            BodyHost.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var wasVisible = BodyHost.Visibility == Visibility.Visible;
+        BodyHost.Visibility = Visibility.Visible;
+        if (wasVisible || !SystemParameters.ClientAreaAnimation) return;
+
+        BodyHost.BeginAnimation(OpacityProperty, new DoubleAnimation
+        {
+            From = 0, To = 1,
+            Duration = new Duration(TimeSpan.FromMilliseconds(BodyMs)),
+        });
+        BodyTransform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation
+        {
+            From = 6, To = 0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(BodyMs)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        });
+    }
+
+    // ══════════════════════════ Staying and going ══════════════════════════
+
+    private void OnPointerEnter(object sender, MouseEventArgs e)
+    {
+        _dismiss.Stop();
+        RenderChrome();
+    }
+
+    private void OnPointerLeave(object sender, MouseEventArgs e)
+    {
+        _pointerLeftAt = DateTime.UtcNow;
+        _dismiss.Start();
+        RenderChrome();
+    }
+
+    /// <remarks>
+    /// The countdown is restarted rather than merely paused by anything holding the popup open, so
+    /// each of those things is followed by the full delay instead of by whatever was left of it.
+    /// </remarks>
+    private void TickDismiss()
+    {
+        if (!MayDismiss())
+        {
+            _pointerLeftAt = DateTime.UtcNow;
+            return;
+        }
+
+        if (DateTime.UtcNow - _pointerLeftAt < DismissDelay) return;
+
+        _dismiss.Stop();
+        BeginClose();
+    }
+
+    /// <summary>
+    /// Whether the popup is free to take itself off the screen.
+    /// </summary>
+    /// <remarks>
+    /// Every entry here is a way of saying "I am still using this" that the pointer's position does
+    /// not report. Reading a result aloud and waiting for one are the two where closing would
+    /// destroy work already under way; a picker with its list down and the gear panel are places the
+    /// pointer legitimately travels outside the window's own bounds.
+    /// </remarks>
+    private bool MayDismiss() =>
+        !_pinned &&
+        !IsMouseOver &&
+        !_settingsOpen &&
+        !_dropDownOpen &&
+        !_translating &&
+        !_tts.IsActive &&
+        !SourceTextBox.IsKeyboardFocusWithin;
+
+    /// <remarks>
+    /// Clicking into another window is a clearer statement than the pointer wandering off, so it is
+    /// answered at once rather than after the delay — but it is still only a statement about
+    /// attention, and a pinned popup is one the user has said to keep regardless.
+    ///
+    /// The picker guard is what keeps a dropped-down list from closing the window underneath it.
+    /// </remarks>
+    protected override void OnDeactivated(EventArgs e)
+    {
+        base.OnDeactivated(e);
+        if (_pinned || _dropDownOpen) return;
+        BeginClose();
+    }
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            BeginClose();
+            return;
+        }
+
+        if (e.Key is not (Key.Enter or Key.Return)) return;
+
+        e.Handled = true;
+        _debounce.Stop();
+
+        // Focus is handed back deliberately: while the box holds it the popup cannot close on its
+        // own, and pressing Enter is how someone says they are finished typing.
+        Keyboard.ClearFocus();
+        _ = TranslateNowAsync();
+    }
+
+    // ══════════════════════════ Moving and pinning ══════════════════════════
+
+    /// <remarks>
+    /// Dragging pins, and that is the answer to a design with nowhere obvious to put a pin: someone
+    /// who has just placed this window somewhere has said, as plainly as a button would, that they
+    /// want it to stay there. The pin glyph lights up as they let go, which is also how they find
+    /// out the button exists.
+    ///
+    /// A press that lands on a control is left alone — dragging a window by its own text box would
+    /// take selection with the pointer away from anyone trying to correct a word.
+    /// </remarks>
+    private void Surface_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (IsInteractive(e.OriginalSource as DependencyObject)) return;
+
+        var before = new Point(Left, Top);
+        try
+        {
+            DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+            // DragMove throws when the button is already up by the time it runs, which a fast click
+            // can manage. There is nothing to move and nothing to report.
+            return;
+        }
+
+        // A click is not a drag: the threshold is what keeps someone who clicked the background from
+        // silently pinning the window.
+        if (Math.Abs(Left - before.X) + Math.Abs(Top - before.Y) < 4) return;
+
+        SetPinned(true);
+    }
+
+    private static bool IsInteractive(DependencyObject? source)
+    {
+        for (var node = source; node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is ButtonBase or TextBoxBase or ComboBox) return true;
+        }
+
+        return false;
+    }
+
+    private void PinBtn_Click(object sender, RoutedEventArgs e) => SetPinned(!_pinned);
+
+    private void SetPinned(bool pinned)
+    {
+        _pinned = pinned;
+        if (pinned) _dismiss.Stop();
+        else if (!IsMouseOver)
+        {
+            _pointerLeftAt = DateTime.UtcNow;
+            _dismiss.Start();
+        }
+
+        RenderChrome();
+    }
+
+    /// <summary>
+    /// Settles the header's quiet controls against where the pointer is and whether it is pinned.
+    /// </summary>
+    /// <remarks>
+    /// The pin is invisible until the pointer is on the window, and stays visible while it is
+    /// holding the popup open — an control that is doing something has to be readable while it does
+    /// it, and one that is not is a button on a surface the size of a search box.
+    ///
+    /// Which glyph shows is the action rather than the state, the way every other toggle in this
+    /// application draws itself; the accent is what says which state it is in.
+    /// </remarks>
+    private void RenderChrome()
+    {
+        // Which glyph shows is the action, not the state — the way every other toggle in this
+        // application draws itself. Segoe MDL2 codepoints so they survive Windows 10, where Segoe
+        // Fluent Icons is not installed; see Views/Controls/TtsGlyphs.
+        PinBtn.Content = _pinned ? "" : "";
+        PinBtn.ToolTip = LocalizationService.Get(
+            _pinned ? "S.QuickLookup.Unpin" : "S.QuickLookup.Pin");
+        PinBtn.SetResourceReference(
+            ForegroundProperty, _pinned ? "AppAccent" : "AppTextSecondary");
+
+        FadeTo(PinBtn, _pinned || IsMouseOver ? 1 : 0);
+
+        var showField = IsMouseOver || SourceTextBox.IsKeyboardFocusWithin;
+        SourceTextBox.SetResourceReference(
+            BackgroundProperty, showField ? "AppInputBg" : "AppSurfaceBg");
+        SourceTextBox.SetResourceReference(
+            BorderBrushProperty, showField ? "AppInputBorder" : "AppSurfaceBg");
+
+        Placeholder.Visibility = SourceTextBox.Text.Length == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private static void FadeTo(UIElement element, double opacity)
+    {
+        if (Math.Abs(element.Opacity - opacity) < 0.01) return;
+
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            element.BeginAnimation(OpacityProperty, null);
+            element.Opacity = opacity;
+            return;
+        }
+
+        element.BeginAnimation(OpacityProperty, new DoubleAnimation
+        {
+            To = opacity,
+            Duration = new Duration(TimeSpan.FromMilliseconds(120)),
+        });
+    }
+
+    // ══════════════════════════ Translating ══════════════════════════
+
+    private void SourceTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        RenderChrome();
+        RequestTranslate();
+    }
+
+    private void RequestTranslate()
+    {
+        if (_suppressAuto) return;
+
+        _debounce.Stop();
+        if (string.IsNullOrWhiteSpace(SourceTextBox.Text))
+        {
+            _seq++;
+            _translating = false;
+            _detectedLang = "";
+            ShowBody(_settingsOpen);
+            return;
+        }
+
+        _debounce.Start();
+    }
+
+    /// <remarks>
+    /// Hedged and with fallbacks, unlike 文字翻譯, which sends to the chosen engine alone. The two
+    /// windows are answering different questions: there, a failure is worth reporting because the
+    /// user is sitting in a window they opened to translate in and can retry. Here the popup has
+    /// about a second of the user's attention and no retry button worth the room, so a free endpoint
+    /// having a bad minute should cost a moment rather than the answer.
+    /// </remarks>
+    private async Task TranslateNowAsync()
+    {
+        var text = SourceTextBox.Text;
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        var settings = SettingsService.Instance.Current;
+        var srcLang = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
+        var tgtLang = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
+
+        if (AppServices.Translation.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            ShowStatus(LocalizationService.Get("S.Translation.MissingApiKey"), isError: true);
+            return;
+        }
+
+        var seq = ++_seq;
+        _translating = true;
+        ShowStatus(LocalizationService.Get("S.Translation.Translating"), isError: false);
+
+        try
+        {
+            var (results, detected) = await AppServices.Translation.TranslateAsync(
+                [new OcrTextBlock(text, new Rect())], srcLang, tgtLang, settings.ApiKey);
+
+            if (seq != _seq) return;
+
+            _translating = false;
+            _detectedLang = detected ?? "";
+            TranslatedText.Text = results.FirstOrDefault()?.TranslatedText ?? "";
+            StatusText.Visibility = Visibility.Collapsed;
+            ShowResult();
+
+            if (settings.QuickLookup.AutoSpeakResult && TranslatedText.Text.Length > 0)
+                await ToggleTtsAsync(TgtTtsBtn, TranslatedText.Text, tgtLang);
+        }
+        catch (Exception ex)
+        {
+            if (seq != _seq) return;
+            _translating = false;
+
+            Log.Warn(ex, "取詞翻譯 could not translate");
+            TranslatedText.Text = "";
+            ShowStatus(
+                LocalizationService.Format(
+                    "S.Translation.ProviderUnavailable",
+                    LanguageData.GetProviderDisplay(settings.Provider), ex.Message),
+                isError: true);
+        }
+    }
+
+    /// <remarks>
+    /// Silent while the gear panel is up. A translation finishing is not a reason to take the user
+    /// out of the settings they opened; <see cref="ShowSettings"/> brings the result back when they
+    /// are done, by which point it is already there.
+    /// </remarks>
+    private void ShowResult()
+    {
+        RenderSourceTtsAvailability();
+        if (_settingsOpen) return;
+
+        ResultPanel.Visibility = Visibility.Visible;
+        SettingsPanel.Visibility = Visibility.Collapsed;
+        ActionRow.Visibility = TranslatedText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ShowBody(true);
+    }
+
+    private void ShowStatus(string text, bool isError)
+    {
+        StatusText.Text = text;
+        StatusText.SetResourceReference(
+            ForegroundProperty, isError ? "AppError" : "AppAccent");
+        StatusText.Visibility = Visibility.Visible;
+        ShowResult();
+    }
+
+    // ══════════════════════════ Reading aloud ══════════════════════════
+
+    /// <summary>
+    /// The language 朗讀原文 would read in, or empty when there is not one yet.
+    /// </summary>
+    /// <inheritdoc cref="_detectedLang"/>
+    private string SourceVoiceLanguage()
+    {
+        var chosen = SrcLangBox.SelectedValue as string;
+        if (!LanguageData.IsAutomaticSource(chosen)) return LanguageData.GetValidSourceCode(chosen);
+        return _detectedLang;
+    }
+
+    private void RenderSourceTtsAvailability()
+    {
+        var available = SourceVoiceLanguage().Length > 0 && SourceTextBox.Text.Length > 0;
+
+        SrcTtsBtn.IsEnabled = available;
+        SrcTtsBtn.ToolTip = LocalizationService.Get(
+            available ? "S.QuickLookup.SpeakSourceTip" : "S.QuickLookup.SpeakSourceUnknown");
+    }
+
+    private async void SrcTtsBtn_Click(object sender, RoutedEventArgs e)
+        => await ToggleTtsAsync(SrcTtsBtn, SourceTextBox.Text, SourceVoiceLanguage());
+
+    private async void TgtTtsBtn_Click(object sender, RoutedEventArgs e)
+        => await ToggleTtsAsync(
+            TgtTtsBtn,
+            TranslatedText.Text,
+            LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string));
+
+    /// <inheritdoc cref="Views.Translation.TranslationPage"/>
+    private async Task ToggleTtsAsync(Button button, string text, string language)
+    {
+        if (_tts.IsActive && ReferenceEquals(_ttsActiveBtn, button)) { _tts.Stop(); return; }
+        if (string.IsNullOrWhiteSpace(text) || language.Length == 0) return;
+
+        _ttsActiveBtn = button;
+        RenderTtsGlyphs();
+        try
+        {
+            await _tts.SpeakAsync(text, language);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "取詞翻譯 could not read the text aloud");
+            ShowStatus(LocalizationService.Format("S.Translation.SpeakFailed", ex.Message), isError: true);
+        }
+    }
+
+    private void OnTtsStateChanged(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_tts.IsActive) return;
+            _ttsActiveBtn = null;
+            RenderTtsGlyphs();
+        }));
+
+    private void RenderTtsGlyphs()
+    {
+        TgtTtsBtn.Content = ReferenceEquals(_ttsActiveBtn, TgtTtsBtn)
+            ? Controls.TtsGlyphs.Stop
+            : Controls.TtsGlyphs.Speak;
+
+        SrcTtsGlyph.Text = ReferenceEquals(_ttsActiveBtn, SrcTtsBtn)
+            ? Controls.TtsGlyphs.Stop
+            : Controls.TtsGlyphs.Speak;
+    }
+
+    // ══════════════════════════ Copying ══════════════════════════
+
+    /// <remarks>
+    /// Confirmed on the button itself rather than with a toast. A toast would appear outside this
+    /// window, which is a place the pointer then has to not be for the popup to survive — and the
+    /// message would outlive the window it was about.
+    /// </remarks>
+    private void CopyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (TranslatedText.Text.Length == 0) return;
+
+        try
+        {
+            Clipboard.SetText(TranslatedText.Text);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Could not copy the translation");
+            return;
+        }
+
+        RenderCopyLabel(copied: true);
+        _copiedHold.Stop();
+        _copiedHold.Start();
+    }
+
+    private void RenderCopyLabel(bool copied) =>
+        CopyLabel.Text = LocalizationService.Get(
+            copied ? "S.QuickLookup.Copied" : "S.QuickLookup.Copy");
+
+    // ══════════════════════════ Settings panel ══════════════════════════
+
+    private void SettingsBtn_Click(object sender, RoutedEventArgs e) => ShowSettings(!_settingsOpen);
+
+    /// <remarks>
+    /// In place rather than in a window of its own: a settings window over a popup that disappears
+    /// when the pointer leaves it would be a window whose owner can vanish underneath it.
+    /// </remarks>
+    private void ShowSettings(bool open)
+    {
+        _settingsOpen = open;
+
+        if (open)
+        {
+            _suppressAuto = true;
+            LoadSharedPreferences();
+            AutoSpeakCheckBox.IsChecked = SettingsService.Instance.Current.QuickLookup.AutoSpeakResult;
+            _suppressAuto = false;
+
+            RenderSettingsHint();
+            SettingsPanel.Visibility = Visibility.Visible;
+            ResultPanel.Visibility = Visibility.Collapsed;
+            ShowBody(true);
+            return;
+        }
+
+        SettingsPanel.Visibility = Visibility.Collapsed;
+        ResultPanel.Visibility = Visibility.Visible;
+        ShowBody(TranslatedText.Text.Length > 0 || StatusText.Visibility == Visibility.Visible);
+    }
+
+    private void RenderSettingsHint() =>
+        SettingsHint.Text = LocalizationService.Format(
+            "S.QuickLookup.SettingsHint",
+            SettingsService.Instance.Current.QuickLookupHotkeyDisplay);
+
+    private void OpenFullSettingsBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // The shell takes the foreground, which would close this window a moment later anyway —
+        // doing it first means the popup does not flash behind the window that replaced it.
+        BeginClose();
+        ShellWindow.ShowOrActivate(ShellPage.Settings);
+    }
+
+    private void AutoSpeak_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressAuto) return;
+
+        SettingsService.Instance.Current.QuickLookup.AutoSpeakResult = AutoSpeakCheckBox.IsChecked == true;
+        SettingsService.Instance.Save();
+    }
+
+    // ══════════════════════════ Shared preferences ══════════════════════════
+
+    private void LoadSharedPreferences()
+    {
+        var settings = SettingsService.Instance.Current;
+
+        SrcLangBox.SelectedValue = LanguageData.GetValidSourceCode(settings.SourceLanguage);
+        TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(settings.TargetLanguage);
+        ProviderBox.SelectedValue = settings.Provider;
+        if (ProviderBox.SelectedValue is null) ProviderBox.SelectedIndex = 0;
+    }
+
+    private void LangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressAuto) return;
+
+        var settings = SettingsService.Instance.Current;
+        settings.SourceLanguage = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
+        settings.TargetLanguage = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
+        SettingsService.Instance.Save();
+
+        // The engine's answer belongs to the language pair it was asked about.
+        _detectedLang = "";
+        RequestTranslate();
+    }
+
+    private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressAuto || ProviderBox.SelectedValue is not TranslationProvider provider) return;
+
+        SettingsService.Instance.Current.Provider = provider;
+        SettingsService.Instance.Save();
+        RequestTranslate();
+    }
+
+    private void CloseBtn_Click(object sender, RoutedEventArgs e) => BeginClose();
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        RenderChrome();
+        RenderCopyLabel(copied: false);
+        RenderSettingsHint();
+        RenderSourceTtsAvailability();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _debounce.Stop();
+        _dismiss.Stop();
+        _copiedHold.Stop();
+        _tts.Dispose();
+
+        // Static and outliving every window, so a handler left attached keeps this one alive for as
+        // long as the application runs.
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
+
+        if (ReferenceEquals(_current, this)) _current = null;
+        base.OnClosed(e);
+    }
+}

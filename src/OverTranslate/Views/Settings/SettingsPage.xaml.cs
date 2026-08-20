@@ -122,6 +122,17 @@ public partial class SettingsPage : UserControl
                 RealtimePauseHotkeyEnabledCheckBox,
                 (s, on) => s.RealtimePauseHotkeyEnabled = on,
                 RealtimePauseHotkeyEnabledLabel),
+            new HotkeyField(
+                HotkeyAction.QuickLookup,
+                "S.Settings.QuickLookupHotkey",
+                QuickLookupHotkeyBox,
+                s => s.QuickLookupHotkeyDisplay,
+                s => HotkeyBindings.TriggerFor(s, HotkeyAction.QuickLookup),
+                ApplyQuickLookupTrigger,
+                AdvertisedInShell: false,
+                QuickLookupHotkeyEnabledCheckBox,
+                (s, on) => s.QuickLookupHotkeyEnabled = on,
+                QuickLookupHotkeyEnabledLabel),
         ];
 
         _hotkeyGamepadRecordTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(45) };
@@ -533,6 +544,22 @@ public partial class SettingsPage : UserControl
         else if (trigger.Kind == ShortcutInputKind.Gamepad)
         {
             s.RealtimePauseHotkeyGamepadButton = trigger.GamepadButton;
+        }
+    }
+
+    private static void ApplyQuickLookupTrigger(AppSettings s, ShortcutTrigger trigger, string display)
+    {
+        s.QuickLookupHotkeyInputKind = trigger.Kind;
+        s.QuickLookupHotkeyDisplay = display;
+        if (trigger.Kind == ShortcutInputKind.Keyboard)
+        {
+            s.QuickLookupHotkeyModifiers = trigger.Modifiers;
+            s.QuickLookupHotkeyVirtualKey = trigger.VirtualKey;
+            s.QuickLookupHotkeyGamepadButton = GamepadShortcutButton.None;
+        }
+        else if (trigger.Kind == ShortcutInputKind.Gamepad)
+        {
+            s.QuickLookupHotkeyGamepadButton = trigger.GamepadButton;
         }
     }
 
