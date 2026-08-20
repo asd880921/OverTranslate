@@ -13,13 +13,11 @@ using OverTranslate.Services;
 using OverTranslate.Views.Shell;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using Button = System.Windows.Controls.Button;
-using ButtonBase = System.Windows.Controls.Primitives.ButtonBase;
 using Clipboard = System.Windows.Clipboard;
 using ComboBox = System.Windows.Controls.ComboBox;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using Point = System.Windows.Point;
-using TextBoxBase = System.Windows.Controls.Primitives.TextBoxBase;
 
 namespace OverTranslate.Views.QuickLookup;
 
@@ -63,6 +61,12 @@ public partial class QuickLookupWindow : Window
     private readonly DispatcherTimer _copiedHold;
 
     /// <summary>True while the popup is pinned, which is what keeps it through a deactivation.</summary>
+    /// <remarks>
+    /// Per window and stored nowhere. Pinning answers "keep this one on screen while I work", which
+    /// is a statement about the popup in front of the user right now — a remembered pin would mean
+    /// every later summon opened a window that never goes away, which is the opposite of what this
+    /// feature is.
+    /// </remarks>
     private bool _pinned;
 
     /// <summary>True while the gear panel is showing instead of the result.</summary>
@@ -209,13 +213,21 @@ public partial class QuickLookupWindow : Window
         foreach (var picker in new[] { SrcLangBox, TgtLangBox, ProviderBox })
         {
             picker.DropDownOpened += (_, _) => _dropDownOpen = true;
-            picker.DropDownClosed += (_, _) => _dropDownOpen = false;
+            picker.DropDownClosed += (_, _) =>
+            {
+                _dropDownOpen = false;
+
+                // The deactivation a click outside the list produced arrived while the list was
+                // still down, and OnDeactivated skipped it for exactly that reason. Nothing else
+                // would ever ask again, so the popup would outlive the click that dismissed it.
+                if (!IsActive && !_pinned) BeginClose();
+            };
         }
 
         MouseEnter += OnPointerEnter;
         MouseLeave += OnPointerLeave;
         PreviewKeyDown += OnPreviewKeyDown;
-        Surface.PreviewMouseLeftButtonDown += Surface_PreviewMouseLeftButtonDown;
+        Surface.MouseLeftButtonDown += Surface_MouseLeftButtonDown;
 
         // Composed in code from the shortcut and the interface language, so DynamicResource cannot
         // reach them — see LocalizationService.LanguageChanged.
@@ -459,20 +471,22 @@ public partial class QuickLookupWindow : Window
 
     // ══════════════════════════ Moving and pinning ══════════════════════════
 
+    /// <summary>Lets the popup be dragged by any part of it that is not a control.</summary>
     /// <remarks>
-    /// Dragging pins, and that is the answer to a design with nowhere obvious to put a pin: someone
-    /// who has just placed this window somewhere has said, as plainly as a button would, that they
-    /// want it to stay there. The pin glyph lights up as they let go, which is also how they find
-    /// out the button exists.
+    /// Bubbling rather than tunnelling, and that is the whole of it: a press that landed on the box
+    /// or on a button has been handled by that control and never arrives here, so dragging cannot
+    /// steal a click meant for something. Reached from a tunnelling handler instead, this used to
+    /// run for every press on the window — and <c>DragMove</c> then inherited the press's own mouse
+    /// capture and never gave it back. A window holding the capture swallows every click on the
+    /// desktop after it, which cost the user both the click they aimed at another window and the
+    /// deactivation that is the only thing that closes this one.
     ///
-    /// A press that lands on a control is left alone — dragging a window by its own text box would
-    /// take selection with the pointer away from anyone trying to correct a word.
+    /// Dragging does not pin. It used to, on the reasoning that placing a window somewhere says you
+    /// want it to stay there — but the pin is on the header at all times now, so the guess buys
+    /// nothing, and a window that pins itself is one the user has to notice and undo.
     /// </remarks>
-    private void Surface_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void Surface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (IsInteractive(e.OriginalSource as DependencyObject)) return;
-
-        var before = new Point(Left, Top);
         try
         {
             DragMove();
@@ -481,31 +495,12 @@ public partial class QuickLookupWindow : Window
         {
             // DragMove throws when the button is already up by the time it runs, which a fast click
             // can manage. There is nothing to move and nothing to report.
-            return;
         }
-
-        // A click is not a drag: the threshold is what keeps someone who clicked the background from
-        // silently pinning the window.
-        if (Math.Abs(Left - before.X) + Math.Abs(Top - before.Y) < 4) return;
-
-        SetPinned(true);
     }
 
-    private static bool IsInteractive(DependencyObject? source)
+    private void PinBtn_Click(object sender, RoutedEventArgs e)
     {
-        for (var node = source; node is not null; node = VisualTreeHelper.GetParent(node))
-        {
-            if (node is ButtonBase or TextBoxBase or ComboBox) return true;
-        }
-
-        return false;
-    }
-
-    private void PinBtn_Click(object sender, RoutedEventArgs e) => SetPinned(!_pinned);
-
-    private void SetPinned(bool pinned)
-    {
-        _pinned = pinned;
+        _pinned = !_pinned;
         RenderChrome();
     }
 
@@ -513,9 +508,9 @@ public partial class QuickLookupWindow : Window
     /// Settles the header's quiet controls against where the pointer is and whether it is pinned.
     /// </summary>
     /// <remarks>
-    /// The pin is invisible until the pointer is on the window, and stays visible while it is
-    /// holding the popup open — an control that is doing something has to be readable while it does
-    /// it, and one that is not is a button on a surface the size of a search box.
+    /// The pin is always on the header. It was faded in on hover while dragging was the main way to
+    /// pin, so the button only had to be there for whoever went looking; now that it is the only way
+    /// to pin, a control that is not on screen is a feature nobody finds.
     ///
     /// Which glyph shows is the action rather than the state, the way every other toggle in this
     /// application draws itself; the accent is what says which state it is in.
@@ -531,8 +526,6 @@ public partial class QuickLookupWindow : Window
         PinBtn.SetResourceReference(
             ForegroundProperty, _pinned ? "AppAccent" : "AppTextSecondary");
 
-        FadeTo(PinBtn, _pinned || IsMouseOver ? 1 : 0);
-
         var showField = IsMouseOver || SourceTextBox.IsKeyboardFocusWithin;
         SourceTextBox.SetResourceReference(
             BackgroundProperty, showField ? "AppInputBg" : "AppSurfaceBg");
@@ -542,24 +535,6 @@ public partial class QuickLookupWindow : Window
         Placeholder.Visibility = SourceTextBox.Text.Length == 0
             ? Visibility.Visible
             : Visibility.Collapsed;
-    }
-
-    private static void FadeTo(UIElement element, double opacity)
-    {
-        if (Math.Abs(element.Opacity - opacity) < 0.01) return;
-
-        if (!SystemParameters.ClientAreaAnimation)
-        {
-            element.BeginAnimation(OpacityProperty, null);
-            element.Opacity = opacity;
-            return;
-        }
-
-        element.BeginAnimation(OpacityProperty, new DoubleAnimation
-        {
-            To = opacity,
-            Duration = new Duration(TimeSpan.FromMilliseconds(120)),
-        });
     }
 
     // ══════════════════════════ Translating ══════════════════════════

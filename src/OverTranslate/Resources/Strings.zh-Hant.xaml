@@ -110,7 +110,7 @@
     <sys:String x:Key="S.QuickLookup.Provider">翻譯服務</sys:String>
     <sys:String x:Key="S.QuickLookup.ProviderHint">與截圖翻譯、文字翻譯共用</sys:String>
     <sys:String x:Key="S.QuickLookup.OpenFullSettings">完整設定</sys:String>
-    <sys:String x:Key="S.QuickLookup.SettingsHint">{0} 呼叫。點到其他視窗就會關閉；拖曳可移動位置並自動釘選，釘選後就會留著。</sys:String>
+    <sys:String x:Key="S.QuickLookup.SettingsHint">{0} 呼叫。點到其他視窗就會關閉；可拖曳移動位置，釘選後就會留著。</sys:String>
 
     <!-- ── Capture toolbar ── -->
     <sys:String x:Key="S.Toolbar.Translate">翻譯</sys:String>

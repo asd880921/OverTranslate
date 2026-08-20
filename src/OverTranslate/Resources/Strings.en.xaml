@@ -106,7 +106,7 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.QuickLookup.Provider">Translation service</sys:String>
     <sys:String x:Key="S.QuickLookup.ProviderHint">Shared with capture and text translation</sys:String>
     <sys:String x:Key="S.QuickLookup.OpenFullSettings">All settings</sys:String>
-    <sys:String x:Key="S.QuickLookup.SettingsHint">{0} summons it. It closes when you click into another window; drag to move it, which pins it and keeps it there.</sys:String>
+    <sys:String x:Key="S.QuickLookup.SettingsHint">{0} summons it. It closes when you click into another window; drag to move it, and pin it to keep it there.</sys:String>
 
     <!-- ── Capture toolbar ── -->
     <sys:String x:Key="S.Toolbar.Translate">Translate</sys:String>
