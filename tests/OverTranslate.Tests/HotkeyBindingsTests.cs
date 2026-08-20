@@ -9,13 +9,38 @@ public class HotkeyBindingsTests
     private const uint CtrlAlt = 3;
 
     [Fact]
-    public void ThreeDistinctCombinationsAllStayOn()
+    public void EveryDefaultCombinationIsDistinctSoAllOfThemStayOn()
     {
         var active = HotkeyBindings.Active(new AppSettings()).ToList();
 
         Assert.Equal(
-            [HotkeyAction.Capture, HotkeyAction.TranslationWindow, HotkeyAction.RealtimePause],
+            [
+                HotkeyAction.Capture,
+                HotkeyAction.TranslationWindow,
+                HotkeyAction.RealtimePause,
+                HotkeyAction.QuickLookup,
+            ],
             active.Select(binding => binding.Action));
+    }
+
+    [Fact]
+    public void QuickLookupIsTheLastToBeOfferedACombinationSomebodyElseHolds()
+    {
+        // 取詞翻譯 shipped after the other three, so its default is the one that has to give way:
+        // an existing installation may already have recorded Ctrl+Alt+Q somewhere else, and that is
+        // a combination its owner picked against one they have never seen.
+        var settings = new AppSettings
+        {
+            TranslationWindowHotkeyModifiers = CtrlAlt,
+            TranslationWindowHotkeyVirtualKey = 0x51,
+            TranslationWindowHotkeyDisplay = "Ctrl+Alt+Q",
+        };
+
+        var lookup = HotkeyBindings.Resolve(settings)
+            .Single(binding => binding.Action == HotkeyAction.QuickLookup);
+
+        Assert.False(lookup.IsActive);
+        Assert.Equal(HotkeyAction.TranslationWindow, lookup.ShadowedBy);
     }
 
     [Fact]
