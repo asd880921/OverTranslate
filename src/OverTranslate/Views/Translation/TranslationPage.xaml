@@ -129,8 +129,9 @@
                                  than behind a hover: a tooltip on a disabled control is found only
                                  by someone who already suspects there is something to find. Fills
                                  the row's spare width and is right-aligned against the buttons, so
-                                 the header's height never changes and nothing moves when the source
-                                 language does. Trims rather than pushes when the pane is narrow.
+                                 the header's height never changes and nothing moves when the engine
+                                 or the source language does. Trims rather than pushes when the pane
+                                 is narrow.
 
                                  The same font size as the 原文 label beside it, and that is the
                                  point rather than an accident. At 11 against the label's 12 both
@@ -143,8 +144,8 @@
                             <!-- Colour: AppTextSecondary rather than AppError, because nothing has
                                  gone wrong — a mode simply cannot do a thing. An alarm colour in a
                                  header that is on screen for the whole session would be shouting. -->
-                            <TextBlock x:Name="SrcAutoTtsNote"
-                                       Text="{DynamicResource S.Translation.SpeakSourceAutomaticShort}"
+                            <TextBlock x:Name="SrcTtsNote"
+                                       Text="{DynamicResource S.Translation.SpeakSourceOpenAiShort}"
                                        FontFamily="{StaticResource AppFont}"
                                        FontSize="12"
                                        Foreground="{DynamicResource AppTextSecondary}"

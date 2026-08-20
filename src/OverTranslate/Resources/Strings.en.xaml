@@ -80,8 +80,9 @@
     <sys:String x:Key="S.Translation.SwapTip">Swap languages and text</sys:String>
     <sys:String x:Key="S.Translation.ClearSource">Clear the source text</sys:String>
     <sys:String x:Key="S.Translation.SpeakSource">Read the source aloud</sys:String>
-    <sys:String x:Key="S.Translation.SpeakSourceAutomatic">Reading the source aloud is unavailable while the source language is set to Automatic.</sys:String>
-    <sys:String x:Key="S.Translation.SpeakSourceAutomaticShort">No voice for Automatic</sys:String>
+    <sys:String x:Key="S.Translation.SpeakSourceOpenAi">With the OpenAI service, choose a source language to read the source aloud.</sys:String>
+    <sys:String x:Key="S.Translation.SpeakSourceOpenAiShort">OpenAI needs a source language</sys:String>
+    <sys:String x:Key="S.Translation.SpeakSourceUnknown">The language of the source is not known yet. It can be read aloud once the translation is back.</sys:String>
     <!-- The short note and the tooltip say the same thing at two lengths; the note is what is read,
          the tooltip is for whoever hovers the greyed speaker. -->
     <sys:String x:Key="S.Translation.Source">Source</sys:String>
