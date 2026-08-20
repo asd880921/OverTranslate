@@ -311,7 +311,8 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">Pause or resume [[realtime translation]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">"Pause / resume" only works while realtime translation is running. (a way to read the original text)</sys:String>
     <sys:String x:Key="S.Settings.QuickLookupHotkey">Quick lookup</sys:String>
-    <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">Translate the selected text in a [[small popup]]</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">Press the shortcut to open [[quick lookup]]</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">If text is selected, it is carried in and translated as the popup opens.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ A single key can only be F1–F24, Pause or Scroll Lock — other keys need Ctrl/Alt/Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>

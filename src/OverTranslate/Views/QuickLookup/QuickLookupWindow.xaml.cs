@@ -309,9 +309,9 @@ public partial class QuickLookupWindow : Window
     /// A pinned popup keeps its place: the user put it there, and the point of pinning is that it
     /// stops behaving like a thing that follows the pointer around.
     ///
-    /// The box takes keyboard focus either way, with a carried-in selection left selected: whoever
-    /// pressed the shortcut on the wrong word can type the right one over it without reaching for
-    /// the pointer, and whoever pressed it on the right one never touches the keyboard again.
+    /// The box takes keyboard focus either way, with the caret after the last character rather than
+    /// the text selected: a selection is one keystroke away from being replaced wholesale, and the
+    /// text it would destroy is the text the user asked about.
     /// </remarks>
     private void Refill(string selection)
     {
@@ -330,8 +330,9 @@ public partial class QuickLookupWindow : Window
         if (selection.Length == 0) ShowBody(false);
         else RequestTranslate();
 
+        // After Focus, which selects the whole box on its own when focus arrives programmatically.
         SourceTextBox.Focus();
-        SourceTextBox.SelectAll();
+        SourceTextBox.CaretIndex = SourceTextBox.Text.Length;
 
         RenderChrome();
     }
@@ -586,9 +587,16 @@ public partial class QuickLookupWindow : Window
     /// Dragging does not pin. It used to, on the reasoning that placing a window somewhere says you
     /// want it to stay there — but the pin is on the header at all times now, so the guess buys
     /// nothing, and a window that pins itself is one the user has to notice and undo.
+    ///
+    /// The relationship runs the other way instead: pinning stops the dragging.
     /// </remarks>
     private void Surface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // Pinning fixes the window where it is, so it also takes dragging away: the same pin already
+        // stops a later summon from moving the popup to the pointer, and a pin that held against one
+        // way of moving it but not the other would mean two different things.
+        if (_pinned) return;
+
         try
         {
             DragMove();

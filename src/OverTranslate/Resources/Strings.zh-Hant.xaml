@@ -329,7 +329,8 @@
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">暫停或繼續[[即時翻譯]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">「暫停 / 繼續」僅在即時翻譯進行中可用。(可用於顯示原文)</sys:String>
     <sys:String x:Key="S.Settings.QuickLookupHotkey">取詞翻譯</sys:String>
-    <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">將選取的文字帶進[[小視窗]]翻譯</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">按下快捷鍵開啟[[取詞翻譯]]</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">若已選取文字，開啟視窗時會自動將內容帶入並翻譯。</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ 單一按鍵只能是 F1–F24、Pause 或 Scroll Lock，其他按鍵請搭配 Ctrl／Alt／Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">一般設定</sys:String>

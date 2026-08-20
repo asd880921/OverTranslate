@@ -266,7 +266,7 @@
                                    Foreground="{DynamicResource AppTextSecondary}"
                                    Opacity="0.45"
                                    VerticalAlignment="Center"
-                                   Margin="0,1,0,0"/>
+                                   Margin="4,1,4,0"/>
 
                         <ComboBox x:Name="TgtLangBox"
                                   Style="{StaticResource QuietComboBox}"
