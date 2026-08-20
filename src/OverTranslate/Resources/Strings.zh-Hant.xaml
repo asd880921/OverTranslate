@@ -98,6 +98,7 @@
     <!-- ── Quick lookup popup ── -->
     <sys:String x:Key="S.QuickLookup.Placeholder">輸入要翻譯的文字…</sys:String>
     <sys:String x:Key="S.QuickLookup.Settings">取詞翻譯設定</sys:String>
+    <sys:String x:Key="S.QuickLookup.BackToResult">返回翻譯結果</sys:String>
     <sys:String x:Key="S.QuickLookup.Pin">釘選，點到別處也不關閉</sys:String>
     <sys:String x:Key="S.QuickLookup.Unpin">取消釘選</sys:String>
     <sys:String x:Key="S.QuickLookup.Copy">複製</sys:String>

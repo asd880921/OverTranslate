@@ -299,6 +299,7 @@ public partial class QuickLookupWindow : Window
 
         RenderChrome();
         RenderCopyLabel(copied: false);
+        RenderSettingsButton();
         RenderSettingsHint();
     }
 
@@ -733,7 +734,11 @@ public partial class QuickLookupWindow : Window
 
         ResultPanel.Visibility = Visibility.Visible;
         SettingsPanel.Visibility = Visibility.Collapsed;
-        ActionRow.Visibility = TranslatedText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        // Both belong to a translation rather than to the panel, so neither is on screen while the
+        // status line is still saying 翻譯中.
+        var hasResult = TranslatedText.Text.Length > 0;
+        ActionRow.Visibility = hasResult ? Visibility.Visible : Visibility.Collapsed;
+        TgtTtsBtn.Visibility = hasResult ? Visibility.Visible : Visibility.Collapsed;
 
         // After ActionRow, which the note's own visibility is measured against.
         RenderSourceTtsAvailability();
@@ -880,6 +885,25 @@ public partial class QuickLookupWindow : Window
 
     private void SettingsBtn_Click(object sender, RoutedEventArgs e) => ShowSettings(!_settingsOpen);
 
+    /// <summary>
+    /// Points the one button in the header that means two things at whichever one it means now.
+    /// </summary>
+    /// <remarks>
+    /// The settings replace the result in place, in the same small window, so this button is the
+    /// only way back — and a gear that stayed a gear left that unmarked: the panel read as somewhere
+    /// the popup had gone rather than somewhere it could come back from.
+    ///
+    /// Which glyph shows is the action rather than the state, the way the pin beside it and every
+    /// speak button in the application already draw themselves. Segoe MDL2 codepoints, so they
+    /// survive Windows 10; see Views/Controls/TtsGlyphs.
+    /// </remarks>
+    private void RenderSettingsButton()
+    {
+        SettingsBtn.Content = _settingsOpen ? "\uE72B" : "\uE713";
+        SettingsBtn.ToolTip = LocalizationService.Get(
+            _settingsOpen ? "S.QuickLookup.BackToResult" : "S.QuickLookup.Settings");
+    }
+
     /// <remarks>
     /// In place rather than in a window of its own: a settings window over a popup that disappears
     /// when the pointer leaves it would be a window whose owner can vanish underneath it.
@@ -887,6 +911,7 @@ public partial class QuickLookupWindow : Window
     private void ShowSettings(bool open)
     {
         _settingsOpen = open;
+        RenderSettingsButton();
 
         if (open)
         {
@@ -966,6 +991,7 @@ public partial class QuickLookupWindow : Window
     {
         RenderChrome();
         RenderCopyLabel(copied: false);
+        RenderSettingsButton();
         RenderSettingsHint();
         RenderSourceTtsAvailability();
     }

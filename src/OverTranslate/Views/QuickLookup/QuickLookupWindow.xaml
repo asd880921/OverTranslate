@@ -287,10 +287,12 @@
                                 Content="&#xE718;"
                                 Click="PinBtn_Click"/>
 
+                        <!-- Glyph and tooltip are written from code, because this button means two
+                             different things: with the result showing it opens the settings, and
+                             with the settings showing it goes back. A gear in both states left the
+                             way back to the translation unmarked. See RenderSettingsButton. -->
                         <Button x:Name="SettingsBtn"
                                 Style="{StaticResource HeaderIconButton}"
-                                Content="&#xE713;"
-                                ToolTip="{DynamicResource S.QuickLookup.Settings}"
                                 Click="SettingsBtn_Click"/>
 
                         <Button x:Name="CloseBtn"
@@ -343,11 +345,16 @@
                                            TextWrapping="Wrap"
                                            MaxWidth="440"/>
 
+                                <!-- Collapsed until there is a translation to read: on its own
+                                     beside an empty line it offers to speak nothing, which is what
+                                     it looked like it was doing for the second or two a translation
+                                     takes. -->
                                 <Button x:Name="TgtTtsBtn"
                                         Style="{StaticResource HeaderIconButton}"
                                         Content="&#xE767;"
                                         Margin="8,4,0,0"
                                         VerticalAlignment="Top"
+                                        Visibility="Collapsed"
                                         ToolTip="{DynamicResource S.Translation.SpeakResult}"
                                         Click="TgtTtsBtn_Click"/>
                             </StackPanel>
