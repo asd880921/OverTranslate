@@ -1,8 +1,10 @@
-﻿using System.Windows;
+﻿using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using NLog;
@@ -138,15 +140,67 @@ public partial class QuickLookupWindow : Window
         if (_current is { _closing: false } open)
         {
             open.Refill(selection);
-            open.Activate();
+            open.TakeForeground();
             return;
         }
 
         var window = new QuickLookupWindow();
         _current = window;
         window.Show();
+        window.TakeForeground();
         window.Refill(selection);
     }
+
+    /// <summary>
+    /// Makes this window the one the keyboard is talking to.
+    /// </summary>
+    /// <remarks>
+    /// <c>Show</c> and <c>Activate</c> are not enough, and the failure is silent: Windows refuses to
+    /// hand the foreground to a process the user was not already working in, so the popup appears on
+    /// top — it is topmost — while every keystroke goes on reaching the application underneath. The
+    /// box then draws a focus ring it does not have and typing does nothing, which is the whole
+    /// feature broken for anyone who summoned it with nothing selected.
+    ///
+    /// Attaching this thread's input queue to the foreground one for the length of the call is what
+    /// lifts the refusal: while two threads share an input queue, either of them may set the
+    /// foreground. Detached again immediately — a permanent attachment couples this application's
+    /// message pump to a stranger's, so an application that hangs would take this one with it.
+    /// </remarks>
+    private void TakeForeground()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        var foreground = GetForegroundWindow();
+        var owner = GetWindowThreadProcessId(foreground, out _);
+        var self = GetCurrentThreadId();
+        var attached = owner != 0 && owner != self && AttachThreadInput(self, owner, true);
+
+        try
+        {
+            SetForegroundWindow(hwnd);
+            Activate();
+        }
+        finally
+        {
+            if (attached) AttachThreadInput(self, owner, false);
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint attachTo, uint attachFrom, bool attach);
 
     /// <summary>Takes the popup off the screen, if one is up.</summary>
     /// <remarks>

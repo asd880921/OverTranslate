@@ -7,7 +7,7 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
-        Width="560"
+        Width="620"
         SizeToContent="Height"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
@@ -56,12 +56,24 @@
 
                             <!-- right=22 clears the arrow, the same way ModernComboBox's 28 clears
                                  its own larger one -->
+                            <!-- The closed picker shows the name alone, not the 「繁體中文
+                                 Traditional Chinese」 pair ModernComboBox puts there: this header is
+                                 a single line beside a text box, and the doubled-up label is what
+                                 pushes these controls wide. The list keeps the pair — that is where
+                                 someone scanning for their language needs both halves. -->
                             <ContentPresenter IsHitTestVisible="False"
                                               Content="{TemplateBinding SelectionBoxItem}"
-                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                               Margin="7,0,22,0"
                                               VerticalAlignment="Center"
-                                              HorizontalAlignment="Left"/>
+                                              HorizontalAlignment="Left">
+                                <ContentPresenter.ContentTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ShortName}"
+                                                   FontFamily="{StaticResource AppFont}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </ContentPresenter.ContentTemplate>
+                            </ContentPresenter>
 
                             <Popup Placement="Bottom"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
@@ -156,7 +168,9 @@
                 <Grid Grid.Row="0" Margin="12,10,10,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
+                        <!-- The box is what this window is for, so it takes what is left and never
+                             gives below a width a sentence can be read in. -->
+                        <ColumnDefinition Width="*" MinWidth="200"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -199,7 +213,7 @@
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                         <ComboBox x:Name="SrcLangBox"
                                   Style="{StaticResource QuietComboBox}"
-                                  Width="92"
+                                  Width="78"
                                   SelectedValuePath="Code"/>
 
                         <TextBlock Text="→"
@@ -211,7 +225,7 @@
 
                         <ComboBox x:Name="TgtLangBox"
                                   Style="{StaticResource QuietComboBox}"
-                                  Width="92"
+                                  Width="78"
                                   SelectedValuePath="Code"/>
                     </StackPanel>
 
