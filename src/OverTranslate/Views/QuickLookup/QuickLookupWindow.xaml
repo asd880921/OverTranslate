@@ -295,16 +295,25 @@
                                   Width="78"
                                   SelectedValuePath="Code"/>
 
-                        <!-- Quieter than the two names it sits between: it is punctuation, not a
-                             third thing to read, and at the same weight it was the darkest mark in
-                             a header made of light ones. -->
-                        <TextBlock Text="→"
-                                   FontFamily="{StaticResource AppFont}"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource AppTextSecondary}"
-                                   Opacity="0.45"
-                                   VerticalAlignment="Center"
-                                   Margin="4,1,4,0"/>
+                        <!-- Was a → held at 0.45 opacity, on the reasoning that it was punctuation
+                             rather than a third thing to read. It is a control now, so it is drawn
+                             at the same weight as the pin, gear and close beside it: a button faded
+                             to nearly half is one nobody tries to press.
+
+                             ⇄ in the interface font rather than 截圖翻譯's icon-font glyph, because
+                             what it replaces is a typographic mark between two words and the row is
+                             built out of light text — the same swap 文字翻譯 puts between its two
+                             pickers, which is where someone would have met this before. -->
+                        <Button Content="⇄"
+                                Style="{StaticResource IconButton}"
+                                FontFamily="{StaticResource AppFont}"
+                                FontSize="13"
+                                Width="24" Height="26" Padding="0"
+                                Margin="2,0"
+                                VerticalAlignment="Center"
+                                ToolTip="{DynamicResource S.Translation.SwapTip}"
+                                AutomationProperties.Name="{DynamicResource S.Translation.SwapTip}"
+                                Click="SwapBtn_Click"/>
 
                         <ComboBox x:Name="TgtLangBox"
                                   Style="{StaticResource QuietComboBox}"

@@ -803,18 +803,25 @@ public partial class QuickLookupWindow : Window
         ShowResult();
     }
 
-    // ══════════════════════════ Reading aloud ══════════════════════════
-
     /// <summary>
-    /// The language 朗讀原文 would read in, or empty when there is not one yet.
+    /// What language the text in the box is actually in, or empty when nobody knows yet.
     /// </summary>
+    /// <remarks>
+    /// The picker's own value answers this except when it says 自動, which is its default and the
+    /// setting most people never touch — so on its own it is unknown most of the time. The engine's
+    /// answer is what fills that in, and the two callers are the two places where 自動 is not an
+    /// answer they can use: 朗讀原文 has to pick a voice, and <see cref="SwapBtn_Click"/> has to put
+    /// something on the target side.
+    /// </remarks>
     /// <inheritdoc cref="_detectedLang"/>
-    private string SourceVoiceLanguage()
+    private string EffectiveSourceLanguage()
     {
         var chosen = SrcLangBox.SelectedValue as string;
         if (!LanguageData.IsAutomaticSource(chosen)) return LanguageData.GetValidSourceCode(chosen);
         return _detectedLang;
     }
+
+    // ══════════════════════════ Reading aloud ══════════════════════════
 
     /// <summary>
     /// Settles 朗讀原文 against whether there is a language to read the original in.
@@ -838,7 +845,7 @@ public partial class QuickLookupWindow : Window
             LanguageData.IsAutomaticSource(SrcLangBox.SelectedValue as string);
 
         var available = !openAiAutomatic &&
-                        SourceVoiceLanguage().Length > 0 &&
+                        EffectiveSourceLanguage().Length > 0 &&
                         SourceTextBox.Text.Length > 0;
 
         SrcTtsBtn.IsEnabled = available;
@@ -854,7 +861,7 @@ public partial class QuickLookupWindow : Window
     }
 
     private async void SrcTtsBtn_Click(object sender, RoutedEventArgs e)
-        => await ToggleTtsAsync(SrcTtsBtn, SourceTextBox.Text, SourceVoiceLanguage());
+        => await ToggleTtsAsync(SrcTtsBtn, SourceTextBox.Text, EffectiveSourceLanguage());
 
     private async void TgtTtsBtn_Click(object sender, RoutedEventArgs e)
         => await ToggleTtsAsync(
@@ -1008,7 +1015,17 @@ public partial class QuickLookupWindow : Window
     private void LangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressAuto) return;
+        ApplyLanguagePair();
+    }
 
+    /// <summary>Saves the pair as the shared preference and re-translates under it.</summary>
+    /// <remarks>
+    /// Its own method because <see cref="SwapBtn_Click"/> moves both pickers and must not do this
+    /// twice: reading either half while the other has already moved would save a pair the user never
+    /// chose, and send a translation off under it.
+    /// </remarks>
+    private void ApplyLanguagePair()
+    {
         var settings = SettingsService.Instance.Current;
         settings.SourceLanguage = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
         settings.TargetLanguage = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
@@ -1018,6 +1035,74 @@ public partial class QuickLookupWindow : Window
         _detectedLang = "";
         RenderSourceTtsAvailability();
         RequestTranslate();
+    }
+
+    /// <summary>
+    /// Turns the pair around, carrying the translation back into the box as the new original.
+    /// </summary>
+    /// <remarks>
+    /// The languages alone would not be a swap here, which is where this parts company with
+    /// 截圖翻譯's toolbar button. There the source text is the screen and cannot move; here it is a
+    /// box with a word in it, and turning the pair around without turning the text around leaves the
+    /// popup translating 「hello」 out of 繁體中文 — a round trip through the wrong direction, which
+    /// is not what anybody presses this for. 文字翻譯 swaps both for the same reason.
+    ///
+    /// 自動 is the source language most of the time, and it cannot move to the target side: there is
+    /// no such thing as translating into "whatever". <see cref="EffectiveSourceLanguage"/> is what
+    /// makes the button work from there anyway — the engine has already said what the original was,
+    /// and that answer is what goes across.
+    /// </remarks>
+    private void SwapBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // Both read before anything moves: the detected language describes the text that is about to
+        // stop being the original, and ApplyLanguagePair clears it.
+        var srcVal = EffectiveSourceLanguage();
+        var tgtVal = TgtLangBox.SelectedValue as string;
+
+        _suppressAuto = true;
+
+        if (TranslatedText.Text.Length > 0)
+        {
+            var wasOriginal = SourceTextBox.Text;
+
+            // Through the selection, so Ctrl+Z puts the original back — the same reason 清除 does it
+            // that way, and the same text at stake: usually something carried in from another window.
+            SourceTextBox.SelectAll();
+            SourceTextBox.SelectedText = TranslatedText.Text;
+
+            // Shown flipped now rather than left saying the old thing until the round trip lands.
+            // Translating a translation back gives the text it came from, so this already is the
+            // answer; waiting for the engine to agree would just read as lag.
+            TranslatedText.Text = wasOriginal;
+        }
+
+        // Anything already in flight was asked under the old pair and would overwrite both.
+        _seq++;
+
+        // Target → source. ZH-HANT has to stay traditional rather than collapse to ZH, which is what
+        // the mapping is for.
+        if (tgtVal != null)
+        {
+            SrcLangBox.SelectedValue = LanguageData.MapTargetToSourceCode(tgtVal);
+            if (SrcLangBox.SelectedValue == null) SrcLangBox.SelectedIndex = 0;
+        }
+
+        // Source → target. With 自動 and nothing detected — an empty box, or an engine that has not
+        // answered — there is nothing to carry across, and English is the fallback: it is what most
+        // of what people point this at is written in, and it is one click to correct.
+        TgtLangBox.SelectedValue = LanguageData.MapSourceToTargetCode(
+            srcVal.Length > 0 ? srcVal : "EN");
+        if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = 0;
+
+        _suppressAuto = false;
+
+        ApplyLanguagePair();
+
+        // The box holds text the user may well want to edit now, and the click left the caret on a
+        // button. Caret after Focus, which selects the whole box on its own when focus arrives
+        // programmatically — see Refill.
+        SourceTextBox.Focus();
+        SourceTextBox.CaretIndex = SourceTextBox.Text.Length;
     }
 
     private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
