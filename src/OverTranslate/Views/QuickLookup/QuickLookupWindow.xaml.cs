@@ -53,12 +53,43 @@ public partial class QuickLookupWindow : Window
     private const int ExitMs  = 110;
     private const int BodyMs  = 150;
 
+    /// <summary>
+    /// How often Windows is asked which window is actually in front.
+    /// </summary>
+    /// <remarks>
+    /// Short enough that a dismissal this catches rather than <see cref="OnDeactivated"/> still
+    /// reads as immediate, and cheap enough to leave running: the check is one call returning a
+    /// handle, on a window that lives for seconds.
+    /// </remarks>
+    private static readonly TimeSpan ForegroundWatchInterval = TimeSpan.FromMilliseconds(150);
+
     /// <summary>How long 複製 says it copied before going back to offering to.</summary>
     private static readonly TimeSpan CopiedHold = TimeSpan.FromMilliseconds(1400);
 
     private readonly TtsService _tts = new();
     private readonly DispatcherTimer _debounce;
     private readonly DispatcherTimer _copiedHold;
+    private readonly DispatcherTimer _foregroundWatch;
+
+    /// <summary>This window's handle, for comparing against whatever Windows says is in front.</summary>
+    private IntPtr _hwnd;
+
+    /// <summary>
+    /// True once this window has actually been the foreground window at least once.
+    /// </summary>
+    /// <remarks>
+    /// The latch is what makes <see cref="CheckForeground"/> mean "it was in front and now it is
+    /// not" rather than "it is not in front", which at the moment of opening is briefly true of
+    /// every window and would close this one before it had been seen.
+    ///
+    /// It also carries the one case that cannot be fixed from here: if Windows never hands over the
+    /// foreground at all, this stays false and the popup simply waits. Clicking it sets the latch
+    /// the ordinary way, and from then on it behaves like any other summon.
+    /// </remarks>
+    private bool _hadForeground;
+
+    /// <inheritdoc cref="TakeForeground"/>
+    private int _foregroundAttempts;
 
     /// <summary>True while the popup is pinned, which is what keeps it through a deactivation.</summary>
     /// <remarks>
@@ -115,15 +146,29 @@ public partial class QuickLookupWindow : Window
         if (_current is { _closing: false } open)
         {
             open.Refill(selection);
-            open.TakeForeground();
+            open.ReacquireForeground();
             return;
         }
 
         var window = new QuickLookupWindow();
         _current = window;
         window.Show();
-        window.TakeForeground();
+        window.ReacquireForeground();
         window.Refill(selection);
+    }
+
+    /// <summary>Takes the foreground, starting the retry budget over.</summary>
+    /// <remarks>
+    /// Reset per summon rather than per window. A popup that is already open has the latch set from
+    /// last time, so a re-summon that failed to take the foreground back would look to
+    /// <see cref="CheckForeground"/> exactly like the user clicking away — and close the popup they
+    /// had just asked for.
+    /// </remarks>
+    private void ReacquireForeground()
+    {
+        _hadForeground = false;
+        _foregroundAttempts = 0;
+        TakeForeground();
     }
 
     /// <summary>
@@ -140,11 +185,20 @@ public partial class QuickLookupWindow : Window
     /// lifts the refusal: while two threads share an input queue, either of them may set the
     /// foreground. Detached again immediately — a permanent attachment couples this application's
     /// message pump to a stranger's, so an application that hangs would take this one with it.
+    ///
+    /// Even that is not certain to work, which is why it can be asked again. The popup is summoned
+    /// moments after this application synthesised a Ctrl+C into the window the user was reading —
+    /// see <see cref="SelectedTextReader"/> — and one of the things Windows weighs when deciding
+    /// whether to refuse is which process received the last input event. <see cref="CheckForeground"/>
+    /// is what notices the refusal and asks again; the attempt count is what stops it asking forever,
+    /// because every attempt flashes the taskbar button of whoever is holding the foreground.
     /// </remarks>
     private void TakeForeground()
     {
-        var hwnd = new WindowInteropHelper(this).Handle;
+        var hwnd = Hwnd();
         if (hwnd == IntPtr.Zero) return;
+
+        _foregroundAttempts++;
 
         var foreground = GetForegroundWindow();
         var owner = GetWindowThreadProcessId(foreground, out _);
@@ -196,6 +250,9 @@ public partial class QuickLookupWindow : Window
         _copiedHold = new DispatcherTimer { Interval = CopiedHold };
         _copiedHold.Tick += (_, _) => { _copiedHold.Stop(); RenderCopyLabel(copied: false); };
 
+        _foregroundWatch = new DispatcherTimer { Interval = ForegroundWatchInterval };
+        _foregroundWatch.Tick += (_, _) => CheckForeground();
+
         _tts.StateChanged += OnTtsStateChanged;
 
         _suppressAuto = true;
@@ -237,6 +294,7 @@ public partial class QuickLookupWindow : Window
         {
             PositionAtPointer();
             AnimateIn();
+            _foregroundWatch.Start();
         };
 
         RenderChrome();
@@ -368,6 +426,7 @@ public partial class QuickLookupWindow : Window
         _closing = true;
 
         _debounce.Stop();
+        _foregroundWatch.Stop();
         _tts.Stop();
 
         if (!SystemParameters.ClientAreaAnimation)
@@ -451,6 +510,49 @@ public partial class QuickLookupWindow : Window
         if (_pinned || _dropDownOpen) return;
         BeginClose();
     }
+
+    /// <summary>
+    /// Asks Windows which window is in front, because <see cref="OnDeactivated"/> cannot always say.
+    /// </summary>
+    /// <remarks>
+    /// WPF raises Deactivated for a window it believes was activated, and the popup is sometimes
+    /// never activated at all: it is summoned right after a synthesised Ctrl+C has gone to the
+    /// window the user was reading, and Windows can refuse to hand the foreground over on that
+    /// basis. The popup then sits on top — it is topmost either way — attached to nothing, and no
+    /// amount of clicking elsewhere produces the deactivation that would close it. Clicking the
+    /// popup itself was the only way out, which is a window the user has to know a trick to dismiss.
+    ///
+    /// The foreground handle is the fact underneath the state WPF is inferring, so this asks for it
+    /// directly. It answers both halves: a refusal is retried while it is still worth retrying, and
+    /// a foreground that has moved on closes the popup whether or not WPF noticed.
+    ///
+    /// The guards are <see cref="OnDeactivated"/>'s, for the same reasons.
+    /// </remarks>
+    private void CheckForeground()
+    {
+        if (_closing) return;
+
+        if (GetForegroundWindow() == Hwnd())
+        {
+            _hadForeground = true;
+            return;
+        }
+
+        if (!_hadForeground)
+        {
+            // Two, not one: the first is the one Show made, and by the next tick whatever was
+            // holding the foreground has usually finished handling the keystrokes we sent it.
+            if (_foregroundAttempts < 3) TakeForeground();
+            return;
+        }
+
+        if (_pinned || _dropDownOpen) return;
+        BeginClose();
+    }
+
+    private IntPtr Hwnd() => _hwnd != IntPtr.Zero
+        ? _hwnd
+        : _hwnd = new WindowInteropHelper(this).Handle;
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -828,6 +930,7 @@ public partial class QuickLookupWindow : Window
     {
         _debounce.Stop();
         _copiedHold.Stop();
+        _foregroundWatch.Stop();
         _tts.Dispose();
 
         // Static and outliving every window, so a handler left attached keeps this one alive for as
