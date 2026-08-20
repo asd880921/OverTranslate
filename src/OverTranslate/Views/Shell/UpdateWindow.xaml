@@ -7,138 +7,229 @@
         ResizeMode="CanMinimize"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
+        WindowStyle="None"
         Closing="Window_Closing"
         Background="{DynamicResource AppWindowBg}">
 
-    <Grid Margin="24,20,24,24">
+    <!-- The same strip the shell draws, for the same reason: this was the last window in the
+         application still wearing the system title bar, which follows the system's theme rather
+         than the application's and so read as a different program's dialog in dark mode.
+
+         ResizeBorderThickness is 0 where the shell has 6 — this window is sized to its own content
+         and has nothing to resize. CaptionHeight still matches the title row below exactly, so the
+         strip drags the window and the buttons on it say they are buttons. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40"
+                      ResizeBorderThickness="0"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="40"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 標題區 -->
-        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,16">
-            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                       FontSize="36" Text="&#xE895;"
-                       HorizontalAlignment="Center"
-                       Foreground="{DynamicResource AppAccent}"/>
-            <TextBlock Text="{DynamicResource S.Update.Heading}"
-                       FontFamily="{StaticResource AppFont}"
-                       FontSize="18"
-                       FontWeight="SemiBold"
-                       Foreground="{DynamicResource AppTextPrimary}"
-                       HorizontalAlignment="Center"
-                       Margin="0,8,0,0"/>
-        </StackPanel>
+        <!-- ══════════ Title bar ══════════ -->
+        <!-- Carries the application's name, not this window's, exactly as the shell's does: the
+             window's own title is already the heading below it, and a strip repeating it would say
+             the same three words twice. Title is still set on the window itself, where the taskbar
+             and Alt+Tab read it from. -->
+        <Grid Grid.Row="0">
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0">
+                <Image x:Name="TitleIcon"
+                       Width="16" Height="16"
+                       VerticalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                <TextBlock Text="OverTranslate"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="12"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource AppTextSecondary}"/>
+            </StackPanel>
 
-        <!-- 版本資訊 -->
-        <Border Grid.Row="1" Style="{StaticResource CardBorder}">
-            <StackPanel>
-                <Grid Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="70"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="{DynamicResource S.Update.CurrentVersion}" Style="{StaticResource FieldLabel}"/>
-                    <TextBlock Grid.Column="1" x:Name="CurrentVersionText"
+            <!-- No maximise: this window is sized to its content and there is nothing to fill a
+                 screen with. Close is disabled rather than hidden while the update runs — it says
+                 why in a tooltip, which a missing button could not. The Closing handler still
+                 refuses as well, because Alt+F4 and the taskbar never touch this button. -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button x:Name="MinimizeBtn"
+                        Style="{StaticResource WindowCaptionButton}"
+                        Content="&#xE921;"
+                        Click="MinimizeBtn_Click"/>
+                <Button x:Name="CloseBtn"
+                        Style="{StaticResource WindowCloseButton}"
+                        Content="&#xE8BB;"
+                        ToolTipService.ShowOnDisabled="True"
+                        Click="CloseBtn_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="24,4,24,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- ══════════ Heading ══════════ -->
+            <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,16">
+                <!-- The glyph on a tinted disc rather than loose on the window: at 36pt it was the
+                     largest thing here and the only element with no surface of its own, which read
+                     as decoration that had drifted in. The disc is the rail's update chip's tint,
+                     so the badge that brought the user here and the window it opens are visibly
+                     the same piece of news. -->
+                <Border Width="52" Height="52"
+                        CornerRadius="26"
+                        HorizontalAlignment="Center"
+                        Background="{DynamicResource AppAccentSubtle}">
+                    <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="24" Text="&#xE895;"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource AppAccent}"/>
+                </Border>
+
+                <TextBlock Text="{DynamicResource S.Update.Heading}"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppTextPrimary}"
+                           HorizontalAlignment="Center"
+                           Margin="0,10,0,0"/>
+
+                <!-- Both versions on one line, with the arrow doing what two labels used to. The
+                     pair is the whole point — a version number alone answers neither "which one am
+                     I on" nor "is this worth taking" — and reading it as one movement is faster
+                     than reading it as a two-row table. The one the user is being offered carries
+                     the accent; the one they have is secondary text, because it is context. -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Margin="0,6,0,0">
+                    <TextBlock x:Name="CurrentVersionText"
                                FontFamily="{StaticResource AppFont}"
                                FontSize="13"
                                Foreground="{DynamicResource AppTextSecondary}"
                                VerticalAlignment="Center"/>
-                </Grid>
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="70"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="{DynamicResource S.Update.LatestVersion}" Style="{StaticResource FieldLabel}"/>
-                    <TextBlock Grid.Column="1" x:Name="LatestVersionText"
+                    <TextBlock Text="→"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="13"
+                               Margin="8,0"
+                               Foreground="{DynamicResource AppTextSecondary}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="LatestVersionText"
                                FontFamily="{StaticResource AppFont}"
                                FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource AppAccent}"
                                VerticalAlignment="Center"/>
-                </Grid>
-                <TextBlock Text="{DynamicResource S.Update.Explanation}"
-                           FontFamily="{StaticResource AppFont}"
-                           FontSize="12"
-                           Foreground="{DynamicResource AppTextSecondary}"
-                           TextWrapping="Wrap"/>
-                <ProgressBar x:Name="DownloadProgress"
-                             Style="{StaticResource SlimProgressBar}"
-                             Minimum="0"
-                             Maximum="100"
-                             Value="0"
-                             Margin="0,14,0,0"
-                             Visibility="Collapsed"/>
+                </StackPanel>
+            </StackPanel>
 
-                <!-- Failures are reported here rather than through a system MessageBox, which was
-                     the only OS-styled dialog left in the app and matched nothing around it. -->
-                <TextBlock x:Name="ErrorText"
+            <!-- ══════════ What pressing update does ══════════ -->
+            <Border Grid.Row="1" Style="{StaticResource CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource S.Update.Explanation}"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppTextSecondary}"
+                               TextWrapping="Wrap"/>
+
+                    <ProgressBar x:Name="DownloadProgress"
+                                 Style="{StaticResource SlimProgressBar}"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="0"
+                                 Margin="0,14,0,0"
+                                 Visibility="Collapsed"/>
+
+                    <!-- The live readout sits under the bar it belongs to, not on the button. The
+                         button is disabled for the whole download, and disabled text is the lowest
+                         contrast in the window — the one line that changes every few hundred
+                         milliseconds is the last thing to put there. -->
+                    <TextBlock x:Name="StatusText"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppTextSecondary}"
+                               Margin="0,8,0,0"
+                               Visibility="Collapsed"/>
+
+                    <!-- Failures are reported here rather than through a system MessageBox, which was
+                         the only OS-styled dialog left in the app and matched nothing around it. -->
+                    <TextBlock x:Name="ErrorText"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppError}"
+                               TextWrapping="Wrap"
+                               Visibility="Collapsed"
+                               Margin="0,12,0,0"/>
+
+                    <TextBlock FontFamily="{StaticResource AppFont}"
+                               FontSize="12"
+                               Margin="0,8,0,0"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppTextSecondary}">
+                        <Run Text="{DynamicResource S.Update.NotesBefore}"/><Hyperlink x:Name="ReleaseNotesLink"
+                                  Foreground="{DynamicResource AppAccent}"
+                                  TextDecorations="None"
+                                  RequestNavigate="ReleaseNotesLink_RequestNavigate"
+                                  NavigateUri="https://github.com/asd880921/OverTranslate/releases/latest"><Run Text="{DynamicResource S.Update.NotesLink}"/></Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- ══════════ Answers ══════════ -->
+            <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="DismissBtn" Grid.Column="0" Content="{DynamicResource S.Update.Later}"
+                            Style="{StaticResource FlatButton}"
+                            Height="36"
+                            Click="DismissBtn_Click"/>
+                    <Button x:Name="DownloadBtn" Grid.Column="2"
+                            Style="{StaticResource AccentButton}"
+                            Height="36"
+                            Click="DownloadBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="13" Text="&#xE896;"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,6,0"/>
+                            <TextBlock x:Name="DownloadBtnText" Text="{DynamicResource S.Update.Now}"
+                                       FontFamily="{StaticResource AppFont}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- Below the pair rather than beside it, and unstyled as a link rather than a third
+                     button: Later and Update now are the two answers to the question being asked, while
+                     this one changes what the application does in future. Giving it equal weight in the
+                     row would put a lasting choice one mis-click away from the dismiss button it would
+                     sit next to. -->
+                <TextBlock HorizontalAlignment="Center"
+                           Margin="0,10,0,0"
                            FontFamily="{StaticResource AppFont}"
                            FontSize="12"
-                           Foreground="{DynamicResource AppError}"
-                           TextWrapping="Wrap"
-                           Visibility="Collapsed"
-                           Margin="0,12,0,0"/>
-                <TextBlock FontFamily="{StaticResource AppFont}"
-                           FontSize="12"
-                           Margin="0,8,0,0"
-                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppTextSecondary}">
-                    <Run Text="{DynamicResource S.Update.NotesBefore}"/><Hyperlink x:Name="ReleaseNotesLink"
-                              Foreground="{DynamicResource AppAccent}"
-                              TextDecorations="None"
-                              RequestNavigate="ReleaseNotesLink_RequestNavigate"
-                              NavigateUri="https://github.com/asd880921/OverTranslate/releases/latest"><Run Text="{DynamicResource S.Update.NotesLink}"/></Hyperlink>
+                    <Hyperlink x:Name="SkipVersionLink"
+                               Foreground="{DynamicResource AppTextSecondary}"
+                               TextDecorations="None"
+                               Click="SkipVersionLink_Click"><Run Text="{DynamicResource S.Update.Skip}"/></Hyperlink>
                 </TextBlock>
             </StackPanel>
-        </Border>
-
-        <!-- 按鈕列 -->
-        <StackPanel Grid.Row="2" Margin="0,12,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Button x:Name="DismissBtn" Grid.Column="0" Content="{DynamicResource S.Update.Later}"
-                        Style="{StaticResource FlatButton}"
-                        Height="36"
-                        Click="DismissBtn_Click"/>
-                <Button x:Name="DownloadBtn" Grid.Column="2"
-                        Style="{StaticResource AccentButton}"
-                        Height="36"
-                        Click="DownloadBtn_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                   FontSize="13" Text="&#xE896;"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,6,0"/>
-                        <TextBlock x:Name="DownloadBtnText" Text="{DynamicResource S.Update.Now}"
-                                   FontFamily="{StaticResource AppFont}"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-            </Grid>
-
-            <!-- Below the pair rather than beside it, and unstyled as a link rather than a third
-                 button: Later and Update now are the two answers to the question being asked, while
-                 this one changes what the application does in future. Giving it equal weight in the
-                 row would put a lasting choice one mis-click away from the dismiss button it would
-                 sit next to. -->
-            <TextBlock HorizontalAlignment="Center"
-                       Margin="0,10,0,0"
-                       FontFamily="{StaticResource AppFont}"
-                       FontSize="12"
-                       Foreground="{DynamicResource AppTextSecondary}">
-                <Hyperlink x:Name="SkipVersionLink"
-                           Foreground="{DynamicResource AppTextSecondary}"
-                           TextDecorations="None"
-                           Click="SkipVersionLink_Click"><Run Text="{DynamicResource S.Update.Skip}"/></Hyperlink>
-            </TextBlock>
-        </StackPanel>
+        </Grid>
     </Grid>
 </Window>

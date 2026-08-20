@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Media.Animation;
 using System.Windows.Navigation;
 using System.Windows.Threading;
@@ -42,40 +43,127 @@ public partial class UpdateWindow : Window
         InitializeComponent();
         _updateInfo = info;
 
+        var icon = AppIconService.CreateWindowIcon();
+        Icon = icon;
+        TitleIcon.Source = icon;
+
+        // "v" on both, matching the rail's version line and its update chip — the number is the
+        // same number, and dropping the prefix here would make it look like a different notation.
         var current = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
-        CurrentVersionText.Text = current;
-        LatestVersionText.Text  = info.LatestVersion;
+        CurrentVersionText.Text = $"v{current}";
+        LatestVersionText.Text  = $"v{info.LatestVersion}";
+
+        // The system title bar is gone, so what it used to do for itself is done here: the rounded
+        // corner and the outer edge, in the application's own border colour rather than the
+        // system's. The edge is the compositor's, so it has to be handed over again on a theme
+        // change — a DynamicResource never reaches it.
+        WindowFrame.Attach(this);
+        ThemeService.Changed += OnThemeChanged;
+        Closed += (_, _) => ThemeService.Changed -= OnThemeChanged;
     }
+
+    private void OnThemeChanged(object? sender, EventArgs e) => WindowFrame.ApplyAppearance(this);
 
     private async void DownloadBtn_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            _isUpdating = true;
-            DismissBtn.IsEnabled = false;
-            DownloadBtn.IsEnabled = false;
-            SkipVersionLink.IsEnabled = false;
+            SetUpdating(true);
             ErrorText.Visibility = Visibility.Collapsed;
-            DownloadBtnText.Text = LocalizationService.Format("S.Update.Downloading", 0);
             DownloadProgress.IsIndeterminate = false;
             DownloadProgress.Value = 0;
             DownloadProgress.Visibility = Visibility.Visible;
+            SetDownloadStatus(0);
 
             await UpdateService.DownloadAndApplyAsync(_updateInfo, OnDownloadProgress, OnApplyingAsync);
         }
         catch (Exception ex)
         {
-            _isUpdating = false;
-            DismissBtn.IsEnabled = true;
-            DownloadBtn.IsEnabled = true;
-            SkipVersionLink.IsEnabled = true;
+            SetUpdating(false);
+            // The button is the way to try again, so it says so — this is the one thing about it
+            // that changes, now that the progress no longer lives on its label.
             DownloadBtnText.Text = LocalizationService.Get("S.Update.Retry");
             DownloadProgress.BeginAnimation(System.Windows.Controls.ProgressBar.ValueProperty, null);
             DownloadProgress.IsIndeterminate = false;
             DownloadProgress.Visibility = Visibility.Collapsed;
+            SetStatus(null);
             ErrorText.Text = LocalizationService.Format("S.Update.Failed", ex.Message);
             ErrorText.Visibility = Visibility.Visible;
         }
+    }
+
+    /// <summary>
+    /// Switches the window between offering the update and running it.
+    /// </summary>
+    /// <remarks>
+    /// Every way out of this window goes dead together, the title bar's close included: Velopack
+    /// replaces the application's own files and then restarts the process, and a download abandoned
+    /// half way through is the one state this has no way to clean up after. The close button says
+    /// why rather than simply refusing — SetResourceReference rather than a fetched string, so the
+    /// reason follows a language changed in 設定 while this window is still on screen.
+    /// </remarks>
+    private void SetUpdating(bool updating)
+    {
+        _isUpdating = updating;
+
+        DismissBtn.IsEnabled = !updating;
+        DownloadBtn.IsEnabled = !updating;
+        SkipVersionLink.IsEnabled = !updating;
+        CloseBtn.IsEnabled = !updating;
+
+        if (updating) CloseBtn.SetResourceReference(ToolTipProperty, "S.Update.CloseBlocked");
+        else CloseBtn.ToolTip = null;
+    }
+
+    /// <summary>Puts a line under the progress bar, or takes it away.</summary>
+    private void SetStatus(string? text)
+    {
+        StatusText.Inlines.Clear();
+        if (text is not null) StatusText.Inlines.Add(new Run(text));
+        StatusText.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>
+    /// The download's own line: the same sentence, with the figure in the accent colour.
+    /// </summary>
+    /// <remarks>
+    /// The number is the only part of this line that carries information — the words around it say
+    /// the same thing for the whole download — so it is the part that is coloured, and it is
+    /// coloured in the same accent as the progress bar directly above it, which is what it is a
+    /// readout of. The unit travels with the figure: "45" and "%" are one number, and splitting
+    /// them across two colours would read as two.
+    ///
+    /// Built out of runs rather than formatted into one string, so the placeholder can be found and
+    /// what surrounds it left in whatever order the language puts it. The percent sign is inside
+    /// the placeholder rather than in the resource for the same reason — a language that writes
+    /// "%45" keeps it attached to the figure without the resource having to say so twice.
+    ///
+    /// SetResourceReference rather than a resolved brush: this line is on screen for the whole
+    /// download, which is long enough for the theme to be switched underneath it.
+    /// </remarks>
+    private void SetDownloadStatus(int percent)
+    {
+        var template = LocalizationService.Get("S.Update.Downloading");
+        var at = template.IndexOf("{0}", StringComparison.Ordinal);
+
+        StatusText.Inlines.Clear();
+
+        if (at < 0)
+        {
+            // A translation that dropped the placeholder still has to show the number.
+            StatusText.Inlines.Add(new Run(LocalizationService.Format("S.Update.Downloading", percent)));
+        }
+        else
+        {
+            var figure = new Run($"{percent}%") { FontWeight = FontWeights.SemiBold };
+            figure.SetResourceReference(TextElement.ForegroundProperty, "AppAccent");
+
+            if (at > 0) StatusText.Inlines.Add(new Run(template[..at]));
+            StatusText.Inlines.Add(figure);
+            if (at + 3 < template.Length) StatusText.Inlines.Add(new Run(template[(at + 3)..]));
+        }
+
+        StatusText.Visibility = Visibility.Visible;
     }
 
     private void OnDownloadProgress(int percent)
@@ -83,7 +171,7 @@ public partial class UpdateWindow : Window
         Dispatcher.Invoke(() =>
         {
             DownloadProgress.Value = percent;
-            DownloadBtnText.Text = LocalizationService.Format("S.Update.Downloading", percent);
+            SetDownloadStatus(percent);
         });
     }
 
@@ -98,7 +186,7 @@ public partial class UpdateWindow : Window
         // The apply step exposes no progress at all, so an indeterminate bar is the honest signal:
         // still working, duration unknown. It keeps moving, which a bar frozen at 100% would not.
         DownloadProgress.IsIndeterminate = true;
-        DownloadBtnText.Text = LocalizationService.Get("S.Update.Applying");
+        SetStatus(LocalizationService.Get("S.Update.Applying"));
 
         // Let those two land on screen: ApplyUpdatesAndRestart blocks this thread and then kills the
         // process, so anything not painted by now is never painted at all.
@@ -109,7 +197,7 @@ public partial class UpdateWindow : Window
     {
         var completed = new TaskCompletionSource();
 
-        DownloadBtnText.Text = LocalizationService.Format("S.Update.Downloading", 100);
+        SetDownloadStatus(100);
         var toFull = new DoubleAnimation(100, TimeSpan.FromMilliseconds(280))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
@@ -126,12 +214,23 @@ public partial class UpdateWindow : Window
         return completed.Task;
     }
 
+    /// <summary>
+    /// Refuses to close while the update is running.
+    /// </summary>
+    /// <remarks>
+    /// The title bar's own close button is disabled for the same stretch, so this is what catches
+    /// Alt+F4, the taskbar's close and anything else that never goes near a button of ours.
+    /// </remarks>
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
-        // 更新進行中禁止關閉視窗（含標題列的 X），避免中斷下載或對已關閉視窗更新進度。
         if (_isUpdating)
             e.Cancel = true;
     }
+
+    private void MinimizeBtn_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
     private void DismissBtn_Click(object sender, RoutedEventArgs e) => Close();
 
