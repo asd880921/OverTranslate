@@ -90,6 +90,9 @@ public partial class SettingsPage : UserControl
     {
         InitializeComponent();
 
+        // In the order the page lists them, which is not the order HotkeyBindings resolves them in:
+        // there, position is priority and the newest shortcut goes last, while here it is what a
+        // reader meets first. Nothing depends on this order — rows are looked up by action.
         _hotkeyFields =
         [
             new HotkeyField(
@@ -100,6 +103,17 @@ public partial class SettingsPage : UserControl
                 s => HotkeyBindings.TriggerFor(s, HotkeyAction.Capture),
                 ApplyCaptureTrigger,
                 AdvertisedInShell: true),
+            new HotkeyField(
+                HotkeyAction.QuickLookup,
+                "S.Settings.QuickLookupHotkey",
+                QuickLookupHotkeyBox,
+                s => s.QuickLookupHotkeyDisplay,
+                s => HotkeyBindings.TriggerFor(s, HotkeyAction.QuickLookup),
+                ApplyQuickLookupTrigger,
+                AdvertisedInShell: false,
+                QuickLookupHotkeyEnabledCheckBox,
+                (s, on) => s.QuickLookupHotkeyEnabled = on,
+                QuickLookupHotkeyEnabledLabel),
             new HotkeyField(
                 HotkeyAction.TranslationWindow,
                 "S.Settings.WindowHotkey",
@@ -533,6 +547,22 @@ public partial class SettingsPage : UserControl
         else if (trigger.Kind == ShortcutInputKind.Gamepad)
         {
             s.RealtimePauseHotkeyGamepadButton = trigger.GamepadButton;
+        }
+    }
+
+    private static void ApplyQuickLookupTrigger(AppSettings s, ShortcutTrigger trigger, string display)
+    {
+        s.QuickLookupHotkeyInputKind = trigger.Kind;
+        s.QuickLookupHotkeyDisplay = display;
+        if (trigger.Kind == ShortcutInputKind.Keyboard)
+        {
+            s.QuickLookupHotkeyModifiers = trigger.Modifiers;
+            s.QuickLookupHotkeyVirtualKey = trigger.VirtualKey;
+            s.QuickLookupHotkeyGamepadButton = GamepadShortcutButton.None;
+        }
+        else if (trigger.Kind == ShortcutInputKind.Gamepad)
+        {
+            s.QuickLookupHotkeyGamepadButton = trigger.GamepadButton;
         }
     }
 

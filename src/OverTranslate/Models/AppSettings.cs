@@ -68,6 +68,30 @@ public class AppSettings
     /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
     public bool RealtimePauseHotkeyEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Summons 取詞翻譯's popup over whatever the user is reading. Ctrl+Alt+Q by default.
+    /// </summary>
+    /// <remarks>
+    /// Flat, with every other shortcut: 設定 owns them as one set on one page, and a shortcut filed
+    /// under the feature it starts would be the only one of the four the user could not find beside
+    /// its siblings.
+    ///
+    /// Q because the three combinations already taken are the letters of what they do (A, W, S) and
+    /// this one is the 取 of 取詞 — and because Ctrl+Alt+Q is claimed by nothing on a stock Windows.
+    /// </remarks>
+    public uint QuickLookupHotkeyModifiers { get; set; } = 3;
+
+    /// <inheritdoc cref="QuickLookupHotkeyModifiers"/>
+    public uint QuickLookupHotkeyVirtualKey { get; set; } = 0x51;
+
+    /// <inheritdoc cref="QuickLookupHotkeyModifiers"/>
+    public string QuickLookupHotkeyDisplay { get; set; } = "Ctrl+Alt+Q";
+    public ShortcutInputKind QuickLookupHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton QuickLookupHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
+
+    /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
+    public bool QuickLookupHotkeyEnabled { get; set; } = true;
+
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;

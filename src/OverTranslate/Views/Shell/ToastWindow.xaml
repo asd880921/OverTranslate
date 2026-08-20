@@ -10,8 +10,10 @@
         Width="320"
         SizeToContent="Height">
 
-    <!-- Margin leaves room for the shadow to render outside the visual -->
-    <Border Margin="8,6,8,10">
+    <!-- At least the blur radius on every side, plus the offset below — see the comment on the
+         effect. Short of that the blur is cut off by the window's edge, and the cut is a straight
+         line: a faint grey rectangle around the toast. -->
+    <Border Margin="14,12,14,16">
         <Border Background="{DynamicResource ToastBg}"
                 CornerRadius="10"
                 BorderBrush="{DynamicResource ToastBorder}"
@@ -19,7 +21,10 @@
             <!-- Matches the toolbar and hint card: this floats over the user's own screen content,
                  so it needs a shadow to read as a separate layer rather than a painted rectangle. -->
             <Border.Effect>
-                <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.18" Color="#000000"/>
+                <!-- Straight down rather than the default 315°, so the same margin serves the left
+                     and right sides instead of one of them needing the offset too. -->
+                <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
+                                  Opacity="0.20" Color="#000000"/>
             </Border.Effect>
 
             <Grid>

@@ -1,0 +1,495 @@
+<Window x:Class="OverTranslate.Views.QuickLookup.QuickLookupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Width="644"
+        SizeToContent="Height"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <!-- The header's own chrome, quiet by default. Everything in this row sits on a surface the
+             user summoned over somebody else's window, so the controls draw themselves only when
+             they are being reached for — see RenderChrome. -->
+        <ControlTemplate x:Key="QuietComboToggle" TargetType="ToggleButton">
+            <Border x:Name="Root" Background="Transparent" CornerRadius="6">
+                <Path x:Name="Arrow"
+                      Data="M0,0 L4,4 L8,0"
+                      Stroke="{DynamicResource AppTextSecondary}"
+                      StrokeThickness="1.5"
+                      Width="8" Height="4"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Center"
+                      Margin="0,0,8,0"
+                      Stretch="None"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Root" Property="Background"
+                            Value="{DynamicResource AppButtonHoverBg}"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="Root" Property="Background"
+                            Value="{DynamicResource AppButtonHoverBg}"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <Style x:Key="QuietComboBox" TargetType="ComboBox" BasedOn="{StaticResource ModernComboBox}">
+            <Setter Property="Height"     Value="28"/>
+            <Setter Property="FontSize"   Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Template="{StaticResource QuietComboToggle}"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                                      RelativeSource={RelativeSource TemplatedParent}}"
+                                          Focusable="False"/>
+
+                            <!-- right=22 clears the arrow, the same way ModernComboBox's 28 clears
+                                 its own larger one -->
+                            <!-- The closed picker shows the name alone, not the 「繁體中文
+                                 Traditional Chinese」 pair ModernComboBox puts there: this header is
+                                 a single line beside a text box, and the doubled-up label is what
+                                 pushes these controls wide. The list keeps the pair — that is where
+                                 someone scanning for their language needs both halves. -->
+                            <ContentPresenter IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              Margin="7,0,22,0"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left">
+                                <ContentPresenter.ContentTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ShortName}"
+                                                   FontFamily="{StaticResource AppFont}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </ContentPresenter.ContentTemplate>
+                            </ContentPresenter>
+
+                            <Popup Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border MinWidth="{TemplateBinding ActualWidth}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                        Background="{DynamicResource AppCardBg}"
+                                        BorderBrush="{DynamicResource AppBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="0,4">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="12" ShadowDepth="2"
+                                                          Opacity="0.15" Color="#000000"/>
+                                    </Border.Effect>
+                                    <ScrollViewer CanContentScroll="True">
+                                        <StackPanel IsItemsHost="True"
+                                                    KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HeaderIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+            <Setter Property="FontSize"   Value="14"/>
+            <Setter Property="Width"      Value="30"/>
+            <Setter Property="Height"     Value="30"/>
+        </Style>
+
+        <!-- The text-and-glyph actions: 複製, 朗讀原文, 完整設定. Text beside the glyph rather than a
+             bare icon, because they are read once and recognised after that, and the row has the
+             width for words.
+
+             Its own template rather than IconButton's. That one draws a fixed 32x32 square and its
+             border ignores Padding, which for a button sized to its text meant the hover fill was
+             laid tight against the words on the left and right and clipped the descenders — a
+             highlight that looked like a rendering fault rather than a button. -->
+        <Style x:Key="ResultActionButton" TargetType="Button">
+            <Setter Property="FontFamily"       Value="{StaticResource AppFont}"/>
+            <Setter Property="FontSize"         Value="12"/>
+            <Setter Property="Foreground"       Value="{DynamicResource AppTextSecondary}"/>
+            <Setter Property="Background"       Value="Transparent"/>
+            <Setter Property="BorderThickness"  Value="0"/>
+            <Setter Property="Padding"          Value="10,6"/>
+            <Setter Property="Cursor"           Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="8"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background"
+                                        Value="{DynamicResource AppButtonHoverBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background"
+                                        Value="{DynamicResource AppButtonPressedBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ActionGlyph" TargetType="TextBlock">
+            <Setter Property="FontFamily"         Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+            <Setter Property="FontSize"           Value="13"/>
+            <Setter Property="VerticalAlignment"  Value="Center"/>
+            <Setter Property="Margin"             Value="0,0,6,0"/>
+        </Style>
+
+        <Style x:Key="SettingRowLabel" TargetType="TextBlock">
+            <Setter Property="FontFamily"        Value="{StaticResource AppFont}"/>
+            <Setter Property="FontSize"          Value="12"/>
+            <Setter Property="Foreground"        Value="{DynamicResource AppTextPrimary}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+
+    <!-- Room for the shadow to fade out inside the window, which is the whole job of this margin:
+         a blur that reaches the window's edge with opacity left is cut off there, and the cut is a
+         straight line — a faint grey rectangle around the card that reads as a stray border. So the
+         margin is at least the blur radius on every side, plus the offset on the side the shadow
+         falls towards. The window's Width carries the extra so the card itself does not shrink. -->
+    <Grid Margin="26,24,26,30">
+        <Border x:Name="Surface"
+                Background="{DynamicResource AppSurfaceBg}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1"
+                CornerRadius="14"
+                RenderTransformOrigin="0,0">
+            <Border.Effect>
+                <!-- Straight down rather than the default 315°, so the margin above only has to
+                     cover the blur and the same margin can serve both sides. -->
+                <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270"
+                                  Opacity="0.22" Color="#000000"/>
+            </Border.Effect>
+
+            <!-- Enter and exit run along this one transform: the popup grows out of the pointer it
+                 was summoned at and shrinks back into it. The origin is set in code, because where
+                 the pointer landed is not known until the window has been placed. -->
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="SurfaceScale" ScaleX="1" ScaleY="1"/>
+            </Border.RenderTransform>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- ══════════ Header ══════════ -->
+                <Grid Grid.Row="0" Margin="12,10,10,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- The box is what this window is for, so it takes what is left and never
+                             gives below a width a sentence can be read in. -->
+                        <ColumnDefinition Width="*" MinWidth="200"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Image x:Name="BrandIcon"
+                           Grid.Column="0"
+                           Width="22" Height="22"
+                           Margin="2,0,10,0"
+                           VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                    <!-- The box and its placeholder share one cell, so the prompt sits exactly where
+                         the first character will land. -->
+                    <Grid Grid.Column="1">
+                        <TextBox x:Name="SourceTextBox"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Background="Transparent"
+                                 BorderBrush="Transparent"
+                                 Height="34"
+                                 FontSize="15"
+                                 Padding="8,0"
+                                 TextChanged="SourceTextBox_TextChanged"/>
+
+                        <!-- Fainter than secondary text: this is a prompt standing in for content
+                             that is not there, and at the weight of something written it reads as
+                             text the user has to clear before typing. -->
+                        <TextBlock x:Name="Placeholder"
+                                   Text="{DynamicResource S.QuickLookup.Placeholder}"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="15"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   Opacity="0.55"
+                                   IsHitTestVisible="False"
+                                   Margin="10,0,0,0"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Rectangle Grid.Column="2"
+                               Width="1"
+                               Margin="8,6"
+                               Fill="{DynamicResource AppSeparator}"/>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <ComboBox x:Name="SrcLangBox"
+                                  Style="{StaticResource QuietComboBox}"
+                                  Width="78"
+                                  SelectedValuePath="Code"/>
+
+                        <!-- Quieter than the two names it sits between: it is punctuation, not a
+                             third thing to read, and at the same weight it was the darkest mark in
+                             a header made of light ones. -->
+                        <TextBlock Text="→"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   Opacity="0.45"
+                                   VerticalAlignment="Center"
+                                   Margin="4,1,4,0"/>
+
+                        <ComboBox x:Name="TgtLangBox"
+                                  Style="{StaticResource QuietComboBox}"
+                                  Width="78"
+                                  SelectedValuePath="Code"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Rectangle Width="1" Margin="6,6" Fill="{DynamicResource AppSeparator}"/>
+
+                        <!-- The design this was drawn from has no pin, and a popup that dies a
+                             second after the pointer leaves needs one — so it is here, quiet until
+                             the pointer is on the window and lit once it is holding the popup open.
+                             Dragging the window pins it too, which is where most people will meet
+                             this button: the glyph lights up under their hand and says what did it. -->
+                        <Button x:Name="PinBtn"
+                                Style="{StaticResource HeaderIconButton}"
+                                Content="&#xE718;"
+                                Click="PinBtn_Click"/>
+
+                        <!-- Glyph and tooltip are written from code, because this button means two
+                             different things: with the result showing it opens the settings, and
+                             with the settings showing it goes back. A gear in both states left the
+                             way back to the translation unmarked. See RenderSettingsButton. -->
+                        <Button x:Name="SettingsBtn"
+                                Style="{StaticResource HeaderIconButton}"
+                                Click="SettingsBtn_Click"/>
+
+                        <Button x:Name="CloseBtn"
+                                Style="{StaticResource HeaderIconButton}"
+                                Content="&#xE711;"
+                                FontSize="13"
+                                ToolTip="{DynamicResource S.Common.Close}"
+                                Click="CloseBtn_Click"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ══════════ Body ══════════
+                     One host for the two things that can be below the header, so the slide that
+                     brings either of them in is written once. -->
+                <Border x:Name="BodyHost"
+                        Grid.Row="1"
+                        BorderBrush="{DynamicResource AppSubtleBorder}"
+                        BorderThickness="0,1,0,0"
+                        Visibility="Collapsed">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="BodyTransform"/>
+                    </Border.RenderTransform>
+
+                    <Grid>
+                        <!-- Result -->
+                        <StackPanel x:Name="ResultPanel" Margin="18,14,18,14">
+                            <StackPanel Orientation="Horizontal">
+                                <!-- The one piece of large text in the window, and the only place
+                                     that opts out of the window's Display text formatting. That mode
+                                     pins glyphs to whole pixels, which is what keeps 12px labels
+                                     crisp and what wrecks this line: at 24px the hinting drags CJK
+                                     strokes onto the same few pixel columns, so the character
+                                     spacing comes out uneven and the strokes come out different
+                                     weights. Ideal formatting positions glyphs where the typeface
+                                     says, which is what large text is drawn for.
+
+                                     Segoe UI Variable Display for the same reason, ahead of the
+                                     shared stack's Text optical size: the two are the same typeface
+                                     cut for different sizes, and Text is drawn for 8-16px. Windows
+                                     10 has neither and falls through to Segoe UI, as the shared
+                                     stack already does. -->
+                                <TextBlock x:Name="TranslatedText"
+                                           FontFamily="Segoe UI Variable Display, Segoe UI, Microsoft JhengHei UI, Sans-Serif"
+                                           FontSize="24"
+                                           FontWeight="SemiBold"
+                                           LineHeight="32"
+                                           TextOptions.TextFormattingMode="Ideal"
+                                           TextOptions.TextRenderingMode="ClearType"
+                                           Foreground="{DynamicResource AppTextPrimary}"
+                                           TextWrapping="Wrap"
+                                           MaxWidth="440"/>
+
+                                <!-- Collapsed until there is a translation to read: on its own
+                                     beside an empty line it offers to speak nothing, which is what
+                                     it looked like it was doing for the second or two a translation
+                                     takes. -->
+                                <Button x:Name="TgtTtsBtn"
+                                        Style="{StaticResource HeaderIconButton}"
+                                        Content="&#xE767;"
+                                        Margin="8,4,0,0"
+                                        VerticalAlignment="Top"
+                                        Visibility="Collapsed"
+                                        ToolTip="{DynamicResource S.Translation.SpeakResult}"
+                                        Click="TgtTtsBtn_Click"/>
+                            </StackPanel>
+
+                            <TextBlock x:Name="StatusText"
+                                       FontFamily="{StaticResource AppFont}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Margin="0,2,0,0"
+                                       Visibility="Collapsed"/>
+
+                            <!-- Pulled left by the button's own padding, so the first label lines
+                                 up with the translation above it rather than with its hover fill. -->
+                            <StackPanel x:Name="ActionRow" Orientation="Horizontal" Margin="-10,8,0,0">
+                                <Button Style="{StaticResource ResultActionButton}" Click="CopyBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE8C8;" Style="{StaticResource ActionGlyph}"/>
+                                        <TextBlock x:Name="CopyLabel"
+                                                   Text="{DynamicResource S.QuickLookup.Copy}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Rectangle Width="1" Margin="4,8" Fill="{DynamicResource AppSeparator}"/>
+
+                                <!-- The design this was drawn from reads the translation aloud and
+                                     not the original, which is the half a language learner needs.
+                                     It takes the slot the favourite button had: a labelled action in
+                                     the row is findable, where a fourth glyph in the header would
+                                     not have been.
+
+                                     ShowOnDisabled because the reason it is off — no language to
+                                     read the original in yet — exists nowhere else in the window. -->
+                                <Button x:Name="SrcTtsBtn"
+                                        Style="{StaticResource ResultActionButton}"
+                                        ToolTipService.ShowOnDisabled="True"
+                                        Click="SrcTtsBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="SrcTtsGlyph"
+                                                   Text="&#xE767;"
+                                                   Style="{StaticResource ActionGlyph}"/>
+                                        <TextBlock Text="{DynamicResource S.QuickLookup.SpeakSource}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Under the actions rather than beside the button, and only in the one
+                                 state that earns it: OpenAI-compatible servers are never asked what
+                                 language the original was in — the prompt they are sent belongs to
+                                 the user and cannot carry a second answer — so with 自動 there is no
+                                 voice to read it in and there never will be. The note is what tells
+                                 the user; the button's own tooltip is the same sentence for whoever
+                                 hovers it. -->
+                            <StackPanel x:Name="SourceTtsNote"
+                                        Orientation="Horizontal"
+                                        Margin="0,6,0,0"
+                                        Visibility="Collapsed">
+                                <TextBlock Text="&#xE946;"
+                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,6,0"/>
+                                <TextBlock Text="{DynamicResource S.QuickLookup.SpeakSourceOpenAi}"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Settings -->
+                        <StackPanel x:Name="SettingsPanel" Margin="18,14,18,16" Visibility="Collapsed">
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="{DynamicResource S.QuickLookup.Provider}"
+                                               Style="{StaticResource SettingRowLabel}"/>
+                                    <TextBlock Text="{DynamicResource S.QuickLookup.ProviderHint}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <ComboBox x:Name="ProviderBox"
+                                          Grid.Column="1"
+                                          Style="{StaticResource ModernComboBox}"
+                                          Width="180" Height="30"
+                                          SelectedValuePath="Provider"/>
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="{DynamicResource AppSeparator}" Margin="0,0,0,12"/>
+
+                            <!-- Wayfinding: this panel holds the two settings worth reaching without
+                                 leaving the popup, and this line is how the reader gets to the rest
+                                 of them rather than concluding there are none. -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock x:Name="SettingsHint"
+                                           Grid.Column="0"
+                                           Style="{StaticResource FieldHint}"
+                                           Margin="0,0,12,0"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"/>
+
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource ResultActionButton}"
+                                        Margin="0,0,-10,0"
+                                        Click="OpenFullSettingsBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE713;" Style="{StaticResource ActionGlyph}"/>
+                                        <TextBlock Text="{DynamicResource S.QuickLookup.OpenFullSettings}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

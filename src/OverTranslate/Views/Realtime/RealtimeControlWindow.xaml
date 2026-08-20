@@ -19,7 +19,7 @@
          under the edit layer's crosshair, so the bar read as unclickable before the pointer had even
          reached it. Transparent keeps it invisible while making it part of this window. -->
     <Border x:Name="RootChrome"
-            Margin="10,8,10,12"
+            Margin="14,12,14,16"
             Background="Transparent"
             Cursor="Arrow"
             MouseLeftButtonDown="Chrome_MouseLeftButtonDown"
@@ -39,7 +39,12 @@
                     Margin="2"
                     CornerRadius="14">
                 <Border.Effect>
-                    <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.22" Color="#000000"/>
+                    <!-- Straight down rather than the default 315°, so the same margin serves the
+                         left and right sides. The margin above is at least this radius on every
+                         side: a blur cut off by the window's edge leaves a straight grey line
+                         around the bar, which reads as a border nobody drew. -->
+                    <DropShadowEffect BlurRadius="16" ShadowDepth="2" Direction="270"
+                                      Opacity="0.24" Color="#000000"/>
                 </Border.Effect>
             </Border>
 

@@ -47,15 +47,17 @@
         </Style>
     </Window.Resources>
 
-    <!-- Extra margin gives drop shadow room to render without clipping -->
-    <Grid Margin="10">
+    <!-- At least the blur radius on every side, plus the offset below. Short of that the blur is
+         cut off by the window's edge and the cut shows: a straight grey line around the menu. -->
+    <Grid Margin="18">
         <Border CornerRadius="8"
                 Background="{DynamicResource AppCardBg}"
                 BorderBrush="{DynamicResource AppBorder}"
                 BorderThickness="1"
                 Padding="0,4">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.22" Color="#000000"/>
+                <DropShadowEffect BlurRadius="16" ShadowDepth="2" Direction="270"
+                                  Opacity="0.24" Color="#000000"/>
             </Border.Effect>
 
             <StackPanel Width="196">

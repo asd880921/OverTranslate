@@ -90,6 +90,26 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Translation.Translating">Translating...</sys:String>
     <sys:String x:Key="S.Translation.SpeakFailed">Could not read it aloud: {0}</sys:String>
 
+    <!-- ── Quick lookup popup ── -->
+    <sys:String x:Key="S.QuickLookup.Placeholder">Type text to translate...</sys:String>
+    <sys:String x:Key="S.QuickLookup.Settings">Quick lookup settings</sys:String>
+    <sys:String x:Key="S.QuickLookup.BackToResult">Back to the translation</sys:String>
+    <sys:String x:Key="S.QuickLookup.Pin">Pin, so it stays when you click away</sys:String>
+    <sys:String x:Key="S.QuickLookup.Unpin">Unpin</sys:String>
+    <sys:String x:Key="S.QuickLookup.Copy">Copy</sys:String>
+    <sys:String x:Key="S.QuickLookup.Copied">Copied</sys:String>
+    <sys:String x:Key="S.QuickLookup.SpeakSource">Read the original</sys:String>
+    <sys:String x:Key="S.QuickLookup.SpeakSourceTip">Read the original aloud</sys:String>
+    <!-- Automatic is not switched off here the way it is on the text translation page: once the
+         translation is back the engine has said which language the original was in, so the only
+         gap is before the first result. -->
+    <sys:String x:Key="S.QuickLookup.SpeakSourceOpenAi">With the OpenAI service, choose a source language to read the original aloud.</sys:String>
+    <sys:String x:Key="S.QuickLookup.SpeakSourceUnknown">The language of the original is not known yet. It can be read aloud once the translation is back.</sys:String>
+    <sys:String x:Key="S.QuickLookup.Provider">Translation service</sys:String>
+    <sys:String x:Key="S.QuickLookup.ProviderHint">Shared with screen translation and text translation</sys:String>
+    <sys:String x:Key="S.QuickLookup.OpenFullSettings">All settings</sys:String>
+    <sys:String x:Key="S.QuickLookup.SettingsHint">Press {0} to open it. It closes when you switch to another window; pin it to keep it on screen.</sys:String>
+
     <!-- ── Capture toolbar ── -->
     <sys:String x:Key="S.Toolbar.Translate">Translate</sys:String>
     <sys:String x:Key="S.Toolbar.Translating">Translating...</sys:String>
@@ -292,6 +312,9 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">Pause or resume [[realtime translation]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">"Pause / resume" only works while realtime translation is running. (a way to read the original text)</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkey">Quick lookup</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">Press the shortcut to open [[quick lookup]]</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">If text is selected, it is carried in and translated as the popup opens.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ A single key can only be F1–F24, Pause or Scroll Lock — other keys need Ctrl/Alt/Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>

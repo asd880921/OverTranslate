@@ -28,6 +28,9 @@ public class GlobalHotkey : IDisposable
     /// <summary>The shortcut that pauses and resumes a running 即時翻譯 session.</summary>
     public const int RealtimePauseId = 9004;
 
+    /// <summary>The shortcut that summons 取詞翻譯's popup.</summary>
+    public const int QuickLookupId = 9005;
+
     public GlobalHotkey(int id) => _id = id;
 
     [DllImport("user32.dll", SetLastError = true)]

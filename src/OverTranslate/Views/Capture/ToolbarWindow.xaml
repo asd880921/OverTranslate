@@ -10,8 +10,12 @@
         Background="Transparent"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
-    <!-- Margin gives room for the drop shadow to render outside the visual -->
-    <Border Margin="8,6,8,10">
+    <!-- Room for the shadow to fade out inside the window, which is what this margin is for: a
+         blur still carrying opacity when it reaches the window's edge is cut off there, and the cut
+         is a straight line — a faint grey rectangle around the bar that reads as a stray border. So
+         the margin is at least the blur radius on every side, counted from the shadowed twin below,
+         which is itself inset by 2. -->
+    <Border Margin="12,10,12,14">
         <Grid>
             <!-- The shadow rides an empty twin of the bar rather than the bar itself. An Effect makes
                  WPF rasterise the element it is set on into an intermediate surface, and ClearType
@@ -24,8 +28,11 @@
                     Margin="2"
                     CornerRadius="14">
                 <Border.Effect>
-                    <!-- Shadow color is black in both themes; hardcoded avoids Freezable binding edge cases -->
-                    <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.18" Color="#000000"/>
+                    <!-- Shadow color is black in both themes; hardcoded avoids Freezable binding edge cases.
+                         Straight down rather than the default 315°, so the same margin serves the
+                         left and right sides instead of one of them needing the offset too. -->
+                    <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
+                                      Opacity="0.20" Color="#000000"/>
                 </Border.Effect>
             </Border>
 

@@ -162,8 +162,8 @@
                                          asking for a key, which no width that also suits a card
                                          beside another card can show in full. MinWidth is on the
                                          column, not the box — a star column will squeeze a child
-                                         past its own minimum and clip it, and the three rows have
-                                         to keep ending at the same place.
+                                         past its own minimum and clip it, and the rows have to keep
+                                         ending at the same place.
 
                                          The name and description column has no minimum of its own:
                                          it is the one thing here that can give, and at the narrowest
@@ -200,6 +200,75 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- 取詞翻譯. The only feature with no way in but a shortcut, which is why
+                             this row is the one place in the interface that names it. -->
+                        <Border Style="{StaticResource HotkeyRow}">
+                            <StackPanel>
+                                <Grid>
+                                    <!-- The column widths are the row above this one's, and have to
+                                         stay that way: they are what makes the four boxes end at
+                                         the same place. See the comment on that row for why the
+                                         minimum is on the column rather than the box. -->
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*" MinWidth="140"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
+                                        <TextBlock Text="&#xE721;" Style="{StaticResource HotkeyRowGlyph}"/>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
+                                        <TextBlock Text="{DynamicResource S.Settings.QuickLookupHotkey}"
+                                                   Style="{StaticResource OptionTitle}"/>
+                                        <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.QuickLookupHotkeyHint}"
+                                                   Style="{StaticResource OptionDescription}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxHeight="34"/>
+                                    </StackPanel>
+
+                                    <TextBox Grid.Column="2" x:Name="QuickLookupHotkeyBox"
+                                             Style="{StaticResource HotkeyBox}"
+                                             PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
+                                             PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                             GotFocus="HotkeyBox_GotFocus"
+                                             LostFocus="HotkeyBox_LostFocus"/>
+
+                                    <StackPanel Grid.Column="3"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Margin="12,0,0,0">
+                                        <CheckBox x:Name="QuickLookupHotkeyEnabledCheckBox"
+                                                  Style="{StaticResource ToggleSwitch}"
+                                                  ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                                  Checked="HotkeyEnabled_Toggled"
+                                                  Unchecked="HotkeyEnabled_Toggled"/>
+                                        <TextBlock x:Name="QuickLookupHotkeyEnabledLabel"
+                                                   Style="{StaticResource FieldLabel}"
+                                                   MinWidth="56"
+                                                   Margin="9,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- The one thing about this shortcut that the name does not say,
+                                     inside the row it is about. -->
+                                <StackPanel Orientation="Horizontal" Margin="47,8,0,0">
+                                    <TextBlock Text="&#xE946;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"/>
+                                    <TextBlock Text="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Translation window. Same editing controls as the capture shortcut and
                              deliberately nothing else: this one opens a window that is already one
                              tray click away, so it is not announced at startup. -->
@@ -211,8 +280,8 @@
                                          asking for a key, which no width that also suits a card
                                          beside another card can show in full. MinWidth is on the
                                          column, not the box — a star column will squeeze a child
-                                         past its own minimum and clip it, and the three rows have
-                                         to keep ending at the same place.
+                                         past its own minimum and clip it, and the rows have to keep
+                                         ending at the same place.
 
                                          The name and description column has no minimum of its own:
                                          it is the one thing here that can give, and at the narrowest
@@ -278,8 +347,8 @@
                                          asking for a key, which no width that also suits a card
                                          beside another card can show in full. MinWidth is on the
                                          column, not the box — a star column will squeeze a child
-                                         past its own minimum and clip it, and the three rows have
-                                         to keep ending at the same place.
+                                         past its own minimum and clip it, and the rows have to keep
+                                         ending at the same place.
 
                                          The name and description column has no minimum of its own:
                                          it is the one thing here that can give, and at the narrowest
@@ -349,6 +418,7 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
+
                     </StackPanel>
                 </Border>
 
