@@ -44,6 +44,7 @@ Whether it's games, PDFs, video subtitles, or any other text you can't select di
 - 🆓 **Free, no API key required** — includes multiple ready-to-use translation services, so you can start translating right after installation.
 - 🎯 **Screenshot translation** — select an area to translate it, with the translation shown in the original position
 - 🎬 **Real-time translation** — translations update automatically as the screen changes, ideal for video subtitles and games
+- ⚡ **Quick lookup** — a shortcut brings up a small popup carrying whatever you have selected, and it leaves when your pointer does
 - 📸 **One-click screenshot** — copy the original capture or the translated result after selecting an area, or just use it as a regular screenshot tool
 - 🤖 **Local LLM** — translate with a local AI model through Ollama, with customizable translation prompts
 - 🔒 **Data safety** — OCR runs entirely on your machine; when using online translation services, only the recognized text is sent to them
@@ -105,6 +106,22 @@ built-in text to speech (TTS) can also read the original text or the translation
 
 ---
 
+## Quick Lookup
+> Summoned with a shortcut (default `Ctrl + Alt + Q`). There is no other way in.
+
+Select text anywhere and press the shortcut: the selection is carried into a small popup and
+translated. With nothing selected the popup opens on an empty box for you to type into. It lands
+next to your pointer and **closes itself a second after the pointer leaves it**.
+
+- Drag it to move it, which pins it; a pinned popup does not close on its own.
+- The gear switches the same popup to its settings: the translation service, and whether the
+  translation is read aloud automatically.
+- Source language, target language and translation service are the same ones **screenshot
+  translation** and **text translation** use.
+- Only one popup exists at a time. Pressing the shortcut again swaps the new selection into it.
+
+---
+
 ## Settings
 
 Click **Settings** in the left navigation bar, or right-click the tray icon → **Settings**. All changes are saved automatically.
@@ -114,6 +131,7 @@ Click **Settings** in the left navigation bar, or right-click the tray icon → 
 | Screenshot translation (hotkey) | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`); while real-time translation is running, it pauses / resumes the realtime translation instead |
 | Open translation window (hotkey) | Hotkey to bring up the main window (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
 | Realtime block (hotkey) | Enters **real-time translation** block selection directly, without opening the main window (default `Ctrl + Alt + S`) |
+| Quick lookup (hotkey) | Translate the selected text in a small popup (default `Ctrl + Alt + Q`) |
 | Auto translate | **Screenshot translation** translates **immediately** once the area is selected, with nothing left to click (off by default) |
 | Run at startup | Launch automatically when Windows starts |
 | Save screenshots | Save captures to your machine automatically, with a customizable folder (off by default) |
