@@ -33,21 +33,12 @@
 **OverTranslate** is a real-time screen translation tool built for Windows.
 
 It supports both **screenshot translation** and **real-time translation**: text on your screen is recognized, translated, and displayed right where the original text is.
-Whether it's games, PDFs, video subtitles, or any other text you can't select directly, you can translate it instantly without constantly switching windows while reading.
+Whether it's games, PDFs, video subtitles, or any other text you can't select directly, you can translate it instantly without constantly switching windows while reading.  
+Text you can select is covered too — translate it quickly with **quick lookup**, or use **text translation** to type and translate in full.
 
 > Works on web pages, PDFs, images, videos, game interfaces, and any other screen where text can't be selected directly, including mixed-language content.
 
 ![Translation comparison](docs/images/翻譯比對圖.png)
-
-### Features
-
-- 🆓 **Free, no API key required** — includes multiple ready-to-use translation services, so you can start translating right after installation.
-- 🎯 **Screenshot translation** — select an area to translate it, with the translation shown in the original position
-- 🎬 **Real-time translation** — translations update automatically as the screen changes, ideal for video subtitles and games
-- 📸 **One-click screenshot** — copy the original capture or the translated result after selecting an area, or just use it as a regular screenshot tool
-- 🤖 **Local LLM** — translate with a local AI model through Ollama, with customizable translation prompts
-- 🔒 **Data safety** — OCR runs entirely on your machine; when using online translation services, only the recognized text is sent to them
-- 💾 **Memory management** — models are loaded and released automatically based on usage, reducing memory footprint when idle
 
 ---
 
@@ -68,15 +59,17 @@ When you need a translation, press the hotkey (default Ctrl + Alt + A) and selec
 
 Ideal for **video subtitles, game screens**, and other situations that need continuous translation. After selecting the area, the screen content is recognized continuously, and the translation updates automatically in the original position whenever the text changes.
 
+There are two capture modes, **screen capture** and **window capture**:  
+screen capture needs Windows 11 24H2 or later, window capture needs Windows 10 1903 or later.
+
 > Currently only Microsoft, DeepL, and OpenAI are recommended for this mode (lower latency).  
-> The text color, background color, and background opacity of the translation can be adjusted as needed.
+> The text color, background color, and background opacity of the translation are all yours to adjust, and turning on **Match the original background** and **Keep the original text color** brings the translation closer to the colors and look already on screen.
 
 ![Real-time translation window preview](docs/images/即時翻譯視窗預覽_en.png)
 
 ### Translation Block Modes (area selection)
 
-> The hotkey (default `Ctrl + Alt + S`) enters block selection directly.  
-> Real-time translation currently supports a single monitor only, and allows up to 3 translation blocks at the same time.  
+> Real-time translation currently supports a single monitor only, and allows up to 3 translation blocks at the same time.
 
 Each translation block can be set individually to **Subtitles / Dialogue** or **Game / UI** mode, so the recognition method matches the type of content on screen.  
 **Subtitles / Dialogue**: for scenes where the text stays in one place, such as video subtitles and game dialogue (1 block recommended).
@@ -88,15 +81,25 @@ Each translation block can be set individually to **Subtitles / Dialogue** or **
 | ![Real-time translation2 - dialogue game selection](docs/images/即時翻譯2-對話遊戲框.png) | ![Real-time translation2 - dialogue game result](docs/images/即時翻譯2-對話遊戲翻譯.png) |
 
 **Game / UI**: for game menus and prompts, or scenes where the text is spread out and moves around (1 – 2 blocks recommended).
-> While in game, use the hotkey (default Ctrl + Alt + A) to pause / resume translation,  
-> When a screen doesn't need translating, pause first and resume later — there's no need to shut down real-time translation.
 
 | Selection | Translation result |
 |-----------|--------------------|
 | ![Real-time translation - game selection](docs/images/即時翻譯-遊戲翻譯框.png) | ![Real-time translation - game result](docs/images/即時翻譯-遊戲翻譯.png) |
 
+> While real-time translation is running, use the hotkey (default Ctrl + Alt + S) to pause / resume translation,  
+> When a screen doesn't need translating, or when you want to read the original text, pause first and resume later — there's no need to shut down real-time translation.
+
+## Quick Lookup
+> The hotkey (default `Ctrl + Alt + Q`) opens it on top of whatever is on screen.
+
+Select some text and press the hotkey and it is picked up and translated straight away; with nothing selected, you can type the text in yourself.  
+The window closes itself when you switch to another window; pin it if you need it to stay on screen.
+
+![Quick lookup](docs/images/選詞翻譯.png)
+
+---
+
 ## Text Translation
-> The hotkey (default `Ctrl + Alt + W`) brings up the main window quickly.
 
 Type text and it is translated instantly, and the source and target languages can be swapped in one click;  
 built-in text to speech (TTS) can also read the original text or the translation aloud.
@@ -108,21 +111,28 @@ built-in text to speech (TTS) can also read the original text or the translation
 ## Settings
 
 Click **Settings** in the left navigation bar, or right-click the tray icon → **Settings**. All changes are saved automatically.
+
+![Settings page](docs/images/設定頁_en.png)
+
 | Setting | Description |
 |---------|-------------|
 | Interface language | Traditional Chinese / English, applied immediately (on first launch it follows your Windows display language) |
-| Screenshot translation (hotkey) | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`); while real-time translation is running, it pauses / resumes the realtime translation instead |
-| Open translation window (hotkey) | Hotkey to bring up the main window (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
-| Realtime block (hotkey) | Enters **real-time translation** block selection directly, without opening the main window (default `Ctrl + Alt + S`) |
+| Screenshot translation (hotkey) | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`) |
+| Open translation window (hotkey) | Hotkey to bring up the main window on the page you left it on (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
+| Pause / resume (hotkey) | Pauses or resumes **real-time translation** (default `Ctrl + Alt + S`); available only while real-time translation is running, and handy for reading the original text |
+| Quick lookup (hotkey) | Opens the **quick lookup** window (default `Ctrl + Alt + Q`); any text you have selected is picked up and translated automatically |
 | Auto translate | **Screenshot translation** translates **immediately** once the area is selected, with nothing left to click (off by default) |
 | Run at startup | Launch automatically when Windows starts |
 | Save screenshots | Save captures to your machine automatically, with a customizable folder (off by default) |
 | Source language | The original language for **screenshot translation** and **text translation** (default Auto); real-time translation has its own source language |
-| Translation service | Choose the translation service; when using OpenAI you can set the API endpoint, model name, translation prompt, and temperature |
+| Service setup | Set up the services that need a key or an endpoint; when using OpenAI you can set the API endpoint, model name, translation prompt, and temperature |
 | Theme | Light / Dark |
 | Application logs | Records more complete application information; recommended only while troubleshooting (off by default) |
 
-> Logs stay on your machine and are never uploaded automatically. Even with **Application logs** enabled, the more detailed information is only stored locally, and you have to send the logs to the developer yourself if you want help investigating an issue.
+> As well as key combinations, a shortcut can be a single key: F1 – F12, the middle or side mouse buttons, or a gamepad button.
+
+> Logs are stored on your machine only and are never uploaded automatically; the detailed information recorded with **Application logs** enabled also stays on your machine.  
+> To report a problem, press **Export and upload diagnostics** on the settings page — the diagnostics are uploaded for you, and you get a report code back (give it to the developer to identify your report quickly).
 
 ---
 
