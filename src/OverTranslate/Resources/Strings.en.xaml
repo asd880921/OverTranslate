@@ -98,7 +98,7 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.QuickLookup.Placeholder">Type text to translate...</sys:String>
     <sys:String x:Key="S.QuickLookup.Settings">Quick lookup settings</sys:String>
     <sys:String x:Key="S.QuickLookup.BackToResult">Back to the translation</sys:String>
-    <sys:String x:Key="S.QuickLookup.Pin">Pin, so it stays when you click away</sys:String>
+    <sys:String x:Key="S.QuickLookup.Pin">Pin to stop the window closing on its own</sys:String>
     <sys:String x:Key="S.QuickLookup.Unpin">Unpin</sys:String>
     <sys:String x:Key="S.QuickLookup.Copy">Copy</sys:String>
     <sys:String x:Key="S.QuickLookup.Copied">Copied</sys:String>
