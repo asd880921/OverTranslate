@@ -66,11 +66,12 @@ public static class DiagnosticUploadService
     /// upload down with it.
     /// </summary>
     /// <remarks>
-    /// Empty until the worker is deployed and its address is known; see DEPLOY.md in that
-    /// repository. Empty is a working state rather than a broken one — <see cref="IsConfigured"/>
-    /// is false, the button says "export" and only exports, and the #126 path is what remains.
+    /// Empty is still a working state rather than a broken one — <see cref="IsConfigured"/> goes
+    /// false, the button says "export" and only exports, and the #126 path is what remains. That is
+    /// what a build gets by having this cleared, and what every build was before the worker existed.
     /// </remarks>
-    private const string DefaultEndpoint = "";
+    private const string DefaultEndpoint =
+        "https://overtranslate-diag.overtranslate.workers.dev/v1/bundle";
 
     /// <summary>
     /// Overrides <see cref="DefaultEndpoint"/>, for pointing a local build at `wrangler dev`.
