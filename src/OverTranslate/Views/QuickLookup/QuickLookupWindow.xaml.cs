@@ -290,8 +290,6 @@ public partial class QuickLookupWindow : Window
     {
         InitializeComponent();
 
-        BrandIcon.Source = AppIconService.CreateWindowIcon();
-
         _debounce = new DispatcherTimer { Interval = DebounceDelay };
         _debounce.Tick += (_, _) => { _debounce.Stop(); _ = TranslateNowAsync(); };
 
