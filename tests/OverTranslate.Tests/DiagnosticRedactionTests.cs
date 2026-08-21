@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json.Nodes;
 using OverTranslate.Services;
 using Xunit;
@@ -100,5 +101,44 @@ public class DiagnosticRedactionTests
         // A file in this shape cannot hold a key in a field we would recognise, and its shape is
         // itself the bug being reported — so it goes into the bundle exactly as found.
         Assert.Equal(broken, DiagnosticBundleService.RedactSettings(broken));
+    }
+
+    // The settings file is not the only thing in the bundle that carried something the user did not
+    // mean to hand over. environment.txt named four folders, and on most machines the account those
+    // folders belong to is the person's actual name.
+    [Fact]
+    public void UserFolders_AreNamedByTheirVariableRatherThanTheAccount()
+    {
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        var collapsed = DiagnosticBundleService.CollapseUserPaths(
+            Path.Combine(appData, "OverTranslate", "logs"));
+
+        Assert.StartsWith("%APPDATA%", collapsed);
+        Assert.EndsWith(Path.Combine("OverTranslate", "logs"), collapsed);
+        Assert.DoesNotContain(Environment.UserName, collapsed, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void LocalAppData_IsNotMistakenForTheProfileRoot()
+    {
+        // Both roots are under the profile. Matching the shortest one first would turn every path
+        // into %USERPROFILE%\AppData\..., which puts the folder layout back in the wrong terms.
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+        Assert.StartsWith(
+            "%LOCALAPPDATA%",
+            DiagnosticBundleService.CollapseUserPaths(Path.Combine(local, "OverTranslate")));
+    }
+
+    [Fact]
+    public void PathOutsideTheProfile_IsLeftAlone()
+    {
+        // Being somewhere unexpected is the condition worth seeing — a log redirected onto another
+        // drive is exactly the environment whose log we would otherwise fail to explain. And a path
+        // that was never under the account's folder has no account name in it to hide.
+        const string elsewhere = @"D:	ools\OverTranslate\logs";
+
+        Assert.Equal(elsewhere, DiagnosticBundleService.CollapseUserPaths(elsewhere));
     }
 }

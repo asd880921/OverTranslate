@@ -79,12 +79,16 @@ public static class DiagnosticBundleService
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OverTranslate", "logs");
 
     /// <summary>
-    /// Opens the log folder in Explorer, creating it first so the button works on a machine that has
-    /// not written a line yet.
+    /// Opens the folder the exports are written to, creating it first so the button works on a
+    /// machine that has never made one.
     /// </summary>
-    public static void OpenLogFolder()
+    /// <remarks>
+    /// The exports rather than the logs: this is the folder someone is sent to when they have to
+    /// hand a file over by themselves, and the logs are inside every zip in it anyway.
+    /// </remarks>
+    public static void OpenExportFolder()
     {
-        var directory = LogDirectory;
+        var directory = DefaultExportDirectory;
         Directory.CreateDirectory(directory);
         Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
     }
@@ -120,7 +124,7 @@ public static class DiagnosticBundleService
             AddLogs(archive);
         }
 
-        Log.Info("Diagnostic bundle written to {0}", path);
+        Log.Info("Diagnostic bundle written to {0}", CollapseUserPaths(path));
         return path;
     }
 
@@ -135,6 +139,48 @@ public static class DiagnosticBundleService
     public static void Open(string path)
     {
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+    }
+
+    /// <summary>
+    /// The folders a path sits under, written as the variables that name them rather than as where
+    /// they expanded to.
+    /// </summary>
+    /// <remarks>
+    /// Longest root first: LocalApplicationData and ApplicationData both sit under UserProfile, and
+    /// matching the shortest would turn every path into %USERPROFILE%\AppData\....
+    /// </remarks>
+    private static readonly (string Variable, string Root)[] ProfileRoots =
+    {
+        ("%LOCALAPPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
+        ("%APPDATA%",      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)),
+        ("%USERPROFILE%",  Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)),
+    };
+
+    /// <summary>
+    /// Rewrites the user's own folders back into the variables that name them, so a bundle does not
+    /// carry the Windows account name out with it.
+    /// </summary>
+    /// <remarks>
+    /// The account name is on a great many machines the person's real name, and it appeared four
+    /// times in a file whose four path lines were only ever interesting for their shape: is the log
+    /// where it is expected, is this a Velopack install or something run loose from a folder. That
+    /// shape survives this; the name does not.
+    ///
+    /// A path that is not under any of those roots is returned untouched, which is deliberate. Being
+    /// somewhere unexpected is precisely the condition worth seeing, and there is no account name to
+    /// hide in a path that was never under the account's own folder.
+    /// </remarks>
+    public static string CollapseUserPaths(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return path;
+
+        foreach (var (variable, root) in ProfileRoots)
+        {
+            if (!string.IsNullOrEmpty(root) && path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                return variable + path[root.Length..];
+        }
+
+        return path;
     }
 
     /// <summary>Opens Explorer with the file already selected.</summary>
@@ -250,7 +296,7 @@ public static class DiagnosticBundleService
         {
             // A bundle that is missing one of its three files is still worth having, and the reason
             // it is missing belongs in the bundle rather than in a message box.
-            return $"Could not read {SettingsService.FilePath}: {ex.Message}";
+            return $"Could not read {CollapseUserPaths(SettingsService.FilePath)}: {ex.Message}";
         }
     }
 
@@ -274,7 +320,7 @@ public static class DiagnosticBundleService
             }
             catch (Exception ex)
             {
-                Log.Warn(ex, "Could not add {0} to the diagnostic bundle", file);
+                Log.Warn(ex, "Could not add {0} to the diagnostic bundle", CollapseUserPaths(file));
             }
         }
     }
@@ -299,7 +345,7 @@ public static class DiagnosticBundleService
         sb.AppendLine("=== OverTranslate diagnostics ===");
         sb.AppendLine($"generated : {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}");
         sb.AppendLine($"app       : v{Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0"}");
-        sb.AppendLine($"install   : {AppContext.BaseDirectory}");
+        sb.AppendLine($"install   : {CollapseUserPaths(AppContext.BaseDirectory)}");
         sb.AppendLine($"framework : {RuntimeInformation.FrameworkDescription}");
         sb.AppendLine($"os        : {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
         sb.AppendLine(
@@ -313,9 +359,9 @@ public static class DiagnosticBundleService
         sb.AppendLine(
             $"logging   : verbose={SettingsService.Instance.Current.VerboseLogging} " +
             $"envOverride={LogLevelService.IsOverriddenByEnvironment}");
-        sb.AppendLine($"settings  : {SettingsService.FilePath}");
-        sb.AppendLine($"logs      : {LogDirectory}");
-        sb.AppendLine($"exports   : {DefaultExportDirectory}");
+        sb.AppendLine($"settings  : {CollapseUserPaths(SettingsService.FilePath)}");
+        sb.AppendLine($"logs      : {CollapseUserPaths(LogDirectory)}");
+        sb.AppendLine($"exports   : {CollapseUserPaths(DefaultExportDirectory)}");
         // Written before any upload is attempted, so this says where it would go rather than where
         // it went — which is the line worth having when the upload is what failed.
         sb.AppendLine($"upload    : {(DiagnosticUploadService.IsConfigured ? DiagnosticUploadService.Endpoint : "(disabled)")}");
