@@ -34,11 +34,17 @@
         <Style x:Key="HotkeyRow" TargetType="Border" BasedOn="{StaticResource ToggleRowBorder}">
             <Setter Property="Padding" Value="12,11"/>
         </Style>
+        <!-- The same tile 側邊欄 gives a 快速工具, at the larger size this page works in: fill,
+             border and a corner radius held to the same fraction of the tile. A shortcut row
+             here and the rail row that fires it are the same feature, so the two should not be
+             recognisably different objects. See RailQuickToolIcon in SharedStyles. -->
         <Style x:Key="HotkeyRowIcon" TargetType="Border">
             <Setter Property="Width"              Value="34"/>
             <Setter Property="Height"             Value="34"/>
             <Setter Property="CornerRadius"       Value="8"/>
             <Setter Property="Background"         Value="{DynamicResource AppAccentSubtle}"/>
+            <Setter Property="BorderBrush"        Value="{DynamicResource AppAccentSubtleHover}"/>
+            <Setter Property="BorderThickness"    Value="1"/>
             <Setter Property="VerticalAlignment"  Value="Center"/>
             <Setter Property="Margin"             Value="0,0,13,0"/>
         </Style>
