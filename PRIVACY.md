@@ -86,7 +86,7 @@ When "Record detailed information" is switched on in Settings, the log also reco
 
 
 
-Settings offers "Export diagnostics", which packs the log files, information about the device, and the current settings into a single zip file on the user's desktop. API keys are replaced by a note giving only their length. The zip file is written to the user's own device; the user decides whether to share it and with whom.
+Settings offers "Export diagnostics", which packs the log files, information about the device, and the current settings into a single zip file stored with the application's own data on the user's device. API keys are replaced by a note giving only their length. Nothing is uploaded; the user decides whether to share the file and with whom.
 
 
 

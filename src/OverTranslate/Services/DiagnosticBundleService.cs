@@ -14,8 +14,8 @@ using NLog.Targets;
 namespace OverTranslate.Services;
 
 /// <summary>
-/// Packs the log files and a description of the machine into one zip on the desktop, so reporting a
-/// problem is a drag and a drop instead of being talked through where %AppData% is.
+/// Packs the log files and a description of the machine into one zip, so reporting a problem is a
+/// drag and a drop instead of being talked through where %AppData% is.
 /// </summary>
 /// <remarks>
 /// Everything here stays on the user's disk: nothing is sent anywhere, and the file is left
@@ -93,9 +93,7 @@ public static class DiagnosticBundleService
     /// Writes the bundle and returns its full path. Blocking — call it off the UI thread.
     /// </summary>
     /// <param name="destinationDirectory">
-    /// Where to put the zip, or null for the desktop. The desktop is the default because the file
-    /// exists to be dragged into a forum post, and a folder the user has to go and find is the
-    /// problem this feature is trying to remove.
+    /// Where to put the zip, or null for <see cref="DefaultExportDirectory"/>.
     /// </param>
     public static string Export(string? destinationDirectory = null)
     {
@@ -304,6 +302,7 @@ public static class DiagnosticBundleService
             $"envOverride={LogLevelService.IsOverriddenByEnvironment}");
         sb.AppendLine($"settings  : {SettingsService.FilePath}");
         sb.AppendLine($"logs      : {LogDirectory}");
+        sb.AppendLine($"exports   : {DefaultExportDirectory}");
         sb.AppendLine();
         sb.AppendLine("=== What is in this file ===");
         sb.AppendLine("environment.txt            this file");
@@ -318,17 +317,19 @@ public static class DiagnosticBundleService
     }
 
     /// <summary>
-    /// The desktop, or the next writable thing if this account has no desktop folder — a bundle in
-    /// the temp folder is recoverable, a failed export is not.
+    /// Beside the settings and the logs, in the folder this application already owns.
     /// </summary>
-    private static string ResolveDestination(string? requested)
-    {
-        if (!string.IsNullOrWhiteSpace(requested)) return requested;
+    /// <remarks>
+    /// Not the desktop, which is the user's space rather than ours: exports accumulate — the point
+    /// of the timestamp in the name is that a second attempt does not overwrite the first — and a
+    /// feature that drops another file onto someone's desktop every time they are asked for one is
+    /// a feature they end up tidying up after. Here they sit beside the logs they were made from,
+    /// and Explorer opens with the file already selected either way, so nothing is harder to find.
+    /// </remarks>
+    private static string DefaultExportDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "OverTranslate", "diagnostics");
 
-        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        if (!string.IsNullOrWhiteSpace(desktop)) return desktop;
-
-        var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        return string.IsNullOrWhiteSpace(documents) ? Path.GetTempPath() : documents;
-    }
+    private static string ResolveDestination(string? requested) =>
+        string.IsNullOrWhiteSpace(requested) ? DefaultExportDirectory : requested;
 }
