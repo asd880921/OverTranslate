@@ -770,6 +770,29 @@
                                            Style="{StaticResource OptionDescription}"/>
                             </StackPanel>
                         </Grid>
+
+                        <!-- Below the checkbox rather than beside it: the box decides what gets
+                             written, these two decide what happens to what was written, and the
+                             usual order of that conversation is tick, reproduce, then hand over. -->
+                        <StackPanel Margin="0,16,0,0">
+                            <TextBlock Text="{DynamicResource S.Settings.DiagnosticsHint}"
+                                       Style="{StaticResource OptionDescription}"
+                                       Margin="0,0,0,10"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="ExportDiagnosticsBtn"
+                                        Content="{DynamicResource S.Settings.ExportDiagnostics}"
+                                        Style="{StaticResource FlatButton}"
+                                        Height="34"
+                                        Margin="0,0,8,0"
+                                        ToolTip="{DynamicResource S.Settings.ExportDiagnosticsTip}"
+                                        Click="ExportDiagnosticsBtn_Click"/>
+                                <Button x:Name="OpenLogFolderBtn"
+                                        Content="{DynamicResource S.Settings.OpenLogFolder}"
+                                        Style="{StaticResource FlatButton}"
+                                        Height="34"
+                                        Click="OpenLogFolderBtn_Click"/>
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>

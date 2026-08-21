@@ -74,6 +74,22 @@ These settings are used only for application functionality.
 
 
 
+## Logs and Diagnostics
+
+
+
+OverTranslate writes a log file to the user's own device. It is never sent anywhere automatically.
+
+
+
+When "Record detailed information" is switched on in Settings, the log also records text recognised on screen. That setting is off by default and is intended for troubleshooting.
+
+
+
+Settings offers "Export diagnostics", which packs the log files, information about the device, and the current settings into a single zip file on the user's desktop. API keys are replaced by a note giving only their length. The zip file is written to the user's own device; the user decides whether to share it and with whom.
+
+
+
 ## Contact
 
 
