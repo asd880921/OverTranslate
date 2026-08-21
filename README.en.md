@@ -8,7 +8,7 @@
 
   <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
   <h1>OverTranslate</h1>
-  <p>A Windows screen translator with screenshot translation, real-time translation, and translations overlaid in place</p>
+  <p>A Windows screen translator with screenshot, real-time, and quick lookup translation, showing the results right on the original screen.</p>
 
   <p>
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
@@ -28,30 +28,31 @@
 
 </div>
 
-## What is this?
-
-**OverTranslate** is a real-time screen translation tool built for Windows.
-
-It supports both **screenshot translation** and **real-time translation**: text on your screen is recognized, translated, and displayed right where the original text is.
-Whether it's games, PDFs, video subtitles, or any other text you can't select directly, you can translate it instantly without constantly switching windows while reading.  
-Text you can select is covered too — translate it quickly with **quick lookup**, or use **text translation** to type and translate in full.
-
-> Works on web pages, PDFs, images, videos, game interfaces, and any other screen where text can't be selected directly, including mixed-language content.
-
-![Translation comparison](docs/images/翻譯比對圖.png)
-
 ---
 
 ## Screenshot Translation
 
-The main window can be closed so the app just sits in the system tray — there's no need to keep the window open all the time.  
+**The main window can be closed so the app just sits in the system tray**, there's no need to keep the window open all the time.  
 When you need a translation, press the hotkey (default Ctrl + Alt + A) and select the area you want to translate.
+> Works on web pages, PDFs, images, videos, game interfaces, and any other screen where text can't be selected directly.
+
+![Translation comparison](docs/images/翻譯比對圖.png)
 
 | Source text | Translation |
 |------|----------|
 | ![截圖翻譯1-前.png](docs/images/截圖翻譯1-前.png) | ![截圖翻譯1-後.png](docs/images/截圖翻譯1-後.png) |
 | ![截圖翻譯2-前.png](docs/images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](docs/images/截圖翻譯2-後.png) |
 | ![截圖翻譯3-前.png](docs/images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](docs/images/截圖翻譯3-後.png) |
+
+---
+
+## Quick Lookup
+> The hotkey (default `Ctrl + Alt + Q`) opens it on top of whatever is on screen.
+
+Select some text and press the hotkey and it is picked up and translated straight away; with nothing selected, you can type the text in yourself.  
+The window closes itself when you switch to another window; pin it if you need it to stay on screen.
+
+![Quick lookup](docs/images/選詞翻譯.png)
 
 ---
 
@@ -63,6 +64,7 @@ There are two capture modes, **screen capture** and **window capture**:
 screen capture needs Windows 11 24H2 or later, window capture needs Windows 10 1903 or later.
 
 > Currently only Microsoft, DeepL, and OpenAI are recommended for this mode (lower latency).  
+
 > The text color, background color, and background opacity of the translation are all yours to adjust, and turning on **Match the original background** and **Keep the original text color** brings the translation closer to the colors and look already on screen.
 
 ![Real-time translation window preview](docs/images/即時翻譯視窗預覽_en.png)
@@ -72,7 +74,7 @@ screen capture needs Windows 11 24H2 or later, window capture needs Windows 10 1
 > While real-time translation is running, use the hotkey (default Ctrl + Alt + S) to pause / resume translation,  
 > When a screen doesn't need translating, or when you want to read the original text, pause first and resume later — there's no need to shut down real-time translation.
 
-Each translation block can be set individually to **Subtitles / Dialogue** or **Game / UI** mode, so the recognition method matches the type of content on screen.  
+Translation blocks come in two modes, **Subtitles / Dialogue** and **Game / UI**:
 **Subtitles / Dialogue**: for scenes where the text stays in one place, such as video subtitles and game dialogue (1 block recommended).
 
 | Selection | Translation result |
@@ -87,28 +89,16 @@ Each translation block can be set individually to **Subtitles / Dialogue** or **
 |-----------|--------------------|
 | ![Real-time translation - game selection](docs/images/即時翻譯-遊戲翻譯框.png) | ![Real-time translation - game result](docs/images/即時翻譯-遊戲翻譯.png) |
 
-## Quick Lookup
-> The hotkey (default `Ctrl + Alt + Q`) opens it on top of whatever is on screen.
-
-Select some text and press the hotkey and it is picked up and translated straight away; with nothing selected, you can type the text in yourself.  
-The window closes itself when you switch to another window; pin it if you need it to stay on screen.
-
-![Quick lookup](docs/images/選詞翻譯.png)
-
----
-
 ## Text Translation
 
-Type text and it is translated instantly, and the source and target languages can be swapped in one click;  
-built-in text to speech (TTS) can also read the original text or the translation aloud.
+**Type text and it is translated right away**, and the source and target languages can be swapped in one click;  
+built-in text to speech (TTS) reads both the original text and the translation aloud.
 
 ![Translation window preview](docs/images/翻譯視窗預覽_en.png)
 
 ---
 
 ## Settings
-
-Click **Settings** in the left navigation bar, or right-click the tray icon → **Settings**. All changes are saved automatically.
 
 ![Settings page](docs/images/設定頁_en.png)
 
