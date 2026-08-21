@@ -7,11 +7,21 @@ namespace OverTranslate.Models;
 /// path; mouse and gamepad are observed without swallowing the original input, so the foreground game
 /// or application still receives them.
 /// </summary>
+/// <remarks>
+/// The side buttons are named after Windows' own XBUTTON1/XBUTTON2 rather than after what a mouse
+/// prints on them, because that is what the hook reports and mice disagree about the rest: the pair
+/// is back/forward on one and thumb-up/thumb-down on the next. The interface calls them 側鍵 1 and
+/// 側鍵 2, in the order Windows numbers them.
+///
+/// These are persisted by name, so a value may be renamed only alongside a settings migration.
+/// </remarks>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ShortcutInputKind
 {
     Keyboard,
     MouseMiddle,
+    MouseX1,
+    MouseX2,
     Gamepad,
 }
 

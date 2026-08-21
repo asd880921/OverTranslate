@@ -331,8 +331,8 @@
     <sys:String x:Key="S.Settings.HotkeyRecordTip">點一下重新錄製快捷鍵</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOn">已啟用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOff">未啟用</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyKinds">快捷鍵可以是 Ctrl／Alt／Shift 搭配任意按鍵的組合鍵，也可以是單一功能鍵、滑鼠中鍵或遊戲手把按鍵。</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyKindsExample">例如：Ctrl+Alt+A、Shift+F2、F8、滑鼠中鍵。單獨使用時僅支援功能鍵；滑鼠中鍵與手把按鍵不會擋住遊戲的操作。</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKinds">快捷鍵可使用 Ctrl／Alt／Shift 搭配其他按鍵，也支援單一功能鍵、滑鼠按鍵以及遊戲手把。</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKindsExample">例如：Ctrl+Alt+A、Shift+A、F1、滑鼠中鍵／側鍵、手把按鍵。單獨使用時僅支援功能鍵；滑鼠與手把按鍵不會擋住遊戲的操作。</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">暫停 / 繼續</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">暫停或繼續[[即時翻譯]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">「暫停 / 繼續」僅在即時翻譯進行中可用。(可用於顯示原文)</sys:String>
@@ -408,8 +408,10 @@
 
     <!-- Settings page, composed in code-behind -->
     <sys:String x:Key="S.Settings.Saved">✓ 已儲存</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyPromptAnyInput">請按鍵盤按鍵、滑鼠中鍵或遊戲手把按鍵…</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyPromptAnyInput">請按鍵盤按鍵、滑鼠中鍵／側鍵或遊戲手把按鍵…</sys:String>
     <sys:String x:Key="S.Settings.MouseMiddle">滑鼠中鍵</sys:String>
+    <sys:String x:Key="S.Settings.MouseX1">滑鼠側鍵 1</sys:String>
+    <sys:String x:Key="S.Settings.MouseX2">滑鼠側鍵 2</sys:String>
     <sys:String x:Key="S.Settings.GamepadButton">手把 {0}</sys:String>
     <sys:String x:Key="S.Settings.FolderPickerTitle">選擇截圖儲存資料夾</sys:String>
     <sys:String x:Key="S.Settings.LoggingEnvOverride">目前記錄等級由環境變數 OVERTRANSLATE_LOGLEVEL 指定，此選項暫時無效。</sys:String>

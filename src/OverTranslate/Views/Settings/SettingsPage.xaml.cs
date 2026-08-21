@@ -638,8 +638,8 @@ public partial class SettingsPage : UserControl
         if (FieldOf(sender) is not { } field || !ReferenceEquals(_recording, field)) return;
 
         // Keep recording while focus moves inside this settings page. This is what lets the user
-        // press middle mouse anywhere on the page after starting to record instead of having to aim
-        // at the read-only box itself.
+        // press a mouse button anywhere on the page after starting to record instead of having to
+        // aim at the read-only box itself.
         if (Keyboard.FocusedElement is DependencyObject focused && IsDescendantOfThisPage(focused)) return;
 
         StopRecording();
@@ -696,15 +696,43 @@ public partial class SettingsPage : UserControl
         CommitShortcut(recording, trigger, display);
     }
 
+    /// <remarks>
+    /// The left and right buttons are not offered, and cannot be: left is how the box is clicked to
+    /// start recording in the first place, and a shortcut on either would fire on every click the
+    /// user makes anywhere. That leaves middle and the two side buttons — matching what
+    /// <see cref="GlobalAuxiliaryHotkeys"/> watches for.
+    ///
+    /// Handled is set so the press is not also acted on as a press: XButton1 and XButton2 are the
+    /// browser's Back and Forward, which WPF routes to navigation.
+    /// </remarks>
     private void SettingsPage_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (_recording is not { } recording || e.ChangedButton != MouseButton.Middle) return;
+        if (_recording is not { } recording) return;
+
+        var kind = e.ChangedButton switch
+        {
+            MouseButton.Middle => ShortcutInputKind.MouseMiddle,
+            MouseButton.XButton1 => ShortcutInputKind.MouseX1,
+            MouseButton.XButton2 => ShortcutInputKind.MouseX2,
+            _ => ShortcutInputKind.Keyboard,
+        };
+
+        if (kind == ShortcutInputKind.Keyboard) return;
+
         e.Handled = true;
         CommitShortcut(
             recording,
-            ShortcutTrigger.MouseMiddle(),
-            LocalizationService.Get("S.Settings.MouseMiddle"));
+            ShortcutTrigger.Mouse(kind),
+            LocalizationService.Get(MouseButtonNameKey(kind)));
     }
+
+    /// <summary>The string naming one mouse button in the shortcut box.</summary>
+    private static string MouseButtonNameKey(ShortcutInputKind kind) => kind switch
+    {
+        ShortcutInputKind.MouseX1 => "S.Settings.MouseX1",
+        ShortcutInputKind.MouseX2 => "S.Settings.MouseX2",
+        _ => "S.Settings.MouseMiddle",
+    };
 
     private void PollRecordingGamepad()
     {
@@ -739,7 +767,7 @@ public partial class SettingsPage : UserControl
     /// Windows keys a registration by window and combination, so the second shortcut to claim one is
     /// simply refused — RegisterHotKey returns false and nothing else happens. Left to itself that
     /// reads as a shortcut that stopped working for no reason, so the clash is refused here, where
-    /// there is something to say about it. Middle click and the controller are not registered with
+    /// there is something to say about it. The mouse and controller buttons are not registered with
     /// Windows at all, but they go through the same refusal so that one button cannot silently do two
     /// different things.
     ///

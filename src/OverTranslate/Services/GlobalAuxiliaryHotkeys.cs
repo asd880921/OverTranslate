@@ -6,7 +6,7 @@ using OverTranslate.Models;
 namespace OverTranslate.Services;
 
 /// <summary>
-/// Observes non-keyboard shortcut inputs. It never swallows the input: middle click and controller
+/// Observes non-keyboard shortcut inputs. It never swallows the input: the mouse and controller
 /// buttons continue to reach the foreground application/game after OverTranslate reacts to them.
 /// </summary>
 /// <remarks>
@@ -31,6 +31,11 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
 
     private const int WhMouseLl = 14;
     private const int WmMButtonDown = 0x0207;
+    private const int WmXButtonDown = 0x020B;
+
+    // Which side button an XBUTTON message is about is in the HIGH word of mouseData, not the low one.
+    private const int Xbutton1 = 0x0001;
+    private const int Xbutton2 = 0x0002;
 
     // Fast enough that a button press does not feel late, slow enough to stay invisible beside a
     // game. On the hook thread, so it neither waits for the interface nor holds it up.
@@ -66,7 +71,7 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
 
         Volatile.Write(ref _bindings, map);
 
-        var needsMouse = map.Keys.Any(trigger => trigger.Kind == ShortcutInputKind.MouseMiddle);
+        var needsMouse = map.Keys.Any(trigger => trigger.IsMouse);
         var needsGamepad = map.Keys.Any(trigger => trigger.Kind == ShortcutInputKind.Gamepad);
 
         // Nothing to observe: the thread is not merely idled but ended, because a message loop kept
@@ -184,10 +189,10 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
 
         if (_mouseHook == IntPtr.Zero)
         {
-            // Otherwise the middle-click shortcut is simply inert, which is indistinguishable from
+            // Otherwise the mouse-button shortcut is simply inert, which is indistinguishable from
             // a user who mis-set it — and this line is the only place that can tell them apart.
             Log.Warn(
-                "Middle-click shortcut hook install failed (win32 error {Error}); that shortcut will not fire",
+                "Mouse shortcut hook install failed (win32 error {Error}); that shortcut will not fire",
                 Marshal.GetLastWin32Error());
             _mouseProc = null;
         }
@@ -206,14 +211,40 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
 
     private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && wParam.ToInt32() == WmMButtonDown &&
-            Volatile.Read(ref _bindings).TryGetValue(ShortcutTrigger.MouseMiddle(), out var action))
+        if (nCode >= 0 && PressedKind(wParam.ToInt32(), lParam) is { } kind &&
+            Volatile.Read(ref _bindings).TryGetValue(ShortcutTrigger.Mouse(kind), out var action))
         {
             // Post, never run: see the remarks on this class for what a slow callback costs.
             Raise(action);
         }
 
         return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+    }
+
+    /// <summary>
+    /// Which bindable mouse button this message is a press of, or null for every other mouse event.
+    /// </summary>
+    /// <remarks>
+    /// The left and right buttons are absent on purpose: they are how the desktop is operated, and a
+    /// shortcut on one would fire on every click the user makes anywhere. Middle and the two side
+    /// buttons are the ones a game can spare.
+    ///
+    /// Both side buttons arrive as the same WM_XBUTTONDOWN, told apart only by the high word of
+    /// mouseData — so lParam has to be read, unlike the middle button which the message alone
+    /// identifies.
+    /// </remarks>
+    private static ShortcutInputKind? PressedKind(int message, IntPtr lParam)
+    {
+        if (message == WmMButtonDown) return ShortcutInputKind.MouseMiddle;
+        if (message != WmXButtonDown) return null;
+
+        var data = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+        return (data.mouseData >> 16) switch
+        {
+            Xbutton1 => ShortcutInputKind.MouseX1,
+            Xbutton2 => ShortcutInputKind.MouseX2,
+            _ => null,
+        };
     }
 
     private void SnapshotGamepads()
@@ -258,6 +289,27 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
         System.Windows.Application.Current?.Dispatcher.InvokeAsync(() => ShortcutPressed?.Invoke(action));
 
     private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    /// <summary>
+    /// The low-level mouse hook's payload. Only <c>mouseData</c> is read, but the whole layout has to
+    /// be declared for the field to land at the right offset.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MSLLHOOKSTRUCT
+    {
+        public POINT pt;
+        public int mouseData;
+        public uint flags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int x;
+        public int y;
+    }
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(
