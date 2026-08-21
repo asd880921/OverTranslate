@@ -79,12 +79,16 @@ public static class DiagnosticBundleService
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OverTranslate", "logs");
 
     /// <summary>
-    /// Opens the log folder in Explorer, creating it first so the button works on a machine that has
-    /// not written a line yet.
+    /// Opens the folder the exports are written to, creating it first so the button works on a
+    /// machine that has never made one.
     /// </summary>
-    public static void OpenLogFolder()
+    /// <remarks>
+    /// The exports rather than the logs: this is the folder someone is sent to when they have to
+    /// hand a file over by themselves, and the logs are inside every zip in it anyway.
+    /// </remarks>
+    public static void OpenExportFolder()
     {
-        var directory = LogDirectory;
+        var directory = DefaultExportDirectory;
         Directory.CreateDirectory(directory);
         Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
     }
@@ -108,6 +112,7 @@ public static class DiagnosticBundleService
 
         var directory = ResolveDestination(destinationDirectory);
         Directory.CreateDirectory(directory);
+        PruneOldExports(directory, DateTime.UtcNow);
 
         var path = Path.Combine(
             directory,
@@ -120,7 +125,112 @@ public static class DiagnosticBundleService
             AddLogs(archive);
         }
 
-        Log.Info("Diagnostic bundle written to {0}", path);
+        Log.Info("Diagnostic bundle written to {0}", CollapseUserPaths(path));
+        return path;
+    }
+
+    /// <summary>
+    /// Opens the bundle itself, which on Windows means Explorer showing what is inside it.
+    /// </summary>
+    /// <remarks>
+    /// The pair of <see cref="Reveal"/>, and the difference matters: Reveal answers "where is it",
+    /// which is what someone about to attach a file needs, while this answers "what is in it", which
+    /// is what someone who has just uploaded one needs.
+    /// </remarks>
+    public static void Open(string path)
+    {
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+    }
+
+    /// <summary>
+    /// How long an export stays on disk, matching what the uploaded copy gets. One number for both,
+    /// so the interface can state it once without having to say which copy it means.
+    /// </summary>
+    public static readonly TimeSpan ExportRetention = TimeSpan.FromDays(30);
+
+    /// <summary>The names <see cref="Export"/> writes, and the only ones this will delete.</summary>
+    private const string ExportPattern = "OverTranslate-diagnostics-*.zip";
+
+    /// <summary>
+    /// Deletes the exports older than <see cref="ExportRetention"/>, and returns how many went.
+    /// </summary>
+    /// <remarks>
+    /// Done on the way to writing a new one rather than on a timer: the folder only grows when this
+    /// runs, so that is the only moment it can have grown, and a background sweep would be a thread
+    /// kept for a folder that is empty on most machines.
+    ///
+    /// The pattern is what keeps this honest. It is a folder inside the application own data, but a
+    /// user who has put something in there — a renamed copy they kept, a note to themselves — put it
+    /// there deliberately, and a cleanup that takes files it did not write is a bug that destroys
+    /// data. Nothing outside the shape <see cref="Export"/> produces is touched.
+    ///
+    /// A file that cannot be deleted is left rather than reported: one open in a zip viewer will go
+    /// on the next export, and there is nothing the user would do about being told.
+    /// </remarks>
+    public static int PruneOldExports(string directory, DateTime nowUtc)
+    {
+        var deleted = 0;
+        if (!Directory.Exists(directory)) return deleted;
+
+        foreach (var file in Directory.GetFiles(directory, ExportPattern))
+        {
+            try
+            {
+                if (nowUtc - File.GetLastWriteTimeUtc(file) <= ExportRetention) continue;
+
+                File.Delete(file);
+                deleted++;
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex, "Could not delete the expired diagnostic bundle {0}",
+                    CollapseUserPaths(file));
+            }
+        }
+
+        if (deleted > 0) Log.Info("Deleted {0} expired diagnostic bundle(s)", deleted);
+        return deleted;
+    }
+
+    /// <summary>
+    /// The folders a path sits under, written as the variables that name them rather than as where
+    /// they expanded to.
+    /// </summary>
+    /// <remarks>
+    /// Longest root first: LocalApplicationData and ApplicationData both sit under UserProfile, and
+    /// matching the shortest would turn every path into %USERPROFILE%\AppData\....
+    /// </remarks>
+    private static readonly (string Variable, string Root)[] ProfileRoots =
+    {
+        ("%LOCALAPPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
+        ("%APPDATA%",      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)),
+        ("%USERPROFILE%",  Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)),
+    };
+
+    /// <summary>
+    /// Rewrites the user's own folders back into the variables that name them, so a bundle does not
+    /// carry the Windows account name out with it.
+    /// </summary>
+    /// <remarks>
+    /// The account name is on a great many machines the person's real name, and it appeared four
+    /// times in a file whose four path lines were only ever interesting for their shape: is the log
+    /// where it is expected, is this a Velopack install or something run loose from a folder. That
+    /// shape survives this; the name does not.
+    ///
+    /// A path that is not under any of those roots is returned untouched, which is deliberate. Being
+    /// somewhere unexpected is precisely the condition worth seeing, and there is no account name to
+    /// hide in a path that was never under the account's own folder.
+    /// </remarks>
+    public static string CollapseUserPaths(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return path;
+
+        foreach (var (variable, root) in ProfileRoots)
+        {
+            if (!string.IsNullOrEmpty(root) && path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                return variable + path[root.Length..];
+        }
+
         return path;
     }
 
@@ -237,7 +347,7 @@ public static class DiagnosticBundleService
         {
             // A bundle that is missing one of its three files is still worth having, and the reason
             // it is missing belongs in the bundle rather than in a message box.
-            return $"Could not read {SettingsService.FilePath}: {ex.Message}";
+            return $"Could not read {CollapseUserPaths(SettingsService.FilePath)}: {ex.Message}";
         }
     }
 
@@ -261,7 +371,7 @@ public static class DiagnosticBundleService
             }
             catch (Exception ex)
             {
-                Log.Warn(ex, "Could not add {0} to the diagnostic bundle", file);
+                Log.Warn(ex, "Could not add {0} to the diagnostic bundle", CollapseUserPaths(file));
             }
         }
     }
@@ -286,7 +396,7 @@ public static class DiagnosticBundleService
         sb.AppendLine("=== OverTranslate diagnostics ===");
         sb.AppendLine($"generated : {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}");
         sb.AppendLine($"app       : v{Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0"}");
-        sb.AppendLine($"install   : {AppContext.BaseDirectory}");
+        sb.AppendLine($"install   : {CollapseUserPaths(AppContext.BaseDirectory)}");
         sb.AppendLine($"framework : {RuntimeInformation.FrameworkDescription}");
         sb.AppendLine($"os        : {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
         sb.AppendLine(
@@ -300,18 +410,21 @@ public static class DiagnosticBundleService
         sb.AppendLine(
             $"logging   : verbose={SettingsService.Instance.Current.VerboseLogging} " +
             $"envOverride={LogLevelService.IsOverriddenByEnvironment}");
-        sb.AppendLine($"settings  : {SettingsService.FilePath}");
-        sb.AppendLine($"logs      : {LogDirectory}");
-        sb.AppendLine($"exports   : {DefaultExportDirectory}");
+        sb.AppendLine($"settings  : {CollapseUserPaths(SettingsService.FilePath)}");
+        sb.AppendLine($"logs      : {CollapseUserPaths(LogDirectory)}");
+        sb.AppendLine($"exports   : {CollapseUserPaths(DefaultExportDirectory)}");
+        // Written before any upload is attempted, so this says where it would go rather than where
+        // it went — which is the line worth having when the upload is what failed.
+        sb.AppendLine($"upload    : {(DiagnosticUploadService.IsConfigured ? DiagnosticUploadService.Endpoint : "(disabled)")}");
         sb.AppendLine();
         sb.AppendLine("=== What is in this file ===");
         sb.AppendLine("environment.txt            this file");
         sb.AppendLine("appsettings.redacted.json  your settings, with API keys replaced by their length");
         sb.AppendLine("logs/app.log               the current log; the numbered ones are older");
         sb.AppendLine();
-        sb.AppendLine("Nothing here was sent anywhere — this file was written to your disk and is");
-        sb.AppendLine("yours to read before you attach it. The log can contain text that was on your");
-        sb.AppendLine("screen while 記錄詳細資訊 was switched on.");
+        sb.AppendLine("This file was written to your disk and is yours to read. It leaves this machine");
+        sb.AppendLine("only if you pressed the button that uploads it, and never on its own. The log can");
+        sb.AppendLine("contain text that was on your screen while 記錄詳細資訊 was switched on.");
 
         return sb.ToString();
     }

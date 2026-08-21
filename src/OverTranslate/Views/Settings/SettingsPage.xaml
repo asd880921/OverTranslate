@@ -774,7 +774,8 @@
                                            VerticalAlignment="Center"
                                            Cursor="Help">
                                     <controls:HoverToolTip.Content>
-                                        <TextBlock Text="{DynamicResource S.Settings.DiagnosticsHint}"
+                                        <TextBlock x:Name="DiagnosticsHintText"
+                                                   Text="{DynamicResource S.Settings.DiagnosticsHint}"
                                                    MaxWidth="420"
                                                    FontFamily="{StaticResource AppFont}"
                                                    FontSize="{StaticResource AppFontSize}"
@@ -840,27 +841,143 @@
                                                    FontSize="13"
                                                    VerticalAlignment="Center"
                                                    Margin="0,0,6,0"/>
-                                        <TextBlock Text="{DynamicResource S.Settings.ExportDiagnostics}"
+                                        <TextBlock x:Name="ExportDiagnosticsLabel"
+                                                   Text="{DynamicResource S.Settings.ExportDiagnostics}"
                                                    VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Grid.Column="1" x:Name="OpenLogFolderBtn"
+                                <Button Grid.Column="1" x:Name="OpenDiagnosticsFolderBtn"
                                         Style="{StaticResource FlatButton}"
                                         Height="34"
                                         Margin="4,0,0,0"
-                                        Click="OpenLogFolderBtn_Click">
+                                        Click="OpenDiagnosticsFolderBtn_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE838;"
                                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                    FontSize="13"
                                                    VerticalAlignment="Center"
                                                    Margin="0,0,6,0"/>
-                                        <TextBlock Text="{DynamicResource S.Settings.OpenLogFolder}"
+                                        <TextBlock Text="{DynamicResource S.Settings.OpenDiagnosticsFolder}"
                                                    VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </Grid>
+
+                            <!-- The one thing the user has to leave with. It appears only after an
+                                 upload has succeeded, and it stays until the page is left: the status
+                                 line above fades after a moment, and a code that faded before it was
+                                 copied could only be got back by uploading the bundle a second time.
+
+                                 Open file belongs here rather than in the row above. One press now
+                                 packs and sends, so "what did I just send" is a question this row has
+                                 to be able to answer after the fact. -->
+                            <Border x:Name="DiagnosticsResultPanel"
+                                    Visibility="Collapsed"
+                                    Margin="0,10,0,0"
+                                    Background="{DynamicResource AppInputBg}"
+                                    BorderBrush="{DynamicResource AppBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="12,10">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- The glyph carries the state, because the rest of the row
+                                             changes shape between the two: on failure there is no
+                                             code and no Copy, and a heading that differs only in its
+                                             wording is one a reader has to actually read before they
+                                             know which of the two happened. -->
+                                        <TextBlock Grid.Column="0" x:Name="DiagnosticsResultGlyph"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="15"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+
+                                        <TextBlock Grid.Column="1" x:Name="DiagnosticsResultTitle"
+                                                   Style="{StaticResource OptionTitle}"
+                                                   VerticalAlignment="Center"/>
+
+                                        <!-- A monospaced face, because these characters get read back
+                                             one at a time against whatever the user typed into a forum
+                                             post, and a proportional face is where 0/O and 1/I go
+                                             wrong. The alphabet the worker draws from already excludes
+                                             that pair; the face makes the exclusion visible. -->
+                                        <TextBlock Grid.Column="2" x:Name="DiagnosticsCodeText"
+                                                   FontFamily="Consolas, Cascadia Mono, Courier New"
+                                                   FontSize="18"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AppAccent}"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"/>
+
+                                        <Button Grid.Column="4" x:Name="CopyDiagnosticsCodeBtn"
+                                                Style="{StaticResource FlatButton}"
+                                                Height="30"
+                                                Padding="12,0"
+                                                Click="CopyDiagnosticsCodeBtn_Click">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE8C8;"
+                                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                           FontSize="13"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,6,0"/>
+                                                <TextBlock Text="{DynamicResource S.Settings.CopyCode}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Grid.Column="5" x:Name="OpenDiagnosticsBundleBtn"
+                                                Style="{StaticResource FlatButton}"
+                                                Height="30"
+                                                Padding="12,0"
+                                                Margin="6,0,0,0"
+                                                Click="OpenDiagnosticsBundleBtn_Click">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE8E5;"
+                                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                           FontSize="13"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,6,0"/>
+                                                <TextBlock Text="{DynamicResource S.Settings.OpenBundle}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+
+                                    <TextBlock x:Name="DiagnosticsResultHint"
+                                               Style="{StaticResource OptionDescription}"
+                                               Margin="2,8,0,0"/>
+
+                                    <!-- Shown in both states. The copy on disk is kept for thirty
+                                         days whether or not the upload went through, so this is one
+                                         line that does not have to be read against which of the two
+                                         happened. -->
+                                    <StackPanel x:Name="DiagnosticsRetentionRow"
+                                                Orientation="Horizontal"
+                                                Margin="2,10,0,0">
+                                        <TextBlock Text="&#xE823;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,6,0"/>
+                                        <TextBlock Text="{DynamicResource S.Settings.DiagnosticsRetention}"
+                                                   Style="{StaticResource OptionDescription}"
+                                                   Margin="0"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </Grid>

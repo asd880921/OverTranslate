@@ -381,7 +381,16 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.LoggingHint">Records more information about the app; only recommended while troubleshooting.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">Exporting collects the log files, system information and your current settings into a diagnostic file you can attach to a problem report. Sensitive information such as API keys is not included, and no data is uploaded automatically.</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">Export diagnostics</sys:String>
-    <sys:String x:Key="S.Settings.OpenLogFolder">Open log folder</sys:String>
+    <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">Open folder</sys:String>
+    <sys:String x:Key="S.Settings.UploadDiagnostics">Export and upload diagnostics</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadHint" xml:space="preserve">The diagnostics contain the log files, system information and your current settings, with sensitive data replaced.&#x0a;The diagnostic file is kept on your device and deleted automatically after 30 days.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">Report code</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">Diagnostics exported</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint" xml:space="preserve">Give this report code to the developer through GitHub or the forum — the diagnostics were uploaded successfully.&#x0a;Open file to see what was exported this time.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsNotUploadedHint" xml:space="preserve">The diagnostics were exported but could not be uploaded. Please report the problem through GitHub or the forum and attach the file.&#x0a;Open file to get what was exported this time.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsRetention">Files are deleted automatically after 30 days</sys:String>
+    <sys:String x:Key="S.Settings.CopyCode">Copy</sys:String>
+    <sys:String x:Key="S.Settings.OpenBundle">Open file</sys:String>
 
     <sys:String x:Key="S.Settings.AutoSaveHint">Changes are saved automatically</sys:String>
 
@@ -398,6 +407,11 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.OpenFolderFailed">✗ Could not open the folder: {0}</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsExported">✓ Diagnostics exported</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsFailed">✗ Could not export diagnostics: {0}</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploading">Collecting and uploading…</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploaded">✓ Uploaded — code {0}</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsCodeCopied">✓ Code copied</sys:String>
+    <sys:String x:Key="S.Settings.CopyFailed">✗ Could not copy — read the code from the box above.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadFailed">⚠ The diagnostics were exported but could not be uploaded</sys:String>
     <sys:String x:Key="S.Settings.HotkeyTaken">✗ {0} is already assigned to "{1}"</sys:String>
 
 </ResourceDictionary>
