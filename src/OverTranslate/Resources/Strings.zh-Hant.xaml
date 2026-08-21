@@ -332,7 +332,7 @@
     <sys:String x:Key="S.Settings.HotkeyOn">已啟用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOff">未啟用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">快捷鍵可使用 Ctrl／Alt／Shift 搭配其他按鍵，也支援單一功能鍵、滑鼠按鍵以及遊戲手把。</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyKindsExample">例如：Ctrl+Alt+A、Shift+A、F1、滑鼠中鍵／側鍵、手把按鍵。單獨使用時僅支援功能鍵；滑鼠與手把按鍵不會擋住遊戲的操作。</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKindsExample">例如：Ctrl+Alt+A、Shift+A、F1、滑鼠中鍵／側鍵、XInput...等。</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">暫停 / 繼續</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">暫停或繼續[[即時翻譯]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">「暫停 / 繼續」僅在即時翻譯進行中可用。(可用於顯示原文)</sys:String>

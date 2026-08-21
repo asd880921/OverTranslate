@@ -312,7 +312,7 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.HotkeyOn">Enabled</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOff">Disabled</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with another key, and also supports a single function key, a mouse button, or a gamepad button.</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+A, F1, middle / side mouse buttons, a gamepad button. On its own, a key has to be a function key; the mouse and gamepad buttons leave the game's own input alone.</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+A, F1, middle / side mouse buttons, XInput... etc.</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">Pause or resume [[realtime translation]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">"Pause / resume" only works while realtime translation is running. (a way to read the original text)</sys:String>
