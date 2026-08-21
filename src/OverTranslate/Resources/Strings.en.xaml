@@ -381,11 +381,14 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.LoggingHint">Records more information about the app; only recommended while troubleshooting.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">Exporting collects the log files, system information and your current settings into a diagnostic file you can attach to a problem report. Sensitive information such as API keys is not included, and no data is uploaded automatically.</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">Export diagnostics</sys:String>
-    <sys:String x:Key="S.Settings.OpenLogFolder">Open log folder</sys:String>
+    <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">Open diagnostics folder</sys:String>
     <sys:String x:Key="S.Settings.UploadDiagnostics">Export and upload diagnostics</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadHint">This collects the log files, system information and your current settings into one file — with API keys replaced by a note giving only their length — uploads it, and gives you back a short code to quote in your problem report. Nothing is ever sent unless you press this button, and the upload is deleted after 30 days. If the upload fails the file is still kept on your device.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">Report code</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsCodeHint">Quote this code in your problem report — there is no file to attach. Open file shows exactly what was sent. The upload is deleted after 30 days.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">Upload failed</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint">Give this report code to the developer through GitHub or the forum — the diagnostics were uploaded successfully.&#x0a;Open file to see what was exported this time.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsNotUploadedHint">The diagnostics were exported but could not be uploaded. Please report the problem through GitHub or the forum and attach the file.&#x0a;Open file to get what was exported this time.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsRetention">The uploaded file is deleted after 30 days</sys:String>
     <sys:String x:Key="S.Settings.CopyCode">Copy</sys:String>
     <sys:String x:Key="S.Settings.OpenBundle">Open file</sys:String>
 
@@ -408,10 +411,7 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.DiagnosticsUploaded">✓ Uploaded — code {0}</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeCopied">✓ Code copied</sys:String>
     <sys:String x:Key="S.Settings.CopyFailed">✗ Could not copy — read the code from the box above.</sys:String>
-    <sys:String x:Key="S.Settings.UploadFailedUnreachable">✗ Could not reach the upload service. The diagnostic file was kept on your device — attach it to your report instead.</sys:String>
-    <sys:String x:Key="S.Settings.UploadFailedTooLarge">✗ The diagnostic file is too large to upload. It was kept on your device — attach it to your report instead.</sys:String>
-    <sys:String x:Key="S.Settings.UploadFailedRateLimited">✗ Too many uploads just now. Try again in a minute, or attach the file kept on your device.</sys:String>
-    <sys:String x:Key="S.Settings.UploadFailedRejected">✗ The upload was refused. The diagnostic file was kept on your device — attach it to your report instead.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadFailed">✗ Could not upload the diagnostics</sys:String>
     <sys:String x:Key="S.Settings.HotkeyTaken">✗ {0} is already assigned to "{1}"</sys:String>
 
 </ResourceDictionary>

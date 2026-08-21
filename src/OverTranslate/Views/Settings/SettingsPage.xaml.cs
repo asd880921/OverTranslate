@@ -475,11 +475,17 @@ public partial class SettingsPage : UserControl
         }
     }
 
-    private void OpenLogFolderBtn_Click(object sender, RoutedEventArgs e)
+    /// <remarks>
+    /// The diagnostics folder rather than the log folder, because the export is what a person coming
+    /// off this card is looking for — the raw logs are inside the zip anyway, and this is where the
+    /// zips accumulate. That is also why the button no longer says "log folder": a button that opens
+    /// one folder while naming another is worse than either name on its own.
+    /// </remarks>
+    private void OpenDiagnosticsFolderBtn_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            DiagnosticBundleService.OpenLogFolder();
+            DiagnosticBundleService.OpenExportFolder();
         }
         catch (Exception ex)
         {
@@ -513,7 +519,7 @@ public partial class SettingsPage : UserControl
 
         // A code from an earlier press describes an earlier upload. Leaving it on screen through
         // the next one invites it to be copied as though it were the new one.
-        DiagnosticsCodePanel.Visibility = Visibility.Collapsed;
+        DiagnosticsResultPanel.Visibility = Visibility.Collapsed;
 
         var uploading = DiagnosticUploadService.IsConfigured;
         try
@@ -538,14 +544,16 @@ public partial class SettingsPage : UserControl
             {
                 var code = await DiagnosticUploadService.UploadAsync(path);
 
-                DiagnosticsCodeText.Text = code;
-                DiagnosticsCodePanel.Visibility = Visibility.Visible;
+                ShowUploaded(code);
                 FlashSuccess(LocalizationService.Format("S.Settings.DiagnosticsUploaded", code));
             }
-            catch (DiagnosticUploadException ex)
+            catch (DiagnosticUploadException)
             {
-                ShowError(LocalizationService.Get(FailureMessageKey(ex.Reason)));
-                DiagnosticBundleService.Reveal(path);
+                // No Explorer window here, unlike the path with no endpoint at all. The panel that
+                // appears says to press Open file, and a window opening by itself at the same moment
+                // is a second instruction contradicting the first.
+                ShowNotUploaded();
+                ShowError(LocalizationService.Get("S.Settings.DiagnosticsUploadFailed"));
             }
         }
         catch (Exception ex)
@@ -560,17 +568,56 @@ public partial class SettingsPage : UserControl
         }
     }
 
-    /// <summary>
-    /// Every one of these lines ends by pointing at the file still on the user's disk, because that
-    /// is what they are to do next in every case.
-    /// </summary>
-    private static string FailureMessageKey(DiagnosticUploadFailure reason) => reason switch
+    /// <summary>The panel as it looks when a bundle went up and came back with a code.</summary>
+    private void ShowUploaded(string code)
     {
-        DiagnosticUploadFailure.Unreachable => "S.Settings.UploadFailedUnreachable",
-        DiagnosticUploadFailure.TooLarge    => "S.Settings.UploadFailedTooLarge",
-        DiagnosticUploadFailure.RateLimited => "S.Settings.UploadFailedRateLimited",
-        _                                   => "S.Settings.UploadFailedRejected",
-    };
+        DiagnosticsResultGlyph.Text = CompletedGlyph;
+        DiagnosticsResultTitle.SetResourceReference(
+            TextBlock.TextProperty, "S.Settings.DiagnosticsCodeLabel");
+        DiagnosticsResultHint.SetResourceReference(
+            TextBlock.TextProperty, "S.Settings.DiagnosticsUploadedHint");
+
+        DiagnosticsCodeText.Text = code;
+        DiagnosticsCodeText.Visibility = Visibility.Visible;
+        CopyDiagnosticsCodeBtn.Visibility = Visibility.Visible;
+        DiagnosticsRetentionRow.Visibility = Visibility.Visible;
+
+        DiagnosticsResultPanel.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// The panel as it looks when the bundle was written but did not leave the machine.
+    /// </summary>
+    /// <remarks>
+    /// The same panel rather than a different one, because the thing it is built around — Open file,
+    /// pointing at the zip that exists either way — is what the user needs in both cases. What goes
+    /// away is everything that would be a lie here: there is no code to copy, and nothing was
+    /// uploaded for the thirty-day line to be about.
+    ///
+    /// One wording for every reason an upload can fail. Whether it was the network, the size or a
+    /// refusal, the next move is the same: report it by hand and attach the file. Telling the four
+    /// apart would offer a distinction the user cannot act on.
+    /// </remarks>
+    private void ShowNotUploaded()
+    {
+        DiagnosticsResultGlyph.Text = FailedGlyph;
+        DiagnosticsResultTitle.SetResourceReference(
+            TextBlock.TextProperty, "S.Settings.DiagnosticsUploadFailedTitle");
+        DiagnosticsResultHint.SetResourceReference(
+            TextBlock.TextProperty, "S.Settings.DiagnosticsNotUploadedHint");
+
+        DiagnosticsCodeText.Visibility = Visibility.Collapsed;
+        CopyDiagnosticsCodeBtn.Visibility = Visibility.Collapsed;
+        DiagnosticsRetentionRow.Visibility = Visibility.Collapsed;
+
+        DiagnosticsResultPanel.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Segoe MDL2 Completed, the tick in a circle.</summary>
+    private const string CompletedGlyph = "\uE930";
+
+    /// <summary>Segoe MDL2 Important, the exclamation mark in a circle.</summary>
+    private const string FailedGlyph = "\uE7BA";
 
     /// <summary>
     /// Points the export button and its explanation at whichever of the two stories is true for this
@@ -581,9 +628,9 @@ public partial class SettingsPage : UserControl
     /// Resource references rather than assignments, so both survive a language change — the page
     /// rebuilds itself on one, and a plain Text assignment would come back in the old language.
     ///
-    /// A build with no endpoint is a supported state, not a broken one: it is what every build is
-    /// until the worker is deployed, and what a user gets by setting OVERTRANSLATE_DIAG_ENDPOINT to
-    /// nothing.
+    /// A build with no endpoint is a supported state, not a broken one: it is what every build was
+    /// until the worker was deployed, and what a user gets by pointing OVERTRANSLATE_DIAG_ENDPOINT
+    /// at something that is not an address.
     /// </remarks>
     private void ApplyDiagnosticUploadAvailability()
     {
