@@ -296,7 +296,9 @@
                                 Click="CaptureBtn_Click">
                             <DockPanel>
                                 <Border DockPanel.Dock="Left" Style="{StaticResource RailQuickToolIcon}">
-                                    <TextBlock Text="&#xE123;" Style="{StaticResource RailQuickToolGlyph}"/>
+                                    <Path Style="{StaticResource DrawnMark}"
+                                          Data="{StaticResource CaptureMarkGeometry}"
+                                          Stroke="{DynamicResource AppAccent}"/>
                                 </Border>
 
                                 <!-- Filled in on every ShowOrActivate so a shortcut changed in 設定
@@ -323,7 +325,9 @@
                                 Click="QuickLookupBtn_Click">
                             <DockPanel>
                                 <Border DockPanel.Dock="Left" Style="{StaticResource RailQuickToolIcon}">
-                                    <TextBlock Text="&#xE721;" Style="{StaticResource RailQuickToolGlyph}"/>
+                                    <Path Style="{StaticResource DrawnMark}"
+                                          Data="{StaticResource QuickLookupMarkGeometry}"
+                                          Stroke="{DynamicResource AppAccent}"/>
                                 </Border>
 
                                 <TextBlock x:Name="QuickLookupHotkeyText"
@@ -362,9 +366,9 @@
                                              GroupName="ShellNav"
                                              Checked="Nav_Checked">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   FontSize="15" Text="&#xE8C1;"
-                                                   Width="24" VerticalAlignment="Center"/>
+                                        <Path Style="{StaticResource DrawnMark}"
+                                              Data="{StaticResource TextTranslateMarkGeometry}"
+                                              Width="24"/>
                                         <TextBlock Text="{DynamicResource S.Shell.TextTranslate}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </RadioButton>
@@ -377,9 +381,9 @@
                                              GroupName="ShellNav"
                                              Checked="Nav_Checked">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   FontSize="15" Text="&#xE9D9;"
-                                                   Width="24" VerticalAlignment="Center"/>
+                                        <Path Style="{StaticResource DrawnMark}"
+                                              Data="{StaticResource RealtimeMarkGeometry}"
+                                              Width="24"/>
                                         <TextBlock Text="{DynamicResource S.Shell.RealtimeTranslate}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </RadioButton>
