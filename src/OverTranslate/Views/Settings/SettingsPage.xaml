@@ -178,7 +178,9 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
-                                        <TextBlock Text="&#xE123;" Style="{StaticResource HotkeyRowGlyph}"/>
+                                        <Path Style="{StaticResource DrawnMark}"
+                                              Data="{StaticResource CaptureMarkGeometry}"
+                                              Stroke="{DynamicResource AppAccent}"/>
                                     </Border>
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
@@ -217,7 +219,9 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
-                                        <TextBlock Text="&#xE721;" Style="{StaticResource HotkeyRowGlyph}"/>
+                                        <Path Style="{StaticResource DrawnMark}"
+                                              Data="{StaticResource QuickLookupMarkGeometry}"
+                                              Stroke="{DynamicResource AppAccent}"/>
                                     </Border>
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
@@ -363,7 +367,9 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
-                                        <TextBlock Text="&#xE769;" Style="{StaticResource HotkeyRowGlyph}"/>
+                                        <Path Style="{StaticResource DrawnMark}"
+                                              Data="{StaticResource PlayPauseMarkGeometry}"
+                                              Stroke="{DynamicResource AppAccent}"/>
                                     </Border>
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
