@@ -58,11 +58,18 @@ public class DiagnosticUploadTests
         Assert.Equal(expected, DiagnosticUploadService.Classify(status));
     }
 
-    [Fact]
-    public async Task WithNoEndpoint_NothingIsSentAndTheCallerIsToldWhy()
+    [Theory]
+    // "off" is the documented way to switch uploading off. The other two are what a mistyped or
+    // half-edited endpoint looks like, and they have to fail the same way: an address that is not an
+    // address must turn the feature off, never send a log full of someone's screen to whatever it
+    // resolves to.
+    [InlineData("off")]
+    [InlineData("overtranslate-diag.example.workers.dev/v1/bundle")]
+    [InlineData("ftp://example.com/v1/bundle")]
+    public async Task WithNoUsableEndpoint_NothingIsSentAndTheCallerIsToldWhy(string endpoint)
     {
         var saved = Environment.GetEnvironmentVariable("OVERTRANSLATE_DIAG_ENDPOINT");
-        Environment.SetEnvironmentVariable("OVERTRANSLATE_DIAG_ENDPOINT", "");
+        Environment.SetEnvironmentVariable("OVERTRANSLATE_DIAG_ENDPOINT", endpoint);
         try
         {
             Assert.False(DiagnosticUploadService.IsConfigured);
@@ -74,6 +81,24 @@ public class DiagnosticUploadTests
                 () => DiagnosticUploadService.UploadAsync("C:/nowhere/no-such-bundle.zip"));
 
             Assert.Equal(DiagnosticUploadFailure.NotConfigured, ex.Reason);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OVERTRANSLATE_DIAG_ENDPOINT", saved);
+        }
+    }
+
+    [Fact]
+    public void TheEndpointCompiledIn_IsAnAddressThatCanBeUploadedTo()
+    {
+        var saved = Environment.GetEnvironmentVariable("OVERTRANSLATE_DIAG_ENDPOINT");
+        Environment.SetEnvironmentVariable("OVERTRANSLATE_DIAG_ENDPOINT", null);
+        try
+        {
+            // Not that it answers — that needs a network and belongs in a manual pass — but that a
+            // shipped build would try. A typo here turns the whole feature off silently.
+            Assert.True(DiagnosticUploadService.IsConfigured);
+            Assert.StartsWith("https://", DiagnosticUploadService.Endpoint);
         }
         finally
         {

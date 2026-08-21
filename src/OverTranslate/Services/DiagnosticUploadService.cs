@@ -66,18 +66,24 @@ public static class DiagnosticUploadService
     /// upload down with it.
     /// </summary>
     /// <remarks>
-    /// Empty is still a working state rather than a broken one — <see cref="IsConfigured"/> goes
-    /// false, the button says "export" and only exports, and the #126 path is what remains. That is
-    /// what a build gets by having this cleared, and what every build was before the worker existed.
+    /// Having none is still a working state rather than a broken one — <see cref="IsConfigured"/>
+    /// goes false, the button says "export" and only exports, and the #126 path is what remains.
+    /// That is what every build was before the worker existed.
     /// </remarks>
     private const string DefaultEndpoint =
         "https://overtranslate-diag.overtranslate.workers.dev/v1/bundle";
 
     /// <summary>
-    /// Overrides <see cref="DefaultEndpoint"/>, for pointing a local build at `wrangler dev`.
-    /// Setting it to an empty string switches uploading off, which is the only supported way to opt
-    /// out of a feature that already requires a deliberate press.
+    /// Overrides <see cref="DefaultEndpoint"/>, for pointing a local build at a `wrangler dev`
+    /// instance. Setting it to anything that is not an http(s) address — "off" does nicely — turns
+    /// uploading off, which is the supported way to opt out of a feature that already requires a
+    /// deliberate press.
     /// </summary>
+    /// <remarks>
+    /// Not "set it to an empty string", which is what this used to say and does not work: on Windows
+    /// setting a variable to "" deletes it, and a deleted variable falls through to the endpoint
+    /// compiled in — the exact opposite of what someone typing that would be trying to achieve.
+    /// </remarks>
     private const string EndpointVariable = "OVERTRANSLATE_DIAG_ENDPOINT";
 
     /// <summary>Matches the worker's own limit. Checked here so an oversized bundle costs no upload.</summary>
@@ -97,7 +103,16 @@ public static class DiagnosticUploadService
     public static string Endpoint =>
         Environment.GetEnvironmentVariable(EndpointVariable) ?? DefaultEndpoint;
 
-    public static bool IsConfigured => !string.IsNullOrWhiteSpace(Endpoint);
+    /// <summary>
+    /// Whether there is somewhere to upload to. Tested by parsing rather than by checking for a
+    /// non-empty string, which also settles what happens to a mistyped address: it turns the feature
+    /// off, rather than sending a log full of someone's screen to whatever that address resolves to.
+    /// </summary>
+    public static bool IsConfigured => IsUsableEndpoint(Endpoint);
+
+    private static bool IsUsableEndpoint(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+        (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     /// <summary>
     /// Uploads a bundle and returns its code. Throws <see cref="DiagnosticUploadException"/> for
@@ -106,7 +121,7 @@ public static class DiagnosticUploadService
     public static async Task<string> UploadAsync(string bundlePath, CancellationToken token = default)
     {
         var endpoint = Endpoint;
-        if (string.IsNullOrWhiteSpace(endpoint))
+        if (!IsUsableEndpoint(endpoint))
             throw new DiagnosticUploadException(DiagnosticUploadFailure.NotConfigured, "No endpoint");
 
         var info = new FileInfo(bundlePath);
