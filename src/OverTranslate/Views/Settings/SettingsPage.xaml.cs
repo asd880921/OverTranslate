@@ -221,9 +221,15 @@ public partial class SettingsPage : UserControl
         FlashSaved();
     }
 
-    private void FlashSaved()
+    private void FlashSaved() => FlashSuccess(LocalizationService.Get("S.Settings.Saved"));
+
+    /// <summary>
+    /// The same line the auto-save confirmation uses, for the handful of actions that finish with
+    /// something to say other than 已儲存 — an export naming the file it wrote, so far.
+    /// </summary>
+    private void FlashSuccess(string message)
     {
-        StatusText.Text       = LocalizationService.Get("S.Settings.Saved");
+        StatusText.Text       = message;
         StatusText.Foreground = (Brush)FindResource("AppSuccess");
 
         StatusText.BeginAnimation(OpacityProperty, null);
@@ -442,6 +448,48 @@ public partial class SettingsPage : UserControl
         catch (Exception ex)
         {
             ShowError(LocalizationService.Format("S.Settings.OpenFolderFailed", ex.Message));
+        }
+    }
+
+    private void OpenLogFolderBtn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            DiagnosticBundleService.OpenLogFolder();
+        }
+        catch (Exception ex)
+        {
+            ShowError(LocalizationService.Format("S.Settings.OpenFolderFailed", ex.Message));
+        }
+    }
+
+    /// <remarks>
+    /// Off the UI thread because the bundle copies and compresses every log file there is, which on
+    /// a machine that has filled its five archives is a dozen megabytes — not long, but long enough
+    /// to freeze the window on a slow disk, and freezing while collecting a bug report is its own
+    /// bug report. The button is disabled meanwhile so the same zip cannot be started twice.
+    /// </remarks>
+    private async void ExportDiagnosticsBtn_Click(object sender, RoutedEventArgs e)
+    {
+        ExportDiagnosticsBtn.IsEnabled = false;
+        try
+        {
+            var path = await Task.Run(() => DiagnosticBundleService.Export());
+
+            FlashSuccess(LocalizationService.Get("S.Settings.DiagnosticsExported"));
+
+            // The real confirmation: the status line fades after a moment and cannot show a path
+            // worth reading anyway, whereas Explorer opens with the file already selected and ready
+            // to be dragged into a forum post — which is the entire point of the feature.
+            DiagnosticBundleService.Reveal(path);
+        }
+        catch (Exception ex)
+        {
+            ShowError(LocalizationService.Format("S.Settings.DiagnosticsFailed", ex.Message));
+        }
+        finally
+        {
+            ExportDiagnosticsBtn.IsEnabled = true;
         }
     }
 

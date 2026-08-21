@@ -18,6 +18,12 @@ public class SettingsService
 
     private static readonly string SettingsPath = Path.Combine(SettingsDirectory, "appsettings.json");
 
+    /// <summary>
+    /// Where the settings actually are, for the one caller that needs the file rather than the
+    /// values in it: <see cref="DiagnosticBundleService"/> copies it into a problem report.
+    /// </summary>
+    public static string FilePath => SettingsPath;
+
     // Where 1.7.0 and earlier kept the file. Velopack has usually deleted it by the time an updated
     // build runs, but when it survives — a build relaunched in place, a dev run — those are still the
     // user's settings, so read them once on the way to the new location.

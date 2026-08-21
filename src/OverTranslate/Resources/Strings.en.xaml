@@ -379,6 +379,9 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.Logging">Logging</sys:String>
     <sys:String x:Key="S.Settings.LoggingCheck">Record detailed information</sys:String>
     <sys:String x:Key="S.Settings.LoggingHint">Records more information about the app; only recommended while troubleshooting.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsHint">Exporting collects the log files, system information and your current settings into a diagnostic file you can attach to a problem report. Sensitive information such as API keys is not included, and no data is uploaded automatically.</sys:String>
+    <sys:String x:Key="S.Settings.ExportDiagnostics">Export diagnostics</sys:String>
+    <sys:String x:Key="S.Settings.OpenLogFolder">Open log folder</sys:String>
 
     <sys:String x:Key="S.Settings.AutoSaveHint">Changes are saved automatically</sys:String>
 
@@ -393,6 +396,8 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.LoggingEnvOverride">The log level is currently set by the OVERTRANSLATE_LOGLEVEL environment variable, so this option has no effect.</sys:String>
     <sys:String x:Key="S.Settings.StartupFailed">✗ Could not change the startup setting: {0}</sys:String>
     <sys:String x:Key="S.Settings.OpenFolderFailed">✗ Could not open the folder: {0}</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExported">✓ Diagnostics exported</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsFailed">✗ Could not export diagnostics: {0}</sys:String>
     <sys:String x:Key="S.Settings.HotkeyTaken">✗ {0} is already assigned to "{1}"</sys:String>
 
 </ResourceDictionary>

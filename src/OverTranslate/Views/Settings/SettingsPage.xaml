@@ -703,75 +703,167 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ══════════ 外觀 ══════════ -->
-                <Border Grid.Column="0" Grid.Row="2"
-                        Style="{StaticResource CardBorder}"
-                        Margin="0,0,12,12">
-                    <StackPanel>
-                        <StackPanel Style="{StaticResource CardHeaderRow}">
-                            <TextBlock Text="&#xE790;" Style="{StaticResource CardHeaderIcon}"/>
-                            <TextBlock Text="{DynamicResource S.Settings.Appearance}"
-                                       Style="{StaticResource CardTitle}"/>
-                        </StackPanel>
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.Theme}"
-                                       Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <RadioButton x:Name="LightThemeRadio"
-                                             Content="{DynamicResource S.Settings.ThemeLight}"
-                                             GroupName="ThemeGroup"
-                                             Style="{StaticResource ThemeRadioButton}"
-                                             Checked="ThemeRadio_Checked"/>
-                                <RadioButton x:Name="DarkThemeRadio"
-                                             Content="{DynamicResource S.Settings.ThemeDark}"
-                                             GroupName="ThemeGroup"
-                                             Style="{StaticResource ThemeRadioButton}"
-                                             Margin="0"
-                                             Checked="ThemeRadio_Checked"/>
+                <!-- The bottom row splits evenly, unlike the 1.6*/* the rows above it use.
+                     Those columns are sized by what is in them — four shortcut rows against one
+                     checkbox and a path. These two are a theme picker and a logging card, and
+                     neither has a claim on the extra width, so a shared row of their own keeps the
+                     split off the columns the rows above depend on. -->
+                <Grid Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <!-- ══════════ 外觀 ══════════ -->
+                    <Border Grid.Column="0"
+                            Style="{StaticResource CardBorder}"
+                            Margin="0,0,12,12">
+                        <StackPanel>
+                            <StackPanel Style="{StaticResource CardHeaderRow}">
+                                <TextBlock Text="&#xE790;" Style="{StaticResource CardHeaderIcon}"/>
+                                <TextBlock Text="{DynamicResource S.Settings.Appearance}"
+                                           Style="{StaticResource CardTitle}"/>
                             </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Border>
 
-                <!-- ══════════ 進階設定 ══════════
-                     Nothing here is part of translating, and a user who never has a problem to
-                     report never needs to read it. -->
-                <Border Grid.Column="1" Grid.Row="2" Style="{StaticResource CardBorder}">
-                    <StackPanel>
-                        <StackPanel Style="{StaticResource CardHeaderRow}">
-                            <TextBlock Text="&#xE7BA;" Style="{StaticResource CardHeaderIcon}"/>
-                            <TextBlock Text="{DynamicResource S.Settings.Advanced}"
-                                       Style="{StaticResource CardTitle}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabel"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{DynamicResource S.Settings.Theme}"
+                                           Style="{StaticResource FieldLabel}"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <RadioButton x:Name="LightThemeRadio"
+                                                 Content="{DynamicResource S.Settings.ThemeLight}"
+                                                 GroupName="ThemeGroup"
+                                                 Style="{StaticResource ThemeRadioButton}"
+                                                 Checked="ThemeRadio_Checked"/>
+                                    <RadioButton x:Name="DarkThemeRadio"
+                                                 Content="{DynamicResource S.Settings.ThemeDark}"
+                                                 GroupName="ThemeGroup"
+                                                 Style="{StaticResource ThemeRadioButton}"
+                                                 Margin="0"
+                                                 Checked="ThemeRadio_Checked"/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
+                    </Border>
 
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <CheckBox  Grid.Column="0" x:Name="VerboseLoggingCheckBox"
-                                       Style="{StaticResource ModernCheckBox}"
-                                       VerticalAlignment="Top"
-                                       ToolTip="{DynamicResource S.Settings.Logging}"
-                                       Checked="VerboseLogging_Toggled"
-                                       Unchecked="VerboseLogging_Toggled"/>
-                            <TextBlock Grid.Column="1" Text="&#xE9D9;" Style="{StaticResource OptionGlyph}"/>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="{DynamicResource S.Settings.LoggingCheck}"
-                                           Style="{StaticResource OptionTitle}"/>
-                                <TextBlock x:Name="VerboseLoggingHint"
-                                           Text="{DynamicResource S.Settings.LoggingHint}"
-                                           Style="{StaticResource OptionDescription}"/>
+                    <!-- ══════════ 進階設定 ══════════
+                         Nothing here is part of translating, and a user who never has a problem to
+                         report never needs to read it. -->
+                    <Border Grid.Column="1" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <StackPanel Style="{StaticResource CardHeaderRow}">
+                                <TextBlock Text="&#xE7BA;" Style="{StaticResource CardHeaderIcon}"/>
+                                <TextBlock Text="{DynamicResource S.Settings.Advanced}"
+                                           Style="{StaticResource CardTitle}"/>
+
+                                <!-- What the export actually collects, on the heading for the same
+                                     reason the shortcut card's does: it is read once, before the first
+                                     export, and never again — while a paragraph spelling it out sits
+                                     above the buttons for good, taking more room than the two controls
+                                     it describes. Background and Padding as there: a bare TextBlock is
+                                     only hit-testable across the glyph's own strokes. -->
+                                <TextBlock Text="&#xE946;"
+                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="14"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           Background="Transparent"
+                                           Padding="4,2"
+                                           Margin="7,1,0,0"
+                                           VerticalAlignment="Center"
+                                           Cursor="Help">
+                                    <controls:HoverToolTip.Content>
+                                        <TextBlock Text="{DynamicResource S.Settings.DiagnosticsHint}"
+                                                   MaxWidth="420"
+                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontSize="{StaticResource AppFontSize}"
+                                                   TextWrapping="Wrap"
+                                                   LineHeight="18"/>
+                                    </controls:HoverToolTip.Content>
+                                </TextBlock>
                             </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </Border>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox  Grid.Column="0" x:Name="VerboseLoggingCheckBox"
+                                           Style="{StaticResource ModernCheckBox}"
+                                           VerticalAlignment="Top"
+                                           ToolTip="{DynamicResource S.Settings.Logging}"
+                                           Checked="VerboseLogging_Toggled"
+                                           Unchecked="VerboseLogging_Toggled"/>
+                                <TextBlock Grid.Column="1" Text="&#xE9D9;" Style="{StaticResource OptionGlyph}"/>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{DynamicResource S.Settings.LoggingCheck}"
+                                               Style="{StaticResource OptionTitle}"/>
+                                    <TextBlock x:Name="VerboseLoggingHint"
+                                               Text="{DynamicResource S.Settings.LoggingHint}"
+                                               Style="{StaticResource OptionDescription}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Below the checkbox rather than beside it: the box decides what gets
+                                 written, these two decide what happens to what was written, and the
+                                 usual order of that conversation is tick, reproduce, then hand over.
+
+                                 Two equal columns filling the card rather than two buttons sized to
+                                 their own labels. The labels are different lengths in both languages,
+                                 so left-packed buttons leave a ragged edge against a card whose every
+                                 other row runs the full width.
+
+                                 Accent on the export and not on the folder: one of these is what the
+                                 card is for and the other is the way out for someone who wants to look
+                                 before they hand anything over. -->
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Button Grid.Column="0" x:Name="ExportDiagnosticsBtn"
+                                        Style="{StaticResource AccentButton}"
+                                        Height="34"
+                                        Margin="0,0,4,0"
+                                        Click="ExportDiagnosticsBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <!-- Upload, the pair of the Download glyph 更新 already uses
+                                             on this same shape of control. No Foreground on
+                                             either block: both inherit the button's, which is
+                                             the one thing that differs between these two styles
+                                             and the one thing that must keep differing. -->
+                                        <TextBlock Text="&#xE898;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,6,0"/>
+                                        <TextBlock Text="{DynamicResource S.Settings.ExportDiagnostics}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Grid.Column="1" x:Name="OpenLogFolderBtn"
+                                        Style="{StaticResource FlatButton}"
+                                        Height="34"
+                                        Margin="4,0,0,0"
+                                        Click="OpenLogFolderBtn_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE838;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,6,0"/>
+                                        <TextBlock Text="{DynamicResource S.Settings.OpenLogFolder}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Grid>
         </ScrollViewer>
 
