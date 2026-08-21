@@ -275,6 +275,21 @@ public partial class SettingsPage : UserControl
         AutoSaveHint.Opacity  = 0;
     }
 
+    /// <summary>
+    /// For an outcome that is neither. Red would say the press failed when the file it produced is
+    /// sitting on the disk and is the whole point; green would say it went through when it did not.
+    /// Held rather than faded, for the same reason the error line is: there is something left to do.
+    /// </summary>
+    private void ShowWarning(string message)
+    {
+        _statusHold.Stop();
+        StatusText.BeginAnimation(OpacityProperty, null);
+        StatusText.Text       = message;
+        StatusText.Foreground = (Brush)FindResource("AppWarning");
+        StatusText.Opacity    = 1;
+        AutoSaveHint.Opacity  = 0;
+    }
+
     private void ShowError(string message)
     {
         _statusHold.Stop();
@@ -553,7 +568,7 @@ public partial class SettingsPage : UserControl
                 // appears says to press Open file, and a window opening by itself at the same moment
                 // is a second instruction contradicting the first.
                 ShowNotUploaded();
-                ShowError(LocalizationService.Get("S.Settings.DiagnosticsUploadFailed"));
+                ShowWarning(LocalizationService.Get("S.Settings.DiagnosticsUploadFailed"));
             }
         }
         catch (Exception ex)
