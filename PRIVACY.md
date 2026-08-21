@@ -102,7 +102,7 @@ Uploaded files are held by Cloudflare (Workers KV) in an account operated by the
 
 
 
-The source code of the receiving endpoint is public and can be read at https://github.com/asd880921/overtranslate-diag-worker
+The source code of the receiving endpoint is public and can be read at https://github.com/asd880921/OverTranslate-Diag-Worker
 
 
 
