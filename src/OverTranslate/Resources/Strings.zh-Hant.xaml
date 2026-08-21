@@ -405,9 +405,9 @@
     <sys:String x:Key="S.Settings.LoggingHint">啟用後會記錄更多應用程式資訊，僅建議於問題排查時開啟。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">匯出時會將記錄檔、系統資訊與目前設定整理成診斷檔，方便附在問題回報中。API 金鑰等敏感資訊不會包含在內，也不會自動上傳任何資料。</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">匯出診斷資訊</sys:String>
-    <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">開啟診斷資料夾</sys:String>
+    <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">開啟資料夾</sys:String>
     <sys:String x:Key="S.Settings.UploadDiagnostics">匯出並上傳診斷資訊</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsUploadHint">按下後會把記錄檔、系統資訊與目前設定整理成一個檔案（API 金鑰只會保留長度，不會包含內容），上傳後回傳一組代碼，讓你貼在問題回報中。只有你按下這顆按鈕時才會送出，上傳的檔案 30 天後自動刪除；若上傳失敗，檔案仍會保留在你的電腦上。</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadHint">診斷資訊包含記錄檔、系統資訊與目前設定，敏感資料會被替換。&#x0a;診斷檔會保留在本機，並於 30 天後自動刪除。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">回報代碼</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">上傳失敗</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadedHint">將此回報代碼透過 GitHub 或論壇提供給開發者即可，診斷資訊已成功上傳。&#x0a;按「開啟檔案」可查看本次匯出的診斷資訊。</sys:String>

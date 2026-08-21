@@ -112,6 +112,7 @@ public static class DiagnosticBundleService
 
         var directory = ResolveDestination(destinationDirectory);
         Directory.CreateDirectory(directory);
+        PruneOldExports(directory, DateTime.UtcNow);
 
         var path = Path.Combine(
             directory,
@@ -139,6 +140,56 @@ public static class DiagnosticBundleService
     public static void Open(string path)
     {
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+    }
+
+    /// <summary>
+    /// How long an export stays on disk, matching what the uploaded copy gets. One number for both,
+    /// so the interface can state it once without having to say which copy it means.
+    /// </summary>
+    public static readonly TimeSpan ExportRetention = TimeSpan.FromDays(30);
+
+    /// <summary>The names <see cref="Export"/> writes, and the only ones this will delete.</summary>
+    private const string ExportPattern = "OverTranslate-diagnostics-*.zip";
+
+    /// <summary>
+    /// Deletes the exports older than <see cref="ExportRetention"/>, and returns how many went.
+    /// </summary>
+    /// <remarks>
+    /// Done on the way to writing a new one rather than on a timer: the folder only grows when this
+    /// runs, so that is the only moment it can have grown, and a background sweep would be a thread
+    /// kept for a folder that is empty on most machines.
+    ///
+    /// The pattern is what keeps this honest. It is a folder inside the application own data, but a
+    /// user who has put something in there — a renamed copy they kept, a note to themselves — put it
+    /// there deliberately, and a cleanup that takes files it did not write is a bug that destroys
+    /// data. Nothing outside the shape <see cref="Export"/> produces is touched.
+    ///
+    /// A file that cannot be deleted is left rather than reported: one open in a zip viewer will go
+    /// on the next export, and there is nothing the user would do about being told.
+    /// </remarks>
+    public static int PruneOldExports(string directory, DateTime nowUtc)
+    {
+        var deleted = 0;
+        if (!Directory.Exists(directory)) return deleted;
+
+        foreach (var file in Directory.GetFiles(directory, ExportPattern))
+        {
+            try
+            {
+                if (nowUtc - File.GetLastWriteTimeUtc(file) <= ExportRetention) continue;
+
+                File.Delete(file);
+                deleted++;
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex, "Could not delete the expired diagnostic bundle {0}",
+                    CollapseUserPaths(file));
+            }
+        }
+
+        if (deleted > 0) Log.Info("Deleted {0} expired diagnostic bundle(s)", deleted);
+        return deleted;
     }
 
     /// <summary>

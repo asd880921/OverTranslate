@@ -580,7 +580,6 @@ public partial class SettingsPage : UserControl
         DiagnosticsCodeText.Text = code;
         DiagnosticsCodeText.Visibility = Visibility.Visible;
         CopyDiagnosticsCodeBtn.Visibility = Visibility.Visible;
-        DiagnosticsRetentionRow.Visibility = Visibility.Visible;
 
         DiagnosticsResultPanel.Visibility = Visibility.Visible;
     }
@@ -597,6 +596,9 @@ public partial class SettingsPage : UserControl
     /// One wording for every reason an upload can fail. Whether it was the network, the size or a
     /// refusal, the next move is the same: report it by hand and attach the file. Telling the four
     /// apart would offer a distinction the user cannot act on.
+    ///
+    /// The thirty-day line stays, unlike everything else that goes: it is about the copy on disk,
+    /// which is kept for the same thirty days either way.
     /// </remarks>
     private void ShowNotUploaded()
     {
@@ -608,7 +610,6 @@ public partial class SettingsPage : UserControl
 
         DiagnosticsCodeText.Visibility = Visibility.Collapsed;
         CopyDiagnosticsCodeBtn.Visibility = Visibility.Collapsed;
-        DiagnosticsRetentionRow.Visibility = Visibility.Collapsed;
 
         DiagnosticsResultPanel.Visibility = Visibility.Visible;
     }

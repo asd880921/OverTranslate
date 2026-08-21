@@ -141,4 +141,76 @@ public class DiagnosticRedactionTests
 
         Assert.Equal(elsewhere, DiagnosticBundleService.CollapseUserPaths(elsewhere));
     }
+
+    // The exported zips are kept for the same thirty days the uploaded copy gets, so that the
+    // interface can say "30 days" once without having to explain which copy it means. That makes
+    // this a deletion loop running inside the user's own data folder, which is worth pinning down.
+    [Fact]
+    public void ExportsPastTheirThirtyDays_AreDeleted()
+    {
+        var directory = NewTempFolder();
+        try
+        {
+            var old = WriteBundle(directory, "OverTranslate-diagnostics-20250101-120000.zip",
+                DateTime.UtcNow - TimeSpan.FromDays(31));
+            var fresh = WriteBundle(directory, "OverTranslate-diagnostics-20260101-120000.zip",
+                DateTime.UtcNow - TimeSpan.FromDays(29));
+
+            Assert.Equal(1, DiagnosticBundleService.PruneOldExports(directory, DateTime.UtcNow));
+
+            Assert.False(File.Exists(old));
+            Assert.True(File.Exists(fresh));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void FilesTheExportDidNotWrite_AreLeftAloneHoweverOld()
+    {
+        var directory = NewTempFolder();
+        try
+        {
+            // Someone who renamed a bundle to remember which one it was, and someone who kept a note
+            // beside it, both put those there on purpose. A cleanup that takes files it did not
+            // write is a bug that destroys data, so the name it wrote is the only licence it has.
+            var renamed = WriteBundle(directory, "the one with the crash.zip", DateTime.UtcNow.AddYears(-2));
+            var note = WriteBundle(directory, "notes.txt", DateTime.UtcNow.AddYears(-2));
+
+            Assert.Equal(0, DiagnosticBundleService.PruneOldExports(directory, DateTime.UtcNow));
+
+            Assert.True(File.Exists(renamed));
+            Assert.True(File.Exists(note));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AFolderThatWasNeverExportedTo_IsNotAnError()
+    {
+        // The first press on a fresh machine prunes before it writes, so this runs against a folder
+        // that does not exist yet every single time.
+        Assert.Equal(0, DiagnosticBundleService.PruneOldExports(
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()), DateTime.UtcNow));
+    }
+
+    private static string NewTempFolder()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ot-prune-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    private static string WriteBundle(string directory, string name, DateTime writtenUtc)
+    {
+        var path = Path.Combine(directory, name);
+        File.WriteAllText(path, "not really a zip");
+        File.SetLastWriteTimeUtc(path, writtenUtc);
+        return path;
+    }
 }

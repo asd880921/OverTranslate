@@ -958,10 +958,10 @@
                                                Style="{StaticResource OptionDescription}"
                                                Margin="2,8,0,0"/>
 
-                                    <!-- Only shown when something was actually uploaded. On the
-                                         failure path nothing left the machine, and promising that it
-                                         will be deleted in thirty days would be describing a file
-                                         that is not there. -->
+                                    <!-- Shown in both states. The copy on disk is kept for thirty
+                                         days whether or not the upload went through, so this is one
+                                         line that does not have to be read against which of the two
+                                         happened. -->
                                     <StackPanel x:Name="DiagnosticsRetentionRow"
                                                 Orientation="Horizontal"
                                                 Margin="2,10,0,0">

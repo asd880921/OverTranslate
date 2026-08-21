@@ -90,7 +90,7 @@ When "Record detailed information" is switched on in Settings, the log also reco
 
 
 
-Settings offers "Export and upload diagnostics", which packs the log files, information about the device, and the current settings into a single zip file stored with the application's own data on the user's device. API keys are replaced by a note giving only their length.
+Settings offers "Export and upload diagnostics", which packs the log files, information about the device, and the current settings into a single zip file stored with the application's own data on the user's device. API keys are replaced by a note giving only their length. That local copy is deleted automatically 30 days after it is created, whether or not it was uploaded.
 
 
 
