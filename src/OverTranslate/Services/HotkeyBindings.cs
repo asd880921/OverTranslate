@@ -12,8 +12,9 @@ public enum HotkeyAction
 }
 
 /// <summary>
-/// One physical shortcut trigger. Keyboard uses modifiers + virtual key; mouse middle has no code;
-/// gamepad stores exactly one XInput button value in <see cref="Code"/>.
+/// One physical shortcut trigger. Keyboard uses modifiers + virtual key; the mouse buttons carry no
+/// code, the button being the kind itself; gamepad stores exactly one XInput button value in
+/// <see cref="Code"/>.
 /// </summary>
 public readonly record struct ShortcutTrigger(ShortcutInputKind Kind, uint Modifiers, uint Code)
 {
@@ -23,13 +24,27 @@ public readonly record struct ShortcutTrigger(ShortcutInputKind Kind, uint Modif
     public static ShortcutTrigger MouseMiddle() =>
         new(ShortcutInputKind.MouseMiddle, 0, 0);
 
+    public static ShortcutTrigger Mouse(ShortcutInputKind kind) => new(kind, 0, 0);
+
     public static ShortcutTrigger Gamepad(GamepadShortcutButton button) =>
         new(ShortcutInputKind.Gamepad, 0, (uint)button);
+
+    /// <summary>Whether this trigger is one of the observed mouse buttons.</summary>
+    public bool IsMouse => Kind.IsMouse();
 
     public uint VirtualKey => Kind == ShortcutInputKind.Keyboard ? Code : 0;
     public GamepadShortcutButton GamepadButton => Kind == ShortcutInputKind.Gamepad
         ? (GamepadShortcutButton)Code
         : GamepadShortcutButton.None;
+}
+
+/// <summary>Which shortcut kinds the mouse hook is responsible for.</summary>
+public static class ShortcutInputKinds
+{
+    public static bool IsMouse(this ShortcutInputKind kind) => kind is
+        ShortcutInputKind.MouseMiddle or
+        ShortcutInputKind.MouseX1 or
+        ShortcutInputKind.MouseX2;
 }
 
 /// <param name="ShadowedBy">
@@ -56,9 +71,9 @@ public readonly record struct HotkeyBinding(
 /// Works out which shortcuts are live when two of them want the same physical trigger.
 /// </summary>
 /// <remarks>
-/// Keyboard combinations are registered with RegisterHotKey; mouse middle and gamepad buttons are
+/// Keyboard combinations are registered with RegisterHotKey; the mouse and gamepad buttons are
 /// observed by the application's global input listener. They all share the same conflict resolver so
-/// "mouse middle" cannot silently do two different things, and the same is true of one gamepad
+/// one mouse button cannot silently do two different things, and the same is true of one gamepad
 /// button.
 ///
 /// The keyboard half is where the cost of not resolving it shows. Windows keys a registration by
@@ -128,7 +143,7 @@ public static class HotkeyBindings
     /// Whether a trigger may be bound at all, as opposed to whether anything else has taken it.
     /// </summary>
     /// <remarks>
-    /// Only keyboard triggers can fail this: middle click and controller buttons are observed rather
+    /// Only keyboard triggers can fail this: the mouse and controller buttons are observed rather
     /// than claimed, so binding one takes nothing away from anybody — see
     /// <see cref="GlobalAuxiliaryHotkeys"/>.
     ///
@@ -148,7 +163,7 @@ public static class HotkeyBindings
         uint virtualKey,
         GamepadShortcutButton gamepadButton) => kind switch
     {
-        ShortcutInputKind.MouseMiddle => ShortcutTrigger.MouseMiddle(),
+        _ when kind.IsMouse() => ShortcutTrigger.Mouse(kind),
         ShortcutInputKind.Gamepad when gamepadButton != GamepadShortcutButton.None =>
             ShortcutTrigger.Gamepad(gamepadButton),
         // A malformed/old setting that says Gamepad but has no button is safer as the keyboard it

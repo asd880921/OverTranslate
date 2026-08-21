@@ -311,8 +311,8 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.HotkeyRecordTip">Click to record a new shortcut</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOn">Enabled</sys:String>
     <sys:String x:Key="S.Settings.HotkeyOff">Disabled</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with any key, or be a single function key, the middle mouse button, or a gamepad button.</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+F2, F8, middle mouse. On its own, a key has to be a function key; middle mouse and the gamepad leave the game's own input alone.</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with another key, and also supports a single function key, a mouse button, or a gamepad button.</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+A, F1, middle / side mouse buttons, XInput... etc.</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">Pause or resume [[realtime translation]]</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">"Pause / resume" only works while realtime translation is running. (a way to read the original text)</sys:String>
@@ -384,8 +384,10 @@ The parameter is left out of the request when this is off. Models differ — fol
 
     <!-- Settings page, composed in code-behind -->
     <sys:String x:Key="S.Settings.Saved">✓ Saved</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyPromptAnyInput">Press a keyboard key, middle mouse, or gamepad button…</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyPromptAnyInput">Press a keyboard key, a middle / side mouse button, or a gamepad button…</sys:String>
     <sys:String x:Key="S.Settings.MouseMiddle">Middle Mouse</sys:String>
+    <sys:String x:Key="S.Settings.MouseX1">Mouse Side 1</sys:String>
+    <sys:String x:Key="S.Settings.MouseX2">Mouse Side 2</sys:String>
     <sys:String x:Key="S.Settings.GamepadButton">Gamepad {0}</sys:String>
     <sys:String x:Key="S.Settings.FolderPickerTitle">Choose where to save screenshots</sys:String>
     <sys:String x:Key="S.Settings.LoggingEnvOverride">The log level is currently set by the OVERTRANSLATE_LOGLEVEL environment variable, so this option has no effect.</sys:String>

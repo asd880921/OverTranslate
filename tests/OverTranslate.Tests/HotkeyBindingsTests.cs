@@ -147,6 +147,57 @@ public class HotkeyBindingsTests
     }
 
     [Fact]
+    public void EachMouseButtonIsItsOwnTrigger()
+    {
+        // The three share a kind-only trigger with no code beside it, so nothing but the kind tells
+        // them apart — if that ever stopped holding, two shortcuts on different buttons would read
+        // as a clash and one of them would silently stop working.
+        var settings = new AppSettings
+        {
+            TranslationWindowHotkeyInputKind = ShortcutInputKind.MouseX1,
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.MouseX2,
+            QuickLookupHotkeyInputKind = ShortcutInputKind.MouseMiddle,
+        };
+
+        var resolved = HotkeyBindings.Resolve(settings);
+        Assert.All(
+            resolved.Where(b => b.Action != HotkeyAction.Capture),
+            binding => Assert.True(binding.IsActive));
+    }
+
+    [Fact]
+    public void TwoShortcutsOnTheSameSideButtonStillResolveByPriority()
+    {
+        var settings = new AppSettings
+        {
+            TranslationWindowHotkeyInputKind = ShortcutInputKind.MouseX1,
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.MouseX1,
+        };
+
+        var resolved = HotkeyBindings.Resolve(settings);
+        Assert.True(resolved.Single(b => b.Action == HotkeyAction.TranslationWindow).IsActive);
+        Assert.Equal(HotkeyAction.TranslationWindow,
+            resolved.Single(b => b.Action == HotkeyAction.RealtimePause).ShadowedBy);
+    }
+
+    [Fact]
+    public void ASideButtonSettingWinsOverAStaleGamepadButton()
+    {
+        // Switching a shortcut from the controller to the mouse leaves the old button in settings —
+        // nothing clears it — so the stored kind has to be what decides.
+        var settings = new AppSettings
+        {
+            RealtimePauseHotkeyInputKind = ShortcutInputKind.MouseX2,
+            RealtimePauseHotkeyGamepadButton = GamepadShortcutButton.Y,
+        };
+
+        var trigger = HotkeyBindings.TriggerFor(settings, HotkeyAction.RealtimePause);
+        Assert.Equal(ShortcutInputKind.MouseX2, trigger.Kind);
+        Assert.True(trigger.IsMouse);
+        Assert.Equal(GamepadShortcutButton.None, trigger.GamepadButton);
+    }
+
+    [Fact]
     public void GamepadButtonCanBeAUniqueShortcut()
     {
         var settings = new AppSettings
@@ -195,6 +246,8 @@ public class HotkeyBindingsTests
         // They are observed rather than claimed, so they take nothing away from anybody and the
         // question this rule answers does not arise.
         Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.MouseMiddle()));
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Mouse(ShortcutInputKind.MouseX1)));
+        Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Mouse(ShortcutInputKind.MouseX2)));
         Assert.True(HotkeyBindings.IsBindable(ShortcutTrigger.Gamepad(GamepadShortcutButton.Y)));
     }
 
