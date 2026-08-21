@@ -406,6 +406,12 @@
     <sys:String x:Key="S.Settings.DiagnosticsHint">匯出時會將記錄檔、系統資訊與目前設定整理成診斷檔，方便附在問題回報中。API 金鑰等敏感資訊不會包含在內，也不會自動上傳任何資料。</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">匯出診斷資訊</sys:String>
     <sys:String x:Key="S.Settings.OpenLogFolder">開啟記錄資料夾</sys:String>
+    <sys:String x:Key="S.Settings.UploadDiagnostics">匯出並上傳診斷資訊</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadHint">按下後會把記錄檔、系統資訊與目前設定整理成一個檔案（API 金鑰只會保留長度，不會包含內容），上傳後回傳一組代碼，讓你貼在問題回報中。只有你按下這顆按鈕時才會送出，上傳的檔案 30 天後自動刪除；若上傳失敗，檔案仍會保留在你的電腦上。</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">回報代碼</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsCodeHint">把這組代碼貼在問題回報中即可，不需要附加檔案。按「開啟檔案」可以看到剛才送出的完整內容。上傳的檔案 30 天後自動刪除。</sys:String>
+    <sys:String x:Key="S.Settings.CopyCode">複製</sys:String>
+    <sys:String x:Key="S.Settings.OpenBundle">開啟檔案</sys:String>
 
     <sys:String x:Key="S.Settings.AutoSaveHint">設定變更後會自動儲存</sys:String>
 
@@ -422,6 +428,14 @@
     <sys:String x:Key="S.Settings.OpenFolderFailed">✗ 無法開啟資料夾：{0}</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsExported">✓ 已匯出診斷資訊</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsFailed">✗ 無法匯出診斷資訊：{0}</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploading">正在整理並上傳…</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploaded">✓ 已上傳，代碼 {0}</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsCodeCopied">✓ 已複製代碼</sys:String>
+    <sys:String x:Key="S.Settings.CopyFailed">✗ 無法複製，請直接看上方顯示的代碼。</sys:String>
+    <sys:String x:Key="S.Settings.UploadFailedUnreachable">✗ 無法連線到上傳服務，診斷檔已保留在你的電腦，請改為手動附加。</sys:String>
+    <sys:String x:Key="S.Settings.UploadFailedTooLarge">✗ 診斷檔過大無法上傳，已保留在你的電腦，請改為手動附加。</sys:String>
+    <sys:String x:Key="S.Settings.UploadFailedRateLimited">✗ 短時間內上傳次數過多，請稍後再試，或改為手動附加已保留在電腦上的診斷檔。</sys:String>
+    <sys:String x:Key="S.Settings.UploadFailedRejected">✗ 上傳被拒絕，診斷檔已保留在你的電腦，請改為手動附加。</sys:String>
     <sys:String x:Key="S.Settings.HotkeyTaken">✗ {0} 已指派給「{1}」</sys:String>
 
 </ResourceDictionary>

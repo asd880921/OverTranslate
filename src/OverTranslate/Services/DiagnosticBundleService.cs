@@ -124,6 +124,19 @@ public static class DiagnosticBundleService
         return path;
     }
 
+    /// <summary>
+    /// Opens the bundle itself, which on Windows means Explorer showing what is inside it.
+    /// </summary>
+    /// <remarks>
+    /// The pair of <see cref="Reveal"/>, and the difference matters: Reveal answers "where is it",
+    /// which is what someone about to attach a file needs, while this answers "what is in it", which
+    /// is what someone who has just uploaded one needs.
+    /// </remarks>
+    public static void Open(string path)
+    {
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+    }
+
     /// <summary>Opens Explorer with the file already selected.</summary>
     public static void Reveal(string path)
     {
@@ -303,15 +316,18 @@ public static class DiagnosticBundleService
         sb.AppendLine($"settings  : {SettingsService.FilePath}");
         sb.AppendLine($"logs      : {LogDirectory}");
         sb.AppendLine($"exports   : {DefaultExportDirectory}");
+        // Written before any upload is attempted, so this says where it would go rather than where
+        // it went — which is the line worth having when the upload is what failed.
+        sb.AppendLine($"upload    : {(DiagnosticUploadService.IsConfigured ? DiagnosticUploadService.Endpoint : "(disabled)")}");
         sb.AppendLine();
         sb.AppendLine("=== What is in this file ===");
         sb.AppendLine("environment.txt            this file");
         sb.AppendLine("appsettings.redacted.json  your settings, with API keys replaced by their length");
         sb.AppendLine("logs/app.log               the current log; the numbered ones are older");
         sb.AppendLine();
-        sb.AppendLine("Nothing here was sent anywhere — this file was written to your disk and is");
-        sb.AppendLine("yours to read before you attach it. The log can contain text that was on your");
-        sb.AppendLine("screen while 記錄詳細資訊 was switched on.");
+        sb.AppendLine("This file was written to your disk and is yours to read. It leaves this machine");
+        sb.AppendLine("only if you pressed the button that uploads it, and never on its own. The log can");
+        sb.AppendLine("contain text that was on your screen while 記錄詳細資訊 was switched on.");
 
         return sb.ToString();
     }

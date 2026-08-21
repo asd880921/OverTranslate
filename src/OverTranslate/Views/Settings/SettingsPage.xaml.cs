@@ -15,6 +15,7 @@ using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using TextBox = System.Windows.Controls.TextBox;
 using Brush = System.Windows.Media.Brush;
 using Button = System.Windows.Controls.Button;
+using Clipboard = System.Windows.Clipboard;
 
 namespace OverTranslate.Views.Settings;
 
@@ -30,6 +31,12 @@ namespace OverTranslate.Views.Settings;
 public partial class SettingsPage : UserControl
 {
     private readonly DispatcherTimer _statusHold;
+
+    /// <summary>
+    /// The bundle written by the last press, so the row that appears afterwards can open the
+    /// thing that was just sent. Null until the first export of this session.
+    /// </summary>
+    private string? _lastBundlePath;
     private readonly DispatcherTimer _hotkeyGamepadRecordTimer;
     private readonly ushort[] _recordGamepadButtons = new ushort[4];
 
@@ -156,6 +163,7 @@ public partial class SettingsPage : UserControl
             StopRecording();
         };
 
+        ApplyDiagnosticUploadAvailability();
         LoadSettings();
     }
 
@@ -249,6 +257,22 @@ public partial class SettingsPage : UserControl
         };
         fade.Completed += (_, _) => AutoSaveHint.Opacity = 1;
         StatusText.BeginAnimation(OpacityProperty, fade);
+    }
+
+    /// <summary>
+    /// The status line for something that has started and has not finished. Neither colour fits:
+    /// green would be a claim, red an accusation, and the fade the success path uses would take the
+    /// line away while the thing it describes is still running — so this one holds until whoever
+    /// started it replaces it.
+    /// </summary>
+    private void ShowProgress(string message)
+    {
+        _statusHold.Stop();
+        StatusText.BeginAnimation(OpacityProperty, null);
+        StatusText.Text       = message;
+        StatusText.Foreground = (Brush)FindResource("AppTextSecondary");
+        StatusText.Opacity    = 1;
+        AutoSaveHint.Opacity  = 0;
     }
 
     private void ShowError(string message)
@@ -463,7 +487,21 @@ public partial class SettingsPage : UserControl
         }
     }
 
+    /// <summary>
+    /// Collects the bundle and, where an endpoint is compiled in, sends it and shows the code that
+    /// comes back.
+    /// </summary>
     /// <remarks>
+    /// One button for both halves, because the two halves are one intention: nobody collects a
+    /// diagnostic bundle for its own sake. What that costs is the chance to open the zip before it
+    /// goes — paid for by the explanation on the heading, by a label that says it uploads, and by
+    /// the row afterwards that opens what was sent.
+    ///
+    /// The upload is nested inside its own try on purpose. A failure there is not a failure of the
+    /// press: the bundle is already written, and every one of those paths ends by opening Explorer
+    /// on it — which is the whole of #126, still there for the offline machine, the blocked network
+    /// and the person who would simply rather attach it themselves.
+    ///
     /// Off the UI thread because the bundle copies and compresses every log file there is, which on
     /// a machine that has filled its five archives is a dozen megabytes — not long, but long enough
     /// to freeze the window on a slow disk, and freezing while collecting a bug report is its own
@@ -472,24 +510,130 @@ public partial class SettingsPage : UserControl
     private async void ExportDiagnosticsBtn_Click(object sender, RoutedEventArgs e)
     {
         ExportDiagnosticsBtn.IsEnabled = false;
+
+        // A code from an earlier press describes an earlier upload. Leaving it on screen through
+        // the next one invites it to be copied as though it were the new one.
+        DiagnosticsCodePanel.Visibility = Visibility.Collapsed;
+
+        var uploading = DiagnosticUploadService.IsConfigured;
         try
         {
+            if (uploading) ShowProgress(LocalizationService.Get("S.Settings.DiagnosticsUploading"));
+
             var path = await Task.Run(() => DiagnosticBundleService.Export());
+            _lastBundlePath = path;
 
-            FlashSuccess(LocalizationService.Get("S.Settings.DiagnosticsExported"));
+            if (!uploading)
+            {
+                FlashSuccess(LocalizationService.Get("S.Settings.DiagnosticsExported"));
 
-            // The real confirmation: the status line fades after a moment and cannot show a path
-            // worth reading anyway, whereas Explorer opens with the file already selected and ready
-            // to be dragged into a forum post — which is the entire point of the feature.
-            DiagnosticBundleService.Reveal(path);
+                // The real confirmation: the status line fades after a moment and cannot show a path
+                // worth reading anyway, whereas Explorer opens with the file already selected and
+                // ready to be dragged into a forum post — which is the entire point of the feature.
+                DiagnosticBundleService.Reveal(path);
+                return;
+            }
+
+            try
+            {
+                var code = await DiagnosticUploadService.UploadAsync(path);
+
+                DiagnosticsCodeText.Text = code;
+                DiagnosticsCodePanel.Visibility = Visibility.Visible;
+                FlashSuccess(LocalizationService.Format("S.Settings.DiagnosticsUploaded", code));
+            }
+            catch (DiagnosticUploadException ex)
+            {
+                ShowError(LocalizationService.Get(FailureMessageKey(ex.Reason)));
+                DiagnosticBundleService.Reveal(path);
+            }
         }
         catch (Exception ex)
         {
+            // Only the collection can land here now, and if that failed there is no file to fall
+            // back to — which is why this one still names the error.
             ShowError(LocalizationService.Format("S.Settings.DiagnosticsFailed", ex.Message));
         }
         finally
         {
             ExportDiagnosticsBtn.IsEnabled = true;
+        }
+    }
+
+    /// <summary>
+    /// Every one of these lines ends by pointing at the file still on the user's disk, because that
+    /// is what they are to do next in every case.
+    /// </summary>
+    private static string FailureMessageKey(DiagnosticUploadFailure reason) => reason switch
+    {
+        DiagnosticUploadFailure.Unreachable => "S.Settings.UploadFailedUnreachable",
+        DiagnosticUploadFailure.TooLarge    => "S.Settings.UploadFailedTooLarge",
+        DiagnosticUploadFailure.RateLimited => "S.Settings.UploadFailedRateLimited",
+        _                                   => "S.Settings.UploadFailedRejected",
+    };
+
+    /// <summary>
+    /// Points the export button and its explanation at whichever of the two stories is true for this
+    /// build: with an endpoint compiled in, one press collects and sends; without one, it collects
+    /// and nothing leaves the machine.
+    /// </summary>
+    /// <remarks>
+    /// Resource references rather than assignments, so both survive a language change — the page
+    /// rebuilds itself on one, and a plain Text assignment would come back in the old language.
+    ///
+    /// A build with no endpoint is a supported state, not a broken one: it is what every build is
+    /// until the worker is deployed, and what a user gets by setting OVERTRANSLATE_DIAG_ENDPOINT to
+    /// nothing.
+    /// </remarks>
+    private void ApplyDiagnosticUploadAvailability()
+    {
+        var configured = DiagnosticUploadService.IsConfigured;
+
+        ExportDiagnosticsLabel.SetResourceReference(
+            TextBlock.TextProperty,
+            configured ? "S.Settings.UploadDiagnostics" : "S.Settings.ExportDiagnostics");
+
+        DiagnosticsHintText.SetResourceReference(
+            TextBlock.TextProperty,
+            configured ? "S.Settings.DiagnosticsUploadHint" : "S.Settings.DiagnosticsHint");
+    }
+
+    /// <remarks>
+    /// The clipboard is a shared, lockable resource, and the one thing that must not happen is the
+    /// user walking away believing they have the code. On failure the code stays on screen and the
+    /// line says to read it from there.
+    /// </remarks>
+    private void CopyDiagnosticsCodeBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var code = DiagnosticsCodeText.Text;
+        if (string.IsNullOrEmpty(code)) return;
+
+        try
+        {
+            Clipboard.SetText(code);
+            FlashSuccess(LocalizationService.Get("S.Settings.DiagnosticsCodeCopied"));
+        }
+        catch (Exception)
+        {
+            ShowError(LocalizationService.Get("S.Settings.CopyFailed"));
+        }
+    }
+
+    /// <remarks>
+    /// Opens the zip rather than selecting it, because the question this button answers is "what did
+    /// I just send" — and Explorer shows the three files inside a zip it opens.
+    /// </remarks>
+    private void OpenDiagnosticsBundleBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lastBundlePath is null) return;
+
+        try
+        {
+            DiagnosticBundleService.Open(_lastBundlePath);
+        }
+        catch (Exception ex)
+        {
+            ShowError(LocalizationService.Format("S.Settings.OpenFolderFailed", ex.Message));
         }
     }
 
