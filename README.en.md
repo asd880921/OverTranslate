@@ -134,7 +134,7 @@ Click **Settings** in the left navigation bar, or right-click the tray icon → 
 
 ---
 
-## Translation APIs
+### Translation APIs
 
 > Apart from DeepL and OpenAI, everything else works right after you download the app.
 
@@ -177,7 +177,7 @@ Prompt parameters (the **Available parameters** block on the settings page lists
 > 
 > Turning temperature off **leaves the parameter out of the request**. Models and APIs differ in whether they accept it and in what they recommend; if the model's documentation says not to send it, turn it off. If the output misbehaves at 0, raise it as the model suggests — start at 0.1 and work up.
 
-## Multi-language OCR
+### Multi-language OCR
 
 OCR is handled by RapidOcrNet with ONNX models. The matching model is selected automatically per language — there's no need to pick an OCR engine manually.
 
