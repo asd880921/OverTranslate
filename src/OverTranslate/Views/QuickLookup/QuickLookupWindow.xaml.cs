@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using NLog;
+using OverTranslate.Layout;
 using OverTranslate.Models;
 using OverTranslate.Services;
 using OverTranslate.Views.Shell;
@@ -54,6 +55,18 @@ public partial class QuickLookupWindow : Window
     private const int BodyMs  = 150;
 
     /// <summary>
+    /// The transparent band above and below the card, in DIP.
+    /// </summary>
+    /// <remarks>
+    /// These are the top and bottom of the shadow margin on the root Grid — <c>Margin="26,24,26,30"</c>
+    /// in the XAML, which says why it is there. They have to be kept in step with it: they are what
+    /// <see cref="KeepBodyOnScreen"/> subtracts to find the card inside the window, and a stale value
+    /// would put the card that far off the edge it was told to sit against.
+    /// </remarks>
+    private const double ShadowMarginTop    = 24;
+    private const double ShadowMarginBottom = 30;
+
+    /// <summary>
     /// How often Windows is asked which window is actually in front.
     /// </summary>
     /// <remarks>
@@ -93,10 +106,14 @@ public partial class QuickLookupWindow : Window
 
     /// <summary>True while the popup is pinned, which is what keeps it through a deactivation.</summary>
     /// <remarks>
-    /// Per window and stored nowhere. Pinning answers "keep this one on screen while I work", which
-    /// is a statement about the popup in front of the user right now — a remembered pin would mean
-    /// every later summon opened a window that never goes away, which is the opposite of what this
-    /// feature is.
+    /// Pinning answers "keep this one on screen while I work". Everything it holds against is the
+    /// popup acting on its own — closing itself when attention moves, moving itself to the pointer
+    /// on the next summon — and nothing it holds against is the user: a pinned popup still drags,
+    /// and the close button still closes it.
+    ///
+    /// Per window and stored nowhere, because it is a statement about the popup in front of the
+    /// user right now. What sets it on the way in is which door was used, not what was set last
+    /// time — see <see cref="SummonAsync"/>.
     /// </remarks>
     private bool _pinned;
 
@@ -130,6 +147,17 @@ public partial class QuickLookupWindow : Window
     private Button? _ttsActiveBtn;
 
     /// <summary>
+    /// Where the popup belongs when nothing is holding it up, or null when nothing is.
+    /// </summary>
+    /// <remarks>
+    /// Physical pixels, because that is what <see cref="KeepBodyOnScreen"/> works in and what the
+    /// window was placed with. Null is the ordinary state and means "where it is now is where it
+    /// belongs"; anything that means the user has chosen a new place — a drag, a re-placement at the
+    /// pointer — sets it back to null rather than sending the popup somewhere they left.
+    /// </remarks>
+    private int? _restingTop;
+
+    /// <summary>
     /// Brings the popup up over the foreground application, carrying whatever is selected there.
     /// </summary>
     /// <remarks>
@@ -139,19 +167,39 @@ public partial class QuickLookupWindow : Window
     /// An already-open popup is refilled rather than replaced, so pressing the shortcut twice does
     /// not throw away a pin or a position the user has set.
     /// </remarks>
-    public static async Task SummonAsync()
+    /// <param name="pinned">
+    /// Whether to open the popup already pinned, which is how the two doors differ.
+    /// <para>
+    /// The shortcut is used mid-sentence, on a word, and the popup that answers it is meant to be
+    /// glanced at and gone — dismissing itself is the whole of why it costs nothing to press. The
+    /// entry on the main window is the opposite errand: the user went looking for the feature and
+    /// clicked it, and a window that disappeared while they were still turning back to their text
+    /// would look broken to someone who has not yet met the shortcut.
+    /// </para>
+    /// <para>
+    /// It only ever turns the pin on. Off is the user's word, and a shortcut press landing on a
+    /// popup they pinned must not quietly take that back.
+    /// </para>
+    /// </param>
+    public static async Task SummonAsync(bool pinned = false)
     {
         var selection = await SelectedTextReader.ReadAsync();
 
         if (_current is { _closing: false } open)
         {
             open.Refill(selection);
+            if (pinned) open.SetPinned(true);
             open.ReacquireForeground();
             return;
         }
 
         var window = new QuickLookupWindow();
         _current = window;
+
+        // Before Show: showing a window can hand activation straight back, and OnDeactivated closes
+        // an unpinned popup without asking how old it is.
+        if (pinned) window.SetPinned(true);
+
         window.Show();
         window.ReacquireForeground();
         window.Refill(selection);
@@ -281,6 +329,14 @@ public partial class QuickLookupWindow : Window
             };
         }
 
+        // The mop-up half of the lift. OnWindowPosChanging does the work, and does it atomically,
+        // but the height it is offered is the one Windows is about to apply and that is occasionally
+        // a pixel or two short of where the resize settles — enough to leave the bottom row of the
+        // card over the edge. By here the resize has landed and the window can be asked how tall it
+        // really is. A correction this small is not a movement anybody sees; the lift it is
+        // correcting already happened in the same frame as the resize.
+        SizeChanged += (_, e) => { if (e.HeightChanged) KeepBodyOnScreen(); };
+
         MouseEnter += OnPointerEnter;
         MouseLeave += OnPointerLeave;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -358,6 +414,9 @@ public partial class QuickLookupWindow : Window
     /// </remarks>
     private void PositionAtPointer()
     {
+        // A fresh placement is a new resting place, and the old one is not somewhere to go back to.
+        _restingTop = null;
+
         var pointer = System.Windows.Forms.Cursor.Position;
         var area = System.Windows.Forms.Screen.FromPoint(pointer).WorkingArea;
         var scale = ScreenGeometry.ScaleAt(pointer.X, pointer.Y);
@@ -384,6 +443,137 @@ public partial class QuickLookupWindow : Window
         Surface.RenderTransformOrigin = new Point(
             Math.Clamp((pointer.X - x) / Math.Max(w, 1), 0, 1),
             Math.Clamp((pointer.Y - y) / Math.Max(h, 1), 0, 1));
+    }
+
+    /// <remarks>
+    /// The handle is what the message hook needs, and this is the first moment there is one.
+    /// </remarks>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        if (PresentationSource.FromVisual(this) is HwndSource source)
+            source.AddHook(OnWindowPosChanging);
+    }
+
+    /// <summary>
+    /// Lifts the popup off the bottom edge while the result is open, and puts it back after.
+    /// </summary>
+    /// <remarks>
+    /// The header is the whole window until a translation arrives, and the result grows out of the
+    /// bottom of it — <c>SizeToContent="Height"</c>, so the top stays put and the window gets taller.
+    /// A popup summoned or dragged near the foot of the screen therefore grows the answer straight
+    /// off the desktop: the user typed a word, something happened, and there is nothing to read.
+    ///
+    /// Caught on the way in, in <c>WM_WINDOWPOSCHANGING</c>, rather than answered afterwards from
+    /// <c>SizeChanged</c>. Two reasons, and the first is that afterwards does not work: WPF resizes
+    /// the HWND after the layout pass, so a handler that asked Windows how tall the window was would
+    /// be told the height it had a moment ago, wave the grow through, and only catch it on some
+    /// later pass — the window visibly drops off the bottom of the screen and is then yanked back.
+    /// The second is that this is one operation instead of two: Windows is already about to move and
+    /// size this window, and editing the rectangle it is going to use means there is never a frame
+    /// where the popup has grown but not yet moved.
+    ///
+    /// The arithmetic is <see cref="QuickLookupLift"/>'s, which is where it can be tested; this is
+    /// the half that has to ask Windows where the window and the monitor actually are.
+    ///
+    /// Physical pixels throughout — which is what <c>WINDOWPOS</c> is already in, for the reason
+    /// <see cref="PositionAtPointer"/> gives.
+    /// </remarks>
+    private IntPtr OnWindowPosChanging(
+        IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != WmWindowPosChanging || _closing) return IntPtr.Zero;
+
+        var pos = Marshal.PtrToStructure<WINDOWPOS>(lParam);
+
+        // Nothing to catch when the height is not changing: our own corrections come through here
+        // as pure moves, and answering them would be a loop.
+        if ((pos.flags & SwpNoSize) != 0) return IntPtr.Zero;
+
+        var bounds = ScreenGeometry.PhysicalBounds(this);
+        if (bounds.IsEmpty) return IntPtr.Zero;
+
+        // x and y are undefined when the caller said not to move, so the window's own position is
+        // what the new height has to be judged against.
+        var moving = (pos.flags & SwpNoMove) == 0;
+        var left = moving ? pos.x : bounds.Left;
+        var top  = moving ? pos.y : bounds.Top;
+
+        // A drag arrives here as a move that carries the size along with it, one message per step,
+        // and pos.y is where the drag wants the window rather than where it has been allowed to sit.
+        // That is the definition of the resting place, so each step replaces it: without this, the
+        // first step that overflowed would be remembered as home and the rest of the drag ignored.
+        if (moving) _restingTop = null;
+
+        var area = System.Windows.Forms.Screen.FromRectangle(bounds).WorkingArea;
+        var scale = ScreenGeometry.ScaleAt(left, top);
+
+        // The card may go all the way to the edge; the window may go further, because the last
+        // ShadowMargin* pixels of it are the transparent border the shadow fades out into. Holding
+        // the window itself inside the work area would keep the card that much clear of the bottom
+        // of every screen, which is a band of empty desktop under a popup for no stated reason.
+        var (wanted, resting) = QuickLookupLift.Place(
+            top,
+            _restingTop,
+            pos.cy,
+            area.Top - (int)Math.Round(ShadowMarginTop * scale),
+            area.Bottom + (int)Math.Round(ShadowMarginBottom * scale));
+
+        _restingTop = resting;
+
+        if (wanted == top) return IntPtr.Zero;
+
+        pos.x = left;
+        pos.y = wanted;
+        pos.flags &= ~SwpNoMove;
+        Marshal.StructureToPtr(pos, lParam, fDeleteOld: false);
+
+        return IntPtr.Zero;
+    }
+
+    /// <summary>Re-checks the fit after something moved the window without resizing it.</summary>
+    /// <remarks>
+    /// <see cref="OnWindowPosChanging"/> only hears about resizes, and a drag is not one. Reading
+    /// the height back from the window is safe here for the same reason it is wrong there: nothing
+    /// is in flight, so what Windows reports is what is on the screen.
+    /// </remarks>
+    private void KeepBodyOnScreen()
+    {
+        if (_closing) return;
+
+        var bounds = ScreenGeometry.PhysicalBounds(this);
+        if (bounds.IsEmpty) return;
+
+        var area = System.Windows.Forms.Screen.FromRectangle(bounds).WorkingArea;
+        var scale = ScreenGeometry.ScaleAt(bounds.Left, bounds.Top);
+
+        var (top, resting) = QuickLookupLift.Place(
+            bounds.Top,
+            _restingTop,
+            bounds.Height,
+            area.Top - (int)Math.Round(ShadowMarginTop * scale),
+            area.Bottom + (int)Math.Round(ShadowMarginBottom * scale));
+
+        _restingTop = resting;
+
+        if (top != bounds.Top) ScreenGeometry.MoveToPhysical(this, bounds.Left, top);
+    }
+
+    private const int WmWindowPosChanging = 0x0046;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WINDOWPOS
+    {
+        public IntPtr hwnd;
+        public IntPtr hwndInsertAfter;
+        public int x;
+        public int y;
+        public int cx;
+        public int cy;
+        public uint flags;
     }
 
     /// <remarks>
@@ -591,15 +781,14 @@ public partial class QuickLookupWindow : Window
     /// want it to stay there — but the pin is on the header at all times now, so the guess buys
     /// nothing, and a window that pins itself is one the user has to notice and undo.
     ///
-    /// The relationship runs the other way instead: pinning stops the dragging.
+    /// Pinning does not stop dragging either, which it briefly did. A pinned popup is the one the
+    /// user is going to keep for a while, so it is the one they most need to move out of the way of
+    /// what they are reading — locking it in place took that away from exactly the case that wanted
+    /// it. What the pin holds against is the popup moving on its own, which is a different thing
+    /// from the user moving it: see <see cref="Refill"/>.
     /// </remarks>
     private void Surface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // Pinning fixes the window where it is, so it also takes dragging away: the same pin already
-        // stops a later summon from moving the popup to the pointer, and a pin that held against one
-        // way of moving it but not the other would mean two different things.
-        if (_pinned) return;
-
         try
         {
             DragMove();
@@ -609,16 +798,24 @@ public partial class QuickLookupWindow : Window
             // DragMove throws when the button is already up by the time it runs, which a fast click
             // can manage. There is nothing to move and nothing to report.
         }
+
+        // Nothing to do afterwards. Windows sends the drag through OnWindowPosChanging step by step,
+        // so the popup has been kept on screen the whole way down and the place they let go of it is
+        // already recorded. Resetting anything here would throw that away.
     }
 
-    private void PinBtn_Click(object sender, RoutedEventArgs e)
+    private void PinBtn_Click(object sender, RoutedEventArgs e) => SetPinned(!_pinned);
+
+    /// <summary>Sets the pin and redraws the header, which is the only thing that reports it.</summary>
+    private void SetPinned(bool pinned)
     {
-        _pinned = !_pinned;
+        _pinned = pinned;
         RenderChrome();
     }
 
     /// <summary>
-    /// Settles the header's quiet controls against where the pointer is and whether it is pinned.
+    /// Settles the header against where the pointer is, whether it is pinned, and whether the box
+    /// has anything in it.
     /// </summary>
     /// <remarks>
     /// The pin is always on the header. It was faded in on hover while dragging was the main way to
@@ -645,9 +842,29 @@ public partial class QuickLookupWindow : Window
         SourceTextBox.SetResourceReference(
             BorderBrushProperty, showField ? "AppInputBorder" : "AppSurfaceBg");
 
-        Placeholder.Visibility = SourceTextBox.Text.Length == 0
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        var empty = SourceTextBox.Text.Length == 0;
+        Placeholder.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+
+        // On the text alone, not on the pointer, unlike everything else this method settles. The
+        // controls above are chrome the user goes looking for; this one is the answer to a box that
+        // already has the wrong words in it, and it has to be there when they look down at it.
+        ClearBtn.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <remarks>
+    /// Cleared through the selection rather than by assigning Text, so it lands on the TextBox's own
+    /// undo stack and Ctrl+Z puts the text back — the same reasoning as 文字翻譯's clear button, and
+    /// it applies harder here: the text this destroys is usually a selection the user carried in
+    /// from somewhere else, and retyping it means going back for it.
+    /// </remarks>
+    private void ClearBtn_Click(object sender, RoutedEventArgs e)
+    {
+        SourceTextBox.SelectAll();
+        SourceTextBox.SelectedText = "";
+
+        // They cleared it in order to type something else, and the button they clicked has just
+        // gone — without this they would have to click into the box before typing.
+        SourceTextBox.Focus();
     }
 
     // ══════════════════════════ Translating ══════════════════════════
@@ -756,18 +973,25 @@ public partial class QuickLookupWindow : Window
         ShowResult();
     }
 
-    // ══════════════════════════ Reading aloud ══════════════════════════
-
     /// <summary>
-    /// The language 朗讀原文 would read in, or empty when there is not one yet.
+    /// What language the text in the box is actually in, or empty when nobody knows yet.
     /// </summary>
+    /// <remarks>
+    /// The picker's own value answers this except when it says 自動, which is its default and the
+    /// setting most people never touch — so on its own it is unknown most of the time. The engine's
+    /// answer is what fills that in, and the two callers are the two places where 自動 is not an
+    /// answer they can use: 朗讀原文 has to pick a voice, and <see cref="SwapBtn_Click"/> has to put
+    /// something on the target side.
+    /// </remarks>
     /// <inheritdoc cref="_detectedLang"/>
-    private string SourceVoiceLanguage()
+    private string EffectiveSourceLanguage()
     {
         var chosen = SrcLangBox.SelectedValue as string;
         if (!LanguageData.IsAutomaticSource(chosen)) return LanguageData.GetValidSourceCode(chosen);
         return _detectedLang;
     }
+
+    // ══════════════════════════ Reading aloud ══════════════════════════
 
     /// <summary>
     /// Settles 朗讀原文 against whether there is a language to read the original in.
@@ -791,7 +1015,7 @@ public partial class QuickLookupWindow : Window
             LanguageData.IsAutomaticSource(SrcLangBox.SelectedValue as string);
 
         var available = !openAiAutomatic &&
-                        SourceVoiceLanguage().Length > 0 &&
+                        EffectiveSourceLanguage().Length > 0 &&
                         SourceTextBox.Text.Length > 0;
 
         SrcTtsBtn.IsEnabled = available;
@@ -807,7 +1031,7 @@ public partial class QuickLookupWindow : Window
     }
 
     private async void SrcTtsBtn_Click(object sender, RoutedEventArgs e)
-        => await ToggleTtsAsync(SrcTtsBtn, SourceTextBox.Text, SourceVoiceLanguage());
+        => await ToggleTtsAsync(SrcTtsBtn, SourceTextBox.Text, EffectiveSourceLanguage());
 
     private async void TgtTtsBtn_Click(object sender, RoutedEventArgs e)
         => await ToggleTtsAsync(
@@ -961,7 +1185,17 @@ public partial class QuickLookupWindow : Window
     private void LangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressAuto) return;
+        ApplyLanguagePair();
+    }
 
+    /// <summary>Saves the pair as the shared preference and re-translates under it.</summary>
+    /// <remarks>
+    /// Its own method because <see cref="SwapBtn_Click"/> moves both pickers and must not do this
+    /// twice: reading either half while the other has already moved would save a pair the user never
+    /// chose, and send a translation off under it.
+    /// </remarks>
+    private void ApplyLanguagePair()
+    {
         var settings = SettingsService.Instance.Current;
         settings.SourceLanguage = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
         settings.TargetLanguage = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
@@ -971,6 +1205,74 @@ public partial class QuickLookupWindow : Window
         _detectedLang = "";
         RenderSourceTtsAvailability();
         RequestTranslate();
+    }
+
+    /// <summary>
+    /// Turns the pair around, carrying the translation back into the box as the new original.
+    /// </summary>
+    /// <remarks>
+    /// The languages alone would not be a swap here, which is where this parts company with
+    /// 截圖翻譯's toolbar button. There the source text is the screen and cannot move; here it is a
+    /// box with a word in it, and turning the pair around without turning the text around leaves the
+    /// popup translating 「hello」 out of 繁體中文 — a round trip through the wrong direction, which
+    /// is not what anybody presses this for. 文字翻譯 swaps both for the same reason.
+    ///
+    /// 自動 is the source language most of the time, and it cannot move to the target side: there is
+    /// no such thing as translating into "whatever". <see cref="EffectiveSourceLanguage"/> is what
+    /// makes the button work from there anyway — the engine has already said what the original was,
+    /// and that answer is what goes across.
+    /// </remarks>
+    private void SwapBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // Both read before anything moves: the detected language describes the text that is about to
+        // stop being the original, and ApplyLanguagePair clears it.
+        var srcVal = EffectiveSourceLanguage();
+        var tgtVal = TgtLangBox.SelectedValue as string;
+
+        _suppressAuto = true;
+
+        if (TranslatedText.Text.Length > 0)
+        {
+            var wasOriginal = SourceTextBox.Text;
+
+            // Through the selection, so Ctrl+Z puts the original back — the same reason 清除 does it
+            // that way, and the same text at stake: usually something carried in from another window.
+            SourceTextBox.SelectAll();
+            SourceTextBox.SelectedText = TranslatedText.Text;
+
+            // Shown flipped now rather than left saying the old thing until the round trip lands.
+            // Translating a translation back gives the text it came from, so this already is the
+            // answer; waiting for the engine to agree would just read as lag.
+            TranslatedText.Text = wasOriginal;
+        }
+
+        // Anything already in flight was asked under the old pair and would overwrite both.
+        _seq++;
+
+        // Target → source. ZH-HANT has to stay traditional rather than collapse to ZH, which is what
+        // the mapping is for.
+        if (tgtVal != null)
+        {
+            SrcLangBox.SelectedValue = LanguageData.MapTargetToSourceCode(tgtVal);
+            if (SrcLangBox.SelectedValue == null) SrcLangBox.SelectedIndex = 0;
+        }
+
+        // Source → target. With 自動 and nothing detected — an empty box, or an engine that has not
+        // answered — there is nothing to carry across, and English is the fallback: it is what most
+        // of what people point this at is written in, and it is one click to correct.
+        TgtLangBox.SelectedValue = LanguageData.MapSourceToTargetCode(
+            srcVal.Length > 0 ? srcVal : "EN");
+        if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = 0;
+
+        _suppressAuto = false;
+
+        ApplyLanguagePair();
+
+        // The box holds text the user may well want to edit now, and the click left the caret on a
+        // button. Caret after Focus, which selects the whole box on its own when focus arrives
+        // programmatically — see Refill.
+        SourceTextBox.Focus();
+        SourceTextBox.CaretIndex = SourceTextBox.Text.Length;
     }
 
     private void ProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

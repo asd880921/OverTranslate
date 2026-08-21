@@ -227,16 +227,20 @@
                            VerticalAlignment="Center"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
-                    <!-- The box and its placeholder share one cell, so the prompt sits exactly where
-                         the first character will land. -->
+                    <!-- The box, its placeholder and its clear button share one cell, so the prompt
+                         sits exactly where the first character will land and the button sits inside
+                         the field rather than beside it. -->
                     <Grid Grid.Column="1">
+                        <!-- The right padding is the clear button's room, and it is held whether or
+                             not the button is showing: reclaiming it on an empty box would slide
+                             every character sideways on the keystroke that empties it. -->
                         <TextBox x:Name="SourceTextBox"
                                  Style="{StaticResource ModernTextBox}"
                                  Background="Transparent"
                                  BorderBrush="Transparent"
                                  Height="34"
                                  FontSize="15"
-                                 Padding="8,0"
+                                 Padding="8,0,30,0"
                                  TextChanged="SourceTextBox_TextChanged"/>
 
                         <!-- Fainter than secondary text: this is a prompt standing in for content
@@ -251,6 +255,33 @@
                                    IsHitTestVisible="False"
                                    Margin="10,0,0,0"
                                    VerticalAlignment="Center"/>
+
+                        <!-- Only present when there is something to clear, the same rule 文字翻譯
+                             gives its own clear button: a button that cannot do anything should not
+                             be sitting in the field.
+
+                             Focusable="False" because the box behind it must keep the caret. The
+                             header draws the field filled only while it holds keyboard focus (see
+                             RenderChrome), so a button that took focus would blank the field's own
+                             background at the moment it is being used.
+
+                             Same glyph and size as 文字翻譯's, and deliberately not the 關閉 X in
+                             this header: two identical marks in one row, one clearing a word and
+                             one closing the window, is a slip waiting to happen. -->
+                        <Button x:Name="ClearBtn"
+                                Content="&#xE8BB;"
+                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                FontSize="9"
+                                Width="24" Height="24" Padding="0"
+                                Margin="0,0,5,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource IconButton}"
+                                Focusable="False"
+                                Visibility="Collapsed"
+                                ToolTip="{DynamicResource S.Translation.ClearSource}"
+                                AutomationProperties.Name="{DynamicResource S.Translation.ClearSource}"
+                                Click="ClearBtn_Click"/>
                     </Grid>
 
                     <Rectangle Grid.Column="2"
@@ -264,16 +295,25 @@
                                   Width="78"
                                   SelectedValuePath="Code"/>
 
-                        <!-- Quieter than the two names it sits between: it is punctuation, not a
-                             third thing to read, and at the same weight it was the darkest mark in
-                             a header made of light ones. -->
-                        <TextBlock Text="→"
-                                   FontFamily="{StaticResource AppFont}"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource AppTextSecondary}"
-                                   Opacity="0.45"
-                                   VerticalAlignment="Center"
-                                   Margin="4,1,4,0"/>
+                        <!-- Was a → held at 0.45 opacity, on the reasoning that it was punctuation
+                             rather than a third thing to read. It is a control now, so it is drawn
+                             at the same weight as the pin, gear and close beside it: a button faded
+                             to nearly half is one nobody tries to press.
+
+                             ⇄ in the interface font rather than 截圖翻譯's icon-font glyph, because
+                             what it replaces is a typographic mark between two words and the row is
+                             built out of light text — the same swap 文字翻譯 puts between its two
+                             pickers, which is where someone would have met this before. -->
+                        <Button Content="⇄"
+                                Style="{StaticResource IconButton}"
+                                FontFamily="{StaticResource AppFont}"
+                                FontSize="13"
+                                Width="24" Height="26" Padding="0"
+                                Margin="2,0"
+                                VerticalAlignment="Center"
+                                ToolTip="{DynamicResource S.Translation.SwapTip}"
+                                AutomationProperties.Name="{DynamicResource S.Translation.SwapTip}"
+                                Click="SwapBtn_Click"/>
 
                         <ComboBox x:Name="TgtLangBox"
                                   Style="{StaticResource QuietComboBox}"

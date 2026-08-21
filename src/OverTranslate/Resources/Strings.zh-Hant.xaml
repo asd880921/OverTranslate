@@ -84,11 +84,11 @@
     <sys:String x:Key="S.Translation.SwapTip">對調語言與內容</sys:String>
     <sys:String x:Key="S.Translation.ClearSource">清除原文</sys:String>
     <sys:String x:Key="S.Translation.SpeakSource">朗讀原文</sys:String>
-    <!-- 朗讀鈕在自動模式下是停用的，這句就是使用者唯一能得知原因的地方 —— TtsService 把「自動」對應
-         到中文語音，英日韓原文會被用中文口音唸出來。 -->
-    <sys:String x:Key="S.Translation.SpeakSourceAutomatic">來源語言設為「自動」時，無法使用原文朗讀。</sys:String>
-    <!-- 標題列裡的短版，寬度吃緊時會被截斷，完整句子留在上面那個 tooltip。 -->
-    <sys:String x:Key="S.Translation.SpeakSourceAutomaticShort">自動偵測無法使用語音</sys:String>
+    <!-- 來源語言為「自動」時，朗讀原文靠的是引擎回報的偵測結果；OpenAI 相容服務不會回報，所以那個
+         組合是唯一永遠等不到答案、必須直接停用的狀態，這句就是使用者唯一能得知原因的地方。 -->
+    <sys:String x:Key="S.Translation.SpeakSourceOpenAi">使用 OpenAI 翻譯服務時，請先指定來源語言，才能朗讀原文。</sys:String>
+    <!-- 另一種還沒有語言可用的狀態：引擎只是還沒回答，等翻譯回來就會好，所以只給 tooltip 不給短註記。 -->
+    <sys:String x:Key="S.Translation.SpeakSourceUnknown">還不知道原文是什麼語言，翻譯完成後就可以朗讀。</sys:String>
     <sys:String x:Key="S.Translation.Source">原文</sys:String>
     <sys:String x:Key="S.Translation.SpeakResult">朗讀譯文</sys:String>
     <sys:String x:Key="S.Translation.Result">譯文</sys:String>
@@ -103,7 +103,7 @@
     <sys:String x:Key="S.QuickLookup.Placeholder">輸入要翻譯的文字…</sys:String>
     <sys:String x:Key="S.QuickLookup.Settings">取詞翻譯設定</sys:String>
     <sys:String x:Key="S.QuickLookup.BackToResult">返回翻譯結果</sys:String>
-    <sys:String x:Key="S.QuickLookup.Pin">釘選，點到別處也不關閉</sys:String>
+    <sys:String x:Key="S.QuickLookup.Pin">釘選後，可避免視窗自動關閉</sys:String>
     <sys:String x:Key="S.QuickLookup.Unpin">取消釘選</sys:String>
     <sys:String x:Key="S.QuickLookup.Copy">複製</sys:String>
     <sys:String x:Key="S.QuickLookup.Copied">已複製</sys:String>

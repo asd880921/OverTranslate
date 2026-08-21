@@ -304,13 +304,45 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(() => Views.Realtime.RealtimeSessionController.Instance.TogglePause());
 
     /// <summary>
-    /// Brings 取詞翻譯's popup up over whatever the user is reading.
+    /// Brings 取詞翻譯's popup up over whatever the user is reading, unpinned.
     /// </summary>
     /// <remarks>
     /// Not a toggle, unlike the shortcut below it: pressed again it refills the popup with the new
     /// selection rather than dismissing it, because the popup already goes away on its own and the
     /// thing a second press means is "this word now".
     ///
+    /// Unpinned, because dismissing itself is what makes this shortcut cheap to press: it is used
+    /// on a word mid-sentence, and a popup left behind after every press would be litter the user
+    /// has to clear. <see cref="StartQuickLookupFromShell"/> is the door that opens it pinned.
+    /// </remarks>
+    private void OnQuickLookupHotkeyPressed(object? sender, EventArgs e) =>
+        StartQuickLookup(pinned: false);
+
+    /// <summary>
+    /// Opens 取詞翻譯 from the shell window's nav rail, pinned.
+    /// </summary>
+    /// <remarks>
+    /// Through <see cref="StartQuickLookup"/> rather than calling <c>SummonAsync</c> itself: the two
+    /// states a popup must not appear in are about the screen, not about which control asked, and a
+    /// second entry point with its own guards is one that can fall out of step with them. The rail's
+    /// own button being disabled during a realtime session is a presentation detail on top of this,
+    /// not a replacement for it.
+    ///
+    /// Pinned, which is the one thing this door does differently. Someone arriving by the shortcut
+    /// has already been told what it does; someone who found the feature in the nav rail is meeting
+    /// it, and a popup that dismissed itself the moment they looked back at their text would be a
+    /// rule they were never told — they would press the button again, and again. The pin is on the
+    /// popup's own header for them to turn off once they know.
+    ///
+    /// The shell stays where it is. Unlike a capture, this puts a popup over the screen rather than
+    /// photographing it, so there is nothing to get out of the way of.
+    /// </remarks>
+    public void StartQuickLookupFromShell() => StartQuickLookup(pinned: true);
+
+    /// <summary>
+    /// The one way in to 取詞翻譯, holding the guards both doors have to pass.
+    /// </summary>
+    /// <remarks>
     /// Turned away in the two states where a window of ours must not appear, and for two different
     /// reasons. During a capture the user is framing or reading a screen of their own and a popup
     /// dropped into it takes the foreground away mid-gesture — the same reason the translation
@@ -320,29 +352,14 @@ public partial class MainWindow : Window
     /// translating this window's text back to the user. That one is announced, because the shortcut
     /// is otherwise available everywhere and silence would read as breakage.
     /// </remarks>
-    private void OnQuickLookupHotkeyPressed(object? sender, EventArgs e) =>
+    private void StartQuickLookup(bool pinned) =>
         Dispatcher.Invoke(async () =>
         {
             if (HasActiveSession) return;
             if (RefuseWhileRealtimeRuns()) return;
 
-            await Views.QuickLookup.QuickLookupWindow.SummonAsync();
+            await Views.QuickLookup.QuickLookupWindow.SummonAsync(pinned);
         });
-
-    /// <summary>
-    /// Opens 取詞翻譯 from the shell window's nav rail.
-    /// </summary>
-    /// <remarks>
-    /// Straight through <see cref="OnQuickLookupHotkeyPressed"/> rather than calling
-    /// <c>SummonAsync</c> itself: the two states a popup must not appear in are about the screen,
-    /// not about which control asked, and a second entry point with its own guards is one that can
-    /// fall out of step with them. The rail's own button being disabled during a realtime session
-    /// is a presentation detail on top of this, not a replacement for it.
-    ///
-    /// The shell stays where it is. Unlike a capture, this puts a popup over the screen rather than
-    /// photographing it, so there is nothing to get out of the way of.
-    /// </remarks>
-    public void StartQuickLookupFromShell() => OnQuickLookupHotkeyPressed(this, EventArgs.Empty);
 
     /// <summary>
     /// Opens the translation window, and during a realtime session brings its layers to the front
