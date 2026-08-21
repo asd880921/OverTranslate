@@ -69,7 +69,8 @@ screen capture needs Windows 11 24H2 or later, window capture needs Windows 10 1
 
 ### Translation Block Modes (area selection)
 
-> Real-time translation currently supports a single monitor only, and allows up to 3 translation blocks at the same time.
+> While real-time translation is running, use the hotkey (default Ctrl + Alt + S) to pause / resume translation,  
+> When a screen doesn't need translating, or when you want to read the original text, pause first and resume later — there's no need to shut down real-time translation.
 
 Each translation block can be set individually to **Subtitles / Dialogue** or **Game / UI** mode, so the recognition method matches the type of content on screen.  
 **Subtitles / Dialogue**: for scenes where the text stays in one place, such as video subtitles and game dialogue (1 block recommended).
@@ -85,9 +86,6 @@ Each translation block can be set individually to **Subtitles / Dialogue** or **
 | Selection | Translation result |
 |-----------|--------------------|
 | ![Real-time translation - game selection](docs/images/即時翻譯-遊戲翻譯框.png) | ![Real-time translation - game result](docs/images/即時翻譯-遊戲翻譯.png) |
-
-> While real-time translation is running, use the hotkey (default Ctrl + Alt + S) to pause / resume translation,  
-> When a screen doesn't need translating, or when you want to read the original text, pause first and resume later — there's no need to shut down real-time translation.
 
 ## Quick Lookup
 > The hotkey (default `Ctrl + Alt + Q`) opens it on top of whatever is on screen.
@@ -156,6 +154,8 @@ when a translation service is unavailable or responds too slowly, the app automa
 > The fallback mechanism is not triggered when using **OpenAI**.
 
 ### OpenAI settings
+
+![OpenAI settings](docs/images/OpenAI.png)
 
 | Setting | Description |
 |---------|-------------|
