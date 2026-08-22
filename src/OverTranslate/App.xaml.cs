@@ -75,6 +75,11 @@ public partial class App
         // 記錄詳細資訊 gets the detail from startup onwards rather than from their next toggle.
         LogLevelService.Apply(SettingsService.Instance.Current.VerboseLogging);
 
+        // Straight after the log level and before anything else runs, so the identity is on the
+        // first lines of every session's log rather than turning up partway down whichever of them
+        // happened to reach it first.
+        AppIdentityService.Initialize();
+
         ThemeService.Apply(SettingsService.Instance.Current.Theme);
 
         // Before any window is built, so nothing is ever constructed against the wrong dictionary.
