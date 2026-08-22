@@ -272,7 +272,8 @@ public partial class ToolbarWindow : Window
     public void RequestTranslate()
     {
         if (_isBusy) return;
-        TranslateRequested?.Invoke(this, new TranslateRequest(CurrentSourceLang, CurrentTargetLang));
+        TranslateRequested?.Invoke(this, new TranslateRequest(
+            CurrentSourceLang, CurrentTargetLang, IsVerticalText));
     }
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
@@ -494,4 +495,4 @@ public partial class ToolbarWindow : Window
     }
 }
 
-public record TranslateRequest(string SourceLang, string TargetLang);
+public record TranslateRequest(string SourceLang, string TargetLang, bool IsVerticalText);
