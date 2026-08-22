@@ -121,7 +121,8 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Toolbar.ShowSource">Show source</sys:String>
     <sys:String x:Key="S.Toolbar.ShowTranslation">Show translation</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">Screenshot</sys:String>
-    <sys:String x:Key="S.Toolbar.OpenWindow">Open in window</sys:String>
+    <sys:String x:Key="S.Toolbar.OpenWindow">Window</sys:String>
+    <sys:String x:Key="S.Toolbar.OpenWindowHint">Open this translation in a window</sys:String>
     <sys:String x:Key="S.Toolbar.Swap">Swap source and target languages</sys:String>
     <sys:String x:Key="S.Toolbar.Close">End screenshot translation</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">Writing direction of the source</sys:String>

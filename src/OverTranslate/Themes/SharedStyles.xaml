@@ -1303,6 +1303,36 @@
     <Style x:Key="ToolbarComboBox" TargetType="ComboBox" BasedOn="{StaticResource ModernComboBox}">
         <Setter Property="Height"      Value="30"/>
         <Setter Property="FontSize"    Value="12"/>
+
+        <!-- The list shows a language both ways, the closed box shows one. The pair is there to be
+             scanned: someone hunting through thirty languages wants to find theirs by either name.
+             Once it is chosen there is nothing left to scan, and "繁體中文 Traditional Chinese" sitting
+             in a 132px box was a label that could not even finish saying itself — it was shown as
+             "繁體中文 Traditi…". The name alone fits, and the bar gets the rest of the width back.
+
+             One template does both, because ComboBox draws the closed box from ItemTemplate as well
+             as the list. The two are told apart by what is above them: an item in the list is inside
+             a ComboBoxItem, the closed box is not, so a missing ancestor is what says "this is the
+             closed one". Nothing about the list changes — open it and it is the same list as before.
+
+             ToolbarComboBox only. The settings pages keep the pair everywhere, where there is room
+             for it and the pickers are read rather than glanced at. -->
+        <Setter Property="ItemTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock x:Name="Label"
+                               Text="{Binding Display}"
+                               FontFamily="{StaticResource AppFont}"
+                               TextTrimming="CharacterEllipsis"/>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Value="{x:Null}"
+                                     Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}}">
+                            <Setter TargetName="Label" Property="Text" Value="{Binding ShortName}"/>
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->

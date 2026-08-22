@@ -61,6 +61,15 @@ public record ProviderItem(
 {
     public string Display => LocalizationService.Get(DisplayKey);
     public string? Hint => HintKey is null ? null : LocalizationService.Get(HintKey);
+
+    /// <summary>The same name, because a provider only has the one.</summary>
+    /// <remarks>
+    /// Carried so the pickers can ask every item they hold for a short name without having to know
+    /// which kind of item it is — <see cref="LangItem.ShortName"/> is the one that differs. Without
+    /// it the capture toolbar's provider box binds to a property that is not there and shows
+    /// nothing at all.
+    /// </remarks>
+    public string ShortName => Display;
 }
 
 public static class LanguageData

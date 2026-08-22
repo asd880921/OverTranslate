@@ -127,7 +127,8 @@
     <sys:String x:Key="S.Toolbar.ShowSource">顯示原文</sys:String>
     <sys:String x:Key="S.Toolbar.ShowTranslation">顯示譯文</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">截圖</sys:String>
-    <sys:String x:Key="S.Toolbar.OpenWindow">開啟翻譯視窗</sys:String>
+    <sys:String x:Key="S.Toolbar.OpenWindow">翻譯視窗</sys:String>
+    <sys:String x:Key="S.Toolbar.OpenWindowHint">在視窗中開啟這次的翻譯結果</sys:String>
     <sys:String x:Key="S.Toolbar.Swap">對調原文與譯文語言</sys:String>
     <sys:String x:Key="S.Toolbar.Close">結束截圖翻譯</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">原文的書寫方向</sys:String>

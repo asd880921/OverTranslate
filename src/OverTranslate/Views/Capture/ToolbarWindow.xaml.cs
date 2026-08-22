@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Models;
@@ -82,6 +84,7 @@ public partial class ToolbarWindow : Window
 
         InitializeComponent();
         InitializeSelectors(sourceLang, targetLang);
+        SizeSelectorsToClosedLabels();
 
         // Attach after initial values are set so initialization doesn't trigger a save
         SrcLangBox.SelectionChanged  += SrcLangBox_SelectionChanged;
@@ -425,6 +428,51 @@ public partial class ToolbarWindow : Window
         TgtLangBox.SelectedValue  = LanguageData.GetValidTargetCode(targetLang);
         ProviderBox.SelectedValue = SettingsService.Instance.Current.Provider;
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
+    }
+
+    /// <summary>
+    /// Gives each picker exactly the width its closed label needs, measured from the longest entry
+    /// it could be showing.
+    /// </summary>
+    /// <remarks>
+    /// <para>A ComboBox left to size itself measures every item in its list, which for the language
+    /// pickers means a box wide enough for 斯洛文尼亞語 spelled out both ways — so these carried a
+    /// number typed into the markup instead. A typed number is a guess about text nobody measured:
+    /// 132 was too narrow for the label it was given in Chinese and too wide for the one in English,
+    /// and it could only ever be wrong in one of them.</para>
+    ///
+    /// <para>Measuring the closed labels answers both at once, in whatever language the interface is
+    /// in, and it is the narrowest the box can be without clipping anything the user might pick. The
+    /// list is unaffected — it opens as wide as its own contents, as it always did.</para>
+    ///
+    /// <para>Run once, in the constructor: the toolbar lives for one capture session and the
+    /// interface language cannot change underneath it.</para>
+    /// </remarks>
+    private void SizeSelectorsToClosedLabels()
+    {
+        double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+
+        SrcLangBox.Width  = ClosedWidth(SrcLangBox, LanguageData.OcrSourceLanguages.Select(l => l.ShortName));
+        TgtLangBox.Width  = ClosedWidth(TgtLangBox, LanguageData.TargetLanguages.Select(l => l.ShortName));
+        ProviderBox.Width = ClosedWidth(ProviderBox, LanguageData.Providers.Select(p => p.ShortName));
+
+        double ClosedWidth(System.Windows.Controls.ComboBox box, IEnumerable<string> labels)
+        {
+            var typeface = new Typeface(box.FontFamily, box.FontStyle, box.FontWeight, box.FontStretch);
+            double widest = labels.Max(label => new FormattedText(
+                label,
+                CultureInfo.CurrentUICulture,
+                System.Windows.FlowDirection.LeftToRight,
+                typeface,
+                box.FontSize,
+                System.Windows.Media.Brushes.Black,
+                dpi).WidthIncludingTrailingWhitespace);
+
+            // The label sits in ModernComboBox's ContentSite, inset 9 on the left and 28 on the
+            // right to clear the arrow, inside a 1px border either side. The last pixel is for
+            // rounding: half a pixel short is a whole character replaced by an ellipsis.
+            return Math.Ceiling(widest) + 9 + 28 + 2 + 1;
+        }
     }
 
     private void SaveCurrentLanguageSelection()

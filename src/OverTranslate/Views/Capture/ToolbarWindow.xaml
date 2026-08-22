@@ -73,10 +73,11 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- Source language (140px - fits longest entry + arrow) -->
+                    <!-- Source language. Width comes from SizeSelectorsToClosedLabels, not from here:
+                         what these boxes show when closed depends on the interface language, and a
+                         number typed in the markup is a guess about a string it cannot see. -->
                     <ComboBox x:Name="SrcLangBox"
                               Style="{StaticResource ToolbarComboBox}"
-                              Width="132"
                               SelectedValuePath="Code"
                               VerticalContentAlignment="Center"/>
 
@@ -93,7 +94,6 @@
                     <!-- Target language -->
                     <ComboBox x:Name="TgtLangBox"
                               Style="{StaticResource ToolbarComboBox}"
-                              Width="132"
                               Margin="0,0,6,0"
                               SelectedValuePath="Code"
                               VerticalContentAlignment="Center"/>
@@ -101,7 +101,6 @@
                     <!-- Provider -->
                     <ComboBox x:Name="ProviderBox"
                               Style="{StaticResource ToolbarComboBox}"
-                              Width="142"
                               SelectedValuePath="Provider"
                               VerticalContentAlignment="Center"/>
 
@@ -254,10 +253,14 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- Open translation window -->
+                    <!-- Open translation window. Named for what it opens rather than for the opening:
+                         every button on this bar does something when pressed, so 開啟 was a word spent
+                         on the one thing the user already knows, and it cost the bar the width of two
+                         characters. The tooltip still says the whole sentence for anyone who wants it. -->
                     <Button x:Name="OpenWindowBtn"
                             Style="{StaticResource ToolbarStackRaisedButton}"
                             Margin="6,0,0,0"
+                            ToolTip="{DynamicResource S.Toolbar.OpenWindowHint}"
                             Click="OpenWindowBtn_Click">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE8A7;"
