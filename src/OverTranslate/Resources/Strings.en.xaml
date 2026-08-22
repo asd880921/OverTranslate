@@ -386,8 +386,8 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.DiagnosticsUploadHint" xml:space="preserve">The diagnostics contain the log files, system information and your current settings, with sensitive data replaced.&#x0a;The diagnostic file is kept on your device and deleted automatically after 30 days.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">Report code</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">Diagnostics exported</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint" xml:space="preserve">Give this report code to the developer through GitHub or the forum — the diagnostics were uploaded successfully.&#x0a;Open file to see what was exported this time.</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsNotUploadedHint" xml:space="preserve">The diagnostics were exported but could not be uploaded. Please report the problem through GitHub or the forum and attach the file.&#x0a;Open file to get what was exported this time.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint" xml:space="preserve">Give this report code to the developer through GitHub or the forum — the diagnostics were uploaded successfully. Open file to see what was exported this time.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsNotUploadedHint" xml:space="preserve">The diagnostics were exported but could not be uploaded. Please report the problem through GitHub or the forum and attach the file. Open file to get what was exported this time.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsRetention">Files are deleted automatically after 30 days</sys:String>
     <sys:String x:Key="S.Settings.CopyCode">Copy</sys:String>
     <sys:String x:Key="S.Settings.OpenBundle">Open file</sys:String>
