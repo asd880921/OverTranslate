@@ -7,6 +7,19 @@ public enum TranslationProvider { Google, Google2, Bing, Microsoft, DeepL, OpenA
 
 public class AppSettings
 {
+    /// <summary>
+    /// Identifies this installation across the diagnostic reports it sends.
+    /// </summary>
+    /// <remarks>
+    /// First in the file because it is what a maintainer opening a bundle looks for first, and
+    /// deliberately named for what it is rather than for the one thing it is used for today — it
+    /// identifies an install, and diagnostics is only the first thing that wants to know.
+    ///
+    /// Empty is a valid state and the one every existing install starts from. See
+    /// <see cref="Services.AppIdentityService"/> for what fills it and when.
+    /// </remarks>
+    public string ID { get; set; } = "";
+
     public uint HotkeyModifiers { get; set; } = 3;
     public uint HotkeyVirtualKey { get; set; } = 0x41;
     public string HotkeyDisplay { get; set; } = "Ctrl+Alt+A";
