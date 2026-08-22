@@ -382,7 +382,7 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.DiagnosticsHint">Exporting collects the log files, system information and your current settings into a diagnostic file you can attach to a problem report. Sensitive information such as API keys is not included, and no data is uploaded automatically.</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">Export diagnostics</sys:String>
     <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">Open folder</sys:String>
-    <sys:String x:Key="S.Settings.UploadDiagnostics">Export and upload diagnostics</sys:String>
+    <sys:String x:Key="S.Settings.UploadDiagnostics">Upload diagnostics</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadHint" xml:space="preserve">The diagnostics contain the log files, system information and your current settings, with sensitive data replaced.&#x0a;The diagnostic file is kept on your device and deleted automatically after 30 days.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">Report code</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">Diagnostics exported</sys:String>
