@@ -138,10 +138,22 @@ public static class DiagnosticUploadService
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
-        // Metadata, not identity. Which build and which Windows answers most of the "why does this
-        // only happen to them" questions; neither is anything the receiving end trusts.
+        // Which build and which Windows answers most of the "why does this only happen to them"
+        // questions. Neither is anything the receiving end trusts — they are a client's word about
+        // itself, and any client can say anything.
         request.Headers.TryAddWithoutValidation("x-overtranslate-version", AppVersion);
         request.Headers.TryAddWithoutValidation("x-overtranslate-os", RuntimeInformation.OSDescription);
+
+        // Sent here as well as sitting inside the bundle, because the two are read at different
+        // moments: the copy in appsettings.redacted.json is found by someone who has already
+        // downloaded the zip, and by then they know which report they are reading. This one arrives
+        // with the upload itself, which is what lets a second report from an install announce itself
+        // as one rather than waiting to be recognised.
+        //
+        // Empty only if the upload somehow runs before startup settled it, and sent regardless:
+        // an absent header reads as "this client did not say", which is the truth, where an omitted
+        // one would be indistinguishable from an older build that could not.
+        request.Headers.TryAddWithoutValidation("x-overtranslate-id", AppIdentityService.Current);
 
         HttpResponseMessage response;
         try
