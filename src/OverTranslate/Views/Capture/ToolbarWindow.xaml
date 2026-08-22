@@ -57,20 +57,29 @@
                          Reads the recognised source text as one piece, not block by block: the blocks
                          are how the picture was cut up for recognition, not how the sentence was
                          written, and read one at a time they come out as fragments. Same text the
-                         translation window is opened with. -->
+                         translation window is opened with.
+
+                         The one action here with no word under it. The rest of the bar keeps its
+                         labels because none of those icons is standard enough to be read cold, but a
+                         speaker and a stop square are — they are the same two shapes every media
+                         control the user has ever pressed uses, and they say start and stop without
+                         help. So the word came off and the bar got its width back. What the word was
+                         doing besides naming the action, telling the user which text would be read,
+                         it was never able to do anyway: 朗讀 alone does not say "the original", and
+                         the button's position in front of the source picker does. The tooltip still
+                         spells all of it out, and so does the name assistive technology reads —
+                         see RenderSpeakButton. -->
                     <Button x:Name="TtsBtn"
                             Style="{StaticResource ToolbarStackButton}"
                             IsEnabled="False"
                             Margin="0,0,4,0"
                             Click="TtsBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="TtsGlyph"
-                                       Text="&#xE767;"
-                                       Style="{StaticResource ToolbarActionGlyph}"/>
-                            <TextBlock x:Name="TtsLabel"
-                                       VerticalAlignment="Center"
-                                       Text="{DynamicResource S.Toolbar.Speak}"/>
-                        </StackPanel>
+                        <!-- Margin cleared: the style's own is the gap to a label that is no longer
+                             there, and left alone it pushes the glyph off the button's centre. -->
+                        <TextBlock x:Name="TtsGlyph"
+                                   Text="&#xE767;"
+                                   Style="{StaticResource ToolbarActionGlyph}"
+                                   Margin="0"/>
                     </Button>
 
                     <!-- Source language. Width comes from SizeSelectorsToClosedLabels, not from here:

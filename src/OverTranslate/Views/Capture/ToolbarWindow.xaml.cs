@@ -354,11 +354,14 @@ public partial class ToolbarWindow : Window
 
         TtsBtn.IsEnabled = _hasSpeakableText && !automatic;
 
-        // The glyph and the word are what pressing it does, the way the realtime bar's pause
-        // button works. Both, not just the glyph: a stop square under the word 朗讀 says two
-        // different things at once. Two characters either way, so the row does not shift.
+        // The glyph is what pressing it does, the way the realtime bar's pause button works.
         TtsGlyph.Text = _isSpeaking ? StopGlyph : SpeakGlyph;
-        TtsLabel.Text = LocalizationService.Get(_isSpeaking ? "S.Toolbar.SpeakStopLabel" : "S.Toolbar.Speak");
+
+        // The name a screen reader announces. It used to be the label on the button; with the label
+        // gone it has to be said here, or the button reaches assistive technology as an unnamed
+        // control with a private-use character where its name should be.
+        System.Windows.Automation.AutomationProperties.SetName(
+            TtsBtn, LocalizationService.Get(_isSpeaking ? "S.Toolbar.SpeakStopLabel" : "S.Toolbar.Speak"));
 
         // Read through the service rather than bound in XAML, because which of the three applies is
         // a state and not a constant.
