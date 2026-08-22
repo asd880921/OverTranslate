@@ -594,8 +594,6 @@ public partial class OverlayWindow : Window
                     FontSize = fontSize,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = foreground,
-                    Width = cellBounds.Width,
-                    Height = cellBounds.Height,
                     TextAlignment = TextAlignment.Center,
                     FontFamily = new System.Windows.Media.FontFamily(
                         "Microsoft JhengHei, Segoe UI, Sans-Serif"),
@@ -606,11 +604,20 @@ public partial class OverlayWindow : Window
                     cell.RenderTransform = new RotateTransform(90);
                 }
 
-                Canvas.SetLeft(cell, cellBounds.X);
-                Canvas.SetTop(cell, cellBounds.Y + (cellBounds.Height - fontSize * 1.2) / 2);
+                PositionVerticalGlyph(cell, cellBounds);
                 BubbleTextCanvas.Children.Add(cell);
             }
         }
+    }
+
+    internal static void PositionVerticalGlyph(TextBlock glyph, Rect bounds)
+    {
+        glyph.Width = bounds.Width;
+        glyph.Height = bounds.Height;
+        glyph.LineHeight = bounds.Height;
+        glyph.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+        Canvas.SetLeft(glyph, bounds.X);
+        Canvas.SetTop(glyph, bounds.Y);
     }
 
     private static int VerticalCapacity(double width, double height, double cellSize) =>

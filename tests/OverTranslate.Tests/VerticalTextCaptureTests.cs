@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Windows.Controls;
 using OverTranslate.Services;
 using OverTranslate.Services.Ocr;
 using OverTranslate.Views.Overlay;
@@ -75,6 +76,27 @@ public class VerticalTextCaptureTests
         Assert.True(grid.CellSize >= 7);
     }
 
+    [Fact]
+    public void VerticalGlyph_UsesCellSizedLineBoxWithoutBaselineClipping()
+    {
+        OnStaThread(() =>
+        {
+            var glyph = new TextBlock { FontSize = 29.44 };
+            var bounds = new System.Windows.Rect(12, 34, 32, 32);
+
+            OverlayWindow.PositionVerticalGlyph(glyph, bounds);
+
+            Assert.Equal(bounds.Width, glyph.Width);
+            Assert.Equal(bounds.Height, glyph.Height);
+            Assert.Equal(bounds.Height, glyph.LineHeight);
+            Assert.Equal(
+                System.Windows.LineStackingStrategy.BlockLineHeight,
+                glyph.LineStackingStrategy);
+            Assert.Equal(bounds.X, Canvas.GetLeft(glyph));
+            Assert.Equal(bounds.Y, Canvas.GetTop(glyph));
+        });
+    }
+
     [Theory]
     [InlineData('「', true)]
     [InlineData('）', true)]
@@ -87,6 +109,22 @@ public class VerticalTextCaptureTests
     public void VerticalGlyphRotation_MatchesTypographyRules(char glyph, bool expected)
     {
         Assert.Equal(expected, OverlayWindow.RotatesInVerticalText(glyph));
+    }
+
+    private static void OnStaThread(Action action)
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try { action(); }
+            catch (Exception exception) { failure = exception; }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+            throw new Xunit.Sdk.XunitException(failure.ToString());
     }
 
     private sealed class RecordingOcrEngine(params OcrTextBlock[] blocks) : IOcrEngine
