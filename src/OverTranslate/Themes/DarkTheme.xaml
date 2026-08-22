@@ -106,6 +106,13 @@
     <SolidColorBrush x:Key="ToolbarGroupBg"        Color="#363636"/>
     <SolidColorBrush x:Key="ToolbarGroupHoverBg"   Color="#464646"/>
     <SolidColorBrush x:Key="ToolbarGroupPressedBg" Color="#505050"/>
+
+    <!-- The pill that marks the chosen half of a two-way switch, riding inside the tray above. It
+         has to read as raised out of the tray, so in this theme it is lighter than the tray and
+         takes no border: an outline on a surface this small is one line too many, and the step in
+         value already says it. -->
+    <SolidColorBrush x:Key="ToolbarSegmentThumbBg"     Color="#4E4E4E"/>
+    <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="Transparent"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
     <!-- Toast — same in both themes (always dark) -->

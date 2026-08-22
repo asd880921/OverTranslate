@@ -121,6 +121,88 @@
                                    VerticalAlignment="Center"/>
                     </Border>
 
+                    <!-- Which way the text in the selection is written. Last of the settings and hard
+                         against the button that consumes it, because that is the order it is used in:
+                         the user looks at a page of vertical Japanese, flips this, presses 翻譯. It is
+                         deliberately not next to the source language picker, near though the two are in
+                         meaning — that picker, the swap arrow and the target picker are one triple that
+                         reads left to right, and dropping a control into the middle of it would cost
+                         more than the adjacency gains.
+
+                         Not remembered between sessions, and it always opens on 橫排: horizontal is
+                         what nearly every capture is, and a switch that quietly stayed on 直排 from
+                         last week would turn a perfectly ordinary screenshot into nonsense with
+                         nothing on screen to explain why.
+
+                         The tray is the realtime bar's tray, for the same reason it has one: two
+                         things the user chooses between are one control, not two more objects on a
+                         crowded bar. -->
+                    <Border Background="{DynamicResource ToolbarGroupBg}"
+                            CornerRadius="10"
+                            Padding="3"
+                            Margin="10,0,0,0"
+                            Grid.IsSharedSizeScope="True"
+                            AutomationProperties.Name="{DynamicResource S.Toolbar.Direction}">
+                        <Grid>
+                            <!-- Shared, so the two halves are the width of the longer label rather
+                                 than each their own — an even split is what makes the pill below able
+                                 to travel one fixed distance, and it is what a two-way switch looks
+                                 like. The labels are two characters each in Chinese and nothing like
+                                 each other in English, so this cannot be a hardcoded width. -->
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="CaptureDirectionSegment"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="CaptureDirectionSegment"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- The mark for the chosen half, behind both of them and slid between
+                                 them rather than switched on and off. A marker that moves is the whole
+                                 point: it carries the eye from the option that was chosen to the one
+                                 that is now, which two backgrounds appearing and disappearing cannot
+                                 do. See DirectionSegment_Checked for the motion. -->
+                            <Border x:Name="DirectionThumb"
+                                    Grid.Column="0"
+                                    CornerRadius="7"
+                                    Background="{DynamicResource ToolbarSegmentThumbBg}"
+                                    BorderBrush="{DynamicResource ToolbarSegmentThumbBorder}"
+                                    BorderThickness="1">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="DirectionThumbShift"/>
+                                </Border.RenderTransform>
+                            </Border>
+
+                            <RadioButton x:Name="HorizontalSeg"
+                                         Grid.Column="0"
+                                         GroupName="CaptureTextDirection"
+                                         IsChecked="True"
+                                         Style="{StaticResource ToolbarSegmentButton}"
+                                         ToolTip="{DynamicResource S.Toolbar.DirectionHorizontalHint}"
+                                         PreviewMouseLeftButtonDown="DirectionSegment_PreviewMouseLeftButtonDown"
+                                         Checked="DirectionSegment_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource ToolbarSegmentGlyph}"
+                                          Data="M2,3.5 H12 M2,7 H12 M2,10.5 H8"/>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{DynamicResource S.Toolbar.DirectionHorizontal}"/>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton x:Name="VerticalSeg"
+                                         Grid.Column="1"
+                                         GroupName="CaptureTextDirection"
+                                         Style="{StaticResource ToolbarSegmentButton}"
+                                         ToolTip="{DynamicResource S.Toolbar.DirectionVerticalHint}"
+                                         PreviewMouseLeftButtonDown="DirectionSegment_PreviewMouseLeftButtonDown"
+                                         Checked="DirectionSegment_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Style="{StaticResource ToolbarSegmentGlyph}"
+                                          Data="M10.5,2 V12 M7,2 V12 M3.5,2 V8"/>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{DynamicResource S.Toolbar.DirectionVertical}"/>
+                                </StackPanel>
+                            </RadioButton>
+                        </Grid>
+                    </Border>
+
                     <!-- No rule between the settings and the actions: the gap says it, and a bar this
                          wide floating over the user's own screen does not need more lines drawn on it. -->
 

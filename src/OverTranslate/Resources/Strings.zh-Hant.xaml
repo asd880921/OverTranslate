@@ -130,6 +130,11 @@
     <sys:String x:Key="S.Toolbar.OpenWindow">開啟翻譯視窗</sys:String>
     <sys:String x:Key="S.Toolbar.Swap">對調原文與譯文語言</sys:String>
     <sys:String x:Key="S.Toolbar.Close">結束截圖翻譯</sys:String>
+    <sys:String x:Key="S.Toolbar.Direction">原文的書寫方向</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionHorizontal">橫排</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionVertical">直排</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">原文是橫著寫的，由左至右</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">原文是直著寫的，由上至下、由右至左</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">朗讀</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">停止</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">朗讀辨識到的原文</sys:String>

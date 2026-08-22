@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
@@ -58,6 +59,16 @@ public partial class ToolbarWindow : Window
 
     public string CurrentSourceLang => LanguageData.GetValidOcrSourceCode(SrcLangBox.SelectedValue as string);
     public string CurrentTargetLang => LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
+
+    /// <summary>
+    /// Whether the user has said the text in the selection is written downwards in columns rather
+    /// than across in lines.
+    /// </summary>
+    /// <remarks>
+    /// Answered per capture session and never saved: the switch opens on 橫排 every time. See the
+    /// tray's own comment in the XAML for why remembering it would be the wrong kindness.
+    /// </remarks>
+    public bool IsVerticalText => VerticalSeg.IsChecked == true;
 
     public ToolbarWindow(
         double selPhysLeft, double selPhysTop,
@@ -189,6 +200,62 @@ public partial class ToolbarWindow : Window
             TgtLangBox.SelectedValue = targetCode;
         }
         if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = 0;
+    }
+
+    /// <summary>
+    /// Commits the choice on the press rather than on the release, so the pill starts moving under
+    /// the finger instead of after it.
+    /// </summary>
+    /// <remarks>
+    /// A button that waits for mouse-up is correct for something that acts — you can still slide off
+    /// it and change your mind — but this one only moves a marker, and there is nothing to change
+    /// your mind about. The release still runs the ordinary click, which finds the option already
+    /// chosen and does nothing.
+    /// </remarks>
+    private void DirectionSegment_PreviewMouseLeftButtonDown(
+        object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.RadioButton segment) segment.IsChecked = true;
+    }
+
+    /// <summary>
+    /// Slides the pill onto the half just chosen.
+    /// </summary>
+    /// <remarks>
+    /// <para>The animation carries only a target, no starting value, so it always sets off from
+    /// wherever the pill is at that instant. Somebody who changes their mind halfway across gets one
+    /// continuous movement back rather than a jump to the far side and a fresh start.</para>
+    ///
+    /// <para>Eased out and not bounced: nothing was thrown here, it was clicked, and an overshoot on
+    /// a marker that merely answers a click reads as the interface being pleased with itself.</para>
+    ///
+    /// <para>The travel is one column's width, which is the pill's own width because the two columns
+    /// share a size — see the tray's ColumnDefinitions.</para>
+    /// </remarks>
+    private void DirectionSegment_Checked(object sender, RoutedEventArgs e)
+    {
+        // Fires once while the XAML is still being parsed, for the half that opens checked — at
+        // which point the other half does not exist yet and neither does the pill. Nothing to do
+        // then anyway: the pill's resting place is the left half, which is where it is drawn.
+        if (DirectionThumb is null || DirectionThumbShift is null || VerticalSeg is null) return;
+
+        double target = IsVerticalText ? DirectionThumb.ActualWidth : 0;
+
+        // Before the tray has been laid out there is no distance to travel and nothing to see; the
+        // opening state is the left half anyway, which is where the pill already sits.
+        if (DirectionThumb.ActualWidth <= 0)
+        {
+            DirectionThumbShift.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+            DirectionThumbShift.X = target;
+            return;
+        }
+
+        DirectionThumbShift.BeginAnimation(
+            System.Windows.Media.TranslateTransform.XProperty,
+            new DoubleAnimation(target, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            });
     }
 
     private void TranslateBtn_Click(object sender, RoutedEventArgs e)
