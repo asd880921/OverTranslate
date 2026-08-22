@@ -187,7 +187,10 @@ public class OcrService : IDisposable
     /// </summary>
     internal static List<OcrTextBlock> MergeVerticalColumns(List<OcrTextBlock> columns)
     {
-        var remaining = columns.OrderByDescending(column => column.Bounds.X).ToList();
+        var remaining = columns
+            .Where(IsVerticalColumnCandidate)
+            .OrderByDescending(column => column.Bounds.X)
+            .ToList();
         var merged = new List<OcrTextBlock>();
 
         while (remaining.Count > 0)
@@ -213,6 +216,16 @@ public class OcrService : IDisposable
         }
 
         return merged;
+    }
+
+    private static bool IsVerticalColumnCandidate(OcrTextBlock column)
+    {
+        // Issue #132's Japanese corpus had six multi-character detections wider than 1.4: all six
+        // were horizontal UI or signs, while none of the 188 vertical detections crossed it.
+        const double maxWidthToHeightRatio = 1.4;
+        int characters = column.Text.Count(character => !char.IsWhiteSpace(character));
+        return characters <= 1 ||
+               column.Bounds.Width <= column.Bounds.Height * maxWidthToHeightRatio;
     }
 
     private static bool IsSameVerticalTextGroup(OcrTextBlock a, OcrTextBlock b)

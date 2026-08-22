@@ -49,6 +49,34 @@ public class VerticalTextCaptureTests
     }
 
     [Fact]
+    public void MergeVerticalColumns_DropsWideHorizontalTextBeforeItBridgesSeparateColumns()
+    {
+        var columns = new List<OcrTextBlock>
+        {
+            new("右", new System.Windows.Rect(80, 10, 10, 60)),
+            new("橫排標題", new System.Windows.Rect(35, 8, 40, 27)),
+            new("左", new System.Windows.Rect(20, 10, 10, 60)),
+        };
+
+        var result = OcrService.MergeVerticalColumns(columns);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(["右", "左"], result.Select(block => block.Text));
+    }
+
+    [Fact]
+    public void MergeVerticalColumns_KeepsAOneCharacterWideDetection()
+    {
+        var column = new OcrTextBlock("！", new System.Windows.Rect(10, 20, 30, 15));
+
+        var result = OcrService.MergeVerticalColumns([column]);
+
+        var kept = Assert.Single(result);
+        Assert.Equal(column.Text, kept.Text);
+        Assert.Equal(column.Bounds, kept.Bounds);
+    }
+
+    [Fact]
     public void VerticalCells_RunDownThenMoveLeft()
     {
         var cells = OverlayWindow.VerticalCells(
