@@ -251,8 +251,9 @@ public partial class TranslationPage : UserControl
     }
 
     /// <summary>
-    /// Schedules a debounced auto-translation. Programmatic edits are ignored (so opening from a
-    /// screenshot doesn't re-translate), and an empty source instantly clears the output.
+    /// Schedules a debounced auto-translation. Programmatic edits are ignored — the screenshot flow
+    /// fills both panes itself and then asks for the one translation it wants, see
+    /// <see cref="SetContent"/> — and an empty source instantly clears the output.
     /// </summary>
     private void RequestTranslate()
     {
@@ -438,9 +439,23 @@ public partial class TranslationPage : UserControl
         TgtTtsBtn.Content = ReferenceEquals(_ttsActiveBtn, TgtTtsBtn) ? StopGlyph : SpeakerGlyph;
     }
 
+    /// <summary>
+    /// Carries a screenshot result into the page and re-translates it once.
+    /// </summary>
+    /// <remarks>
+    /// <para>Both panes are filled from the capture before anything is sent, so the window never
+    /// opens empty: the translation that came with the result is what there is to read while the new
+    /// one is on its way, and it is replaced in place when the answer arrives.</para>
+    ///
+    /// <para>Re-translated rather than shown as-is, because the two flows are not asking the same
+    /// question. The overlay translates each OCR block on its own — it has to, since every answer is
+    /// painted back over the box it came from — and what arrives here is those per-block answers
+    /// glued together: sentences cut in half at a line end, and mixed-language lines each judged with
+    /// only their own fragment for context. Sending the joined text as one request is the whole
+    /// reason somebody opens the window after reading the overlay.</para>
+    /// </remarks>
     public void SetContent(string sourceText, string translatedText, string srcLang, string tgtLang)
     {
-        // Content arrives already translated (from the screenshot flow) — show it as-is, don't re-call.
         _suppressAuto = true;
         _debounce.Stop();
         _seq++;
@@ -454,12 +469,16 @@ public partial class TranslationPage : UserControl
         SrcLangBox.SelectedValue = LanguageData.GetValidSourceCode(srcLang);
         TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(tgtLang);
 
-        // Treat the supplied translation as the current state so a later identical input won't re-call.
-        _lastDone = (sourceText, LanguageData.GetValidSourceCode(srcLang),
-                     LanguageData.GetValidTargetCode(tgtLang), SettingsService.Instance.Current.Provider);
+        // The carried translation is not one this page produced, so it does not count as one:
+        // leaving it here would make the request below the "identical input" case and skip it.
+        _lastDone = null;
         _suppressAuto = false;
 
         RenderSourceActions();
+
+        // Straight to the request rather than through the debounce: nobody is typing, and the wait
+        // would only hold back the answer the window was opened for.
+        _ = TranslateNowAsync();
     }
 
     private void ShowRetry(bool visible)
