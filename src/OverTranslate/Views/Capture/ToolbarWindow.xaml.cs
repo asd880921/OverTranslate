@@ -53,6 +53,7 @@ public partial class ToolbarWindow : Window
     private bool _toggleEnabled = false;
     private bool _bubblesVisible = true;
     private bool _hasTranslated;
+    private bool _initializingDirection = true;
 
     // Whether there is recognised text to read, and whether it is being read right now. The voice
     // itself lives with the capture session, not here: this window only shows its state.
@@ -67,8 +68,8 @@ public partial class ToolbarWindow : Window
     /// than across in lines.
     /// </summary>
     /// <remarks>
-    /// Answered per capture session and never saved: the switch opens on 橫排 every time. See the
-    /// tray's own comment in the XAML for why remembering it would be the wrong kindness.
+    /// Restored from <see cref="AppSettings.Capture"/> when the toolbar opens and saved on each
+    /// explicit switch, so consecutive pages from the same manga or game keep the chosen direction.
     /// </remarks>
     public bool IsVerticalText => VerticalSeg.IsChecked == true;
 
@@ -83,6 +84,12 @@ public partial class ToolbarWindow : Window
         _selPhysHeight = selPhysHeight;
 
         InitializeComponent();
+
+        bool verticalText = SettingsService.Instance.Current.Capture.VerticalText;
+        HorizontalSeg.IsChecked = !verticalText;
+        VerticalSeg.IsChecked = verticalText;
+        _initializingDirection = false;
+
         InitializeSelectors(sourceLang, targetLang);
         SizeSelectorsToClosedLabels();
 
@@ -90,6 +97,10 @@ public partial class ToolbarWindow : Window
         SrcLangBox.SelectionChanged  += SrcLangBox_SelectionChanged;
         TgtLangBox.SelectionChanged  += TgtLangBox_SelectionChanged;
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
+
+        // The shared columns do not have a width until layout. A remembered vertical choice already
+        // checks the right half above; this places the thumb under it on the first rendered frame.
+        Loaded += (_, _) => RenderDirectionThumb(animate: false);
 
         RenderSpeakButton();
     }
@@ -238,15 +249,23 @@ public partial class ToolbarWindow : Window
     private void DirectionSegment_Checked(object sender, RoutedEventArgs e)
     {
         // Fires once while the XAML is still being parsed, for the half that opens checked — at
-        // which point the other half does not exist yet and neither does the pill. Nothing to do
-        // then anyway: the pill's resting place is the left half, which is where it is drawn.
+        // which point the other half does not exist yet and neither does the pill. The constructor
+        // applies the stored choice after parsing, and Loaded places the thumb after layout.
         if (DirectionThumb is null || DirectionThumbShift is null || VerticalSeg is null) return;
 
+        if (!_initializingDirection)
+            SaveTextDirectionSelection();
+
+        RenderDirectionThumb(animate: IsLoaded);
+    }
+
+    private void RenderDirectionThumb(bool animate)
+    {
         double target = IsVerticalText ? DirectionThumb.ActualWidth : 0;
 
         // Before the tray has been laid out there is no distance to travel and nothing to see; the
-        // opening state is the left half anyway, which is where the pill already sits.
-        if (DirectionThumb.ActualWidth <= 0)
+        // Loaded callback runs this again once the shared columns have their final width.
+        if (!animate || DirectionThumb.ActualWidth <= 0)
         {
             DirectionThumbShift.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
             DirectionThumbShift.X = target;
@@ -491,6 +510,13 @@ public partial class ToolbarWindow : Window
     {
         var settings = SettingsService.Instance.Current;
         settings.Provider = provider;
+        SettingsService.Instance.Save();
+    }
+
+    private void SaveTextDirectionSelection()
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.Capture.VerticalText = IsVerticalText;
         SettingsService.Instance.Save();
     }
 }

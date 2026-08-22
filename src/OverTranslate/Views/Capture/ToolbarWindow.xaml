@@ -137,10 +137,10 @@
                          reads left to right, and dropping a control into the middle of it would cost
                          more than the adjacency gains.
 
-                         Not remembered between sessions, and it always opens on 橫排: horizontal is
-                         what nearly every capture is, and a switch that quietly stayed on 直排 from
-                         last week would turn a perfectly ordinary screenshot into nonsense with
-                         nothing on screen to explain why.
+                         Remembered between sessions because writing direction is normally a property
+                         of the material someone is working through, not of one rectangle they drew.
+                         A first run and every settings file from before this switch still start on
+                         橫排; only an explicit press changes the stored answer.
 
                          The tray is the realtime bar's tray, for the same reason it has one: two
                          things the user chooses between are one control, not two more objects on a
