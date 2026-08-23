@@ -87,13 +87,14 @@ internal static class SelectedTextReader
         {
             SendCopy();
 
-            var deadline = DateTime.UtcNow + CopyTimeout;
-            while (GetClipboardSequenceNumber() == before && DateTime.UtcNow < deadline)
-                await Task.Delay(PollInterval);
-
-            if (GetClipboardSequenceNumber() == before) return "";
-
-            return Sanitize(Clipboard.ContainsText() ? Clipboard.GetText() : "");
+            var maxPolls = (int)Math.Ceiling(
+                CopyTimeout.TotalMilliseconds / PollInterval.TotalMilliseconds);
+            return await PollForCopiedTextAsync(
+                before,
+                GetClipboardSequenceNumber,
+                ReadClipboardTextIfAvailable,
+                () => Task.Delay(PollInterval),
+                maxPolls);
         }
         catch (Exception ex)
         {
@@ -103,6 +104,54 @@ internal static class SelectedTextReader
         finally
         {
             Restore(snapshot);
+        }
+    }
+
+    /// <summary>
+    /// Waits for a copy operation to publish readable text after changing the clipboard.
+    /// </summary>
+    /// <remarks>
+    /// A clipboard sequence change means that an update started, not that every format is ready.
+    /// Applications commonly empty the clipboard before publishing text, and another process can
+    /// briefly hold it between those steps. Returning on that first change mistakes an in-progress
+    /// copy for an empty selection and restores the old clipboard over the result that is still
+    /// arriving.
+    /// </remarks>
+    internal static async Task<string> PollForCopiedTextAsync(
+        uint before,
+        Func<uint> getSequenceNumber,
+        Func<string?> readText,
+        Func<Task> delay,
+        int maxPolls)
+    {
+        var changed = false;
+
+        for (var poll = 0; poll <= maxPolls; poll++)
+        {
+            changed |= getSequenceNumber() != before;
+
+            if (changed && readText() is { } text)
+                return Sanitize(text);
+
+            if (poll < maxPolls) await delay();
+        }
+
+        return "";
+    }
+
+    /// <summary>Returns null while copied text is not published or cannot be read yet.</summary>
+    private static string? ReadClipboardTextIfAvailable()
+    {
+        try
+        {
+            return Clipboard.ContainsText() ? Clipboard.GetText() : null;
+        }
+        catch (Exception ex)
+        {
+            // Clipboard ownership changes asynchronously. A lock here is a state to poll through,
+            // not the final answer to the user's copy request.
+            Log.Trace(ex, "Copied text is not readable yet");
+            return null;
         }
     }
 

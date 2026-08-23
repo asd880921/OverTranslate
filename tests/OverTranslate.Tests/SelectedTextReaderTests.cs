@@ -14,6 +14,40 @@ namespace OverTranslate.Tests;
 public class SelectedTextReaderTests
 {
     [Fact]
+    public async Task A_clipboard_change_before_text_is_ready_is_not_mistaken_for_no_selection()
+    {
+        var sequences = new Queue<uint>(new uint[] { 10, 11, 11 });
+        var reads = new Queue<string?>(new string?[] { null, "selected text" });
+
+        var text = await SelectedTextReader.PollForCopiedTextAsync(
+            before: 10,
+            sequences.Dequeue,
+            reads.Dequeue,
+            () => Task.CompletedTask,
+            maxPolls: 2);
+
+        Assert.Equal("selected text", text);
+        Assert.Empty(sequences);
+        Assert.Empty(reads);
+    }
+
+    [Fact]
+    public async Task An_unchanged_clipboard_never_reuses_the_text_that_was_already_there()
+    {
+        var readCalls = 0;
+
+        var text = await SelectedTextReader.PollForCopiedTextAsync(
+            before: 10,
+            () => 10,
+            () => { readCalls++; return "old text"; },
+            () => Task.CompletedTask,
+            maxPolls: 2);
+
+        Assert.Equal("", text);
+        Assert.Equal(0, readCalls);
+    }
+
+    [Fact]
     public void A_selection_dragged_across_wrapped_lines_arrives_as_one_sentence()
     {
         // Line breaks in a selection belong to the page's layout, not to the sentence, and reach the
