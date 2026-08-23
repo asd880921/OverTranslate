@@ -98,6 +98,13 @@
     <SolidColorBrush x:Key="ToolbarGroupBg"        Color="#EDEDED"/>
     <SolidColorBrush x:Key="ToolbarGroupHoverBg"   Color="#E0E0E0"/>
     <SolidColorBrush x:Key="ToolbarGroupPressedBg" Color="#D4D4D4"/>
+
+    <!-- The pill that marks the chosen half of a two-way switch, riding inside the tray above. White
+         on a grey tray is only a small step in value, so here it does take a hairline border —
+         without it the pill dissolves into the tray on a bright desktop, which is exactly where this
+         theme is used. -->
+    <SolidColorBrush x:Key="ToolbarSegmentThumbBg"     Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="#D8D8D8"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
     <!-- Toast — same in both themes (always dark) -->

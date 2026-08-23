@@ -197,19 +197,14 @@ public class AppSettings
     /// </remarks>
     public string SkippedUpdateVersion { get; set; } = "";
 
-    /// <summary>
-    /// What 即時翻譯 keeps between sittings, grouped.
-    /// </summary>
+    /// <summary>What 截圖翻譯 keeps between capture sessions, grouped.</summary>
     /// <remarks>
-    /// The first grouped section of this file, and the shape anything added from here on should
-    /// follow — see <see cref="RealtimeSettings"/> for why the flat keys above it stayed flat.
-    ///
-    /// Declared last, and every later group belongs after it rather than beside the flat keys it
-    /// relates to. Properties are written in declaration order, so this splits appsettings.json into
-    /// two halves a reader can tell apart at a glance: everything that shipped before grouping
-    /// existed, then everything that is grouped. Interleaving them would give the file no readable
-    /// order at all — neither alphabetical, nor by feature, nor by age — and every group added later
-    /// would have to find a home in the middle of the flat keys.
+    /// The first grouped section in declaration order because 截圖翻譯 appears before 即時翻譯 in the
+    /// product's feature order. Properties are written in this order, so appsettings.json keeps its
+    /// flat legacy half first and its feature-owned groups together afterwards.
     /// </remarks>
+    public CaptureSettings Capture { get; set; } = new();
+
+    /// <summary>What 即時翻譯 keeps between sittings, grouped.</summary>
     public RealtimeSettings Realtime { get; set; } = new();
 }

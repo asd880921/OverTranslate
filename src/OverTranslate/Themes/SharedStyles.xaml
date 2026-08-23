@@ -1303,6 +1303,36 @@
     <Style x:Key="ToolbarComboBox" TargetType="ComboBox" BasedOn="{StaticResource ModernComboBox}">
         <Setter Property="Height"      Value="30"/>
         <Setter Property="FontSize"    Value="12"/>
+
+        <!-- The list shows a language both ways, the closed box shows one. The pair is there to be
+             scanned: someone hunting through thirty languages wants to find theirs by either name.
+             Once it is chosen there is nothing left to scan, and "繁體中文 Traditional Chinese" sitting
+             in a 132px box was a label that could not even finish saying itself — it was shown as
+             "繁體中文 Traditi…". The name alone fits, and the bar gets the rest of the width back.
+
+             One template does both, because ComboBox draws the closed box from ItemTemplate as well
+             as the list. The two are told apart by what is above them: an item in the list is inside
+             a ComboBoxItem, the closed box is not, so a missing ancestor is what says "this is the
+             closed one". Nothing about the list changes — open it and it is the same list as before.
+
+             ToolbarComboBox only. The settings pages keep the pair everywhere, where there is room
+             for it and the pickers are read rather than glanced at. -->
+        <Setter Property="ItemTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock x:Name="Label"
+                               Text="{Binding Display}"
+                               FontFamily="{StaticResource AppFont}"
+                               TextTrimming="CharacterEllipsis"/>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Value="{x:Null}"
+                                     Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}}">
+                            <Setter TargetName="Label" Property="Text" Value="{Binding ShortName}"/>
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -1462,6 +1492,84 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- One half of a two-way switch on a floating toolbar: the tray around it is the same raised
+         tray the realtime bar groups its two buttons in, and the chosen half is marked by a pill
+         that slides between them rather than by a fill on the button itself.
+
+         Which is why this template paints nothing while it is checked. The pill is a separate Border
+         behind both halves — the only way a moving marker can be animated at all, since a background
+         on the button can only appear and disappear — so a checked background here would cover it.
+         The button contributes the label, the hover step, and nothing else.
+
+         SegmentedRadioButton is the same idea for a settings page and stays as it is: there the
+         options sit on a page with room to breathe and are separate outlined pills, which is the
+         right shape for a form and the wrong one for a bar the user meets over their own screen. -->
+    <Style x:Key="ToolbarSegmentButton" TargetType="RadioButton">
+        <Setter Property="FontFamily"         Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"           Value="11"/>
+        <Setter Property="Foreground"         Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="Height"             Value="26"/>
+        <Setter Property="Padding"            Value="10,0"/>
+        <Setter Property="Cursor"             Value="Hand"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Root"
+                            Background="Transparent"
+                            CornerRadius="7"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- Hover is for the half that is not chosen: on the chosen one it would be a
+                             second surface laid over the pill already there. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked"   Value="False"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource ToolbarGroupHoverBg}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+                        </MultiTrigger>
+                        <!-- Colour only. Weight was the obvious other half of this and had to go: the
+                             two halves share a width, that width is the wider label's, and a label
+                             that grows when it is chosen changes which label is wider. The whole bar
+                             sizes to its content and re-centres on the selection, so in English the
+                             act of choosing moved the bar four pixels sideways under the pointer. -->
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Cursor"  Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The direction mark in front of a segment's label: strokes standing for lines of text, the
+         last one short the way a last line is. The two are the same drawing a quarter turn apart,
+         and the short stroke lands where that script's last line really is — the bottom for
+         horizontal text, the left for vertical, which is also what says the columns run right to
+         left. Drawn rather than typed because no icon font ships either shape. -->
+    <Style x:Key="ToolbarSegmentGlyph" TargetType="Path">
+        <Setter Property="Width"              Value="14"/>
+        <Setter Property="Height"             Value="14"/>
+        <Setter Property="Stretch"            Value="None"/>
+        <Setter Property="StrokeThickness"    Value="1.5"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap"   Value="Round"/>
+        <Setter Property="VerticalAlignment"  Value="Center"/>
+        <Setter Property="Margin"             Value="0,0,6,0"/>
+        <Setter Property="Stroke"
+                Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
     </Style>
 
     <Style x:Key="ToolbarFlatButton" TargetType="Button" BasedOn="{StaticResource FlatButton}">

@@ -48,6 +48,7 @@ public partial class MainWindow : Window
     private double _lastSelPhysTop;
     private double _lastSelPhysWidth;
     private double _lastSelPhysHeight;
+    private bool _lastVerticalText;
     private int _selectionSessionId;
 
     public MainWindow()
@@ -631,9 +632,18 @@ public partial class MainWindow : Window
         _lastSelPhysTop    = selection.Top;
         _lastSelPhysWidth  = selection.Width;
         _lastSelPhysHeight = selection.Height;
+        _lastVerticalText  = false;
 
         var settings = SettingsService.Instance.Current;
-        ShowOverlay(blocks, selection.Left, selection.Top, selection.Width, selection.Height, srcLang, settings.TargetLanguage);
+        ShowOverlay(
+            blocks,
+            selection.Left,
+            selection.Top,
+            selection.Width,
+            selection.Height,
+            srcLang,
+            settings.TargetLanguage,
+            verticalText: false);
 
         var toolbar  = new ToolbarWindow(
             selection.Left, selection.Top, selection.Width, selection.Height,
@@ -663,15 +673,32 @@ public partial class MainWindow : Window
         double selPhysWidth,
         double selPhysHeight,
         string sourceLang,
-        string targetLang)
+        string targetLang,
+        bool verticalText)
     {
         if (_overlayWindow != null)
         {
-            _overlayWindow.UpdateBlocks(blocks, selPhysLeft, selPhysTop, selPhysWidth, selPhysHeight, sourceLang, targetLang);
+            _overlayWindow.UpdateBlocks(
+                blocks,
+                selPhysLeft,
+                selPhysTop,
+                selPhysWidth,
+                selPhysHeight,
+                sourceLang,
+                targetLang,
+                verticalText);
             return;
         }
 
-        _overlayWindow = new OverlayWindow(blocks, selPhysLeft, selPhysTop, selPhysWidth, selPhysHeight, sourceLang, targetLang);
+        _overlayWindow = new OverlayWindow(
+            blocks,
+            selPhysLeft,
+            selPhysTop,
+            selPhysWidth,
+            selPhysHeight,
+            sourceLang,
+            targetLang,
+            verticalText);
         if (_captureWindow != null)
             _overlayWindow.Owner = _captureWindow;
         // This runs when the overlay closes on its own (Esc via the keyboard hook). Same fault
@@ -747,7 +774,11 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 LocalizationService.Get("S.Main.Recognising"));
 
-            var recognizedBlocks = await AppServices.Ocr.RecognizeAsync(workBitmap, req.SourceLang, cancellationToken);
+            var recognizedBlocks = await AppServices.Ocr.RecognizeAsync(
+                workBitmap,
+                req.SourceLang,
+                cancellationToken,
+                req.IsVerticalText);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -815,7 +846,16 @@ public partial class MainWindow : Window
             }
 
             _lastColoredBlocks = coloredTranslated;
-            ShowOverlay(coloredTranslated, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
+            _lastVerticalText = req.IsVerticalText;
+            ShowOverlay(
+                coloredTranslated,
+                _lastSelPhysLeft,
+                _lastSelPhysTop,
+                _lastSelPhysWidth,
+                _lastSelPhysHeight,
+                req.SourceLang,
+                req.TargetLang,
+                req.IsVerticalText);
             requestToolbar?.SetTranslationState(true);
             requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
             requestToolbar?.SetEngineBadge(AppServices.Translation.LastEngineUsage);
@@ -845,7 +885,15 @@ public partial class MainWindow : Window
                 return;
 
             // On failure, restore old bubbles so the overlay isn't left blank
-            _overlayWindow?.UpdateBlocks(_lastColoredBlocks, _lastSelPhysLeft, _lastSelPhysTop, _lastSelPhysWidth, _lastSelPhysHeight, req.SourceLang, req.TargetLang);
+            _overlayWindow?.UpdateBlocks(
+                _lastColoredBlocks,
+                _lastSelPhysLeft,
+                _lastSelPhysTop,
+                _lastSelPhysWidth,
+                _lastSelPhysHeight,
+                req.SourceLang,
+                req.TargetLang,
+                _lastVerticalText);
             requestToolbar?.SetTranslationState(_lastColoredBlocks.Count > 0);
             requestToolbar?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
             ShowBalloon(

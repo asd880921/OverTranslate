@@ -24,7 +24,7 @@ public enum RealtimeCaptureMode
 /// Everything 即時翻譯 keeps between sittings, under one key.
 /// </summary>
 /// <remarks>
-/// The first grouped section of the settings file, and the shape every later one should copy. The
+/// The group that introduced grouped settings, and the shape every later one should copy. The
 /// keys left in <see cref="AppSettings"/> are flat because they shipped that way: the file is read
 /// by matching a JSON property to a property name, so moving an existing key under a group renames
 /// it, and the user who updates silently gets the default back.

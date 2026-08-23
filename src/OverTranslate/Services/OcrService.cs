@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Windows;
 using OverTranslate.Services.Ocr;
 
 namespace OverTranslate.Services;
@@ -25,13 +26,18 @@ public class OcrService : IDisposable
     private readonly OnnxOcrEngine _engine = new();
 
     public Task<List<OcrTextBlock>> RecognizeAsync(
-        Bitmap bitmap, string sourceLanguage, CancellationToken cancellationToken = default)
+        Bitmap bitmap,
+        string sourceLanguage,
+        CancellationToken cancellationToken = default,
+        bool verticalText = false)
     {
-        if (OcrLanguageRouter.IsSupported(sourceLanguage))
-            return RecognizeAndGroupAsync(
-                _engine, bitmap, OcrLanguageRouter.Normalize(sourceLanguage), cancellationToken);
+        if (!OcrLanguageRouter.IsSupported(sourceLanguage))
+            throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
 
-        throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
+        var language = OcrLanguageRouter.Normalize(sourceLanguage);
+        return verticalText
+            ? RecognizeVerticalAsync(_engine, bitmap, language, cancellationToken)
+            : RecognizeAndGroupAsync(_engine, bitmap, language, cancellationToken);
     }
 
     /// <summary>
@@ -140,5 +146,131 @@ public class OcrService : IDisposable
     {
         var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage, cancellationToken);
         return OcrTextBlockGrouper.Group(blocks);
+    }
+
+    /// <summary>
+    /// Turns vertical writing anticlockwise for the horizontal detector, then maps the grouped
+    /// results back to the original image. The rightmost source column becomes the first detected
+    /// row, preserving Japanese reading order.
+    /// </summary>
+    internal static async Task<List<OcrTextBlock>> RecognizeVerticalAsync(
+        IOcrEngine engine,
+        Bitmap bitmap,
+        string sourceLanguage,
+        CancellationToken cancellationToken)
+    {
+        using var rotated = new Bitmap(bitmap);
+        rotated.RotateFlip(RotateFlipType.Rotate270FlipNone);
+
+        var blocks = await RecognizeAndGroupAsync(engine, rotated, sourceLanguage, cancellationToken);
+        var columns = blocks.Select(block => block with
+        {
+            Bounds = MapVerticalBoundsBack(block.Bounds, bitmap.Width),
+            SourceLineBounds = null,
+            // After mapping back, a column is tall and narrow. The rotated row height is the
+            // original glyph width and is the useful reference for a square vertical cell.
+            SourceGlyphHeight = block.Bounds.Height,
+        }).ToList();
+
+        return MergeVerticalColumns(columns);
+    }
+
+    internal static Rect MapVerticalBoundsBack(Rect rotated, int originalWidth) => new(
+        originalWidth - (rotated.Y + rotated.Height),
+        rotated.X,
+        rotated.Height,
+        rotated.Width);
+
+    /// <summary>
+    /// Reassembles adjacent right-to-left columns that share a top edge. A lone column is split
+    /// into character cells so overlay layout still receives a usable vertical footprint.
+    /// </summary>
+    internal static List<OcrTextBlock> MergeVerticalColumns(List<OcrTextBlock> columns)
+    {
+        var remaining = columns
+            .Where(IsVerticalColumnCandidate)
+            .OrderByDescending(column => column.Bounds.X)
+            .ToList();
+        var merged = new List<OcrTextBlock>();
+
+        while (remaining.Count > 0)
+        {
+            var group = new List<OcrTextBlock> { remaining[0] };
+            remaining.RemoveAt(0);
+
+            for (bool grew = true; grew;)
+            {
+                grew = false;
+                for (int i = remaining.Count - 1; i >= 0; i--)
+                {
+                    if (!group.Any(member => IsSameVerticalTextGroup(member, remaining[i])))
+                        continue;
+
+                    group.Add(remaining[i]);
+                    remaining.RemoveAt(i);
+                    grew = true;
+                }
+            }
+
+            merged.Add(CombineVerticalColumns(group));
+        }
+
+        return merged;
+    }
+
+    private static bool IsVerticalColumnCandidate(OcrTextBlock column)
+    {
+        // Issue #132's Japanese corpus had six multi-character detections wider than 1.4: all six
+        // were horizontal UI or signs, while none of the 188 vertical detections crossed it.
+        const double maxWidthToHeightRatio = 1.4;
+        int characters = column.Text.Count(character => !char.IsWhiteSpace(character));
+        return characters <= 1 ||
+               column.Bounds.Width <= column.Bounds.Height * maxWidthToHeightRatio;
+    }
+
+    private static bool IsSameVerticalTextGroup(OcrTextBlock a, OcrTextBlock b)
+    {
+        double columnWidth = Math.Max(a.Bounds.Width, b.Bounds.Width);
+        if (Math.Abs(a.Bounds.Y - b.Bounds.Y) > columnWidth * 0.6)
+            return false;
+
+        double gap = Math.Max(a.Bounds.Left, b.Bounds.Left) - Math.Min(a.Bounds.Right, b.Bounds.Right);
+        return gap <= columnWidth * 0.6;
+    }
+
+    private static OcrTextBlock CombineVerticalColumns(List<OcrTextBlock> group)
+    {
+        var ordered = group.OrderByDescending(column => column.Bounds.X).ToList();
+        var bounds = ordered.Select(column => column.Bounds).Aggregate(Rect.Union);
+        var widths = ordered.Select(column => column.Bounds.Width).OrderBy(width => width).ToList();
+        var glyphSize = widths[widths.Count / 2];
+        var lines = ordered.Count > 1
+            ? ordered.Select(column => column.Bounds).ToList()
+            : SplitIntoVerticalCharacterCells(bounds, glyphSize);
+
+        var scored = ordered.Where(column => column.Confidence.HasValue).ToList();
+        double? confidence = scored.Count == 0
+            ? null
+            : scored.Sum(column => column.Confidence!.Value * Math.Max(1, column.Text.Length)) /
+              scored.Sum(column => Math.Max(1, column.Text.Length));
+
+        return new OcrTextBlock(
+            string.Concat(ordered.Select(column => column.Text)),
+            bounds,
+            lines,
+            glyphSize,
+            confidence);
+    }
+
+    private static List<Rect> SplitIntoVerticalCharacterCells(Rect column, double glyphSize)
+    {
+        int cells = Math.Max(1, (int)Math.Round(column.Height / Math.Max(1, glyphSize)));
+        return Enumerable.Range(0, cells)
+            .Select(i => new Rect(
+                column.X,
+                column.Y + i * column.Height / cells,
+                column.Width,
+                column.Height / cells))
+            .ToList();
     }
 }

@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -36,6 +37,7 @@ public partial class OverlayWindow : Window
     private double _currentSelectionScreenHeight;
     private string _currentSourceLanguage;
     private string _currentTargetLanguage;
+    private bool _currentVerticalText;
 
     public OverlayWindow(
         List<TranslatedBlock> blocks,
@@ -44,7 +46,8 @@ public partial class OverlayWindow : Window
         double selectionScreenWidth,
         double selectionScreenHeight,
         string sourceLanguage,
-        string targetLanguage)
+        string targetLanguage,
+        bool verticalText)
     {
         InitializeComponent();
         _currentBlocks = blocks;
@@ -54,6 +57,7 @@ public partial class OverlayWindow : Window
         _currentSelectionScreenHeight = selectionScreenHeight;
         _currentSourceLanguage = sourceLanguage;
         _currentTargetLanguage = targetLanguage;
+        _currentVerticalText = verticalText;
 
         // Provisional: OnSourceInitialized pins the window to _physBounds instead.
         Left   = SystemParameters.VirtualScreenLeft;
@@ -126,7 +130,8 @@ public partial class OverlayWindow : Window
         double selScreenWidth,
         double selScreenHeight,
         string sourceLanguage,
-        string targetLanguage)
+        string targetLanguage,
+        bool verticalText)
     {
         _currentBlocks = blocks;
         _currentSelectionScreenX = selScreenX;
@@ -135,6 +140,7 @@ public partial class OverlayWindow : Window
         _currentSelectionScreenHeight = selScreenHeight;
         _currentSourceLanguage = sourceLanguage;
         _currentTargetLanguage = targetLanguage;
+        _currentVerticalText = verticalText;
         ProcessingBorder.Visibility = Visibility.Collapsed;
         SetTranslationLayersVisible(true);
         if (_isLoaded)
@@ -205,6 +211,17 @@ public partial class OverlayWindow : Window
     {
         BubbleBackgroundCanvas.Children.Clear();
         BubbleTextCanvas.Children.Clear();
+
+        if (_currentVerticalText)
+        {
+            BuildVerticalOverlay(
+                blocks,
+                selScreenX,
+                selScreenY,
+                selScreenWidth,
+                selScreenHeight);
+            return;
+        }
 
         // Window top-left in physical pixels
         double winPhysLeft = _physBounds.Left;
@@ -486,6 +503,175 @@ public partial class OverlayWindow : Window
             Canvas.SetTop(textContainer, top);
             BubbleBackgroundCanvas.Children.Add(backgroundBorder);
             BubbleTextCanvas.Children.Add(textContainer);
+        }
+    }
+
+    private void BuildVerticalOverlay(
+        IReadOnlyList<TranslatedBlock> blocks,
+        double selScreenX,
+        double selScreenY,
+        double selScreenWidth,
+        double selScreenHeight)
+    {
+        double winPhysLeft = _physBounds.Left;
+        double winPhysTop = _physBounds.Top;
+        double canvasWidth = BubbleBackgroundCanvas.ActualWidth > 0
+            ? BubbleBackgroundCanvas.ActualWidth
+            : Width;
+        double canvasHeight = BubbleBackgroundCanvas.ActualHeight > 0
+            ? BubbleBackgroundCanvas.ActualHeight
+            : Height;
+        double selectionLeft = (selScreenX - winPhysLeft) / _dpiX;
+        double selectionTop = (selScreenY - winPhysTop) / _dpiY;
+        double selectionRight = selectionLeft + selScreenWidth / _dpiX;
+        double selectionBottom = selectionTop + selScreenHeight / _dpiY;
+
+        foreach (var block in blocks)
+        {
+            if (string.IsNullOrWhiteSpace(block.TranslatedText))
+                continue;
+
+            double canvasX = (selScreenX + block.Bounds.X - winPhysLeft) / _dpiX;
+            double canvasY = (selScreenY + block.Bounds.Y - winPhysTop) / _dpiY;
+            double wpfW = block.Bounds.Width / _dpiX;
+            double wpfH = block.Bounds.Height / _dpiY;
+            double borderW = Math.Max(wpfW + BubbleExpand * 2, BubbleMinWidth);
+            double borderH = wpfH + BubbleExpand * 2;
+            double sourceGlyphSize = GetSourceFontReferenceHeight(block, wpfH);
+            string text = new(block.TranslatedText.Where(c => !char.IsWhiteSpace(c)).ToArray());
+            var grid = FitVerticalGrid(borderW, borderH, sourceGlyphSize, text.Length);
+            double cellSize = grid.CellSize;
+            borderH = grid.Height;
+
+            double maxLeft = Math.Min(
+                canvasWidth - borderW - OverlayPadding,
+                selectionRight - borderW);
+            double maxTop = Math.Min(
+                canvasHeight - borderH - OverlayPadding,
+                selectionBottom - borderH);
+            double left = Math.Clamp(
+                canvasX - BubbleExpand,
+                Math.Max(OverlayPadding, selectionLeft),
+                Math.Max(Math.Max(OverlayPadding, selectionLeft), maxLeft));
+            double top = Math.Clamp(
+                canvasY - BubbleExpand,
+                Math.Max(OverlayPadding, selectionTop),
+                Math.Max(Math.Max(OverlayPadding, selectionTop), maxTop));
+
+            var background = block.BackgroundColor.A == 0 ? Colors.White : block.BackgroundColor;
+            System.Windows.Media.Brush foreground;
+            if (block.TextColor.A != 0)
+            {
+                foreground = new SolidColorBrush(block.TextColor);
+            }
+            else
+            {
+                double luminance =
+                    (0.299 * background.R + 0.587 * background.G + 0.114 * background.B) / 255.0;
+                foreground = luminance > 0.5
+                    ? System.Windows.Media.Brushes.Black
+                    : System.Windows.Media.Brushes.White;
+            }
+
+            var backgroundBorder = new Border
+            {
+                Background = new SolidColorBrush(background),
+                Width = borderW,
+                Height = borderH,
+                ClipToBounds = true,
+            };
+            Canvas.SetLeft(backgroundBorder, left);
+            Canvas.SetTop(backgroundBorder, top);
+            BubbleBackgroundCanvas.Children.Add(backgroundBorder);
+
+            var bubbleBounds = new Rect(left, top, borderW, borderH);
+            double fontSize = cellSize * 0.92;
+            foreach (var (glyph, cellBounds) in VerticalCells(text, bubbleBounds, cellSize))
+            {
+                var cell = new TextBlock
+                {
+                    Text = glyph.ToString(),
+                    FontSize = fontSize,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = foreground,
+                    TextAlignment = TextAlignment.Center,
+                    FontFamily = new System.Windows.Media.FontFamily(
+                        "Microsoft JhengHei, Segoe UI, Sans-Serif"),
+                };
+                if (RotatesInVerticalText(glyph))
+                {
+                    cell.RenderTransformOrigin = new System.Windows.Point(0.5, 0.5);
+                    cell.RenderTransform = new RotateTransform(90);
+                }
+
+                PositionVerticalGlyph(cell, cellBounds);
+                BubbleTextCanvas.Children.Add(cell);
+            }
+        }
+    }
+
+    internal static void PositionVerticalGlyph(TextBlock glyph, Rect bounds)
+    {
+        glyph.Width = bounds.Width;
+        glyph.Height = bounds.Height;
+        glyph.LineHeight = bounds.Height;
+        glyph.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+        Canvas.SetLeft(glyph, bounds.X);
+        Canvas.SetTop(glyph, bounds.Y);
+    }
+
+    private static int VerticalCapacity(double width, double height, double cellSize) =>
+        (int)Math.Max(0, Math.Floor(width / cellSize)) *
+        (int)Math.Max(0, Math.Floor(height / cellSize));
+
+    internal static (double CellSize, double Height) FitVerticalGrid(
+        double width,
+        double height,
+        double preferredCellSize,
+        int characterCount)
+    {
+        int needed = Math.Max(1, characterCount);
+        double cellSize = Math.Max(SingleLineAbsoluteMinFontSize, preferredCellSize);
+        while (cellSize > SingleLineEmergencyMinFontSize &&
+               VerticalCapacity(width, height, cellSize) < needed)
+        {
+            cellSize = Math.Max(SingleLineEmergencyMinFontSize, cellSize - 0.5);
+        }
+
+        int columns = Math.Max(1, (int)Math.Floor(width / cellSize));
+        int rows = Math.Max(1, (int)Math.Ceiling((double)needed / columns));
+        return (cellSize, Math.Max(height, rows * cellSize));
+    }
+
+    private static readonly SearchValues<char> RotatedVerticalGlyphs = SearchValues.Create(
+        "「」『』（）〔〕［］｛｝〈〉《》【】〖〗〘〙〚〛⦅⦆｟｠()[]{}<>" +
+        "—–―─━‐‑‒-－〜～ーｰ＿_＝=" +
+        "…⋯‥");
+
+    internal static bool RotatesInVerticalText(char glyph) =>
+        RotatedVerticalGlyphs.Contains(glyph);
+
+    /// <summary>Returns cells in vertical reading order: downwards, then one column left.</summary>
+    internal static IEnumerable<(char Glyph, Rect Cell)> VerticalCells(
+        string text,
+        Rect bounds,
+        double cellSize)
+    {
+        int columns = Math.Max(1, (int)Math.Floor(bounds.Width / cellSize));
+        int rows = Math.Max(1, (int)Math.Floor((bounds.Height + 0.01) / cellSize));
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            int column = i / rows;
+            int row = i % rows;
+            if (column >= columns)
+                yield break;
+
+            yield return (text[i], new Rect(
+                bounds.Left + bounds.Width - (column + 1) * cellSize,
+                bounds.Top + row * cellSize,
+                cellSize,
+                cellSize));
         }
     }
 

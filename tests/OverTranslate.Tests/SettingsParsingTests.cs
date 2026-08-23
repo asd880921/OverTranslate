@@ -45,6 +45,23 @@ public class SettingsParsingTests
     }
 
     [Fact]
+    public void MissingCaptureSettings_UseHorizontalTextByDefault()
+    {
+        var settings = SettingsService.Parse("{}");
+
+        Assert.False(settings.Capture.VerticalText);
+    }
+
+    [Fact]
+    public void CaptureTextDirection_IsReadFromItsOwnGroup()
+    {
+        var settings = SettingsService.Parse(
+            """{"Capture":{"VerticalText":true}}""");
+
+        Assert.True(settings.Capture.VerticalText);
+    }
+
+    [Fact]
     public void RealtimeTranslationSettings_DoNotChangeGeneralTranslationSettings()
     {
         var settings = SettingsService.Parse(
@@ -199,6 +216,10 @@ public class SettingsParsingTests
             RealtimePauseHotkeyVirtualKey = 0x44,
             RealtimePauseHotkeyDisplay = "Ctrl+Shift+D",
             RealtimePauseHotkeyEnabled = false,
+            Capture =
+            {
+                VerticalText = true,
+            },
             Realtime =
             {
                 BlockCount = 3,
@@ -238,6 +259,7 @@ public class SettingsParsingTests
         Assert.Equal(0x44u, settings.RealtimePauseHotkeyVirtualKey);
         Assert.Equal("Ctrl+Shift+D", settings.RealtimePauseHotkeyDisplay);
         Assert.False(settings.RealtimePauseHotkeyEnabled);
+        Assert.True(settings.Capture.VerticalText);
         Assert.Equal(3, settings.Realtime.BlockCount);
         Assert.Equal(RealtimeCaptureMode.Window, settings.Realtime.CaptureMode);
         Assert.Equal(@"\\.\DISPLAY2", settings.Realtime.CaptureScreenDeviceName);
@@ -265,6 +287,16 @@ public class SettingsParsingTests
         Assert.Equal(RealtimeCaptureMode.Screen, settings.Realtime.CaptureMode);
         Assert.Equal(3, settings.Realtime.BlockCount);
         Assert.True(settings.Realtime.NaturalBackgroundEnabled);
+    }
+
+    [Fact]
+    public void AnUnreadableCaptureDirection_KeepsItsHorizontalDefault()
+    {
+        var settings = SettingsService.Parse(
+            """{"Capture":{"VerticalText":"sometimes"},"Theme":"Light"}""");
+
+        Assert.False(settings.Capture.VerticalText);
+        Assert.Equal("Light", settings.Theme);
     }
 
     [Fact]
@@ -305,10 +337,18 @@ public class SettingsParsingTests
         var json = System.Text.Json.JsonSerializer.Serialize(new AppSettings());
 
         var lastFlatKey = json.IndexOf("\"SkippedUpdateVersion\"", StringComparison.Ordinal);
-        var group = json.IndexOf("\"Realtime\":", StringComparison.Ordinal);
+        var captureGroup = json.IndexOf("\"Capture\":", StringComparison.Ordinal);
+        var realtimeGroup = json.IndexOf("\"Realtime\":", StringComparison.Ordinal);
+        var rootKeys = System.Text.Json.JsonDocument.Parse(json).RootElement
+            .EnumerateObject()
+            .Select(property => property.Name)
+            .ToList();
 
-        Assert.True(lastFlatKey >= 0 && group >= 0);
-        Assert.True(group > lastFlatKey, "grouped settings must be written after every flat one");
+        Assert.True(lastFlatKey >= 0 && captureGroup >= 0 && realtimeGroup >= 0);
+        Assert.True(
+            captureGroup > lastFlatKey,
+            "grouped settings must be written after every flat one");
+        Assert.Equal(["Capture", "Realtime"], rootKeys.TakeLast(2));
     }
 
     // Written before either shortcut could be switched off: both have to come back on, or upgrading

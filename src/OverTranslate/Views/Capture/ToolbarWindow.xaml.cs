@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
@@ -50,6 +53,7 @@ public partial class ToolbarWindow : Window
     private bool _toggleEnabled = false;
     private bool _bubblesVisible = true;
     private bool _hasTranslated;
+    private bool _initializingDirection = true;
 
     // Whether there is recognised text to read, and whether it is being read right now. The voice
     // itself lives with the capture session, not here: this window only shows its state.
@@ -58,6 +62,16 @@ public partial class ToolbarWindow : Window
 
     public string CurrentSourceLang => LanguageData.GetValidOcrSourceCode(SrcLangBox.SelectedValue as string);
     public string CurrentTargetLang => LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
+
+    /// <summary>
+    /// Whether the user has said the text in the selection is written downwards in columns rather
+    /// than across in lines.
+    /// </summary>
+    /// <remarks>
+    /// Restored from <see cref="AppSettings.Capture"/> when the toolbar opens and saved on each
+    /// explicit switch, so consecutive pages from the same manga or game keep the chosen direction.
+    /// </remarks>
+    public bool IsVerticalText => VerticalSeg.IsChecked == true;
 
     public ToolbarWindow(
         double selPhysLeft, double selPhysTop,
@@ -70,12 +84,23 @@ public partial class ToolbarWindow : Window
         _selPhysHeight = selPhysHeight;
 
         InitializeComponent();
+
+        bool verticalText = SettingsService.Instance.Current.Capture.VerticalText;
+        HorizontalSeg.IsChecked = !verticalText;
+        VerticalSeg.IsChecked = verticalText;
+        _initializingDirection = false;
+
         InitializeSelectors(sourceLang, targetLang);
+        SizeSelectorsToClosedLabels();
 
         // Attach after initial values are set so initialization doesn't trigger a save
         SrcLangBox.SelectionChanged  += SrcLangBox_SelectionChanged;
         TgtLangBox.SelectionChanged  += TgtLangBox_SelectionChanged;
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
+
+        // The shared columns do not have a width until layout. A remembered vertical choice already
+        // checks the right half above; this places the thumb under it on the first rendered frame.
+        Loaded += (_, _) => RenderDirectionThumb(animate: false);
 
         RenderSpeakButton();
     }
@@ -191,6 +216,70 @@ public partial class ToolbarWindow : Window
         if (TgtLangBox.SelectedValue == null) TgtLangBox.SelectedIndex = 0;
     }
 
+    /// <summary>
+    /// Commits the choice on the press rather than on the release, so the pill starts moving under
+    /// the finger instead of after it.
+    /// </summary>
+    /// <remarks>
+    /// A button that waits for mouse-up is correct for something that acts — you can still slide off
+    /// it and change your mind — but this one only moves a marker, and there is nothing to change
+    /// your mind about. The release still runs the ordinary click, which finds the option already
+    /// chosen and does nothing.
+    /// </remarks>
+    private void DirectionSegment_PreviewMouseLeftButtonDown(
+        object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.RadioButton segment) segment.IsChecked = true;
+    }
+
+    /// <summary>
+    /// Slides the pill onto the half just chosen.
+    /// </summary>
+    /// <remarks>
+    /// <para>The animation carries only a target, no starting value, so it always sets off from
+    /// wherever the pill is at that instant. Somebody who changes their mind halfway across gets one
+    /// continuous movement back rather than a jump to the far side and a fresh start.</para>
+    ///
+    /// <para>Eased out and not bounced: nothing was thrown here, it was clicked, and an overshoot on
+    /// a marker that merely answers a click reads as the interface being pleased with itself.</para>
+    ///
+    /// <para>The travel is one column's width, which is the pill's own width because the two columns
+    /// share a size — see the tray's ColumnDefinitions.</para>
+    /// </remarks>
+    private void DirectionSegment_Checked(object sender, RoutedEventArgs e)
+    {
+        // Fires once while the XAML is still being parsed, for the half that opens checked — at
+        // which point the other half does not exist yet and neither does the pill. The constructor
+        // applies the stored choice after parsing, and Loaded places the thumb after layout.
+        if (DirectionThumb is null || DirectionThumbShift is null || VerticalSeg is null) return;
+
+        if (!_initializingDirection)
+            SaveTextDirectionSelection();
+
+        RenderDirectionThumb(animate: IsLoaded);
+    }
+
+    private void RenderDirectionThumb(bool animate)
+    {
+        double target = IsVerticalText ? DirectionThumb.ActualWidth : 0;
+
+        // Before the tray has been laid out there is no distance to travel and nothing to see; the
+        // Loaded callback runs this again once the shared columns have their final width.
+        if (!animate || DirectionThumb.ActualWidth <= 0)
+        {
+            DirectionThumbShift.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+            DirectionThumbShift.X = target;
+            return;
+        }
+
+        DirectionThumbShift.BeginAnimation(
+            System.Windows.Media.TranslateTransform.XProperty,
+            new DoubleAnimation(target, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            });
+    }
+
     private void TranslateBtn_Click(object sender, RoutedEventArgs e)
         => RequestTranslate();
 
@@ -202,7 +291,8 @@ public partial class ToolbarWindow : Window
     public void RequestTranslate()
     {
         if (_isBusy) return;
-        TranslateRequested?.Invoke(this, new TranslateRequest(CurrentSourceLang, CurrentTargetLang));
+        TranslateRequested?.Invoke(this, new TranslateRequest(
+            CurrentSourceLang, CurrentTargetLang, IsVerticalText));
     }
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
@@ -284,11 +374,14 @@ public partial class ToolbarWindow : Window
 
         TtsBtn.IsEnabled = _hasSpeakableText && !automatic;
 
-        // The glyph and the word are what pressing it does, the way the realtime bar's pause
-        // button works. Both, not just the glyph: a stop square under the word 朗讀 says two
-        // different things at once. Two characters either way, so the row does not shift.
+        // The glyph is what pressing it does, the way the realtime bar's pause button works.
         TtsGlyph.Text = _isSpeaking ? StopGlyph : SpeakGlyph;
-        TtsLabel.Text = LocalizationService.Get(_isSpeaking ? "S.Toolbar.SpeakStopLabel" : "S.Toolbar.Speak");
+
+        // The name a screen reader announces. It used to be the label on the button; with the label
+        // gone it has to be said here, or the button reaches assistive technology as an unnamed
+        // control with a private-use character where its name should be.
+        System.Windows.Automation.AutomationProperties.SetName(
+            TtsBtn, LocalizationService.Get(_isSpeaking ? "S.Toolbar.SpeakStopLabel" : "S.Toolbar.Speak"));
 
         // Read through the service rather than bound in XAML, because which of the three applies is
         // a state and not a constant.
@@ -360,6 +453,51 @@ public partial class ToolbarWindow : Window
         if (ProviderBox.SelectedValue == null) ProviderBox.SelectedIndex = 0;
     }
 
+    /// <summary>
+    /// Gives each picker exactly the width its closed label needs, measured from the longest entry
+    /// it could be showing.
+    /// </summary>
+    /// <remarks>
+    /// <para>A ComboBox left to size itself measures every item in its list, which for the language
+    /// pickers means a box wide enough for 斯洛文尼亞語 spelled out both ways — so these carried a
+    /// number typed into the markup instead. A typed number is a guess about text nobody measured:
+    /// 132 was too narrow for the label it was given in Chinese and too wide for the one in English,
+    /// and it could only ever be wrong in one of them.</para>
+    ///
+    /// <para>Measuring the closed labels answers both at once, in whatever language the interface is
+    /// in, and it is the narrowest the box can be without clipping anything the user might pick. The
+    /// list is unaffected — it opens as wide as its own contents, as it always did.</para>
+    ///
+    /// <para>Run once, in the constructor: the toolbar lives for one capture session and the
+    /// interface language cannot change underneath it.</para>
+    /// </remarks>
+    private void SizeSelectorsToClosedLabels()
+    {
+        double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+
+        SrcLangBox.Width  = ClosedWidth(SrcLangBox, LanguageData.OcrSourceLanguages.Select(l => l.ShortName));
+        TgtLangBox.Width  = ClosedWidth(TgtLangBox, LanguageData.TargetLanguages.Select(l => l.ShortName));
+        ProviderBox.Width = ClosedWidth(ProviderBox, LanguageData.Providers.Select(p => p.ShortName));
+
+        double ClosedWidth(System.Windows.Controls.ComboBox box, IEnumerable<string> labels)
+        {
+            var typeface = new Typeface(box.FontFamily, box.FontStyle, box.FontWeight, box.FontStretch);
+            double widest = labels.Max(label => new FormattedText(
+                label,
+                CultureInfo.CurrentUICulture,
+                System.Windows.FlowDirection.LeftToRight,
+                typeface,
+                box.FontSize,
+                System.Windows.Media.Brushes.Black,
+                dpi).WidthIncludingTrailingWhitespace);
+
+            // The label sits in ModernComboBox's ContentSite, inset 9 on the left and 28 on the
+            // right to clear the arrow, inside a 1px border either side. The last pixel is for
+            // rounding: half a pixel short is a whole character replaced by an ellipsis.
+            return Math.Ceiling(widest) + 9 + 28 + 2 + 1;
+        }
+    }
+
     private void SaveCurrentLanguageSelection()
     {
         var settings = SettingsService.Instance.Current;
@@ -374,6 +512,13 @@ public partial class ToolbarWindow : Window
         settings.Provider = provider;
         SettingsService.Instance.Save();
     }
+
+    private void SaveTextDirectionSelection()
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.Capture.VerticalText = IsVerticalText;
+        SettingsService.Instance.Save();
+    }
 }
 
-public record TranslateRequest(string SourceLang, string TargetLang);
+public record TranslateRequest(string SourceLang, string TargetLang, bool IsVerticalText);
