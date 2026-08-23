@@ -24,7 +24,8 @@ public class SelectedTextReaderTests
             sequences.Dequeue,
             reads.Dequeue,
             () => Task.CompletedTask,
-            maxPolls: 2);
+            maxStartPolls: 2,
+            maxCompletionPolls: 2);
 
         Assert.Equal("selected text", text);
         Assert.Empty(sequences);
@@ -35,16 +36,19 @@ public class SelectedTextReaderTests
     public async Task An_unchanged_clipboard_never_reuses_the_text_that_was_already_there()
     {
         var readCalls = 0;
+        var delayCalls = 0;
 
         var text = await SelectedTextReader.PollForCopiedTextAsync(
             before: 10,
             () => 10,
             () => { readCalls++; return "old text"; },
-            () => Task.CompletedTask,
-            maxPolls: 2);
+            () => { delayCalls++; return Task.CompletedTask; },
+            maxStartPolls: 1,
+            maxCompletionPolls: 2);
 
         Assert.Equal("", text);
         Assert.Equal(0, readCalls);
+        Assert.Equal(1, delayCalls);
     }
 
     [Fact]

@@ -31,15 +31,17 @@ internal static class SelectedTextReader
     private static System.Windows.DataObject? _restoredClipboardOwner;
 
     /// <summary>
-    /// How long the foreground application is given to answer the copy.
+    /// How long the foreground application is given to start answering the copy.
     /// </summary>
     /// <remarks>
-    /// Spent only when there is nothing to copy: an application that answers does so in a frame or
-    /// two, and the poll below returns the moment the clipboard changes. The cost of the full wait
-    /// is a popup that opens a third of a second late for someone who pressed the shortcut with no
-    /// selection — against the cost of missing the selection entirely if this is too short.
+    /// An empty selection produces no clipboard event at all. Keeping this separate from the longer
+    /// completion timeout lets that common path open the popup promptly without giving up on a copy
+    /// that has already started publishing its formats.
     /// </remarks>
-    private static readonly TimeSpan CopyTimeout = TimeSpan.FromMilliseconds(320);
+    private static readonly TimeSpan CopyStartTimeout = TimeSpan.FromMilliseconds(90);
+
+    /// <summary>How long an observed clipboard update may take to publish readable text.</summary>
+    private static readonly TimeSpan CopyCompletionTimeout = TimeSpan.FromMilliseconds(320);
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(15);
 
@@ -87,14 +89,17 @@ internal static class SelectedTextReader
         {
             SendCopy();
 
-            var maxPolls = (int)Math.Ceiling(
-                CopyTimeout.TotalMilliseconds / PollInterval.TotalMilliseconds);
+            var maxStartPolls = (int)Math.Ceiling(
+                CopyStartTimeout.TotalMilliseconds / PollInterval.TotalMilliseconds);
+            var maxCompletionPolls = (int)Math.Ceiling(
+                CopyCompletionTimeout.TotalMilliseconds / PollInterval.TotalMilliseconds);
             return await PollForCopiedTextAsync(
                 before,
                 GetClipboardSequenceNumber,
                 ReadClipboardTextIfAvailable,
                 () => Task.Delay(PollInterval),
-                maxPolls);
+                maxStartPolls,
+                maxCompletionPolls);
         }
         catch (Exception ex)
         {
@@ -122,21 +127,33 @@ internal static class SelectedTextReader
         Func<uint> getSequenceNumber,
         Func<string?> readText,
         Func<Task> delay,
-        int maxPolls)
+        int maxStartPolls,
+        int maxCompletionPolls)
     {
         var changed = false;
+        var startPolls = 0;
+        var completionPolls = 0;
 
-        for (var poll = 0; poll <= maxPolls; poll++)
+        while (true)
         {
             changed |= getSequenceNumber() != before;
 
             if (changed && readText() is { } text)
                 return Sanitize(text);
 
-            if (poll < maxPolls) await delay();
-        }
+            if (changed)
+            {
+                if (completionPolls >= maxCompletionPolls) return "";
+                completionPolls++;
+            }
+            else
+            {
+                if (startPolls >= maxStartPolls) return "";
+                startPolls++;
+            }
 
-        return "";
+            await delay();
+        }
     }
 
     /// <summary>Returns null while copied text is not published or cannot be read yet.</summary>
