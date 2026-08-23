@@ -26,6 +26,11 @@ internal static class SelectedTextReader
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
     /// <summary>
+    /// Keeps the managed data object alive while this process owns the restored clipboard.
+    /// </summary>
+    private static System.Windows.DataObject? _restoredClipboardOwner;
+
+    /// <summary>
     /// How long the foreground application is given to answer the copy.
     /// </summary>
     /// <remarks>
@@ -165,8 +170,21 @@ internal static class SelectedTextReader
     {
         try
         {
-            if (snapshot is System.Windows.DataObject data) Clipboard.SetDataObject(data, copy: true);
-            else Clipboard.Clear();
+            if (snapshot is System.Windows.DataObject data)
+            {
+                // copy:true calls OleFlushClipboard after publishing every format. Some third-party
+                // clipboard data providers make that native call access-violate inside ole32.dll;
+                // a corrupted-state exception cannot be caught here and terminates the process.
+                // Keep the data object alive instead so OLE can request its formats lazily without
+                // taking that unsafe flush path.
+                Clipboard.SetDataObject(data, copy: false);
+                _restoredClipboardOwner = data;
+            }
+            else
+            {
+                Clipboard.Clear();
+                _restoredClipboardOwner = null;
+            }
         }
         catch (Exception ex)
         {
