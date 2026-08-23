@@ -691,15 +691,17 @@ public partial class QuickLookupWindow : Window
     /// It also means the popup never closes while it is the window being used — typing in it, waiting
     /// for a translation, listening to one — so none of those needs a rule of its own.
     ///
-    /// Two exceptions. A pinned popup is one the user has said to keep regardless, which is what
-    /// pinning is for. And a picker with its list down has not lost anybody's attention: the list is
-    /// its own window, and answering that deactivation would close the popup out from under the
-    /// language someone is in the middle of choosing.
+    /// Three exceptions. A popup that has not yet been confirmed as the foreground window is still
+    /// in the activation handoff started by <see cref="ReacquireForeground"/>; treating that transient
+    /// deactivation as departure closes it before the retry can run. A pinned popup is one the user
+    /// has said to keep regardless, which is what pinning is for. And a picker with its list down has
+    /// not lost anybody's attention: the list is its own window, and answering that deactivation
+    /// would close the popup out from under the language someone is in the middle of choosing.
     /// </remarks>
     protected override void OnDeactivated(EventArgs e)
     {
         base.OnDeactivated(e);
-        if (_pinned || _dropDownOpen) return;
+        if (!_hadForeground || _pinned || _dropDownOpen) return;
         BeginClose();
     }
 
