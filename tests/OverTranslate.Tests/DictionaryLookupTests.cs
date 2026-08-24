@@ -92,7 +92,7 @@ public class DictionaryLookupTests
     }
 
     [Fact]
-    public void Dictionary_loading_bar_is_scoped_to_text_translation()
+    public void Loading_bars_match_the_translation_surface_and_lookup_stage()
     {
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
         var projectDirectory = StringsParityTests.ProjectDirectory();
@@ -101,13 +101,19 @@ public class DictionaryLookupTests
         var quickLookup = XDocument.Load(Path.Combine(
             projectDirectory, "Views", "QuickLookup", "QuickLookupWindow.xaml"));
 
-        var bar = translation.Descendants()
+        var translationDictionaryBar = translation.Descendants()
+            .Single(element => element.Attribute(x + "Name")?.Value == "DictionaryLoadingBar");
+        var quickTranslationBar = quickLookup.Descendants()
+            .Single(element => element.Attribute(x + "Name")?.Value == "TranslationLoadingBar");
+        var quickDictionaryBar = quickLookup.Descendants()
             .Single(element => element.Attribute(x + "Name")?.Value == "DictionaryLoadingBar");
 
-        Assert.Equal("2", bar.Attribute("Height")?.Value);
-        Assert.Equal("True", bar.Attribute("IsIndeterminate")?.Value);
-        Assert.DoesNotContain(quickLookup.Descendants(),
-            element => element.Attribute(x + "Name")?.Value == "DictionaryLoadingBar");
+        Assert.Equal("2", translationDictionaryBar.Attribute("Height")?.Value);
+        Assert.Equal("True", translationDictionaryBar.Attribute("IsIndeterminate")?.Value);
+        Assert.Equal("2.5", quickTranslationBar.Attribute("Height")?.Value);
+        Assert.Equal("True", quickTranslationBar.Attribute("IsIndeterminate")?.Value);
+        Assert.Equal("2", quickDictionaryBar.Attribute("Height")?.Value);
+        Assert.Equal("True", quickDictionaryBar.Attribute("IsIndeterminate")?.Value);
     }
 
     [Fact]

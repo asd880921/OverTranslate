@@ -880,6 +880,7 @@ public partial class QuickLookupWindow : Window
         if (_suppressAuto) return;
 
         _debounce.Stop();
+        SetTranslationLoading(false);
         ClearDictionaryResult();
         if (string.IsNullOrWhiteSpace(SourceTextBox.Text))
         {
@@ -915,6 +916,7 @@ public partial class QuickLookupWindow : Window
         }
 
         var seq = ++_seq;
+        SetTranslationLoading(true);
         ShowStatus(LocalizationService.Get("S.Translation.Translating"), isError: false);
 
         try
@@ -924,6 +926,7 @@ public partial class QuickLookupWindow : Window
 
             if (seq != _seq) return;
 
+            SetTranslationLoading(false);
             _detectedLang = detected ?? "";
             TranslatedText.Text = results.FirstOrDefault()?.TranslatedText ?? "";
             StatusText.Visibility = Visibility.Collapsed;
@@ -936,6 +939,7 @@ public partial class QuickLookupWindow : Window
         {
             if (seq != _seq) return;
 
+            SetTranslationLoading(false);
             Log.Warn(ex, "取詞翻譯 could not translate");
             TranslatedText.Text = "";
             ShowStatus(
@@ -951,12 +955,18 @@ public partial class QuickLookupWindow : Window
     {
         if (sourceLang.Length == 0 || !DictionaryLookupEligibility.IsEligible(text)) return;
 
+        DictionaryView.Clear();
+        DictionaryLoadingBar.Visibility = Visibility.Visible;
+        DictionaryHost.Visibility = Visibility.Visible;
+        KeepBodyOnScreen();
+
         try
         {
             var result = await AppServices.Translation.LookupDictionaryAsync(
                 text, sourceLang, targetLang, engine: provider);
             if (seq != _seq) return;
 
+            DictionaryLoadingBar.Visibility = Visibility.Collapsed;
             DictionaryView.Show(result);
             if (result?.HasContent != true)
                 DictionaryView.ShowMessage("S.Dictionary.NoResult");
@@ -969,6 +979,7 @@ public partial class QuickLookupWindow : Window
             Log.Debug(ex, "取詞翻譯 dictionary lookup did not complete");
             if (seq == _seq)
             {
+                DictionaryLoadingBar.Visibility = Visibility.Collapsed;
                 DictionaryView.ShowMessage("S.Dictionary.Unavailable");
                 DictionaryHost.Visibility = Visibility.Visible;
                 KeepBodyOnScreen();
@@ -978,9 +989,13 @@ public partial class QuickLookupWindow : Window
 
     private void ClearDictionaryResult()
     {
+        DictionaryLoadingBar.Visibility = Visibility.Collapsed;
         DictionaryView.Clear();
         DictionaryHost.Visibility = Visibility.Collapsed;
     }
+
+    private void SetTranslationLoading(bool loading)
+        => TranslationLoadingBar.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
 
     /// <remarks>
     /// Silent while the gear panel is up. A translation finishing is not a reason to take the user
