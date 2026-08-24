@@ -117,6 +117,41 @@ public class DictionaryLookupTests
     }
 
     [Fact]
+    public void Text_translation_dictionary_height_is_bound_to_the_available_result_space()
+    {
+        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var document = XDocument.Load(Path.Combine(
+            StringsParityTests.ProjectDirectory(),
+            "Views", "Translation", "TranslationPage.xaml"));
+
+        var translatedTextBox = document.Descendants(presentation + "TextBox")
+            .Single(element => element.Attribute(x + "Name")?.Value == "TranslatedTextBox");
+        var resultGrid = translatedTextBox.Parent!;
+        var resultRows = resultGrid.Element(presentation + "Grid.RowDefinitions")!
+            .Elements(presentation + "RowDefinition")
+            .ToList();
+        var dictionaryScroller = resultGrid.Elements(presentation + "ScrollViewer").Single();
+
+        Assert.Equal("96", resultRows[0].Attribute("MinHeight")?.Value);
+        Assert.Equal("TranslationResultLayout_SizeChanged", resultGrid.Attribute("SizeChanged")?.Value);
+        Assert.Equal("290", dictionaryScroller.Attribute("MaxHeight")?.Value);
+    }
+
+    [Theory]
+    [InlineData(500, 290)]
+    [InlineData(386, 290)]
+    [InlineData(300, 204)]
+    [InlineData(80, 0)]
+    public void Text_translation_dictionary_height_preserves_the_primary_result(
+        double availableHeight, double expectedDictionaryHeight)
+    {
+        Assert.Equal(
+            expectedDictionaryHeight,
+            Views.Translation.TranslationPage.CalculateDictionaryMaxHeight(availableHeight));
+    }
+
+    [Fact]
     public async Task Dictionary_lookup_falls_back_when_the_selected_provider_rejects_the_language_pair()
     {
         var expected = new DictionaryLookupData(
