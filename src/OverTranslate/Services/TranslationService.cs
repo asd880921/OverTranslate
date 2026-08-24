@@ -121,15 +121,19 @@ public class TranslationService
         if (!DictionaryLookupEligibility.IsEligible(text))
             return Task.FromResult<DictionaryLookupData?>(null);
 
-        var attempts = DictionaryLookupPlan.Build(engine ?? Saved, targetLang)
+        var lookupText = text.Trim();
+        var attempts = DictionaryLookupPlan.Build(engine ?? Saved, sourceLang, targetLang)
             .Select<DictionaryLookupStep, Func<CancellationToken, Task<DictionaryLookupData?>>>(step =>
                 async token =>
                 {
                     var provider = DictionaryProvider(step.Provider);
                     if (provider is null) return null;
 
+                    var requestText = step.ConvertSourceToSimplified
+                        ? DictionarySimplifiedChineseConverter.Convert(lookupText)
+                        : lookupText;
                     var result = await provider.LookupDictionaryAsync(
-                        text.Trim(), sourceLang, step.TargetLanguage, token);
+                        requestText, step.SourceLanguage, step.TargetLanguage, token);
                     if (result is null || !step.ConvertToTraditional) return result;
 
                     return DictionaryTraditionalChineseConverter.Convert(result);
