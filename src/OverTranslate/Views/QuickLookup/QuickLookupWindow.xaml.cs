@@ -880,6 +880,8 @@ public partial class QuickLookupWindow : Window
         if (_suppressAuto) return;
 
         _debounce.Stop();
+        SetTranslationLoading(false);
+        ClearDictionaryResult();
         if (string.IsNullOrWhiteSpace(SourceTextBox.Text))
         {
             _seq++;
@@ -914,6 +916,7 @@ public partial class QuickLookupWindow : Window
         }
 
         var seq = ++_seq;
+        SetTranslationLoading(true);
         ShowStatus(LocalizationService.Get("S.Translation.Translating"), isError: false);
 
         try
@@ -923,15 +926,20 @@ public partial class QuickLookupWindow : Window
 
             if (seq != _seq) return;
 
+            SetTranslationLoading(false);
             _detectedLang = detected ?? "";
             TranslatedText.Text = results.FirstOrDefault()?.TranslatedText ?? "";
             StatusText.Visibility = Visibility.Collapsed;
             ShowResult();
+
+            var dictionarySource = LanguageData.IsAutomaticSource(srcLang) ? _detectedLang : srcLang;
+            await LoadDictionaryAsync(seq, text, dictionarySource, tgtLang, settings.Provider);
         }
         catch (Exception ex)
         {
             if (seq != _seq) return;
 
+            SetTranslationLoading(false);
             Log.Warn(ex, "取詞翻譯 could not translate");
             TranslatedText.Text = "";
             ShowStatus(
@@ -941,6 +949,53 @@ public partial class QuickLookupWindow : Window
                 isError: true);
         }
     }
+
+    private async Task LoadDictionaryAsync(
+        int seq, string text, string sourceLang, string targetLang, TranslationProvider provider)
+    {
+        if (sourceLang.Length == 0 || !DictionaryLookupEligibility.IsEligible(text)) return;
+
+        DictionaryView.Clear();
+        DictionaryLoadingBar.Visibility = Visibility.Visible;
+        DictionaryHost.Visibility = Visibility.Visible;
+        KeepBodyOnScreen();
+
+        try
+        {
+            var result = await AppServices.Translation.LookupDictionaryAsync(
+                text, sourceLang, targetLang, engine: provider);
+            if (seq != _seq) return;
+
+            DictionaryLoadingBar.Visibility = Visibility.Collapsed;
+            DictionaryView.Show(result);
+            if (result?.HasContent != true)
+                DictionaryView.ShowMessage("S.Dictionary.NoResult");
+            DictionaryHost.Visibility = Visibility.Visible;
+            KeepBodyOnScreen();
+        }
+        catch (Exception ex)
+        {
+            // Keep the fast primary answer even when the optional rich endpoint fails.
+            Log.Debug(ex, "取詞翻譯 dictionary lookup did not complete");
+            if (seq == _seq)
+            {
+                DictionaryLoadingBar.Visibility = Visibility.Collapsed;
+                DictionaryView.ShowMessage("S.Dictionary.Unavailable");
+                DictionaryHost.Visibility = Visibility.Visible;
+                KeepBodyOnScreen();
+            }
+        }
+    }
+
+    private void ClearDictionaryResult()
+    {
+        DictionaryLoadingBar.Visibility = Visibility.Collapsed;
+        DictionaryView.Clear();
+        DictionaryHost.Visibility = Visibility.Collapsed;
+    }
+
+    private void SetTranslationLoading(bool loading)
+        => TranslationLoadingBar.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
 
     /// <remarks>
     /// Silent while the gear panel is up. A translation finishing is not a reason to take the user

@@ -13,6 +13,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="GTranslate">
+      <HintPath>..\..\src\OverTranslate\lib\GTranslate\GTranslate.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
     <ProjectReference Include="..\..\src\OverTranslate\OverTranslate.csproj" />
   </ItemGroup>
 

@@ -99,6 +99,24 @@
     <sys:String x:Key="S.Translation.Translating">翻譯中…</sys:String>
     <sys:String x:Key="S.Translation.SpeakFailed">朗讀失敗：{0}</sys:String>
 
+    <!-- ── Rich dictionary ── -->
+    <sys:String x:Key="S.Dictionary.Alternatives">其他譯法</sys:String>
+    <sys:String x:Key="S.Dictionary.NoResult">該詞查無對應的詞典資料。</sys:String>
+    <sys:String x:Key="S.Dictionary.Unavailable">該詞查無對應的詞典資料。</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Adjective">形容詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Adverb">副詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Article">冠詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Conjunction">連接詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Determiner">限定詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Interjection">感嘆詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.ModalVerb">情態動詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Noun">名詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Other">其他</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Phrase">片語</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Preposition">介系詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Pronoun">代名詞</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Verb">動詞</sys:String>
+
     <!-- ── Quick lookup popup ── -->
     <sys:String x:Key="S.QuickLookup.Placeholder">輸入要翻譯的文字…</sys:String>
     <sys:String x:Key="S.QuickLookup.Settings">取詞翻譯設定</sys:String>

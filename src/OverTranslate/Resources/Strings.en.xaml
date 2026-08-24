@@ -94,6 +94,24 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Translation.Translating">Translating...</sys:String>
     <sys:String x:Key="S.Translation.SpeakFailed">Could not read it aloud: {0}</sys:String>
 
+    <!-- ── Rich dictionary ── -->
+    <sys:String x:Key="S.Dictionary.Alternatives">More translations</sys:String>
+    <sys:String x:Key="S.Dictionary.NoResult">No matching dictionary entry was found for this term.</sys:String>
+    <sys:String x:Key="S.Dictionary.Unavailable">No matching dictionary entry was found for this term.</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Adjective">Adjective</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Adverb">Adverb</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Article">Article</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Conjunction">Conjunction</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Determiner">Determiner</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Interjection">Interjection</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.ModalVerb">Modal verb</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Noun">Noun</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Other">Other</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Phrase">Phrase</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Preposition">Preposition</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Pronoun">Pronoun</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Verb">Verb</sys:String>
+
     <!-- ── Quick lookup popup ── -->
     <sys:String x:Key="S.QuickLookup.Placeholder">Type text to translate...</sys:String>
     <sys:String x:Key="S.QuickLookup.Settings">Quick lookup settings</sys:String>
