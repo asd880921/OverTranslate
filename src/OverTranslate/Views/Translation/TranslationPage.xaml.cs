@@ -12,6 +12,8 @@ namespace OverTranslate.Views.Translation;
 
 public partial class TranslationPage : UserControl
 {
+    private const double PreferredDictionaryHeight = 290;
+    private const double MinimumTranslatedResultHeight = 96;
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
     private readonly TranslationService _translationService = new();
     private readonly TtsService _tts = new();
@@ -428,6 +430,14 @@ public partial class TranslationPage : UserControl
         DictionaryView.Clear();
         DictionaryHost.Visibility = Visibility.Collapsed;
     }
+
+    private void TranslationResultLayout_SizeChanged(object sender, SizeChangedEventArgs e)
+        => DictionaryScroller.MaxHeight = CalculateDictionaryMaxHeight(e.NewSize.Height);
+
+    internal static double CalculateDictionaryMaxHeight(double availableHeight)
+        => Math.Min(
+            PreferredDictionaryHeight,
+            Math.Max(0, availableHeight - MinimumTranslatedResultHeight));
 
     // Toggles the in-flight indicator: an indeterminate bar over the output plus an accent status line,
     // so "translating" is obvious where the user is looking (the 譯文 panel), not just a grey footer note.

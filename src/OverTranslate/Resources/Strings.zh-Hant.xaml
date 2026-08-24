@@ -100,7 +100,7 @@
     <sys:String x:Key="S.Translation.SpeakFailed">朗讀失敗：{0}</sys:String>
 
     <!-- ── Rich dictionary ── -->
-    <sys:String x:Key="S.Dictionary.Alternatives">其他譯法</sys:String>
+    <sys:String x:Key="S.Dictionary.Alternatives">其他翻譯</sys:String>
     <sys:String x:Key="S.Dictionary.NoResult">該詞查無對應的詞典資料。</sys:String>
     <sys:String x:Key="S.Dictionary.Unavailable">該詞查無對應的詞典資料。</sys:String>
     <sys:String x:Key="S.Dictionary.PartOfSpeech.Adjective">形容詞</sys:String>

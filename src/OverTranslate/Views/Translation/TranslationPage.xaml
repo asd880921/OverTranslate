@@ -197,9 +197,11 @@
                                  Background="Transparent"
                                  Foreground="{DynamicResource AppAccent}"/>
 
-                    <Grid Grid.Row="2">
+                    <Grid x:Name="TranslationResultLayout"
+                          Grid.Row="2"
+                          SizeChanged="TranslationResultLayout_SizeChanged">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*" MinHeight="96"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
@@ -209,7 +211,8 @@
                                  IsReadOnly="True"
                                  Background="Transparent"/>
 
-                        <ScrollViewer Grid.Row="1"
+                        <ScrollViewer x:Name="DictionaryScroller"
+                                      Grid.Row="1"
                                       MaxHeight="290"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">

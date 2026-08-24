@@ -25,10 +25,49 @@ public class DictionaryLookupTests
     public void Dictionary_fallback_plan_matches_the_selected_provider_and_target(
         TranslationProvider provider, string targetLanguage, string expected)
     {
-        var actual = string.Join(",", DictionaryLookupPlan.Build(provider, targetLanguage)
+        var actual = string.Join(",", DictionaryLookupPlan.Build(provider, "EN-US", targetLanguage)
             .Select(step => $"{step.Provider}:{step.TargetLanguage}:{step.ConvertToTraditional}"));
 
         Assert.Equal(expected, actual);
+    }
+
+    [Theory]
+    [InlineData(TranslationProvider.Google)]
+    [InlineData(TranslationProvider.Google2)]
+    [InlineData(TranslationProvider.Microsoft)]
+    [InlineData(TranslationProvider.Bing)]
+    [InlineData(TranslationProvider.DeepL)]
+    public void Traditional_Chinese_source_is_simplified_only_for_Microsoft_and_Bing(
+        TranslationProvider provider)
+    {
+        var steps = DictionaryLookupPlan.Build(provider, "ZH-HANT", "EN-US");
+
+        Assert.All(steps, step =>
+        {
+            var requiresSimplifiedSource =
+                step.Provider is TranslationProvider.Microsoft or TranslationProvider.Bing;
+            Assert.Equal(requiresSimplifiedSource ? "ZH-HANS" : "ZH-HANT", step.SourceLanguage);
+            Assert.Equal(requiresSimplifiedSource, step.ConvertSourceToSimplified);
+            Assert.Equal(requiresSimplifiedSource, step.ConvertToTraditional);
+        });
+    }
+
+    [Fact]
+    public void Traditional_Chinese_source_and_target_conversions_are_independent()
+    {
+        var steps = DictionaryLookupPlan.Build(
+            TranslationProvider.Microsoft, "ZH-HANT", "ZH-HANT");
+
+        Assert.True(steps[0].ConvertSourceToSimplified);
+        Assert.True(steps[0].ConvertToTraditional);
+        Assert.False(steps[1].ConvertSourceToSimplified);
+        Assert.False(steps[1].ConvertToTraditional);
+    }
+
+    [Fact]
+    public void Traditional_dictionary_query_is_converted_with_Taiwan_phrases()
+    {
+        Assert.Equal("软件", DictionarySimplifiedChineseConverter.Convert("軟體"));
     }
 
     [Fact]
@@ -114,6 +153,41 @@ public class DictionaryLookupTests
         Assert.Equal("True", quickTranslationBar.Attribute("IsIndeterminate")?.Value);
         Assert.Equal("2", quickDictionaryBar.Attribute("Height")?.Value);
         Assert.Equal("True", quickDictionaryBar.Attribute("IsIndeterminate")?.Value);
+    }
+
+    [Fact]
+    public void Text_translation_dictionary_height_is_bound_to_the_available_result_space()
+    {
+        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var document = XDocument.Load(Path.Combine(
+            StringsParityTests.ProjectDirectory(),
+            "Views", "Translation", "TranslationPage.xaml"));
+
+        var translatedTextBox = document.Descendants(presentation + "TextBox")
+            .Single(element => element.Attribute(x + "Name")?.Value == "TranslatedTextBox");
+        var resultGrid = translatedTextBox.Parent!;
+        var resultRows = resultGrid.Element(presentation + "Grid.RowDefinitions")!
+            .Elements(presentation + "RowDefinition")
+            .ToList();
+        var dictionaryScroller = resultGrid.Elements(presentation + "ScrollViewer").Single();
+
+        Assert.Equal("96", resultRows[0].Attribute("MinHeight")?.Value);
+        Assert.Equal("TranslationResultLayout_SizeChanged", resultGrid.Attribute("SizeChanged")?.Value);
+        Assert.Equal("290", dictionaryScroller.Attribute("MaxHeight")?.Value);
+    }
+
+    [Theory]
+    [InlineData(500, 290)]
+    [InlineData(386, 290)]
+    [InlineData(300, 204)]
+    [InlineData(80, 0)]
+    public void Text_translation_dictionary_height_preserves_the_primary_result(
+        double availableHeight, double expectedDictionaryHeight)
+    {
+        Assert.Equal(
+            expectedDictionaryHeight,
+            Views.Translation.TranslationPage.CalculateDictionaryMaxHeight(availableHeight));
     }
 
     [Fact]
