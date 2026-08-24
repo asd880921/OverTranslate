@@ -260,6 +260,7 @@ public partial class TranslationPage : UserControl
         if (_suppressAuto) return;
 
         _debounce.Stop();
+        ClearDictionaryResult();
         if (string.IsNullOrWhiteSpace(SourceTextBox.Text))
         {
             _seq++;               // cancel any in-flight result
@@ -362,6 +363,9 @@ public partial class TranslationPage : UserControl
             // The answer is what 朗讀原文 was waiting on under 自動, so the speaker comes back here
             // rather than on the next thing the user happens to touch.
             RenderSourceActions();
+
+            var dictionarySource = LanguageData.IsAutomaticSource(srcLang) ? _detectedLang : srcLang;
+            await LoadDictionaryAsync(seq, text, dictionarySource, tgtLang, provider);
         }
         catch (Exception ex)
         {
@@ -381,6 +385,48 @@ public partial class TranslationPage : UserControl
                 isError: true);
             ShowRetry(true);
         }
+    }
+
+    private async Task LoadDictionaryAsync(
+        int seq, string text, string sourceLang, string targetLang, TranslationProvider provider)
+    {
+        if (sourceLang.Length == 0 || !DictionaryLookupEligibility.IsEligible(text)) return;
+
+        DictionaryView.Clear();
+        DictionaryLoadingBar.Visibility = Visibility.Visible;
+        DictionaryHost.Visibility = Visibility.Visible;
+
+        try
+        {
+            var result = await _translationService.LookupDictionaryAsync(
+                text, sourceLang, targetLang, engine: provider);
+            if (seq != _seq) return;
+
+            DictionaryLoadingBar.Visibility = Visibility.Collapsed;
+            DictionaryView.Show(result);
+            if (result?.HasContent != true)
+                DictionaryView.ShowMessage("S.Dictionary.NoResult");
+            DictionaryHost.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            // Rich data is an enhancement to a translation that already succeeded. A dictionary
+            // endpoint having a bad minute must not replace that answer with an error state.
+            Log.Debug(ex, "Dictionary lookup did not complete");
+            if (seq == _seq)
+            {
+                DictionaryLoadingBar.Visibility = Visibility.Collapsed;
+                DictionaryView.ShowMessage("S.Dictionary.Unavailable");
+                DictionaryHost.Visibility = Visibility.Visible;
+            }
+        }
+    }
+
+    private void ClearDictionaryResult()
+    {
+        DictionaryLoadingBar.Visibility = Visibility.Collapsed;
+        DictionaryView.Clear();
+        DictionaryHost.Visibility = Visibility.Collapsed;
     }
 
     // Toggles the in-flight indicator: an indeterminate bar over the output plus an accent status line,

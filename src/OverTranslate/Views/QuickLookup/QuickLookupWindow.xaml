@@ -1,6 +1,7 @@
 <Window x:Class="OverTranslate.Views.QuickLookup.QuickLookupWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:OverTranslate.Views.Controls"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -368,7 +369,11 @@
 
                     <Grid>
                         <!-- Result -->
-                        <StackPanel x:Name="ResultPanel" Margin="18,14,18,14">
+                        <ScrollViewer x:Name="ResultPanel"
+                                      MaxHeight="460"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="18,14,18,14">
                             <StackPanel Orientation="Horizontal">
                                 <!-- The one piece of large text in the window, and the only place
                                      that opts out of the window's Display text formatting. That mode
@@ -475,7 +480,17 @@
                                            TextWrapping="Wrap"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
-                        </StackPanel>
+
+                            <Border x:Name="DictionaryHost"
+                                    BorderBrush="{DynamicResource AppSubtleBorder}"
+                                    BorderThickness="0,1,0,0"
+                                    Padding="0,12,0,0"
+                                    Margin="0,12,0,0"
+                                    Visibility="Collapsed">
+                                <controls:DictionaryResultView x:Name="DictionaryView"/>
+                            </Border>
+                            </StackPanel>
+                        </ScrollViewer>
 
                         <!-- Settings -->
                         <StackPanel x:Name="SettingsPanel" Margin="18,14,18,16" Visibility="Collapsed">

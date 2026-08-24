@@ -880,6 +880,7 @@ public partial class QuickLookupWindow : Window
         if (_suppressAuto) return;
 
         _debounce.Stop();
+        ClearDictionaryResult();
         if (string.IsNullOrWhiteSpace(SourceTextBox.Text))
         {
             _seq++;
@@ -927,6 +928,9 @@ public partial class QuickLookupWindow : Window
             TranslatedText.Text = results.FirstOrDefault()?.TranslatedText ?? "";
             StatusText.Visibility = Visibility.Collapsed;
             ShowResult();
+
+            var dictionarySource = LanguageData.IsAutomaticSource(srcLang) ? _detectedLang : srcLang;
+            await LoadDictionaryAsync(seq, text, dictionarySource, tgtLang, settings.Provider);
         }
         catch (Exception ex)
         {
@@ -940,6 +944,42 @@ public partial class QuickLookupWindow : Window
                     LanguageData.GetProviderDisplay(settings.Provider), ex.Message),
                 isError: true);
         }
+    }
+
+    private async Task LoadDictionaryAsync(
+        int seq, string text, string sourceLang, string targetLang, TranslationProvider provider)
+    {
+        if (sourceLang.Length == 0 || !DictionaryLookupEligibility.IsEligible(text)) return;
+
+        try
+        {
+            var result = await AppServices.Translation.LookupDictionaryAsync(
+                text, sourceLang, targetLang, engine: provider);
+            if (seq != _seq) return;
+
+            DictionaryView.Show(result);
+            if (result?.HasContent != true)
+                DictionaryView.ShowMessage("S.Dictionary.NoResult");
+            DictionaryHost.Visibility = Visibility.Visible;
+            KeepBodyOnScreen();
+        }
+        catch (Exception ex)
+        {
+            // Keep the fast primary answer even when the optional rich endpoint fails.
+            Log.Debug(ex, "取詞翻譯 dictionary lookup did not complete");
+            if (seq == _seq)
+            {
+                DictionaryView.ShowMessage("S.Dictionary.Unavailable");
+                DictionaryHost.Visibility = Visibility.Visible;
+                KeepBodyOnScreen();
+            }
+        }
+    }
+
+    private void ClearDictionaryResult()
+    {
+        DictionaryView.Clear();
+        DictionaryHost.Visibility = Visibility.Collapsed;
     }
 
     /// <remarks>

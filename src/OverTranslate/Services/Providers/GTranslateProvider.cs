@@ -1,4 +1,5 @@
 using GTranslate;
+using GTranslate.Results;
 using GTranslate.Translators;
 using OverTranslate.Models;
 
@@ -19,6 +20,11 @@ public class GTranslateProvider : ITranslationProvider
 
     // Friendly engine name (e.g. "GoogleTranslator2", "BingTranslator") for diagnostics/logging.
     public string Name => _translator.Name;
+
+    public bool SupportsDictionary =>
+        _translator is IDictionaryTranslator &&
+        _translator is ITranslatorCapabilities capabilities &&
+        capabilities.Capabilities.HasFlag(TranslationServiceCapabilities.Dictionary);
 
     // Maps DeepL-style codes to BCP-47 codes used by GTranslate
     private static readonly Dictionary<string, string> ToGTranslate = new(StringComparer.OrdinalIgnoreCase)
@@ -47,6 +53,14 @@ public class GTranslateProvider : ITranslationProvider
     {
         "NO" => "NB",
         _    => iso6391.ToUpperInvariant()
+    };
+
+    private static string DictionaryServiceDisplay(string service) => service switch
+    {
+        "GoogleTranslator"    => "Google Web",
+        "BingTranslator"      => "Bing",
+        "MicrosoftTranslator" => "Microsoft",
+        _                     => service,
     };
 
     public async Task<(List<TranslatedBlock> Blocks, string DetectedLang)> TranslateAsync(
@@ -95,5 +109,45 @@ public class GTranslateProvider : ITranslationProvider
         var detLang = r.SourceLanguage?.ISO6391 ?? "";
         var mapped  = string.IsNullOrEmpty(detLang) ? "" : MapDetectedToDeepL(detLang);
         return (r.Translation, mapped);
+    }
+
+    public async Task<DictionaryLookupData?> LookupDictionaryAsync(
+        string text, string sourceLang, string targetLang, CancellationToken cancellationToken = default)
+    {
+        if (!SupportsDictionary || _translator is not IDictionaryTranslator dictionaryTranslator)
+            return null;
+
+        if (_targetOverrides.TryGetValue(targetLang, out var overrideLang))
+            targetLang = overrideLang;
+
+        var fromCode = MapSourceToGTranslate(sourceLang);
+        if (string.IsNullOrWhiteSpace(fromCode)) return null;
+
+        var result = await dictionaryTranslator.LookupDictionaryAsync(
+            text, MapToGTranslate(targetLang), fromCode, cancellationToken);
+
+        var mapped = new DictionaryLookupData(
+            result.Source,
+            DictionaryServiceDisplay(result.Service),
+            result.Headword,
+            result.Pronunciation,
+            result.Groups.Select(group => new DictionaryLookupGroupData(
+                group.PartOfSpeech,
+                group.Entries.Select(entry => new DictionaryEntryData(
+                    entry.Text,
+                    entry.Transliteration,
+                    entry.Confidence,
+                    entry.Frequency,
+                    entry.BackTranslations,
+                    entry.Definitions,
+                    entry.Synonyms,
+                    entry.Examples.Select(example => new DictionaryExampleData(
+                        example.Source, example.Translation)).ToList())).ToList(),
+                group.Definitions,
+                group.Synonyms)).ToList(),
+            result.Examples.Select(example => new DictionaryExampleData(
+                example.Source, example.Translation)).ToList());
+
+        return mapped.HasContent ? mapped : null;
     }
 }

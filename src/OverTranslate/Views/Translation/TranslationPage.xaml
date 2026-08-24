@@ -1,6 +1,7 @@
 <UserControl x:Class="OverTranslate.Views.Translation.TranslationPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:OverTranslate.Views.Controls">
 
     <Grid Margin="28,22,28,20">
         <Grid.RowDefinitions>
@@ -196,11 +197,48 @@
                                  Background="Transparent"
                                  Foreground="{DynamicResource AppAccent}"/>
 
-                    <TextBox Grid.Row="2"
-                             x:Name="TranslatedTextBox"
-                             Style="{StaticResource MultilineTextBox}"
-                             IsReadOnly="True"
-                             Background="Transparent"/>
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBox Grid.Row="0"
+                                 x:Name="TranslatedTextBox"
+                                 Style="{StaticResource MultilineTextBox}"
+                                 IsReadOnly="True"
+                                 Background="Transparent"/>
+
+                        <ScrollViewer Grid.Row="1"
+                                      MaxHeight="290"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <Border x:Name="DictionaryHost"
+                                    BorderBrush="{DynamicResource AppSubtleBorder}"
+                                    BorderThickness="0,1,0,0"
+                                    Visibility="Collapsed">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <ProgressBar x:Name="DictionaryLoadingBar"
+                                                 Grid.Row="0"
+                                                 Height="2"
+                                                 IsIndeterminate="True"
+                                                 Visibility="Collapsed"
+                                                 BorderThickness="0"
+                                                 Background="Transparent"
+                                                 Foreground="{DynamicResource AppAccent}"/>
+
+                                    <controls:DictionaryResultView x:Name="DictionaryView"
+                                                                   Grid.Row="1"
+                                                                   Margin="14,12,14,8"/>
+                                </Grid>
+                            </Border>
+                        </ScrollViewer>
+                    </Grid>
                 </Grid>
             </Grid>
         </Border>

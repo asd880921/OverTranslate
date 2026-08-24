@@ -61,6 +61,7 @@
       <Private>true</Private>
     </Reference>
     <PackageReference Include="NLog" Version="5.0.4" />
+    <PackageReference Include="OpenccNetLib" Version="1.6.2" />
     <PackageReference Include="RapidOcrNet" Version="3.0.0" ExcludeAssets="build" />
     <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>

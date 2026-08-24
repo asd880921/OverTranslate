@@ -70,6 +70,14 @@ public class TranslationService
         _                             => _google2,
     };
 
+    private GTranslateProvider? DictionaryProvider(TranslationProvider provider) => provider switch
+    {
+        TranslationProvider.Google    => _google,
+        TranslationProvider.Bing      => _bing,
+        TranslationProvider.Microsoft => _microsoft,
+        _                             => null,
+    };
+
     public bool RequiresApiKey => Resilient(Saved).RequiresApiKey;
 
     /// <summary>Whether a specific engine needs an API key, for a caller that chose its own.</summary>
@@ -100,5 +108,34 @@ public class TranslationService
         var result   = await provider.TranslateAsync(blocks, sourceLang, targetLang, apiKey, cancellationToken);
         LastEngineUsage = (provider as ResilientProvider)?.LastUsage;
         return result;
+    }
+
+    /// <summary>
+    /// Looks up rich dictionary data only when the caller explicitly asks for it. Normal translation,
+    /// screenshot translation and realtime translation keep their existing request count and latency.
+    /// </summary>
+    public Task<DictionaryLookupData?> LookupDictionaryAsync(
+        string text, string sourceLang, string targetLang,
+        CancellationToken cancellationToken = default, TranslationProvider? engine = null)
+    {
+        if (!DictionaryLookupEligibility.IsEligible(text))
+            return Task.FromResult<DictionaryLookupData?>(null);
+
+        var attempts = DictionaryLookupPlan.Build(engine ?? Saved, targetLang)
+            .Select<DictionaryLookupStep, Func<CancellationToken, Task<DictionaryLookupData?>>>(step =>
+                async token =>
+                {
+                    var provider = DictionaryProvider(step.Provider);
+                    if (provider is null) return null;
+
+                    var result = await provider.LookupDictionaryAsync(
+                        text.Trim(), sourceLang, step.TargetLanguage, token);
+                    if (result is null || !step.ConvertToTraditional) return result;
+
+                    return DictionaryTraditionalChineseConverter.Convert(result);
+                })
+            .ToList();
+
+        return DictionaryLookupFallback.TryAsync(attempts, cancellationToken);
     }
 }
