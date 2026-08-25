@@ -55,15 +55,15 @@ public partial class QuickLookupWindow : Window
     private const int BodyMs  = 150;
 
     /// <summary>
-    /// The transparent band above and below the card, in DIP.
+    /// The transparent band below the card, in DIP.
     /// </summary>
     /// <remarks>
-    /// These are the top and bottom of the shadow margin on the root Grid — <c>Margin="26,24,26,30"</c>
-    /// in the XAML, which says why it is there. They have to be kept in step with it: they are what
+    /// This is the bottom of the shadow margin on the root Grid — <c>Margin="26,0,26,30"</c> in the
+    /// XAML, which says why it is there. It has to be kept in step with it: it is what
     /// <see cref="KeepBodyOnScreen"/> subtracts to find the card inside the window, and a stale value
-    /// would put the card that far off the edge it was told to sit against.
+    /// would put the card that far off the edge it was told to sit against. There is deliberately no
+    /// top margin, so Windows can place the visible card itself against the screen edge.
     /// </remarks>
-    private const double ShadowMarginTop    = 24;
     private const double ShadowMarginBottom = 30;
 
     /// <summary>
@@ -508,14 +508,14 @@ public partial class QuickLookupWindow : Window
         var scale = ScreenGeometry.ScaleAt(left, top);
 
         // The card may go all the way to the edge; the window may go further, because the last
-        // ShadowMargin* pixels of it are the transparent border the shadow fades out into. Holding
+        // ShadowMarginBottom pixels of it are the transparent border the shadow fades out into. Holding
         // the window itself inside the work area would keep the card that much clear of the bottom
         // of every screen, which is a band of empty desktop under a popup for no stated reason.
         var (wanted, resting) = QuickLookupLift.Place(
             top,
             _restingTop,
             pos.cy,
-            area.Top - (int)Math.Round(ShadowMarginTop * scale),
+            area.Top,
             area.Bottom + (int)Math.Round(ShadowMarginBottom * scale));
 
         _restingTop = resting;
@@ -550,7 +550,7 @@ public partial class QuickLookupWindow : Window
             bounds.Top,
             _restingTop,
             bounds.Height,
-            area.Top - (int)Math.Round(ShadowMarginTop * scale),
+            area.Top,
             area.Bottom + (int)Math.Round(ShadowMarginBottom * scale));
 
         _restingTop = resting;
