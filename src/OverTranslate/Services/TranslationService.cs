@@ -134,12 +134,21 @@ public class TranslationService
                         : lookupText;
                     var result = await provider.LookupDictionaryAsync(
                         requestText, step.SourceLanguage, step.TargetLanguage, token);
-                    if (result is null || !step.ConvertToTraditional) return result;
+                    if (result is null) return null;
 
-                    return DictionaryTraditionalChineseConverter.Convert(result);
+                    return PrepareDictionaryResult(result, lookupText, step.ConvertToTraditional);
                 })
             .ToList();
 
         return DictionaryLookupFallback.TryAsync(attempts, cancellationToken);
+    }
+
+    internal static DictionaryLookupData PrepareDictionaryResult(
+        DictionaryLookupData result, string originalText, bool convertToTraditional)
+    {
+        var prepared = convertToTraditional
+            ? DictionaryTraditionalChineseConverter.Convert(result)
+            : result;
+        return prepared with { Headword = originalText };
     }
 }

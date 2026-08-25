@@ -104,6 +104,22 @@ public class DictionaryLookupTests
         Assert.Equal("軟件", result.Headword);
     }
 
+    [Theory]
+    [InlineData("軟體", "软件", true)]
+    [InlineData("software", "API headword", false)]
+    [InlineData("軟件", "软件", false)]
+    public void Dictionary_heading_uses_the_original_input_for_every_language_direction(
+        string originalText, string apiHeadword, bool convertToTraditional)
+    {
+        var source = new DictionaryLookupData(
+            "API source", "Microsoft", apiHeadword, null, [], []);
+
+        var result = TranslationService.PrepareDictionaryResult(
+            source, originalText, convertToTraditional);
+
+        Assert.Equal(originalText, result.Headword);
+    }
+
     [Fact]
     public void Dictionary_results_expose_only_groups_with_a_part_of_speech()
     {
