@@ -84,13 +84,40 @@ public class DictionaryLookupTests
         var result = DictionaryTraditionalChineseConverter.Convert(source);
 
         Assert.Equal("Microsoft", result.Service);
-        Assert.Equal("軟體", result.Headword);
+        Assert.Equal("軟件", result.Headword);
         Assert.Equal("多個翻譯", result.Groups[0].Entries[0].Text);
         Assert.Equal("簡體中文", result.Groups[0].Entries[0].Definitions[0]);
         Assert.Equal("詞性", result.Groups[0].Entries[0].Synonyms[0]);
         Assert.Equal("這個翻譯", result.Groups[0].Entries[0].Examples[0].Translation);
         Assert.Equal("多個定義", result.Groups[0].Definitions[0]);
         Assert.Equal("同義詞", result.Groups[0].Synonyms[0]);
+    }
+
+    [Fact]
+    public void Simplified_dictionary_results_preserve_the_original_wording()
+    {
+        var source = new DictionaryLookupData(
+            "software", "Microsoft", "软件", null, [], []);
+
+        var result = DictionaryTraditionalChineseConverter.Convert(source);
+
+        Assert.Equal("軟件", result.Headword);
+    }
+
+    [Theory]
+    [InlineData("軟體", "软件", true)]
+    [InlineData("software", "API headword", false)]
+    [InlineData("軟件", "软件", false)]
+    public void Dictionary_heading_uses_the_original_input_for_every_language_direction(
+        string originalText, string apiHeadword, bool convertToTraditional)
+    {
+        var source = new DictionaryLookupData(
+            "API source", "Microsoft", apiHeadword, null, [], []);
+
+        var result = TranslationService.PrepareDictionaryResult(
+            source, originalText, convertToTraditional);
+
+        Assert.Equal(originalText, result.Headword);
     }
 
     [Fact]

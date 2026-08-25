@@ -5,7 +5,7 @@ namespace OverTranslate.Services;
 
 internal static class DictionaryTraditionalChineseConverter
 {
-    private static readonly Opencc Converter = new(OpenccConfig.S2Twp);
+    private static readonly Opencc Converter = new(OpenccConfig.S2Tw);
 
     internal static DictionaryLookupData Convert(DictionaryLookupData source) =>
         source with
