@@ -53,4 +53,23 @@ public class QuickLookupWindowMarkupTests
     {
         Assert.Equal("Height", (string?)Window().Root!.Attribute("SizeToContent"));
     }
+
+    /// <summary>
+    /// The transparent shadow canvas is an implementation detail. It must not leave the visible
+    /// card below the screen edge when Windows places the popup's actual window against that edge.
+    /// </summary>
+    [Fact]
+    public void The_visible_card_has_no_invisible_gap_above_it()
+    {
+        var shadowCanvas = Window().Root!
+            .Elements()
+            .Single(e => e.Name.LocalName == "Grid");
+
+        var margin = ((string?)shadowCanvas.Attribute("Margin"))!
+            .Split(',')
+            .Select(double.Parse)
+            .ToArray();
+
+        Assert.Equal(0, margin[1]);
+    }
 }

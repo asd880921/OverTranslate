@@ -177,12 +177,11 @@
         </Style>
     </Window.Resources>
 
-    <!-- Room for the shadow to fade out inside the window, which is the whole job of this margin:
-         a blur that reaches the window's edge with opacity left is cut off there, and the cut is a
-         straight line — a faint grey rectangle around the card that reads as a stray border. So the
-         margin is at least the blur radius on every side, plus the offset on the side the shadow
-         falls towards. The window's Width carries the extra so the card itself does not shrink. -->
-    <Grid Margin="26,24,26,30">
+    <!-- Room for the shadow to fade out inside the window on the sides and lower edge. The top is
+         deliberately flush: an invisible strip there makes Windows hold the visible card away from
+         the top of the screen during a drag. The window's Width carries the horizontal extra so the
+         card itself does not shrink. -->
+    <Grid Margin="26,0,26,30">
         <Border x:Name="Surface"
                 Background="{DynamicResource AppSurfaceBg}"
                 BorderBrush="{DynamicResource AppBorder}"

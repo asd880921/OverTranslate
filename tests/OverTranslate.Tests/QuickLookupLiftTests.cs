@@ -10,10 +10,9 @@ public class QuickLookupLiftTests
     // the work area, so the window may reach ShadowMarginBottom past it.
     private const int AreaTop = 0;
     private const int AreaBottom = 1040;
-    private const int MarginTop = 24;
     private const int MarginBottom = 30;
 
-    private const int LimitTop = AreaTop - MarginTop;          // -24
+    private const int LimitTop = AreaTop;
     private const int LimitBottom = AreaBottom + MarginBottom; // 1070
 
     private const int HeaderOnly = 120;   // the popup before a translation arrives
@@ -136,7 +135,7 @@ public class QuickLookupLiftTests
         // A monitor below the primary one, or one with the taskbar at the top.
         var (top, resting) = QuickLookupLift.Place(
             currentTop: 1900, restingTop: null, height: WithResult,
-            limitTop: 1080 - MarginTop, limitBottom: 2120 + MarginBottom);
+            limitTop: 1080, limitBottom: 2120 + MarginBottom);
 
         Assert.Equal(2120 + MarginBottom - WithResult, top);
         Assert.Equal(1900, resting);
