@@ -11,7 +11,7 @@
             </summary>
             <example><code>
             [CanBeNull] object Test() { ... }
-
+            
             void UseTest()
             {
               var p = Test();
@@ -75,7 +75,7 @@
             <example><code>
             [StringFormatMethod("message")]
             void ShowError(string message, params object[] args) { ... }
-
+            
             void Foo()
             {
               ShowError("Failed: {0}"); // Warning: Non-existing argument in format string
@@ -95,7 +95,7 @@
             </summary>
             <example><code>
             void LogInfo([StructuredMessageTemplate]string message, params object[] args) { ... }
-
+            
             void Foo()
             {
               LogInfo("User created: {username}"); // Warning: Non-existing argument in format string
@@ -117,12 +117,12 @@
                  public static int INT_CONST = 1;
                  public const string STRING_CONST = "1";
                }
-
+            
                public class Class1
                {
                  [ValueProvider("TestNamespace.Constants")] public int myField;
                  public void Foo([ValueProvider("TestNamespace.Constants")] string str) { }
-
+            
                  public void Test()
                  {
                    Foo(/*try completion here*/);//
@@ -196,12 +196,12 @@
              public class ObservableBase : INotifyPropertyChanged
              {
                public event PropertyChangedEventHandler PropertyChanged;
-
+             
                [NotifyPropertyChangedInvocator]
                protected virtual void NotifyChanged(string propertyName) { ... }
-
+            
                string _name;
-
+             
                public string Name
                {
                  get { return _name; }
@@ -286,7 +286,7 @@
             <example><code>
             [CannotApplyEqualityOperator]
             class NoEquality { }
-
+            
             class UsesNoEquality
             {
               void Test()
@@ -315,31 +315,31 @@
              </remarks>
              <example><code>
              struct StructWithDefaultEquality { /* no Equals &amp; GetHashCode override */ }
-
+             
              class MySet&lt;[DefaultEqualityUsage] T&gt; { ... }
-
+             
              static class Extensions
              {
                public static MySet&lt;T&gt; ToMySet&lt;[DefaultEqualityUsage] T&gt;(this IEnumerable&lt;T&gt; items) { ... }
              }
-
+             
              class MyList&lt;T&gt;
              {
                public int IndexOf([DefaultEqualityUsage] T item) { ... }
              }
-
+             
              class UsesDefaultEquality
              {
                void Test()
                {
                  var list = new MyList&lt;StructWithDefaultEquality&gt;();
-
+            
                  // Warning: Default equality of struct 'StructWithDefaultEquality' is used
                  list.IndexOf(new StructWithDefaultEquality());
-
+            
                  // Warning: Default equality of struct 'StructWithDefaultEquality' is used
                  var set1 = new MySet&lt;StructWithDefaultEquality&gt;();
-
+            
                  // Warning: Default equality of struct 'StructWithDefaultEquality' is used
                  var set2 = new StructWithDefaultEquality[1].ToMySet();
                }
@@ -354,7 +354,7 @@
             <example><code>
             [BaseTypeRequired(typeof(IComponent)] // Specify requirement
             class ComponentAttribute : Attribute { }
-
+            
             [Component] // ComponentAttribute requires implementing IComponent interface
             class MyComponent : IComponent { }
             </code></example>
@@ -369,13 +369,13 @@
             <example><code>
             [UsedImplicitly]
             public class TypeConverter { }
-
+            
             public class SummaryData
             {
               [UsedImplicitly(ImplicitUseKindFlags.InstantiatedWithFixedConstructorSignature)]
               public SummaryData() { }
             }
-
+            
             [UsedImplicitly(ImplicitUseTargetFlags.WithInheritors | ImplicitUseTargetFlags.Default)]
             public interface IService { }
             </code></example>
@@ -457,7 +457,7 @@
             </summary>
             <example><code>
             [Pure] int Multiply(int x, int y) => x * y;
-
+            
             void M()
             {
               Multiply(123, 42); // Warning: Return value of pure method is not used
@@ -552,7 +552,7 @@
             class Foo
             {
               [ProvidesContext] IBarService _barService = ...;
-
+            
               void ProcessNode(INode node)
               {
                 DoSomething(node, node.GetGlobalServices().Bar);
@@ -689,7 +689,7 @@
                  return this.ElementAt(0);
                }
              }
-
+            
              class Test
              {
                public void Foo()
@@ -768,7 +768,7 @@
              {
                // custom check for null but no enumeration
              }
-
+            
              void Foo(IEnumerable&lt;string&gt; values)
              {
                ThrowIfNull(values, nameof(values));
@@ -1325,7 +1325,7 @@
             {
               protected T Component { get; }
             }
-
+            
             public class CalculatorAdditionTests : BaseTestClass&lt;Calculator&gt;
             {
               [Test]
@@ -1345,16 +1345,16 @@
             public class User
             {
               private string Name;
-
+            
               [CqrsCommand]
               public void SetUserNameCommand(string newName)
               {
                 if (newName == GetUserName()) // Warning about 'GetUserName' is called from Command but belongs to the Query
                   return;
-
+            
                 Name = newName;
               }
-
+            
               [CqrsQuery]
               public string GetUserName() // Suggestion to rename it to the 'GetUserNameQuery'
               {
@@ -1372,16 +1372,16 @@
             public class User
             {
               private string Name;
-
+            
               [CqrsCommand]
               public void SetUserNameCommand(string newName)
               {
                 if (newName == GetUserName()) // Warning about 'GetUserName' is called from Command but belongs to the Query
                   return;
-
+            
                 Name = newName;
               }
-
+            
               [CqrsQuery]
               public string GetUserName() // Suggestion to rename it to the 'GetUserNameQuery'
               {
@@ -1403,14 +1403,14 @@
               {
                 var query = new GetUserNameQuery() { Id = command.Id }; // Warning about Query use inside Command
                 var handler = new UserQuery(); // Warning about using Query inside Command
-
+            
                 if (command.Name == handler.Handle(query)) // Warning about using Query inside Command
                   return;
-
+            
                 // ...
               }
             }
-
+            
             [CqrsQueryHandler]
             public class UserQuery // Suggestion to rename to the 'UserQueryHandler'
             {
@@ -1434,14 +1434,14 @@
                {
                  var query = new GetUserNameQuery() { Id = command.Id }; // Warning about using Query inside Command
                  var handler = new UserQuery(); // Warning about using Query inside Command
-
+             
                  if (command.Name == handler.Handle(query)) // Warning about using Query inside Command
                    return;
-
+            
                  // ...
                }
              }
-
+             
              [CqrsQueryHandler]
              public class UserQuery // Suggestion to rename to the 'UserQueryHandler'
              {
@@ -1460,24 +1460,24 @@
             public class User
             {
               private string Name;
-
+            
               [CqrsCommand]
               public void SetUserNameCommand(string newName)
               {
                 if (newName == GetUserName()) // Warning about 'GetUserName' being called from Command but belongs to the Query
                   return;
-
+            
                 Name = newName;
                 CheckName();
               }
-
+            
               [CqrsQuery]
               public string GetUserName() // Suggestion to rename it to the 'GetUserNameQuery'
               {
                 CheckName();
                 return Name;
               }
-
+            
               [CqrsExcludeFromAnalysis]
               public bool CheckName() // Although this method is used both in Command and Query, will be ignored in all CQRS analyzes
               {
@@ -2844,12 +2844,6 @@
         <member name="P:GTranslate.Results.DictionaryEntry.BackTranslations">
             <inheritdoc/>
         </member>
-        <member name="P:GTranslate.Results.DictionaryEntry.Definitions">
-            <inheritdoc/>
-        </member>
-        <member name="P:GTranslate.Results.DictionaryEntry.Synonyms">
-            <inheritdoc/>
-        </member>
         <member name="P:GTranslate.Results.DictionaryEntry.Examples">
             <inheritdoc/>
         </member>
@@ -2893,10 +2887,10 @@
             <inheritdoc/>
         </member>
         <member name="P:GTranslate.Results.DictionaryResult.TargetLanguage">
-            <inheritdoc/>
+            <inheritdoc cref="P:GTranslate.Results.IDictionaryResult.TargetLanguage"/>
         </member>
         <member name="P:GTranslate.Results.DictionaryResult.SourceLanguage">
-            <inheritdoc/>
+            <inheritdoc cref="P:GTranslate.Results.IDictionaryResult.SourceLanguage"/>
         </member>
         <member name="P:GTranslate.Results.DictionaryResult.Headword">
             <inheritdoc/>
@@ -3026,16 +3020,6 @@
         <member name="P:GTranslate.Results.IDictionaryEntry.BackTranslations">
             <summary>
             Gets the back translations returned for this entry.
-            </summary>
-        </member>
-        <member name="P:GTranslate.Results.IDictionaryEntry.Definitions">
-            <summary>
-            Gets definitions associated with this entry.
-            </summary>
-        </member>
-        <member name="P:GTranslate.Results.IDictionaryEntry.Synonyms">
-            <summary>
-            Gets synonyms associated with this entry.
             </summary>
         </member>
         <member name="P:GTranslate.Results.IDictionaryEntry.Examples">
@@ -3327,81 +3311,6 @@
         <member name="M:GTranslate.Results.YandexTransliterationResult.ToString">
             <inheritdoc/>
         </member>
-        <member name="T:GTranslate.TranslationServiceCapabilities">
-            <summary>
-            Specifies the capabilities exposed by a translation service.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.None">
-            <summary>
-            No capabilities are available.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Translation">
-            <summary>
-            Text translation is supported.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Detection">
-            <summary>
-            Language detection is supported.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Transliteration">
-            <summary>
-            Transliteration is supported.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.TextToSpeech">
-            <summary>
-            Text-to-speech is supported.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Dictionary">
-            <summary>
-            Dictionary lookup is supported.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.AlternativeTranslations">
-            <summary>
-            Alternative translations are included in dictionary results.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.PartOfSpeech">
-            <summary>
-            Parts of speech are included in dictionary results.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.BackTranslations">
-            <summary>
-            Back translations are included in dictionary results.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Confidence">
-            <summary>
-            Confidence scores are included in dictionary results.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Definitions">
-            <summary>
-            Definitions are included in dictionary results.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Synonyms">
-            <summary>
-            Synonyms are included in dictionary results.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Examples">
-            <summary>
-            Usage examples are included in dictionary results.
-            </summary>
-        </member>
-        <member name="F:GTranslate.TranslationServiceCapabilities.Pronunciation">
-            <summary>
-            Pronunciation or transliteration is included in dictionary results.
-            </summary>
-        </member>
         <member name="T:GTranslate.TranslationServices">
             <summary>
             Specifies the translation services.
@@ -3477,10 +3386,6 @@
         </member>
         <member name="P:GTranslate.Translators.AggregateTranslator.Name">
             <inheritdoc/>
-        </member>
-        <member name="P:GTranslate.Translators.AggregateTranslator.Capabilities">
-            <inheritdoc/>
-            <remarks>Dictionary composition is intentionally not performed by this translator.</remarks>
         </member>
         <member name="M:GTranslate.Translators.AggregateTranslator.#ctor">
             <summary>
@@ -3579,9 +3484,6 @@
         <member name="P:GTranslate.Translators.BingTranslator.Name">
             <inheritdoc/>
         </member>
-        <member name="P:GTranslate.Translators.BingTranslator.Capabilities">
-            <inheritdoc/>
-        </member>
         <member name="M:GTranslate.Translators.BingTranslator.#ctor">
             <summary>
             Initializes a new instance of the <see cref="T:GTranslate.Translators.BingTranslator"/> class.
@@ -3613,9 +3515,17 @@
         </member>
         <member name="M:GTranslate.Translators.BingTranslator.LookupDictionaryAsync(System.String,System.String,System.String,System.Threading.CancellationToken)">
             <inheritdoc cref="M:GTranslate.Translators.IDictionaryTranslator.LookupDictionaryAsync(System.String,System.String,System.String,System.Threading.CancellationToken)"/>
+            <remarks>
+            Bing returns translations grouped by part of speech, along with confidence scores, back translations
+            and the transliteration of each translation. Definitions, synonyms and usage examples are not returned.
+            </remarks>
         </member>
         <member name="M:GTranslate.Translators.BingTranslator.LookupDictionaryAsync(System.String,GTranslate.ILanguage,GTranslate.ILanguage,System.Threading.CancellationToken)">
             <inheritdoc cref="M:GTranslate.Translators.IDictionaryTranslator.LookupDictionaryAsync(System.String,GTranslate.ILanguage,GTranslate.ILanguage,System.Threading.CancellationToken)"/>
+            <remarks>
+            Bing returns translations grouped by part of speech, along with confidence scores, back translations
+            and the transliteration of each translation. Definitions, synonyms and usage examples are not returned.
+            </remarks>
         </member>
         <member name="M:GTranslate.Translators.BingTranslator.TransliterateAsync(System.String,System.String,System.String)">
             <summary>
@@ -3731,9 +3641,6 @@
         <member name="P:GTranslate.Translators.GoogleTranslator.Name">
             <inheritdoc/>
         </member>
-        <member name="P:GTranslate.Translators.GoogleTranslator.Capabilities">
-            <inheritdoc/>
-        </member>
         <member name="M:GTranslate.Translators.GoogleTranslator.#ctor">
             <summary>
             Initializes a new instance of the <see cref="T:GTranslate.Translators.GoogleTranslator"/> class.
@@ -3765,9 +3672,17 @@
         </member>
         <member name="M:GTranslate.Translators.GoogleTranslator.LookupDictionaryAsync(System.String,System.String,System.String,System.Threading.CancellationToken)">
             <inheritdoc cref="M:GTranslate.Translators.IDictionaryTranslator.LookupDictionaryAsync(System.String,System.String,System.String,System.Threading.CancellationToken)"/>
+            <remarks>
+            Google returns translations grouped by part of speech, along with confidence scores, frequency ranks,
+            back translations, definitions, synonyms, usage examples and the pronunciation of the looked up text.
+            </remarks>
         </member>
         <member name="M:GTranslate.Translators.GoogleTranslator.LookupDictionaryAsync(System.String,GTranslate.ILanguage,GTranslate.ILanguage,System.Threading.CancellationToken)">
             <inheritdoc cref="M:GTranslate.Translators.IDictionaryTranslator.LookupDictionaryAsync(System.String,GTranslate.ILanguage,GTranslate.ILanguage,System.Threading.CancellationToken)"/>
+            <remarks>
+            Google returns translations grouped by part of speech, along with confidence scores, frequency ranks,
+            back translations, definitions, synonyms, usage examples and the pronunciation of the looked up text.
+            </remarks>
         </member>
         <member name="M:GTranslate.Translators.GoogleTranslator.TransliterateAsync(System.String,System.String,System.String)">
             <summary>
@@ -3871,9 +3786,6 @@
             </summary>
         </member>
         <member name="P:GTranslate.Translators.GoogleTranslator2.Name">
-            <inheritdoc/>
-        </member>
-        <member name="P:GTranslate.Translators.GoogleTranslator2.Capabilities">
             <inheritdoc/>
         </member>
         <member name="M:GTranslate.Translators.GoogleTranslator2.#ctor">
@@ -4000,6 +3912,10 @@
             <summary>
             Represents a translator that can perform explicit dictionary lookups.
             </summary>
+            <remarks>
+            The sections a lookup can return depend on the service; see the documentation of each implementation of
+            <see cref="M:GTranslate.Translators.IDictionaryTranslator.LookupDictionaryAsync(System.String,GTranslate.ILanguage,GTranslate.ILanguage,System.Threading.CancellationToken)"/>.
+            </remarks>
         </member>
         <member name="M:GTranslate.Translators.IDictionaryTranslator.LookupDictionaryAsync(System.String,System.String,System.String,System.Threading.CancellationToken)">
             <summary>
@@ -4069,25 +3985,12 @@
             <param name="language">The language.</param>
             <returns><see langword="true"/> if the language is supported, otherwise <see langword="false"/>.</returns>
         </member>
-        <member name="T:GTranslate.Translators.ITranslatorCapabilities">
-            <summary>
-            Exposes the capabilities of a translator without changing the existing <see cref="T:GTranslate.Translators.ITranslator"/> contract.
-            </summary>
-        </member>
-        <member name="P:GTranslate.Translators.ITranslatorCapabilities.Capabilities">
-            <summary>
-            Gets the capabilities supported natively by this translator.
-            </summary>
-        </member>
         <member name="T:GTranslate.Translators.MicrosoftTranslator">
             <summary>
             Represents the Microsoft Azure translator.
             </summary>
         </member>
         <member name="P:GTranslate.Translators.MicrosoftTranslator.Name">
-            <inheritdoc/>
-        </member>
-        <member name="P:GTranslate.Translators.MicrosoftTranslator.Capabilities">
             <inheritdoc/>
         </member>
         <member name="P:GTranslate.Translators.MicrosoftTranslator.DefaultVoices">
@@ -4135,9 +4038,17 @@
         </member>
         <member name="M:GTranslate.Translators.MicrosoftTranslator.LookupDictionaryAsync(System.String,System.String,System.String,System.Threading.CancellationToken)">
             <inheritdoc cref="M:GTranslate.Translators.IDictionaryTranslator.LookupDictionaryAsync(System.String,System.String,System.String,System.Threading.CancellationToken)"/>
+            <remarks>
+            Microsoft returns translations grouped by part of speech, along with confidence scores, back translations
+            and usage examples. Definitions, synonyms and pronunciations are not returned.
+            </remarks>
         </member>
         <member name="M:GTranslate.Translators.MicrosoftTranslator.LookupDictionaryAsync(System.String,GTranslate.ILanguage,GTranslate.ILanguage,System.Threading.CancellationToken)">
             <inheritdoc cref="M:GTranslate.Translators.IDictionaryTranslator.LookupDictionaryAsync(System.String,GTranslate.ILanguage,GTranslate.ILanguage,System.Threading.CancellationToken)"/>
+            <remarks>
+            Microsoft returns translations grouped by part of speech, along with confidence scores, back translations
+            and usage examples. Definitions, synonyms and pronunciations are not returned.
+            </remarks>
         </member>
         <member name="M:GTranslate.Translators.MicrosoftTranslator.TransliterateAsync(System.String,System.String,System.String,System.String)">
             <summary>
@@ -4261,9 +4172,6 @@
             </summary>
         </member>
         <member name="P:GTranslate.Translators.YandexTranslator.Name">
-            <inheritdoc/>
-        </member>
-        <member name="P:GTranslate.Translators.YandexTranslator.Capabilities">
             <inheritdoc/>
         </member>
         <member name="M:GTranslate.Translators.YandexTranslator.#ctor">

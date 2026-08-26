@@ -76,7 +76,7 @@ public class DictionaryLookupTests
         var source = new DictionaryLookupData(
             "cost", "Microsoft", "软件", null,
             [new DictionaryLookupGroupData("noun", [
-                new DictionaryEntryData("多个翻译", null, null, null, [], ["简体中文"], ["词性"], [
+                new DictionaryEntryData("多个翻译", null, null, null, [], [
                     new DictionaryExampleData("source", "这个翻译")
                 ])
             ], ["多个定义"], ["同义词"])], []);
@@ -86,8 +86,6 @@ public class DictionaryLookupTests
         Assert.Equal("Microsoft", result.Service);
         Assert.Equal("軟件", result.Headword);
         Assert.Equal("多個翻譯", result.Groups[0].Entries[0].Text);
-        Assert.Equal("簡體中文", result.Groups[0].Entries[0].Definitions[0]);
-        Assert.Equal("詞性", result.Groups[0].Entries[0].Synonyms[0]);
         Assert.Equal("這個翻譯", result.Groups[0].Entries[0].Examples[0].Translation);
         Assert.Equal("多個定義", result.Groups[0].Definitions[0]);
         Assert.Equal("同義詞", result.Groups[0].Synonyms[0]);
@@ -124,10 +122,10 @@ public class DictionaryLookupTests
     public void Dictionary_results_expose_only_groups_with_a_part_of_speech()
     {
         var unlabelled = new DictionaryLookupGroupData(null, [
-            new DictionaryEntryData("價錢為", null, null, null, [], [], [], [])
+            new DictionaryEntryData("價錢為", null, null, null, [], [])
         ], [], []);
         var noun = new DictionaryLookupGroupData("noun", [
-            new DictionaryEntryData("成本", null, null, null, [], [], [], [])
+            new DictionaryEntryData("成本", null, null, null, [], [])
         ], [], []);
         var result = new DictionaryLookupData("cost", "Google Web", "cost", null, [unlabelled, noun], []);
 
@@ -223,7 +221,7 @@ public class DictionaryLookupTests
         var expected = new DictionaryLookupData(
             "cost", "Google Web", "cost", null,
             [new DictionaryLookupGroupData("noun", [
-                new DictionaryEntryData("成本", null, null, null, [], [], [], [])
+                new DictionaryEntryData("成本", null, null, null, [], [])
             ], [], [])], []);
         var attempts = 0;
 

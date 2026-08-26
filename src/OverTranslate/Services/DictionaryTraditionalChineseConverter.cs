@@ -18,8 +18,6 @@ internal static class DictionaryTraditionalChineseConverter
                 {
                     Text = ConvertText(entry.Text),
                     BackTranslations = ConvertAll(entry.BackTranslations),
-                    Definitions = ConvertAll(entry.Definitions),
-                    Synonyms = ConvertAll(entry.Synonyms),
                     Examples = ConvertExamples(entry.Examples),
                 }).ToList(),
                 Definitions = ConvertAll(group.Definitions),
