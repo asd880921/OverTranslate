@@ -19,19 +19,13 @@
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
-      <img src="docs/images/ui/btn-setup.en.svg" alt="Download the Windows installer (recommended)" />
-    </a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe"><img src="docs/images/ui/btn-setup.en.svg" alt="Download the Windows installer (recommended)" /></a>
     &nbsp;
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip">
-      <img src="docs/images/ui/btn-portable.en.svg" alt="Download the portable version" />
-    </a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip"><img src="docs/images/ui/btn-portable.en.svg" alt="Download the portable version" /></a>
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases">
-      <img src="https://raw.githubusercontent.com/asd880921/github-badges/main/badges/overtranslate-downloads-history.svg" alt="Total downloads and daily growth" />
-    </a>
+    <a href="https://github.com/asd880921/OverTranslate/releases"><img src="https://raw.githubusercontent.com/asd880921/github-badges/main/badges/overtranslate-downloads-history.svg" alt="Total downloads and daily growth" /></a>
   </p>
 
 </div>

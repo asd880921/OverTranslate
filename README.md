@@ -19,19 +19,13 @@
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
-      <img src="docs/images/ui/btn-setup.svg" alt="下載 Windows 安裝版（推薦）" />
-    </a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe"><img src="docs/images/ui/btn-setup.svg" alt="下載 Windows 安裝版（推薦）" /></a>
     &nbsp;
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip">
-      <img src="docs/images/ui/btn-portable.svg" alt="下載免安裝版（Portable）" />
-    </a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip"><img src="docs/images/ui/btn-portable.svg" alt="下載免安裝版（Portable）" /></a>
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases">
-      <img src="https://raw.githubusercontent.com/asd880921/github-badges/main/badges/overtranslate-downloads-history.zh-TW.svg" alt="累積下載次數與每日新增" />
-    </a>
+    <a href="https://github.com/asd880921/OverTranslate/releases"><img src="https://raw.githubusercontent.com/asd880921/github-badges/main/badges/overtranslate-downloads-history.zh-TW.svg" alt="累積下載次數與每日新增" /></a>
   </p>
 
 </div>
