@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="204" height="44" viewBox="0 0 204 44" role="img" aria-label="下載免安裝版（Portable）">
+  <style>
+    svg { --line:#d0d7de; --fg:#1f2328; }
+    @media (prefers-color-scheme: dark) { svg { --line:#3d444d; --fg:#e6edf3; } }
+    .box { fill: none; stroke: var(--line); stroke-width: 1.5; }
+    .icon { fill: none; stroke: var(--fg); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
+             font-size: 14px; font-weight: 600; fill: var(--fg); }
+  </style>
+  <rect x="0.75" y="0.75" width="202.5" height="42.5" rx="10" class="box"/>
+  <g transform="translate(18 13) scale(0.75)" class="icon">
+    <path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/>
+    <path d="M3.3 7 12 12l8.7-5"/>
+    <path d="M12 22V12"/>
+  </g>
+  <text x="46" y="27" class="label">免安裝版（Portable）</text>
+</svg>
