@@ -6,24 +6,26 @@
     <strong>繁體中文 ✓</strong>
   </p>
 
-  <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
-  <h1>OverTranslate</h1>
+  <h1>
+    <img src="src/OverTranslate/icons/icon.svg" width="180" alt="OverTranslate Icon"/>
+    <br/>
+    OverTranslate
+  </h1>
   <p>一款 Windows 螢幕翻譯工具，支援截圖、即時與取詞翻譯，翻譯結果直接顯示在原畫面上。</p>
 
   <p>
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
     <img src="https://img.shields.io/badge/license-GPL--3.0-22C55E?style=for-the-badge" alt="License GPL-3.0" />
-    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/asd880921/github-badges/main/badges/overtranslate-downloads.json" alt="Total downloads" />
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
-      <strong>➡️ Windows 安裝版（推薦）</strong>
-    </a>
-    &nbsp;｜&nbsp;
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip">
-      <strong>➡️ 免安裝版（Portable）</strong>
-    </a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe"><img src="docs/images/ui/btn-setup.svg" alt="下載 Windows 安裝版（推薦）" /></a>
+    &nbsp;
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip"><img src="docs/images/ui/btn-portable.svg" alt="下載免安裝版（Portable）" /></a>
+  </p>
+
+  <p>
+    <a href="https://github.com/asd880921/OverTranslate/releases"><img src="https://raw.githubusercontent.com/asd880921/github-statcards/main/cards/overtranslate-downloads-history.zh-TW.svg" alt="累積下載次數與每日新增" /></a>
   </p>
 
 </div>

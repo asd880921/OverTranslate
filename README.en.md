@@ -6,24 +6,26 @@
     <strong><a href="README.md">繁體中文</a></strong>
   </p>
 
-  <img src="src/OverTranslate/icons/icon.svg" width="250" alt="OverTranslate Icon"/>
-  <h1>OverTranslate</h1>
+  <h1>
+    <img src="src/OverTranslate/icons/icon.svg" width="180" alt="OverTranslate Icon"/>
+    <br/>
+    OverTranslate
+  </h1>
   <p>A Windows screen translator with screenshot, real-time, and quick lookup translation, showing the results right on the original screen.</p>
 
   <p>
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
     <img src="https://img.shields.io/badge/license-GPL--3.0-22C55E?style=for-the-badge" alt="License GPL-3.0" />
-    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/asd880921/github-badges/main/badges/overtranslate-downloads.json" alt="Total downloads" />
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe">
-      <strong>➡️ Windows Installer (recommended)</strong>
-    </a>
-    &nbsp;｜&nbsp;
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip">
-      <strong>➡️ Portable version</strong>
-    </a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe"><img src="docs/images/ui/btn-setup.en.svg" alt="Download the Windows installer (recommended)" /></a>
+    &nbsp;
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip"><img src="docs/images/ui/btn-portable.en.svg" alt="Download the portable version" /></a>
+  </p>
+
+  <p>
+    <a href="https://github.com/asd880921/OverTranslate/releases"><img src="https://raw.githubusercontent.com/asd880921/github-statcards/main/cards/overtranslate-downloads-history.svg" alt="Total downloads and daily growth" /></a>
   </p>
 
 </div>
