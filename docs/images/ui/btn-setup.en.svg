@@ -1,18 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="283" height="44" viewBox="0 0 283 44" role="img" aria-label="Download the Windows installer (recommended)">
+<svg xmlns="http://www.w3.org/2000/svg" width="306" height="44" viewBox="0 0 306 44" role="img" aria-label="Download the Windows installer (recommended)">
   <style>
     svg { --bg:#2563eb; --fg:#ffffff; }
     @media (prefers-color-scheme: dark) { svg { --bg:#3b82f6; --fg:#ffffff; } }
     .box { fill: var(--bg); }
     .ink { fill: var(--fg); }
+    .dl { fill: none; stroke: var(--fg); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
              font-size: 14px; font-weight: 600; fill: var(--fg); }
   </style>
-  <rect x="0" y="0" width="283" height="44" rx="10" class="box"/>
-  <g transform="translate(18 14)" class="ink">
-    <rect x="0" y="0" width="7.2" height="7.2" rx="1"/>
-    <rect x="8.8" y="0" width="7.2" height="7.2" rx="1"/>
-    <rect x="0" y="8.8" width="7.2" height="7.2" rx="1"/>
-    <rect x="8.8" y="8.8" width="7.2" height="7.2" rx="1"/>
-  </g>
+  <rect x="0" y="0" width="306" height="44" rx="10" class="box"/>
+  <g transform="translate(18 14)" class="ink"><rect x="0" y="0" width="7.2" height="7.2" rx="1"/><rect x="8.8" y="0" width="7.2" height="7.2" rx="1"/><rect x="0" y="8.8" width="7.2" height="7.2" rx="1"/><rect x="8.8" y="8.8" width="7.2" height="7.2" rx="1"/></g>
   <text x="44" y="27" class="label">Windows Installer (recommended)</text>
+  <g transform="translate(273 14.5) scale(0.9375)" class="dl"><path d="M8 2.1V10"/><path d="M4.5 6.7 8 10.2 11.5 6.7"/><path d="M3 13.7h10"/></g>
 </svg>
