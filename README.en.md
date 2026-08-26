@@ -25,7 +25,7 @@
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases"><img src="https://raw.githubusercontent.com/asd880921/github-badges/main/badges/overtranslate-downloads-history.svg" alt="Total downloads and daily growth" /></a>
+    <a href="https://github.com/asd880921/OverTranslate/releases"><img src="https://raw.githubusercontent.com/asd880921/github-statcards/main/cards/overtranslate-downloads-history.svg" alt="Total downloads and daily growth" /></a>
   </p>
 
 </div>
