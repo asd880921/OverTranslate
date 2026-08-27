@@ -1,10 +1,8 @@
 <div align="center">
-  <p>
-    <strong>Language : </strong>
-    <strong><a href="README.en.md">English</a></strong>
-    &nbsp;｜&nbsp;
-    <strong>繁體中文 ✓</strong>
-  </p>
+  <h3 align="center">
+    🌐 繁體中文 &nbsp;·&nbsp;
+    <a href="./README.en.md">English</a>
+  </h3>
 
   <h1>
     <img src="src/OverTranslate/icons/icon.svg" width="180" alt="OverTranslate Icon"/>
