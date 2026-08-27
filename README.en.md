@@ -1,9 +1,9 @@
 <div align="center">
-  <p align="center">
+  <p>
     🌐
-    <a href="./README.md">繁體中文</a>
-    &nbsp;·&nbsp;
-    <strong>English</strong>
+    <strong>English ✓</strong>
+    &nbsp;｜&nbsp;
+    <strong><a href="README.md">繁體中文</a></strong>
   </p>
 
   <h1>
