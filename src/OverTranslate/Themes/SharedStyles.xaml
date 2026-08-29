@@ -305,7 +305,7 @@
          in place rather than in a window. No frame around it, unlike the icon this is drawn from:
          設定's rows put every mark inside a tile already, and a second box inside that one is a
          border around a border. -->
-    <Geometry x:Key="QuickTranslateMarkGeometry">M2.9,1.4 H6.3 A1.5,1.5 0 0 1 7.8,2.9 V6.3 A1.5,1.5 0 0 1 6.3,7.8 H2.9 A1.5,1.5 0 0 1 1.4,6.3 V2.9 A1.5,1.5 0 0 1 2.9,1.4 Z M3.4,6.2 L4.6,3.1 L5.8,6.2 M3.85,5.3 H5.35 M9.7,8.2 H13.1 A1.5,1.5 0 0 1 14.6,9.7 V13.1 A1.5,1.5 0 0 1 13.1,14.6 H9.7 A1.5,1.5 0 0 1 8.2,13.1 V9.7 A1.5,1.5 0 0 1 9.7,8.2 Z M11.75,9.35 L11.3,10 M9.75,10.8 H13.05 M12.2,10.8 L10.4,13.5 M11.3,11.95 L12.9,13.5 M9.2,3.4 A3.4,3.4 0 0 1 12.6,6.8 M11.75,5.95 L12.65,6.9 L13.55,5.95 M6.8,12.6 A3.4,3.4 0 0 1 3.4,9.2 M2.5,10.05 L3.35,9.1 L4.25,10.05</Geometry>
+    <Geometry x:Key="QuickTranslateMarkGeometry">M2.8,1.2 H6.4 A1.6,1.6 0 0 1 8,2.8 V6.4 A1.6,1.6 0 0 1 6.4,8 H2.8 A1.6,1.6 0 0 1 1.2,6.4 V2.8 A1.6,1.6 0 0 1 2.8,1.2 Z M2.9,6.5 L4.6,2.7 L6.3,6.5 M3.5,5.4 H5.7 M9.6,8 H13.2 A1.6,1.6 0 0 1 14.8,9.6 V13.2 A1.6,1.6 0 0 1 13.2,14.8 H9.6 A1.6,1.6 0 0 1 8,13.2 V9.6 A1.6,1.6 0 0 1 9.6,8 Z M11.8,9 L11.2,9.8 M9.4,10.6 H13.4 M12.4,10.6 L10.1,13.7 M11.2,11.9 L13.1,13.7 M9.4,3.6 A3,3 0 0 1 12.4,6.6 M11.6,5.8 L12.45,6.7 L13.3,5.8 M6.6,12.4 A3,3 0 0 1 3.6,9.4 M2.7,10.2 L3.55,9.3 L4.4,10.2</Geometry>
 
     <!-- 文字翻譯: a letter in a field — text you type in, as against text the app goes and finds
          for you. -->
