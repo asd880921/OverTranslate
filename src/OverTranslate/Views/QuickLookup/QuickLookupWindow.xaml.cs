@@ -755,6 +755,16 @@ public partial class QuickLookupWindow : Window
         if (e.Key == Key.Escape)
         {
             e.Handled = true;
+
+            if (_pinned)
+            {
+                // Pinning promises the popup survives ordinary dismissal gestures. Escape still
+                // gives the reader a quick reset, and clearing through the same path as the button
+                // also cancels any translation that belongs to the previous text.
+                ClearSourceText();
+                return;
+            }
+
             BeginClose();
             return;
         }
@@ -860,6 +870,9 @@ public partial class QuickLookupWindow : Window
     /// from somewhere else, and retyping it means going back for it.
     /// </remarks>
     private void ClearBtn_Click(object sender, RoutedEventArgs e)
+        => ClearSourceText();
+
+    private void ClearSourceText()
     {
         SourceTextBox.SelectAll();
         SourceTextBox.SelectedText = "";
