@@ -378,7 +378,7 @@
     <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">若有選取文字，開啟視窗時會自動帶入並翻譯。</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkey">快速翻譯</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">將[[選取文字]]替換成譯文</sys:String>
-    <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote">僅適用於可輸入文字的欄位，非輸入區域則無法貼上。翻譯前後的語言與服務皆跟隨「文字翻譯」共用相同設置。</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote" xml:space="preserve">僅適用於可輸入文字的欄位，非輸入區域則無法貼上。&#x0a;翻譯前後的語言與服務皆跟隨「文字翻譯」共用相同設置。</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ 單一按鍵只能是 F1–F24、Pause 或 Scroll Lock，其他按鍵請搭配 Ctrl／Alt／Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">一般設定</sys:String>

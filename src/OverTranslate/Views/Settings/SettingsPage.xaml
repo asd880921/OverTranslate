@@ -314,6 +314,12 @@
                                      against — a horizontal StackPanel, which is what these were,
                                      hands its children all the width they ask for, and the notes
                                      simply ran off the end of the card. -->
+                                <!-- The mark hangs off the first line, not the middle of the note:
+                                     centred, it drifts down between two lines and stops reading as
+                                     the start of anything. The 1px is optical rather than nominal —
+                                     the mark is 12px Segoe Fluent Icons and the note is 11px Segoe
+                                     UI, and aligning their boxes does not align what is drawn in
+                                     them. It was measured against both, at both sizes. -->
                                 <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -403,8 +409,8 @@
                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                FontSize="12"
                                                Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
+                                               VerticalAlignment="Top"
+                                               Margin="0,1,8,0"/>
                                     <TextBlock Grid.Column="1"
                                                Text="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
@@ -412,7 +418,7 @@
                                                TextWrapping="NoWrap"
                                                TextTrimming="CharacterEllipsis"
                                                ToolTip="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
-                                               VerticalAlignment="Center"/>
+                                               VerticalAlignment="Top"/>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -554,18 +560,28 @@
                                 <!-- When this shortcut does nothing, inside the row it is about
                                      rather than under the three of them: nothing here applies to
                                      the other two. -->
-                                <StackPanel Orientation="Horizontal" Margin="47,8,0,0">
-                                    <TextBlock Text="&#xE946;"
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="&#xE946;"
                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                FontSize="12"
                                                Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
-                                    <TextBlock Text="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
+                                               VerticalAlignment="Top"
+                                               Margin="0,1,8,0"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
                                                Margin="0"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
+                                               VerticalAlignment="Top"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
