@@ -69,9 +69,20 @@
                                Margin="0,0,0,10"/>
 
                     <Grid>
+                        <!-- A fixed height, unlike the prompt editor this style was written for:
+                             that one is in a card that scrolls, while this card is centred on the
+                             screen, so a box that grew with the text would push the send button
+                             down the screen as someone typed towards it. The template's own
+                             scroller takes over instead. -->
+                        <!-- On the box rather than on the ScrollViewer inside the style's template,
+                             where it looks like it belongs and does nothing: TextBoxBase pushes its
+                             own value onto PART_ContentHost when the template is applied, and its
+                             own default is Hidden. The box scrolls either way — this is what makes
+                             the bar appear while it does. -->
                         <TextBox x:Name="NoteBox"
                                  Style="{StaticResource SettingsMultilineTextBox}"
-                                 MinHeight="150"
+                                 Height="150"
+                                 VerticalScrollBarVisibility="Auto"
                                  SpellCheck.IsEnabled="False"
                                  TextChanged="NoteBox_TextChanged"/>
                         <!-- IsHitTestVisible off so clicking the prompt still lands in the box -->
