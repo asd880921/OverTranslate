@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using NLog;
 using OverTranslate.Services;
 
 namespace OverTranslate.Views.Shell;
@@ -16,6 +17,8 @@ public enum ToastKind
 
 public partial class ToastWindow : Window
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
     private const int DisplayMs = 3000;
     private const int FadeMs    = 350;
 
@@ -213,12 +216,38 @@ public partial class ToastWindow : Window
         BeginAnimation(OpacityProperty, fade);
     }
 
+    /// <remarks>
+    /// The clipboard belongs to whatever else is running, and any of it can hold the clipboard open
+    /// long enough for this to fail. WPF already retries for about a second before throwing, so the
+    /// throw means it is genuinely taken — and left unhandled it reaches the dispatcher and takes
+    /// the whole app down over a copy button on a toast the reader was about to dismiss anyway.
+    /// </remarks>
     private void CopyButton_Click(object sender, RoutedEventArgs e)
     {
-        System.Windows.Clipboard.SetText($"{TitleText.Text}\n{MessageText.Text}");
+        try
+        {
+            System.Windows.Clipboard.SetText($"{TitleText.Text}\n{MessageText.Text}");
+        }
+        catch (Exception ex)
+        {
+            // The message stays on screen behind this line, which is where the reader can still get
+            // it from — so the hint says the copy failed rather than pretending it succeeded.
+            Log.Warn(ex, "Could not copy the toast message to the clipboard");
+            ShowCopyHint("S.Toast.CopyFailed", "AppError");
+            return;
+        }
 
         // Confirm in place: the toast is about to be dismissed by the pointer leaving, so a second
         // toast announcing the copy would replace this one and lose the message just copied.
+        ShowCopyHint("S.Toast.Copied", "AppSuccess");
+    }
+
+    // Resource references rather than literals so the line follows a language or theme change the
+    // same way the rest of the toast does.
+    private void ShowCopyHint(string textKey, string brushKey)
+    {
+        CopyHint.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, textKey);
+        CopyHint.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, brushKey);
         CopyHint.Visibility = Visibility.Visible;
     }
 
