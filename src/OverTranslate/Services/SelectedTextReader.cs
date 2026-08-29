@@ -38,12 +38,15 @@ internal static class SelectedTextReader
     /// completion timeout lets that common path open the popup promptly without giving up on a copy
     /// that has already started publishing its formats.
     /// </remarks>
-    private static readonly TimeSpan CopyStartTimeout = TimeSpan.FromMilliseconds(90);
+    private static readonly TimeSpan CopyStartTimeout = TimeSpan.FromMilliseconds(150);
 
     /// <summary>How long an observed clipboard update may take to publish readable text.</summary>
     private static readonly TimeSpan CopyCompletionTimeout = TimeSpan.FromMilliseconds(320);
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(15);
+
+    /// <summary>How long Ctrl+C stays physically observable to applications that poll per frame.</summary>
+    private static readonly TimeSpan CopyChordHold = TimeSpan.FromMilliseconds(40);
 
     /// <summary>
     /// The most text this will carry into the popup.
@@ -87,7 +90,7 @@ internal static class SelectedTextReader
 
         try
         {
-            SendCopy();
+            await SendCopy();
 
             var maxStartPolls = (int)Math.Ceiling(
                 CopyStartTimeout.TotalMilliseconds / PollInterval.TotalMilliseconds);
@@ -109,6 +112,23 @@ internal static class SelectedTextReader
         finally
         {
             Restore(snapshot);
+        }
+    }
+
+    /// <summary>Keeps an injected copy chord down long enough to cross a frame boundary.</summary>
+    internal static async Task HoldCopyChordAsync(
+        Action press,
+        Func<Task> hold,
+        Action release)
+    {
+        press();
+        try
+        {
+            await hold();
+        }
+        finally
+        {
+            release();
         }
     }
 
@@ -143,12 +163,20 @@ internal static class SelectedTextReader
 
             if (changed)
             {
-                if (completionPolls >= maxCompletionPolls) return "";
+                if (completionPolls >= maxCompletionPolls)
+                {
+                    Log.Debug("Copy changed the clipboard but did not publish readable text before timeout");
+                    return "";
+                }
                 completionPolls++;
             }
             else
             {
-                if (startPolls >= maxStartPolls) return "";
+                if (startPolls >= maxStartPolls)
+                {
+                    Log.Debug("Copy did not change the clipboard before timeout");
+                    return "";
+                }
                 startPolls++;
             }
 
@@ -262,29 +290,35 @@ internal static class SelectedTextReader
     /// Sends Ctrl+C to whatever has the foreground.
     /// </summary>
     /// <remarks>
-    /// The modifiers are released first, and that is the whole reason this is not two keybd_event
-    /// calls. It runs from a global shortcut, so the keys that triggered it are still physically
-    /// down when it does: with Ctrl+Alt+Q held, a synthesised C arrives at the target application as
-    /// Ctrl+Alt+C — which copies nothing and, in a few applications, does something else entirely.
-    /// Telling the system the modifiers are up first is what makes the copy a plain copy.
+    /// The modifiers are released first so the injected chord is a plain Ctrl+C. Ctrl and C then
+    /// remain down briefly rather than being pressed and released in one SendInput batch: ordinary
+    /// controls consume every key event, but a game may sample keyboard state once per frame and
+    /// miss a chord whose complete lifetime falls between two samples.
     ///
     /// The user's own key releases arrive afterwards as repeats of an up state, which every
     /// application already tolerates.
     /// </remarks>
-    private static void SendCopy()
+    private static Task SendCopy()
     {
-        var inputs = new List<INPUT>();
+        var press = new List<INPUT>();
 
         foreach (var modifier in new ushort[] { VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN, VK_CONTROL })
-            inputs.Add(Key(modifier, up: true));
+            press.Add(Key(modifier, up: true));
 
-        inputs.Add(Key(VK_CONTROL, up: false));
-        inputs.Add(Key(VK_C, up: false));
-        inputs.Add(Key(VK_C, up: true));
-        inputs.Add(Key(VK_CONTROL, up: true));
+        press.Add(Key(VK_CONTROL, up: false));
+        press.Add(Key(VK_C, up: false));
 
-        var array = inputs.ToArray();
-        SendInput((uint)array.Length, array, Marshal.SizeOf<INPUT>());
+        return HoldCopyChordAsync(
+            () => InjectKeys(press.ToArray()),
+            () => Task.Delay(CopyChordHold),
+            () => InjectKeys([Key(VK_C, up: true), Key(VK_CONTROL, up: true)]));
+    }
+
+    private static void InjectKeys(INPUT[] inputs)
+    {
+        var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+        if (sent != (uint)inputs.Length)
+            Log.Debug("SendInput accepted {SentCount} of {RequestedCount} keyboard events", sent, inputs.Length);
     }
 
     private const ushort VK_SHIFT = 0x10;
@@ -293,7 +327,6 @@ internal static class SelectedTextReader
     private const ushort VK_LWIN = 0x5B;
     private const ushort VK_RWIN = 0x5C;
     private const ushort VK_C = 0x43;
-
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_KEYUP = 0x0002;
 

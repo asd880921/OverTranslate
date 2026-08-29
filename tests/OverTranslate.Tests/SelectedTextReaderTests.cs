@@ -14,6 +14,19 @@ namespace OverTranslate.Tests;
 public class SelectedTextReaderTests
 {
     [Fact]
+    public async Task The_copy_chord_is_released_only_after_its_hold_interval()
+    {
+        var events = new List<string>();
+
+        await SelectedTextReader.HoldCopyChordAsync(
+            () => events.Add("press"),
+            () => { events.Add("hold"); return Task.CompletedTask; },
+            () => events.Add("release"));
+
+        Assert.Equal(["press", "hold", "release"], events);
+    }
+
+    [Fact]
     public async Task A_clipboard_change_before_text_is_ready_is_not_mistaken_for_no_selection()
     {
         var sequences = new Queue<uint>(new uint[] { 10, 11, 11 });
