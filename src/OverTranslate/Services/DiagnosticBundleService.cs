@@ -142,6 +142,48 @@ public static class DiagnosticBundleService
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
     }
 
+    /// <summary>What the user's own account of the problem is called inside the bundle.</summary>
+    public const string NoteEntryName = "note.txt";
+
+    /// <summary>
+    /// As much as anyone writes into a box before they would rather be talking to a person, with
+    /// room to spare. It exists so the field has a limit at all, not to cut anybody off.
+    /// </summary>
+    public const int MaxNoteLength = 4000;
+
+    /// <summary>
+    /// Writes the user's own account of the problem into a bundle already on disk, replacing any
+    /// note it already carries. A blank note writes nothing. Blocking — call it off the UI thread.
+    /// </summary>
+    /// <remarks>
+    /// Into the zip rather than alongside the upload. The note is prose someone typed in their own
+    /// language and at whatever length they needed; the upload's headers are printable ASCII,
+    /// trimmed to 64 characters, and land in key metadata that is capped in kilobytes. It also
+    /// means the copy left on their disk says the same thing as the copy that was sent, and that
+    /// carrying a note costs the receiving end no change at all.
+    ///
+    /// Line endings are normalised because this is read in whatever the reader double-clicks, and
+    /// on Windows that is still sometimes something that renders a lone \n as one long line.
+    /// </remarks>
+    public static void AttachNote(string bundlePath, string note)
+    {
+        var text = note.Trim();
+        if (text.Length == 0) return;
+
+        using (var archive = ZipFile.Open(bundlePath, ZipArchiveMode.Update))
+        {
+            // Update appends, so a second attempt after a failed upload would otherwise leave two
+            // entries of the same name in the archive — legal in the format, and read back as
+            // whichever one the extractor happens to reach first.
+            archive.GetEntry(NoteEntryName)?.Delete();
+            AddText(archive, NoteEntryName, text.ReplaceLineEndings("\r\n"));
+        }
+
+        // Length only, never the text: it is the user's own words about their own machine, and it
+        // is already in the file this line is about.
+        Log.Info("Diagnostic note attached, {0} characters", text.Length);
+    }
+
     /// <summary>
     /// How long an export stays on disk, matching what the uploaded copy gets. One number for both,
     /// so the interface can state it once without having to say which copy it means.

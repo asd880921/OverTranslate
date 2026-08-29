@@ -429,6 +429,7 @@
                  window is not what the scrim is protecting. -->
             <shell:AboutOverlay Grid.ColumnSpan="2" x:Name="About"/>
             <settings:ServiceSettingsOverlay Grid.ColumnSpan="2" x:Name="ServiceSettings"/>
+            <settings:DiagnosticNoteOverlay Grid.ColumnSpan="2" x:Name="DiagnosticNote"/>
         </Grid>
     </Grid>
 </Window>

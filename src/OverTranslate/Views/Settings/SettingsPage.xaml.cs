@@ -509,19 +509,14 @@ public partial class SettingsPage : UserControl
     }
 
     /// <summary>
-    /// Collects the bundle and, where an endpoint is compiled in, sends it and shows the code that
-    /// comes back.
+    /// Collects the bundle and stops there, leaving what happens to it to the row that appears
+    /// underneath.
     /// </summary>
     /// <remarks>
-    /// One button for both halves, because the two halves are one intention: nobody collects a
-    /// diagnostic bundle for its own sake. What that costs is the chance to open the zip before it
-    /// goes — paid for by the explanation on the heading, by a label that says it uploads, and by
-    /// the row afterwards that opens what was sent.
-    ///
-    /// The upload is nested inside its own try on purpose. A failure there is not a failure of the
-    /// press: the bundle is already written, and every one of those paths ends by opening Explorer
-    /// on it — which is the whole of #126, still there for the offline machine, the blocked network
-    /// and the person who would simply rather attach it themselves.
+    /// Collecting and sending used to be one press, on the grounds that nobody collects a bundle
+    /// for its own sake. True, and it left no room for the half a bundle cannot carry: what the
+    /// user was trying to do when it went wrong. Splitting them buys the moment in between, which
+    /// is where <see cref="DiagnosticNoteOverlay"/> now asks for exactly that.
     ///
     /// Off the UI thread because the bundle copies and compresses every log file there is, which on
     /// a machine that has filled its five archives is a dozen megabytes — not long, but long enough
@@ -536,51 +531,103 @@ public partial class SettingsPage : UserControl
         // the next one invites it to be copied as though it were the new one.
         DiagnosticsResultPanel.Visibility = Visibility.Collapsed;
 
-        var uploading = DiagnosticUploadService.IsConfigured;
         try
         {
-            if (uploading) ShowProgress(LocalizationService.Get("S.Settings.DiagnosticsUploading"));
+            ShowProgress(LocalizationService.Get("S.Settings.DiagnosticsExporting"));
 
             var path = await Task.Run(() => DiagnosticBundleService.Export());
             _lastBundlePath = path;
 
-            if (!uploading)
-            {
-                FlashSuccess(LocalizationService.Get("S.Settings.DiagnosticsExported"));
+            ShowExported();
+            FlashSuccess(LocalizationService.Get("S.Settings.DiagnosticsExported"));
 
-                // The real confirmation: the status line fades after a moment and cannot show a path
-                // worth reading anyway, whereas Explorer opens with the file already selected and
-                // ready to be dragged into a forum post — which is the entire point of the feature.
+            // Only where there is nowhere to send it. With an endpoint the panel that just appeared
+            // is the next step and says so, and an Explorer window arriving over it is a second
+            // instruction contradicting the first. Without one, this is still #126: the file exists
+            // to be dragged into a forum post, and Explorer opens with it already selected.
+            if (!DiagnosticUploadService.IsConfigured)
                 DiagnosticBundleService.Reveal(path);
-                return;
-            }
-
-            try
-            {
-                var code = await DiagnosticUploadService.UploadAsync(path);
-
-                ShowUploaded(code);
-                FlashSuccess(LocalizationService.Format("S.Settings.DiagnosticsUploaded", code));
-            }
-            catch (DiagnosticUploadException)
-            {
-                // No Explorer window here, unlike the path with no endpoint at all. The panel that
-                // appears says to press Open file, and a window opening by itself at the same moment
-                // is a second instruction contradicting the first.
-                ShowNotUploaded();
-                ShowWarning(LocalizationService.Get("S.Settings.DiagnosticsUploadFailed"));
-            }
         }
         catch (Exception ex)
         {
-            // Only the collection can land here now, and if that failed there is no file to fall
-            // back to — which is why this one still names the error.
+            // If the collection failed there is no file to fall back to, which is why this one
+            // names the error.
             ShowError(LocalizationService.Format("S.Settings.DiagnosticsFailed", ex.Message));
         }
         finally
         {
             ExportDiagnosticsBtn.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// Opens the panel that asks what went wrong and sends the bundle with the answer attached.
+    /// </summary>
+    /// <remarks>
+    /// The panel belongs to the shell rather than to this page, like the service one: its scrim has
+    /// to cover the nav rail, and an upload in flight is exactly the moment the user must not be
+    /// able to navigate away from the thing that will tell them how it went.
+    /// </remarks>
+    private void UploadDiagnosticsBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lastBundlePath is null) return;
+
+        if (Window.GetWindow(this) is Shell.ShellWindow shell)
+            shell.OpenDiagnosticNote(_lastBundlePath);
+    }
+
+    /// <summary>
+    /// Brings the result panel in line with what became of the bundle, once the note panel is gone.
+    /// </summary>
+    /// <remarks>
+    /// Public because the shell owns the note panel and hands its outcome back here — the same
+    /// arrangement <see cref="RefreshServiceTiles"/> has with the service panel.
+    ///
+    /// Dismissing without sending leaves the panel exactly as the export left it: the bundle is
+    /// still there, the Upload button is still there, and nothing has happened that the page has
+    /// anything to say about.
+    /// </remarks>
+    public void ReportDiagnosticUpload(DiagnosticNoteResult result)
+    {
+        if (result.Code is { } code)
+        {
+            ShowUploaded(code);
+            FlashSuccess(LocalizationService.Format("S.Settings.DiagnosticsUploaded", code));
+            return;
+        }
+
+        if (result.AttemptFailed)
+        {
+            ShowNotUploaded();
+            ShowWarning(LocalizationService.Get("S.Settings.DiagnosticsUploadFailed"));
+        }
+    }
+
+    /// <summary>
+    /// The panel as it looks when a bundle has been written and has not been sent anywhere.
+    /// </summary>
+    /// <remarks>
+    /// Upload leads because it is the reason the export was pressed, and it is the only thing here
+    /// that has not happened yet. It is absent entirely in a build with no endpoint, where the
+    /// panel is a receipt rather than a step.
+    /// </remarks>
+    private void ShowExported()
+    {
+        DiagnosticsResultGlyph.Text = CompletedGlyph;
+        DiagnosticsResultTitle.SetResourceReference(
+            TextBlock.TextProperty, "S.Settings.DiagnosticsExportedTitle");
+        DiagnosticsResultHint.SetResourceReference(
+            TextBlock.TextProperty,
+            DiagnosticUploadService.IsConfigured
+                ? "S.Settings.DiagnosticsExportedHint"
+                : "S.Settings.DiagnosticsNoEndpointHint");
+
+        DiagnosticsCodeText.Visibility = Visibility.Collapsed;
+        CopyDiagnosticsCodeBtn.Visibility = Visibility.Collapsed;
+        UploadDiagnosticsBtn.Visibility =
+            DiagnosticUploadService.IsConfigured ? Visibility.Visible : Visibility.Collapsed;
+
+        DiagnosticsResultPanel.Visibility = Visibility.Visible;
     }
 
     /// <summary>The panel as it looks when a bundle went up and came back with a code.</summary>
@@ -595,6 +642,10 @@ public partial class SettingsPage : UserControl
         DiagnosticsCodeText.Text = code;
         DiagnosticsCodeText.Visibility = Visibility.Visible;
         CopyDiagnosticsCodeBtn.Visibility = Visibility.Visible;
+
+        // It has been sent. Leaving the button there invites a second copy of the same bundle,
+        // which arrives at the other end as a second report from someone who only had one problem.
+        UploadDiagnosticsBtn.Visibility = Visibility.Collapsed;
 
         DiagnosticsResultPanel.Visibility = Visibility.Visible;
     }
@@ -626,6 +677,11 @@ public partial class SettingsPage : UserControl
         DiagnosticsCodeText.Visibility = Visibility.Collapsed;
         CopyDiagnosticsCodeBtn.Visibility = Visibility.Collapsed;
 
+        // Stays, as the retry. The reasons an upload fails are mostly the ones that pass on their
+        // own — a network coming back, a rate limit expiring — and the bundle it would send is
+        // still sitting on the disk.
+        UploadDiagnosticsBtn.Visibility = Visibility.Visible;
+
         DiagnosticsResultPanel.Visibility = Visibility.Visible;
     }
 
@@ -636,12 +692,12 @@ public partial class SettingsPage : UserControl
     private const string FailedGlyph = "\uE7BA";
 
     /// <summary>
-    /// Points the export button and its explanation at whichever of the two stories is true for this
-    /// build: with an endpoint compiled in, one press collects and sends; without one, it collects
-    /// and nothing leaves the machine.
+    /// Points the card's explanation at whichever of the two stories is true for this build: with an
+    /// endpoint compiled in there is somewhere to send the export afterwards; without one, nothing
+    /// ever leaves the machine. The button itself says the same thing in both — it only exports.
     /// </summary>
     /// <remarks>
-    /// Resource references rather than assignments, so both survive a language change — the page
+    /// A resource reference rather than an assignment, so it survives a language change — the page
     /// rebuilds itself on one, and a plain Text assignment would come back in the old language.
     ///
     /// A build with no endpoint is a supported state, not a broken one: it is what every build was
@@ -651,10 +707,6 @@ public partial class SettingsPage : UserControl
     private void ApplyDiagnosticUploadAvailability()
     {
         var configured = DiagnosticUploadService.IsConfigured;
-
-        ExportDiagnosticsLabel.SetResourceReference(
-            TextBlock.TextProperty,
-            configured ? "S.Settings.UploadDiagnostics" : "S.Settings.ExportDiagnostics");
 
         DiagnosticsHintText.SetResourceReference(
             TextBlock.TextProperty,
