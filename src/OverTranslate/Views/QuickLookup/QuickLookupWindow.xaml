@@ -220,15 +220,24 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- The reduced mark, not the full app icon: at this size the full one turns
-                         to mush, and nothing here needs the app identified — the user opened this
-                         window on purpose. Sized by the style rather than here, so the one place
-                         that decides how big the mark is stays with the mark. -->
-                    <ContentControl x:Name="BrandIcon"
-                                    Grid.Column="0"
-                                    Style="{StaticResource AppGlyphMark}"
-                                    Margin="2,0,10,0"
-                                    VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- The reduced mark, not the full app icon: at this size the full one turns
+                             to mush, and nothing here needs the app identified — the user opened this
+                             window on purpose. Sized by the style rather than here, so the one place
+                             that decides how big the mark is stays with the mark. -->
+                        <ContentControl x:Name="BrandIcon"
+                                        Style="{StaticResource AppGlyphMark}"
+                                        Margin="2,0,4,0"
+                                        VerticalAlignment="Center"/>
+
+                        <!-- Always present because this changes how the result is presented, not
+                             whether the feature is enabled. It sits beside the input whose result
+                             it controls; the glyph shows the available action. -->
+                        <Button x:Name="CollapseBtn"
+                                Style="{StaticResource HeaderIconButton}"
+                                Margin="0,0,4,0"
+                                Click="CollapseBtn_Click"/>
+                    </StackPanel>
 
                     <!-- The box, its placeholder and its clear button share one cell, so the prompt
                          sits exactly where the first character will land and the button sits inside
@@ -411,6 +420,7 @@
                                            TextOptions.TextFormattingMode="Ideal"
                                            TextOptions.TextRenderingMode="ClearType"
                                            Foreground="{DynamicResource AppTextPrimary}"
+                                           VerticalAlignment="Top"
                                            TextWrapping="Wrap"
                                            MaxWidth="440"/>
 
@@ -421,7 +431,7 @@
                                 <Button x:Name="TgtTtsBtn"
                                         Style="{StaticResource HeaderIconButton}"
                                         Content="&#xE767;"
-                                        Margin="8,4,0,0"
+                                        Margin="8,1,0,0"
                                         VerticalAlignment="Top"
                                         Visibility="Collapsed"
                                         ToolTip="{DynamicResource S.Translation.SpeakResult}"
@@ -524,6 +534,55 @@
                             </Grid>
                         </ScrollViewer>
 
+                        <!-- Compact result: translation work is unchanged, only the presentation is
+                             reduced to system state plus one unobtrusive line of translated text. -->
+                        <Grid x:Name="CompactResultPanel" Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <ProgressBar x:Name="CompactTranslationLoadingBar"
+                                         Grid.Row="0"
+                                         Height="2.5"
+                                         IsIndeterminate="True"
+                                         Visibility="Collapsed"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         Foreground="{DynamicResource AppAccent}"/>
+
+                            <StackPanel Grid.Row="1" Margin="18,10,18,11">
+                                <TextBlock x:Name="CompactStatusText"
+                                           FontFamily="{StaticResource AppFont}"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Visibility="Collapsed"/>
+                                <StackPanel x:Name="CompactTranslationRow" Orientation="Horizontal">
+                                    <TextBlock x:Name="CompactTranslatedText"
+                                               FontFamily="{StaticResource AppFont}"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               LineHeight="20"
+                                               TextOptions.TextFormattingMode="Ideal"
+                                               Foreground="{Binding Foreground, ElementName=TranslatedText}"
+                                               Margin="0,5,0,0"
+                                               VerticalAlignment="Top"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="440"
+                                               Visibility="Collapsed"/>
+
+                                    <Button x:Name="CompactTgtTtsBtn"
+                                            Style="{StaticResource HeaderIconButton}"
+                                            Content="{Binding Content, ElementName=TgtTtsBtn}"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Top"
+                                            Visibility="{Binding Visibility, ElementName=CompactTranslatedText}"
+                                            ToolTip="{DynamicResource S.Translation.SpeakResult}"
+                                            Click="TgtTtsBtn_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
                         <!-- Settings -->
                         <StackPanel x:Name="SettingsPanel" Margin="18,14,18,16" Visibility="Collapsed">
                             <Grid Margin="0,0,0,14">
@@ -545,6 +604,30 @@
                                           Style="{StaticResource ModernComboBox}"
                                           Width="180" Height="30"
                                           SelectedValuePath="Provider"/>
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="{DynamicResource AppSeparator}" Margin="0,0,0,12"/>
+
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="{DynamicResource S.QuickLookup.AutoCopy}"
+                                               Style="{StaticResource SettingRowLabel}"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="{DynamicResource S.QuickLookup.AutoCopyHint}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0,2,0,0"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <CheckBox x:Name="AutoCopyToggle"
+                                          Grid.Column="1"
+                                          Style="{StaticResource ToggleSwitch}"
+                                          AutomationProperties.Name="{DynamicResource S.QuickLookup.AutoCopy}"/>
                             </Grid>
 
                             <Rectangle Height="1" Fill="{DynamicResource AppSeparator}" Margin="0,0,0,12"/>
@@ -578,6 +661,37 @@
                             </Grid>
                         </StackPanel>
                     </Grid>
+                </Border>
+
+                <!-- Auto-copy feedback belongs to the window but not to either result layout.
+                     Overlaying both rows keeps compact and expanded results the same height, while
+                     remaining inside Surface makes it follow the window's open/close transform. -->
+                <Border x:Name="AutoCopyConfirmation"
+                        Grid.RowSpan="2"
+                        Panel.ZIndex="1"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,12,12"
+                        Padding="10,6"
+                        Background="{DynamicResource AppHeaderBg}"
+                        BorderBrush="{DynamicResource AppButtonBorder}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        IsHitTestVisible="False"
+                        Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8C8;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource AppAccent}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource S.QuickLookup.TranslationCopied}"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource AppTextPrimary}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Border>
             </Grid>
         </Border>

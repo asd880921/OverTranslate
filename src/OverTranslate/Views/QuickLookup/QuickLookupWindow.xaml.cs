@@ -76,8 +76,8 @@ public partial class QuickLookupWindow : Window
     /// </remarks>
     private static readonly TimeSpan ForegroundWatchInterval = TimeSpan.FromMilliseconds(150);
 
-    /// <summary>How long 複製 says it copied before going back to offering to.</summary>
-    private static readonly TimeSpan CopiedHold = TimeSpan.FromMilliseconds(1400);
+    private static readonly TimeSpan ManualCopyHold = TimeSpan.FromMilliseconds(1400);
+    private static readonly TimeSpan AutoCopyHold = TimeSpan.FromMilliseconds(1500);
 
     private readonly TtsService _tts = new();
     private readonly DispatcherTimer _debounce;
@@ -119,6 +119,9 @@ public partial class QuickLookupWindow : Window
 
     /// <summary>True while the gear panel is showing instead of the result.</summary>
     private bool _settingsOpen;
+
+    /// <summary>Whether results use the compact status-and-preview presentation.</summary>
+    private bool _resultsCollapsed;
 
     /// <summary>True while one of the pickers has its list down — see <see cref="OnDeactivated"/>.</summary>
     private bool _dropDownOpen;
@@ -289,12 +292,18 @@ public partial class QuickLookupWindow : Window
     private QuickLookupWindow()
     {
         InitializeComponent();
+        _resultsCollapsed = SettingsService.Instance.Current.QuickLookup.ResultsCollapsed;
 
         _debounce = new DispatcherTimer { Interval = DebounceDelay };
         _debounce.Tick += (_, _) => { _debounce.Stop(); _ = TranslateNowAsync(); };
 
-        _copiedHold = new DispatcherTimer { Interval = CopiedHold };
-        _copiedHold.Tick += (_, _) => { _copiedHold.Stop(); RenderCopyLabel(copied: false); };
+        _copiedHold = new DispatcherTimer { Interval = ManualCopyHold };
+        _copiedHold.Tick += (_, _) =>
+        {
+            _copiedHold.Stop();
+            RenderCopyLabel(copied: false);
+            HideAutoCopyConfirmation(immediate: false);
+        };
 
         _foregroundWatch = new DispatcherTimer { Interval = ForegroundWatchInterval };
         _foregroundWatch.Tick += (_, _) => CheckForeground();
@@ -312,6 +321,8 @@ public partial class QuickLookupWindow : Window
         SrcLangBox.SelectionChanged  += LangBox_SelectionChanged;
         TgtLangBox.SelectionChanged  += LangBox_SelectionChanged;
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
+        AutoCopyToggle.Checked       += AutoCopyToggle_Toggled;
+        AutoCopyToggle.Unchecked     += AutoCopyToggle_Toggled;
 
         foreach (var picker in new[] { SrcLangBox, TgtLangBox, ProviderBox })
         {
@@ -353,6 +364,8 @@ public partial class QuickLookupWindow : Window
 
         RenderChrome();
         RenderCopyLabel(copied: false);
+        RenderCollapseButton();
+        RenderResultPresentation();
         RenderSettingsButton();
         RenderSettingsHint();
     }
@@ -753,6 +766,16 @@ public partial class QuickLookupWindow : Window
         if (e.Key == Key.Escape)
         {
             e.Handled = true;
+
+            if (_pinned)
+            {
+                // Pinning promises the popup survives ordinary dismissal gestures. Escape still
+                // gives the reader a quick reset, and clearing through the same path as the button
+                // also cancels any translation that belongs to the previous text.
+                ClearSourceText();
+                return;
+            }
+
             BeginClose();
             return;
         }
@@ -858,6 +881,9 @@ public partial class QuickLookupWindow : Window
     /// from somewhere else, and retyping it means going back for it.
     /// </remarks>
     private void ClearBtn_Click(object sender, RoutedEventArgs e)
+        => ClearSourceText();
+
+    private void ClearSourceText()
     {
         SourceTextBox.SelectAll();
         SourceTextBox.SelectedText = "";
@@ -905,6 +931,8 @@ public partial class QuickLookupWindow : Window
         var text = SourceTextBox.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
 
+        HideAutoCopyConfirmation(immediate: true);
+
         var settings = SettingsService.Instance.Current;
         var srcLang = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
         var tgtLang = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
@@ -929,7 +957,10 @@ public partial class QuickLookupWindow : Window
             SetTranslationLoading(false);
             _detectedLang = detected ?? "";
             TranslatedText.Text = results.FirstOrDefault()?.TranslatedText ?? "";
+            if (settings.QuickLookup.AutoCopyTranslation)
+                CopyTranslation(showConfirmation: false);
             StatusText.Visibility = Visibility.Collapsed;
+            RenderCompactCompletion();
             ShowResult();
 
             var dictionarySource = LanguageData.IsAutomaticSource(srcLang) ? _detectedLang : srcLang;
@@ -995,7 +1026,11 @@ public partial class QuickLookupWindow : Window
     }
 
     private void SetTranslationLoading(bool loading)
-        => TranslationLoadingBar.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+    {
+        var visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+        TranslationLoadingBar.Visibility = visibility;
+        CompactTranslationLoadingBar.Visibility = visibility;
+    }
 
     /// <remarks>
     /// Silent while the gear panel is up. A translation finishing is not a reason to take the user
@@ -1006,8 +1041,8 @@ public partial class QuickLookupWindow : Window
     {
         if (_settingsOpen) return;
 
-        ResultPanel.Visibility = Visibility.Visible;
         SettingsPanel.Visibility = Visibility.Collapsed;
+        RenderResultPresentation();
         // Both belong to a translation rather than to the panel, so neither is on screen while the
         // status line is still saying 翻譯中.
         var hasResult = TranslatedText.Text.Length > 0;
@@ -1025,7 +1060,25 @@ public partial class QuickLookupWindow : Window
         StatusText.SetResourceReference(
             ForegroundProperty, isError ? "AppError" : "AppAccent");
         StatusText.Visibility = Visibility.Visible;
+
+        CompactStatusText.Text = text;
+        CompactStatusText.SetResourceReference(
+            ForegroundProperty, isError ? "AppError" : "AppAccent");
+        CompactStatusText.Visibility = Visibility.Visible;
+        CompactTranslatedText.Text = "";
+        CompactTranslatedText.Visibility = Visibility.Collapsed;
         ShowResult();
+    }
+
+    private void RenderCompactCompletion()
+    {
+        CompactStatusText.Text = "";
+        CompactStatusText.Visibility = Visibility.Collapsed;
+        CompactTranslatedText.Text = TranslatedText.Text;
+        CompactTranslationRow.Margin = new Thickness(0);
+        CompactTranslatedText.Visibility = TranslatedText.Text.Length > 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     /// <summary>
@@ -1135,13 +1188,17 @@ public partial class QuickLookupWindow : Window
     // ══════════════════════════ Copying ══════════════════════════
 
     /// <remarks>
-    /// Confirmed on the button itself rather than with a toast. A toast would appear outside this
-    /// window, which is a place the pointer then has to not be for the popup to survive — and the
-    /// message would outlive the window it was about.
+    /// Manual copies confirm on their button. Automatic copies use an in-window overlay because
+    /// neither the expanded nor compact result should gain a status line for transient feedback.
     /// </remarks>
     private void CopyBtn_Click(object sender, RoutedEventArgs e)
     {
-        if (TranslatedText.Text.Length == 0) return;
+        CopyTranslation(showConfirmation: true);
+    }
+
+    private bool CopyTranslation(bool showConfirmation)
+    {
+        if (TranslatedText.Text.Length == 0) return false;
 
         try
         {
@@ -1150,21 +1207,100 @@ public partial class QuickLookupWindow : Window
         catch (Exception ex)
         {
             Log.Warn(ex, "Could not copy the translation");
-            return;
+            return false;
         }
 
-        RenderCopyLabel(copied: true);
+        if (showConfirmation)
+        {
+            HideAutoCopyConfirmation(immediate: true);
+            RenderCopyLabel(copied: true);
+        }
+        else
+        {
+            RenderCopyLabel(copied: false);
+            ShowAutoCopyConfirmation();
+        }
+
         _copiedHold.Stop();
+        _copiedHold.Interval = showConfirmation ? ManualCopyHold : AutoCopyHold;
         _copiedHold.Start();
+        return true;
     }
 
     private void RenderCopyLabel(bool copied) =>
         CopyLabel.Text = LocalizationService.Get(
             copied ? "S.QuickLookup.Copied" : "S.QuickLookup.Copy");
 
+    private void ShowAutoCopyConfirmation()
+    {
+        AutoCopyConfirmation.BeginAnimation(OpacityProperty, null);
+        AutoCopyConfirmation.Opacity = 1;
+        AutoCopyConfirmation.Visibility = Visibility.Visible;
+    }
+
+    private void HideAutoCopyConfirmation(bool immediate)
+    {
+        AutoCopyConfirmation.BeginAnimation(OpacityProperty, null);
+        if (AutoCopyConfirmation.Visibility != Visibility.Visible) return;
+
+        if (immediate)
+        {
+            AutoCopyConfirmation.Visibility = Visibility.Collapsed;
+            AutoCopyConfirmation.Opacity = 1;
+            return;
+        }
+
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150));
+        fade.Completed += (_, _) =>
+        {
+            AutoCopyConfirmation.Visibility = Visibility.Collapsed;
+            AutoCopyConfirmation.Opacity = 1;
+            AutoCopyConfirmation.BeginAnimation(OpacityProperty, null);
+        };
+        AutoCopyConfirmation.BeginAnimation(OpacityProperty, fade);
+    }
+
     // ══════════════════════════ Settings panel ══════════════════════════
 
     private void SettingsBtn_Click(object sender, RoutedEventArgs e) => ShowSettings(!_settingsOpen);
+
+    private void CollapseBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _resultsCollapsed = !_resultsCollapsed;
+        SettingsService.Instance.Current.QuickLookup.ResultsCollapsed = _resultsCollapsed;
+        SettingsService.Instance.Save();
+
+        RenderCollapseButton();
+        if (_settingsOpen) return;
+
+        RenderResultPresentation();
+        ShowBody(HasBodyContent());
+    }
+
+    /// <summary>
+    /// Shows the action rather than the state: an up chevron removes detail, a down chevron restores
+    /// it. There is no transition — this can sit in a copy-and-paste loop and must answer instantly.
+    /// </summary>
+    private void RenderCollapseButton()
+    {
+        CollapseBtn.Content = _resultsCollapsed ? "\uE70D" : "\uE70E";
+        var label = LocalizationService.Get(
+            _resultsCollapsed ? "S.QuickLookup.Expand" : "S.QuickLookup.Collapse");
+        CollapseBtn.ToolTip = label;
+        System.Windows.Automation.AutomationProperties.SetName(CollapseBtn, label);
+    }
+
+    private void RenderResultPresentation()
+    {
+        ResultPanel.Visibility = _resultsCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        CompactResultPanel.Visibility = _resultsCollapsed ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private bool HasBodyContent() =>
+        !string.IsNullOrWhiteSpace(SourceTextBox.Text)
+        && (TranslatedText.Text.Length > 0
+            || StatusText.Visibility == Visibility.Visible
+            || TranslationLoadingBar.Visibility == Visibility.Visible);
 
     /// <summary>
     /// Points the one button in the header that means two things at whichever one it means now.
@@ -1203,13 +1339,14 @@ public partial class QuickLookupWindow : Window
             RenderSettingsHint();
             SettingsPanel.Visibility = Visibility.Visible;
             ResultPanel.Visibility = Visibility.Collapsed;
+            CompactResultPanel.Visibility = Visibility.Collapsed;
             ShowBody(true);
             return;
         }
 
         SettingsPanel.Visibility = Visibility.Collapsed;
-        ResultPanel.Visibility = Visibility.Visible;
-        ShowBody(TranslatedText.Text.Length > 0 || StatusText.Visibility == Visibility.Visible);
+        RenderResultPresentation();
+        ShowBody(HasBodyContent());
     }
 
     private void RenderSettingsHint() =>
@@ -1235,6 +1372,16 @@ public partial class QuickLookupWindow : Window
         TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(settings.TargetLanguage);
         ProviderBox.SelectedValue = settings.Provider;
         if (ProviderBox.SelectedValue is null) ProviderBox.SelectedIndex = 0;
+        AutoCopyToggle.IsChecked = settings.QuickLookup.AutoCopyTranslation;
+    }
+
+    private void AutoCopyToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressAuto) return;
+
+        SettingsService.Instance.Current.QuickLookup.AutoCopyTranslation =
+            AutoCopyToggle.IsChecked == true;
+        SettingsService.Instance.Save();
     }
 
     private void LangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1350,9 +1497,12 @@ public partial class QuickLookupWindow : Window
     {
         RenderChrome();
         RenderCopyLabel(copied: false);
+        RenderCollapseButton();
         RenderSettingsButton();
         RenderSettingsHint();
         RenderSourceTtsAvailability();
+        if (TranslatedText.Text.Length > 0 && StatusText.Visibility != Visibility.Visible)
+            RenderCompactCompletion();
     }
 
     protected override void OnClosed(EventArgs e)

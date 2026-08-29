@@ -55,6 +55,96 @@ public class QuickLookupWindowMarkupTests
     }
 
     /// <summary>
+    /// The presentation toggle belongs to the always-visible header rather than either result
+    /// panel, so a compact popup can always be expanded again.
+    /// </summary>
+    [Fact]
+    public void The_result_presentation_toggle_is_always_available()
+    {
+        var toggle = Window()
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == "CollapseBtn");
+
+        Assert.Null((string?)toggle.Attribute("Visibility"));
+        Assert.Equal("0", (string?)toggle.Parent?.Attribute("Grid.Column"));
+    }
+
+    /// <summary>The compact preview wraps long translations while keeping the speech action beside them.</summary>
+    [Fact]
+    public void The_compact_translation_wraps_before_the_tts_action()
+    {
+        var result = Window()
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == "CompactTranslatedText");
+
+        Assert.Equal("Wrap", (string?)result.Attribute("TextWrapping"));
+        Assert.Equal("440", (string?)result.Attribute("MaxWidth"));
+        Assert.Null((string?)result.Attribute("TextTrimming"));
+        Assert.Equal("14", (string?)result.Attribute("FontSize"));
+        Assert.Equal("SemiBold", (string?)result.Attribute("FontWeight"));
+        Assert.Equal("20", (string?)result.Attribute("LineHeight"));
+        Assert.Equal("Ideal", (string?)result.Attribute("TextOptions.TextFormattingMode"));
+        Assert.Equal("0,5,0,0", (string?)result.Attribute("Margin"));
+        Assert.Equal("Top", (string?)result.Attribute("VerticalAlignment"));
+        Assert.Equal("{Binding Foreground, ElementName=TranslatedText}", (string?)result.Attribute("Foreground"));
+        Assert.Equal("Horizontal", (string?)result.Parent?.Attribute("Orientation"));
+    }
+
+    /// <summary>The compact result exposes the same target-language speech action as the full result.</summary>
+    [Fact]
+    public void The_compact_translation_reuses_the_full_result_tts_action()
+    {
+        var button = Window()
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == "CompactTgtTtsBtn");
+
+        Assert.Equal("{StaticResource HeaderIconButton}", (string?)button.Attribute("Style"));
+        Assert.Equal("{Binding Content, ElementName=TgtTtsBtn}", (string?)button.Attribute("Content"));
+        Assert.Equal("{Binding Visibility, ElementName=CompactTranslatedText}", (string?)button.Attribute("Visibility"));
+        Assert.Equal("8,0,0,0", (string?)button.Attribute("Margin"));
+        Assert.Equal("Top", (string?)button.Attribute("VerticalAlignment"));
+        Assert.Equal("TgtTtsBtn_Click", (string?)button.Attribute("Click"));
+    }
+
+    /// <summary>Auto-copy feedback overlays both result layouts without resizing or intercepting them.</summary>
+    [Fact]
+    public void Auto_copy_confirmation_is_a_non_interactive_overlay()
+    {
+        var confirmation = Window()
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == "AutoCopyConfirmation");
+
+        Assert.Equal("1", (string?)confirmation.Attribute("Panel.ZIndex"));
+        Assert.Equal("Right", (string?)confirmation.Attribute("HorizontalAlignment"));
+        Assert.Equal("Bottom", (string?)confirmation.Attribute("VerticalAlignment"));
+        Assert.Equal("2", (string?)confirmation.Attribute("Grid.RowSpan"));
+        Assert.Equal("False", (string?)confirmation.Attribute("IsHitTestVisible"));
+        Assert.Equal("Collapsed", (string?)confirmation.Attribute("Visibility"));
+        Assert.Equal("{DynamicResource AppHeaderBg}", (string?)confirmation.Attribute("Background"));
+        Assert.Equal("{DynamicResource AppButtonBorder}", (string?)confirmation.Attribute("BorderBrush"));
+        Assert.Equal("Grid", confirmation.Parent?.Name.LocalName);
+        Assert.Equal("BodyHost", (string?)confirmation.ElementsBeforeSelf().Last().Attribute(X + "Name"));
+    }
+
+    /// <summary>Each speech button is centered on the first line box, independent of script glyph size.</summary>
+    [Fact]
+    public void The_result_tts_buttons_align_to_the_first_line_box()
+    {
+        var window = Window();
+        XElement Element(string name) => window
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == name);
+
+        Assert.Equal("32", (string?)Element("TranslatedText").Attribute("LineHeight"));
+        Assert.Equal("Top", (string?)Element("TranslatedText").Attribute("VerticalAlignment"));
+        Assert.Equal("8,1,0,0", (string?)Element("TgtTtsBtn").Attribute("Margin"));
+        Assert.Equal("Top", (string?)Element("TgtTtsBtn").Attribute("VerticalAlignment"));
+        Assert.Equal("20", (string?)Element("CompactTranslatedText").Attribute("LineHeight"));
+        Assert.Equal("0,5,0,0", (string?)Element("CompactTranslatedText").Attribute("Margin"));
+        Assert.Equal("8,0,0,0", (string?)Element("CompactTgtTtsBtn").Attribute("Margin"));
+    }
+
+    /// <summary>
     /// The transparent shadow canvas is an implementation detail. It must not leave the visible
     /// card below the screen edge when Windows places the popup's actual window against that edge.
     /// </summary>

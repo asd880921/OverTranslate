@@ -129,6 +129,11 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.QuickLookup.SpeakSourceUnknown">The language of the original is not known yet. It can be read aloud once the translation is back.</sys:String>
     <sys:String x:Key="S.QuickLookup.Provider">Translation service</sys:String>
     <sys:String x:Key="S.QuickLookup.ProviderHint">Shared with screen translation and text translation</sys:String>
+    <sys:String x:Key="S.QuickLookup.AutoCopy">Automatically copy translation results</sys:String>
+    <sys:String x:Key="S.QuickLookup.AutoCopyHint">Automatically copies the result to the clipboard when translation finishes</sys:String>
+    <sys:String x:Key="S.QuickLookup.Collapse">Collapse</sys:String>
+    <sys:String x:Key="S.QuickLookup.Expand">Expand</sys:String>
+    <sys:String x:Key="S.QuickLookup.TranslationCopied">Copied to clipboard</sys:String>
     <sys:String x:Key="S.QuickLookup.OpenFullSettings">All settings</sys:String>
     <sys:String x:Key="S.QuickLookup.SettingsHint">Press {0} to open it. It closes when you switch to another window; pin it to keep it on screen.</sys:String>
 

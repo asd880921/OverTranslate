@@ -205,6 +205,9 @@ public class AppSettings
     /// </remarks>
     public CaptureSettings Capture { get; set; } = new();
 
+    /// <summary>What 取詞翻譯 keeps between lookups, grouped.</summary>
+    public QuickLookupSettings QuickLookup { get; set; } = new();
+
     /// <summary>What 即時翻譯 keeps between sittings, grouped.</summary>
     public RealtimeSettings Realtime { get; set; } = new();
 }

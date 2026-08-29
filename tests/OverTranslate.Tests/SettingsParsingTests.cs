@@ -189,6 +189,8 @@ public class SettingsParsingTests
         Assert.Equal("Dark", settings.Theme);
         Assert.Equal("Ctrl+Alt+A", settings.HotkeyDisplay);
         Assert.Equal(LanguageData.AutomaticSourceLanguage, settings.SourceLanguage);
+        Assert.False(settings.QuickLookup.AutoCopyTranslation);
+        Assert.False(settings.QuickLookup.ResultsCollapsed);
     }
 
     // A round trip has to survive, or the tolerant read would quietly drop values on every save.
@@ -219,6 +221,11 @@ public class SettingsParsingTests
             Capture =
             {
                 VerticalText = true,
+            },
+            QuickLookup =
+            {
+                AutoCopyTranslation = true,
+                ResultsCollapsed = true,
             },
             Realtime =
             {
@@ -260,6 +267,8 @@ public class SettingsParsingTests
         Assert.Equal("Ctrl+Shift+D", settings.RealtimePauseHotkeyDisplay);
         Assert.False(settings.RealtimePauseHotkeyEnabled);
         Assert.True(settings.Capture.VerticalText);
+        Assert.True(settings.QuickLookup.AutoCopyTranslation);
+        Assert.True(settings.QuickLookup.ResultsCollapsed);
         Assert.Equal(3, settings.Realtime.BlockCount);
         Assert.Equal(RealtimeCaptureMode.Window, settings.Realtime.CaptureMode);
         Assert.Equal(@"\\.\DISPLAY2", settings.Realtime.CaptureScreenDeviceName);
@@ -338,17 +347,19 @@ public class SettingsParsingTests
 
         var lastFlatKey = json.IndexOf("\"SkippedUpdateVersion\"", StringComparison.Ordinal);
         var captureGroup = json.IndexOf("\"Capture\":", StringComparison.Ordinal);
+        var quickLookupGroup = json.IndexOf("\"QuickLookup\":", StringComparison.Ordinal);
         var realtimeGroup = json.IndexOf("\"Realtime\":", StringComparison.Ordinal);
         var rootKeys = System.Text.Json.JsonDocument.Parse(json).RootElement
             .EnumerateObject()
             .Select(property => property.Name)
             .ToList();
 
-        Assert.True(lastFlatKey >= 0 && captureGroup >= 0 && realtimeGroup >= 0);
+        Assert.True(
+            lastFlatKey >= 0 && captureGroup >= 0 && quickLookupGroup >= 0 && realtimeGroup >= 0);
         Assert.True(
             captureGroup > lastFlatKey,
             "grouped settings must be written after every flat one");
-        Assert.Equal(["Capture", "Realtime"], rootKeys.TakeLast(2));
+        Assert.Equal(["Capture", "QuickLookup", "Realtime"], rootKeys.TakeLast(3));
     }
 
     // Written before either shortcut could be switched off: both have to come back on, or upgrading
