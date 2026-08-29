@@ -120,6 +120,8 @@ public class QuickLookupWindowMarkupTests
         Assert.Equal("2", (string?)confirmation.Attribute("Grid.RowSpan"));
         Assert.Equal("False", (string?)confirmation.Attribute("IsHitTestVisible"));
         Assert.Equal("Collapsed", (string?)confirmation.Attribute("Visibility"));
+        Assert.Equal("{DynamicResource AppHeaderBg}", (string?)confirmation.Attribute("Background"));
+        Assert.Equal("{DynamicResource AppButtonBorder}", (string?)confirmation.Attribute("BorderBrush"));
         Assert.Equal("Grid", confirmation.Parent?.Name.LocalName);
         Assert.Equal("BodyHost", (string?)confirmation.ElementsBeforeSelf().Last().Attribute(X + "Name"));
     }

@@ -76,8 +76,8 @@ public partial class QuickLookupWindow : Window
     /// </remarks>
     private static readonly TimeSpan ForegroundWatchInterval = TimeSpan.FromMilliseconds(150);
 
-    /// <summary>How long copy confirmation remains before returning to the resting UI.</summary>
-    private static readonly TimeSpan CopiedHold = TimeSpan.FromMilliseconds(1400);
+    private static readonly TimeSpan ManualCopyHold = TimeSpan.FromMilliseconds(1400);
+    private static readonly TimeSpan AutoCopyHold = TimeSpan.FromSeconds(2);
 
     private readonly TtsService _tts = new();
     private readonly DispatcherTimer _debounce;
@@ -297,7 +297,7 @@ public partial class QuickLookupWindow : Window
         _debounce = new DispatcherTimer { Interval = DebounceDelay };
         _debounce.Tick += (_, _) => { _debounce.Stop(); _ = TranslateNowAsync(); };
 
-        _copiedHold = new DispatcherTimer { Interval = CopiedHold };
+        _copiedHold = new DispatcherTimer { Interval = ManualCopyHold };
         _copiedHold.Tick += (_, _) =>
         {
             _copiedHold.Stop();
@@ -1222,6 +1222,7 @@ public partial class QuickLookupWindow : Window
         }
 
         _copiedHold.Stop();
+        _copiedHold.Interval = showConfirmation ? ManualCopyHold : AutoCopyHold;
         _copiedHold.Start();
         return true;
     }

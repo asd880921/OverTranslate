@@ -673,8 +673,8 @@
                         VerticalAlignment="Bottom"
                         Margin="0,0,12,12"
                         Padding="10,6"
-                        Background="{DynamicResource ToastBg}"
-                        BorderBrush="{DynamicResource ToastBorder}"
+                        Background="{DynamicResource AppHeaderBg}"
+                        BorderBrush="{DynamicResource AppButtonBorder}"
                         BorderThickness="1"
                         CornerRadius="8"
                         IsHitTestVisible="False"
@@ -683,13 +683,13 @@
                         <TextBlock Text="&#xE8C8;"
                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                    FontSize="12"
-                                   Foreground="{DynamicResource ToastTitle}"
+                                   Foreground="{DynamicResource AppAccent}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,6,0"/>
                         <TextBlock Text="{DynamicResource S.QuickLookup.TranslationCopied}"
                                    FontFamily="{StaticResource AppFont}"
                                    FontSize="12"
-                                   Foreground="{DynamicResource ToastTitle}"
+                                   Foreground="{DynamicResource AppTextPrimary}"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
