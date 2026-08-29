@@ -45,8 +45,17 @@ public partial class ToastWindow : Window
     private bool _userDismissed;
 
     /// <summary>Shows a toast, replacing whichever one is currently on screen.</summary>
+    /// <remarks>
+    /// Here rather than at the call sites: half of them reach a toast without logging anything of
+    /// their own, so a report that says "an error popped up" cannot be matched to a message. The
+    /// title is enough to identify which one, and unlike the message it is always a fixed resource
+    /// string — a message can carry an exception's text or a path, and the translation failures
+    /// carry whatever was being translated.
+    /// </remarks>
     public static void Show(string title, string message, Rect? selPhysRect = null, ToastKind kind = ToastKind.Info)
     {
+        Log.Info("Toast shown, kind={Kind}, title=\"{Title}\"", kind, title);
+
         Dismiss();
 
         var toast = new ToastWindow(title, message, selPhysRect, kind);
@@ -248,6 +257,11 @@ public partial class ToastWindow : Window
         try
         {
             System.Windows.Clipboard.SetText(text);
+
+            // Debug rather than Info: on its own a successful copy is not worth a line in everyone's
+            // log, but without it a log cannot tell a copy that worked from a button that was never
+            // pressed — which is exactly the question when someone reports the copy doing nothing.
+            Log.Debug("Toast message copied to the clipboard");
             return true;
         }
         catch (Exception ex)
@@ -257,8 +271,15 @@ public partial class ToastWindow : Window
 
         try
         {
-            return System.Windows.Clipboard.ContainsText()
+            var landed = System.Windows.Clipboard.ContainsText()
                 && System.Windows.Clipboard.GetText() == text;
+
+            // Pairs with the warning above: it says the copy threw, this says whether the text got
+            // there anyway. Without both, that warning reads as a failure the user never saw.
+            Log.Debug(landed
+                ? "Toast message was on the clipboard despite the failed copy"
+                : "Toast message did not reach the clipboard");
+            return landed;
         }
         catch (Exception ex)
         {
