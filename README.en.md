@@ -63,6 +63,8 @@ The window closes itself when you switch to another window; pin it if you need i
 
 Select some text and press the hotkey: the translation is pasted straight over it (only in fields that accept typed text; nothing can be pasted outside an input area).
 
+![Quick translate](docs/images/快速翻譯.png)
+
 ---
 
 ## Real-time Translation
