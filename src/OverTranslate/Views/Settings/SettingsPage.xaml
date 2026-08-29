@@ -231,22 +231,35 @@
                                     <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
                                         <!-- The one mark in the set drawn in more than one pass —
                                              see the geometries in SharedStyles.xaml for why, and
-                                             for why all three are given the same explicit box. -->
-                                        <Grid Width="16" Height="16">
-                                            <Path Data="{StaticResource QuickTranslateTilesGeometry}"
-                                                  Fill="{DynamicResource AppAccent}"
-                                                  Stretch="None" Width="16" Height="16"/>
-                                            <Path Data="{StaticResource QuickTranslateGlyphsGeometry}"
-                                                  Fill="{DynamicResource AppAccentFg}"
-                                                  Stretch="None" Width="16" Height="16"/>
-                                            <Path Data="{StaticResource QuickTranslateArrowsGeometry}"
-                                                  Stroke="{DynamicResource AppAccent}"
-                                                  StrokeThickness="1.05"
-                                                  StrokeLineJoin="Round"
-                                                  StrokeStartLineCap="Round"
-                                                  StrokeEndLineCap="Round"
-                                                  Stretch="None" Width="16" Height="16"/>
-                                        </Grid>
+                                             for why all three are given the same explicit box.
+
+                                             And the one drawn larger than 16. Its two plates sit on
+                                             a diagonal, so the corners of the square it is drawn in
+                                             are empty and it reads smaller than the single shapes
+                                             beside it at the same size. The Viewbox is what takes it
+                                             up to the tile: scaling the drawing rather than redrawing
+                                             it keeps the geometries in the same 16-unit square every
+                                             other mark is authored in. -->
+                                        <Viewbox Width="22" Height="22">
+                                            <Grid Width="16" Height="16">
+                                                <Path Data="{StaticResource QuickTranslateTilesGeometry}"
+                                                      Fill="{StaticResource QuickTranslateTileFill}"
+                                                      Stretch="None" Width="16" Height="16"/>
+                                                <Path Data="{StaticResource QuickTranslateGlyphsGeometry}"
+                                                      Fill="{StaticResource QuickTranslateGlyphFill}"
+                                                      Stretch="None" Width="16" Height="16"/>
+                                                <!-- 0.92 is the drawing's own 2.8 scaled to 16; the
+                                                     Viewbox takes it back up to about the 1.2 the
+                                                     marks beside it are stroked at. -->
+                                                <Path Data="{StaticResource QuickTranslateArrowsGeometry}"
+                                                      Stroke="{StaticResource QuickTranslateArrowStroke}"
+                                                      StrokeThickness="0.92"
+                                                      StrokeLineJoin="Round"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round"
+                                                      Stretch="None" Width="16" Height="16"/>
+                                            </Grid>
+                                        </Viewbox>
                                     </Border>
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">

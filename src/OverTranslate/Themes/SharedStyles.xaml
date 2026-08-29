@@ -300,6 +300,23 @@
          what makes it "look this word up". -->
     <Geometry x:Key="QuickLookupMarkGeometry">M0.8,6.9 A6.1,6.1 0 1 1 13,6.9 A6.1,6.1 0 1 1 0.8,6.9 Z M11.3,11.3 L15.2,15.2 M4.95,9.3 L6.9,3.9 L8.85,9.3 M5.42,8 H8.38</Geometry>
 
+    <!-- The drawing's own palette, and the one mark in the set that keeps it rather than taking the
+         accent. A and 文 are told apart by the plates they sit on — that is the whole idea of the
+         icon — and repainting both plates one accent colour throws it away. Shared rather than
+         per-theme, like the service marks: this is artwork with a palette of its own, not a control
+         that has to answer to the interface's. -->
+    <LinearGradientBrush x:Key="QuickTranslateTileFill" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#D6F6FF"/>
+        <GradientStop Offset="1" Color="#A8E5F6"/>
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#0B4A63"/>
+
+    <LinearGradientBrush x:Key="QuickTranslateArrowStroke" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#28CCFF"/>
+        <GradientStop Offset="1" Color="#08A7EA"/>
+    </LinearGradientBrush>
+
     <!-- 快速翻譯: A and 文 each on their own tile, with an arrow curving from one to the other and
          back. Converted from the drawing this feature's icon was designed as, scaled into the same
          16-unit square the marks around it are drawn in.
@@ -316,9 +333,8 @@
          The two tiles. -->
     <Geometry x:Key="QuickTranslateTilesGeometry">M1.951 1.311 H6.672 A1.246 1.246 0.0 0 1 7.918 2.557 V7.279 A1.246 1.246 0.0 0 1 6.672 8.525 H1.951 A1.246 1.246 0.0 0 1 0.705 7.279 V2.557 A1.246 1.246 0.0 0 1 1.951 1.311 Z M9.328 8.525 H14.049 A1.246 1.246 0.0 0 1 15.295 9.77 V14.492 A1.246 1.246 0.0 0 1 14.049 15.738 H9.328 A1.246 1.246 0.0 0 1 8.082 14.492 V9.77 A1.246 1.246 0.0 0 1 9.328 8.525 Z</Geometry>
 
-    <!-- A and 文, in the colour of text on the accent so they read as knocked out of the tiles. F1
-         is the nonzero fill rule the drawing was authored with; the counter of the A is a hole only
-         under that rule. -->
+    <!-- A and 文, knocked out of the tiles above them. F1 is the nonzero fill rule the drawing was
+         authored with; the counter of the A is a hole only under that rule. -->
     <Geometry x:Key="QuickTranslateGlyphsGeometry">F1 M2.158 7.213 H3.153 L3.498 5.952 H5.085 L5.43 7.213 H6.465 L4.892 2.295 H3.731 ZM3.711 5.189 3.857 4.651 C4.003 4.14 4.142 3.583 4.275 3.045 H4.302 C4.448 3.569 4.58 4.14 4.733 4.651 L4.879 5.189 Z M11.158 9.794 C11.273 10.009 11.387 10.293 11.442 10.497 H9.324 V11.08 H10.112 C10.381 11.783 10.729 12.386 11.178 12.884 C10.66 13.288 10.012 13.572 9.23 13.766 C9.349 13.906 9.529 14.185 9.593 14.329 C10.396 14.095 11.068 13.761 11.622 13.313 C12.15 13.756 12.793 14.085 13.58 14.294 C13.67 14.13 13.849 13.871 13.984 13.736 C13.231 13.567 12.603 13.268 12.085 12.874 C12.528 12.391 12.867 11.798 13.121 11.08 H13.889 V10.497 H11.716 L12.14 10.363 C12.08 10.158 11.93 9.839 11.796 9.605 ZM11.631 12.466 C11.248 12.072 10.949 11.603 10.729 11.08 H12.454 C12.249 11.628 11.98 12.087 11.631 12.466 Z</Geometry>
 
     <!-- The two arrows, stroked rather than filled. The drawing's own 2.8 comes to 0.92 once
