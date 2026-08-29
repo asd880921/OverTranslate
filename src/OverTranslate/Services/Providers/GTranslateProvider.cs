@@ -1,4 +1,3 @@
-using GTranslate;
 using GTranslate.Results;
 using GTranslate.Translators;
 using OverTranslate.Models;
@@ -21,10 +20,7 @@ public class GTranslateProvider : ITranslationProvider
     // Friendly engine name (e.g. "GoogleTranslator2", "BingTranslator") for diagnostics/logging.
     public string Name => _translator.Name;
 
-    public bool SupportsDictionary =>
-        _translator is IDictionaryTranslator &&
-        _translator is ITranslatorCapabilities capabilities &&
-        capabilities.Capabilities.HasFlag(TranslationServiceCapabilities.Dictionary);
+    public bool SupportsDictionary => _translator is IDictionaryTranslator;
 
     // Maps DeepL-style codes to BCP-47 codes used by GTranslate
     private static readonly Dictionary<string, string> ToGTranslate = new(StringComparer.OrdinalIgnoreCase)
@@ -114,7 +110,7 @@ public class GTranslateProvider : ITranslationProvider
     public async Task<DictionaryLookupData?> LookupDictionaryAsync(
         string text, string sourceLang, string targetLang, CancellationToken cancellationToken = default)
     {
-        if (!SupportsDictionary || _translator is not IDictionaryTranslator dictionaryTranslator)
+        if (_translator is not IDictionaryTranslator dictionaryTranslator)
             return null;
 
         if (_targetOverrides.TryGetValue(targetLang, out var overrideLang))
@@ -139,8 +135,6 @@ public class GTranslateProvider : ITranslationProvider
                     entry.Confidence,
                     entry.Frequency,
                     entry.BackTranslations,
-                    entry.Definitions,
-                    entry.Synonyms,
                     entry.Examples.Select(example => new DictionaryExampleData(
                         example.Source, example.Translation)).ToList())).ToList(),
                 group.Definitions,

@@ -37,13 +37,9 @@ public sealed record DictionaryEntryData(
     double? Confidence,
     long? Frequency,
     IReadOnlyList<string> BackTranslations,
-    IReadOnlyList<string> Definitions,
-    IReadOnlyList<string> Synonyms,
     IReadOnlyList<DictionaryExampleData> Examples)
 {
     public string BackTranslationsText => string.Join(" · ", BackTranslations);
-    public string DefinitionsText => string.Join(Environment.NewLine, Definitions);
-    public string SynonymsText => string.Join(" · ", Synonyms);
     public bool HasTransliteration => !string.IsNullOrWhiteSpace(Transliteration);
 }
 
