@@ -300,23 +300,6 @@
          what makes it "look this word up". -->
     <Geometry x:Key="QuickLookupMarkGeometry">M0.8,6.9 A6.1,6.1 0 1 1 13,6.9 A6.1,6.1 0 1 1 0.8,6.9 Z M11.3,11.3 L15.2,15.2 M4.95,9.3 L6.9,3.9 L8.85,9.3 M5.42,8 H8.38</Geometry>
 
-    <!-- The drawing's own palette, and the one mark in the set that keeps it rather than taking the
-         accent. A and 文 are told apart by the plates they sit on — that is the whole idea of the
-         icon — and repainting both plates one accent colour throws it away. Shared rather than
-         per-theme, like the service marks: this is artwork with a palette of its own, not a control
-         that has to answer to the interface's. -->
-    <LinearGradientBrush x:Key="QuickTranslateTileFill" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Offset="0" Color="#D6F6FF"/>
-        <GradientStop Offset="1" Color="#A8E5F6"/>
-    </LinearGradientBrush>
-
-    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#0B4A63"/>
-
-    <LinearGradientBrush x:Key="QuickTranslateArrowStroke" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Offset="0" Color="#28CCFF"/>
-        <GradientStop Offset="1" Color="#08A7EA"/>
-    </LinearGradientBrush>
-
     <!-- 快速翻譯: A and 文 each on their own tile, with an arrow curving from one to the other and
          back. Converted from the drawing this feature's icon was designed as, scaled into the same
          16-unit square the marks around it are drawn in.

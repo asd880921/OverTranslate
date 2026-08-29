@@ -243,16 +243,16 @@
                                         <Viewbox Width="22" Height="22">
                                             <Grid Width="16" Height="16">
                                                 <Path Data="{StaticResource QuickTranslateTilesGeometry}"
-                                                      Fill="{StaticResource QuickTranslateTileFill}"
+                                                      Fill="{DynamicResource QuickTranslateTileFill}"
                                                       Stretch="None" Width="16" Height="16"/>
                                                 <Path Data="{StaticResource QuickTranslateGlyphsGeometry}"
-                                                      Fill="{StaticResource QuickTranslateGlyphFill}"
+                                                      Fill="{DynamicResource QuickTranslateGlyphFill}"
                                                       Stretch="None" Width="16" Height="16"/>
                                                 <!-- 0.92 is the drawing's own 2.8 scaled to 16; the
                                                      Viewbox takes it back up to about the 1.2 the
                                                      marks beside it are stroked at. -->
                                                 <Path Data="{StaticResource QuickTranslateArrowsGeometry}"
-                                                      Stroke="{StaticResource QuickTranslateArrowStroke}"
+                                                      Stroke="{DynamicResource QuickTranslateArrowStroke}"
                                                       StrokeThickness="0.92"
                                                       StrokeLineJoin="Round"
                                                       StrokeStartLineCap="Round"

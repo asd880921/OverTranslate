@@ -107,6 +107,25 @@
     <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="#D8D8D8"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
+    <!-- 快速翻譯's mark — see DarkTheme.xaml, which carries the palette this is derived from.
+         The plates are the one part that could not be kept: they were drawn pale for a dark
+         interface, and 設定 sets every mark on an AppAccentSubtle tile, which here is #DEEDFB —
+         within a few percent of the same brightness, so the plates disappeared into it and the
+         letters were left floating. Deepened until they read as plates again, with the hue and the
+         diagonal shading of the original kept; the letters stay the drawing's dark navy, which has
+         the contrast for it. The arrows follow the plates down for the same reason. -->
+    <LinearGradientBrush x:Key="QuickTranslateTileFill" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#6FCFEA"/>
+        <GradientStop Offset="1" Color="#35B0DC"/>
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#0B4A63"/>
+
+    <LinearGradientBrush x:Key="QuickTranslateArrowStroke" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#10A9E6"/>
+        <GradientStop Offset="1" Color="#0286C4"/>
+    </LinearGradientBrush>
+
     <!-- Toast — same in both themes (always dark) -->
     <SolidColorBrush x:Key="ToastBg"           Color="#E8202020"/>
     <SolidColorBrush x:Key="ToastBorder"       Color="#44FFFFFF"/>
