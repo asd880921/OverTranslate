@@ -78,7 +78,7 @@ public class QuickLookupWindowMarkupTests
             .Single(e => (string?)e.Attribute(X + "Name") == "CompactTranslatedText");
 
         Assert.Equal("Wrap", (string?)result.Attribute("TextWrapping"));
-        Assert.Equal("540", (string?)result.Attribute("MaxWidth"));
+        Assert.Equal("440", (string?)result.Attribute("MaxWidth"));
         Assert.Null((string?)result.Attribute("TextTrimming"));
         Assert.Equal("14", (string?)result.Attribute("FontSize"));
         Assert.Equal("SemiBold", (string?)result.Attribute("FontWeight"));
@@ -98,6 +98,8 @@ public class QuickLookupWindowMarkupTests
         Assert.Equal("{StaticResource HeaderIconButton}", (string?)button.Attribute("Style"));
         Assert.Equal("{Binding Content, ElementName=TgtTtsBtn}", (string?)button.Attribute("Content"));
         Assert.Equal("{Binding Visibility, ElementName=CompactTranslatedText}", (string?)button.Attribute("Visibility"));
+        Assert.Equal("8,4,0,0", (string?)button.Attribute("Margin"));
+        Assert.Equal("Top", (string?)button.Attribute("VerticalAlignment"));
         Assert.Equal("TgtTtsBtn_Click", (string?)button.Attribute("Click"));
     }
 

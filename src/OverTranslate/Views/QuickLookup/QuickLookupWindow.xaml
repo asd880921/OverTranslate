@@ -565,14 +565,14 @@
                                                Foreground="{Binding Foreground, ElementName=TranslatedText}"
                                                VerticalAlignment="Center"
                                                TextWrapping="Wrap"
-                                               MaxWidth="540"
+                                               MaxWidth="440"
                                                Visibility="Collapsed"/>
 
                                     <Button x:Name="CompactTgtTtsBtn"
                                             Style="{StaticResource HeaderIconButton}"
                                             Content="{Binding Content, ElementName=TgtTtsBtn}"
-                                            Margin="6,0,0,0"
-                                            VerticalAlignment="Center"
+                                            Margin="8,4,0,0"
+                                            VerticalAlignment="Top"
                                             Visibility="{Binding Visibility, ElementName=CompactTranslatedText}"
                                             ToolTip="{DynamicResource S.Translation.SpeakResult}"
                                             Click="TgtTtsBtn_Click"/>
