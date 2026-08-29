@@ -84,6 +84,16 @@ public partial class QuickTranslateHintWindow : Window
     /// <summary>Where the selection was, in physical pixels, or null when nothing would say.</summary>
     private readonly Rect? _anchor;
 
+    /// <summary>
+    /// Where the pointer was when the card was put up, which is the fallback anchor.
+    /// </summary>
+    /// <remarks>
+    /// Taken once rather than read again on every placement: the card is placed a second time when
+    /// its state changes, and a pointer that has moved since would take the card with it — away from
+    /// the text the reader pressed the shortcut over.
+    /// </remarks>
+    private readonly System.Drawing.Point _pointer;
+
     private DispatcherTimer? _hold;
     private DispatcherTimer? _copiedHold;
 
@@ -133,6 +143,7 @@ public partial class QuickTranslateHintWindow : Window
     {
         InitializeComponent();
         _anchor = anchor;
+        _pointer = System.Windows.Forms.Cursor.Position;
 
         MessageText.Text = LocalizationService.Get("S.Translation.Translating");
         RenderCopyAvailability();
@@ -234,22 +245,20 @@ public partial class QuickTranslateHintWindow : Window
     /// </remarks>
     private void Position()
     {
-        var pointer = System.Windows.Forms.Cursor.Position;
-
-        // The monitor the card is going to, which is the selection's when there is one: the pointer
-        // may be on another screen entirely by the time a translation comes back.
+        // The monitor the card is going to, which is the selection's when there is one: it and the
+        // pointer are not always on the same screen.
         var origin = _anchor is { } selection
             ? new System.Drawing.Point(
                 (int)Math.Round(selection.Left + selection.Width / 2),
                 (int)Math.Round(selection.Top))
-            : pointer;
+            : _pointer;
 
         var area = System.Windows.Forms.Screen.FromPoint(origin).WorkingArea;
         var scale = ScreenGeometry.ScaleAt(origin.X, origin.Y);
 
         var (left, top) = HintPlacement.Place(
             _anchor,
-            new Point(pointer.X, pointer.Y),
+            new Point(_pointer.X, _pointer.Y),
             new Size(ActualWidth * scale, ActualHeight * scale),
             new Rect(area.Left, area.Top, area.Width, area.Height),
             Gap * scale);
