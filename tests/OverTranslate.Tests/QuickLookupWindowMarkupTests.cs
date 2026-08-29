@@ -79,9 +79,23 @@ public class QuickLookupWindowMarkupTests
 
         Assert.Equal("NoWrap", (string?)result.Attribute("TextWrapping"));
         Assert.Equal("CharacterEllipsis", (string?)result.Attribute("TextTrimming"));
-        Assert.Equal("13", (string?)result.Attribute("FontSize"));
+        Assert.Equal("14", (string?)result.Attribute("FontSize"));
         Assert.Equal("Bold", (string?)result.Attribute("FontWeight"));
-        Assert.Equal("{DynamicResource AppTextPrimary}", (string?)result.Attribute("Foreground"));
+        Assert.Equal("{Binding Foreground, ElementName=TranslatedText}", (string?)result.Attribute("Foreground"));
+    }
+
+    /// <summary>The compact result exposes the same target-language speech action as the full result.</summary>
+    [Fact]
+    public void The_compact_translation_reuses_the_full_result_tts_action()
+    {
+        var button = Window()
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == "CompactTgtTtsBtn");
+
+        Assert.Equal("{StaticResource HeaderIconButton}", (string?)button.Attribute("Style"));
+        Assert.Equal("{Binding Content, ElementName=TgtTtsBtn}", (string?)button.Attribute("Content"));
+        Assert.Equal("{Binding Visibility, ElementName=CompactTranslatedText}", (string?)button.Attribute("Visibility"));
+        Assert.Equal("TgtTtsBtn_Click", (string?)button.Attribute("Click"));
     }
 
     /// <summary>
