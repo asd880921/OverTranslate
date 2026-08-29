@@ -106,6 +106,24 @@ public class QuickLookupWindowMarkupTests
         Assert.Equal("TgtTtsBtn_Click", (string?)button.Attribute("Click"));
     }
 
+    /// <summary>Auto-copy feedback overlays both result layouts without resizing or intercepting them.</summary>
+    [Fact]
+    public void Auto_copy_confirmation_is_a_non_interactive_overlay()
+    {
+        var confirmation = Window()
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == "AutoCopyConfirmation");
+
+        Assert.Equal("1", (string?)confirmation.Attribute("Panel.ZIndex"));
+        Assert.Equal("Right", (string?)confirmation.Attribute("HorizontalAlignment"));
+        Assert.Equal("Bottom", (string?)confirmation.Attribute("VerticalAlignment"));
+        Assert.Equal("2", (string?)confirmation.Attribute("Grid.RowSpan"));
+        Assert.Equal("False", (string?)confirmation.Attribute("IsHitTestVisible"));
+        Assert.Equal("Collapsed", (string?)confirmation.Attribute("Visibility"));
+        Assert.Equal("Grid", confirmation.Parent?.Name.LocalName);
+        Assert.Equal("BodyHost", (string?)confirmation.ElementsBeforeSelf().Last().Attribute(X + "Name"));
+    }
+
     /// <summary>Each speech button is centered on the first line box, independent of script glyph size.</summary>
     [Fact]
     public void The_result_tts_buttons_align_to_the_first_line_box()

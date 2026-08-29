@@ -662,6 +662,37 @@
                         </StackPanel>
                     </Grid>
                 </Border>
+
+                <!-- Auto-copy feedback belongs to the window but not to either result layout.
+                     Overlaying both rows keeps compact and expanded results the same height, while
+                     remaining inside Surface makes it follow the window's open/close transform. -->
+                <Border x:Name="AutoCopyConfirmation"
+                        Grid.RowSpan="2"
+                        Panel.ZIndex="1"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,12,12"
+                        Padding="10,6"
+                        Background="{DynamicResource ToastBg}"
+                        BorderBrush="{DynamicResource ToastBorder}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        IsHitTestVisible="False"
+                        Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8C8;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource ToastTitle}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource S.QuickLookup.TranslationCopied}"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource ToastTitle}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
     </Grid>

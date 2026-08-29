@@ -76,7 +76,7 @@ public partial class QuickLookupWindow : Window
     /// </remarks>
     private static readonly TimeSpan ForegroundWatchInterval = TimeSpan.FromMilliseconds(150);
 
-    /// <summary>How long 複製 says it copied before going back to offering to.</summary>
+    /// <summary>How long copy confirmation remains before returning to the resting UI.</summary>
     private static readonly TimeSpan CopiedHold = TimeSpan.FromMilliseconds(1400);
 
     private readonly TtsService _tts = new();
@@ -122,9 +122,6 @@ public partial class QuickLookupWindow : Window
 
     /// <summary>Whether results use the compact status-and-preview presentation.</summary>
     private bool _resultsCollapsed;
-
-    /// <summary>Whether the current successful result was automatically copied.</summary>
-    private bool _lastResultAutoCopied;
 
     /// <summary>True while one of the pickers has its list down — see <see cref="OnDeactivated"/>.</summary>
     private bool _dropDownOpen;
@@ -301,7 +298,12 @@ public partial class QuickLookupWindow : Window
         _debounce.Tick += (_, _) => { _debounce.Stop(); _ = TranslateNowAsync(); };
 
         _copiedHold = new DispatcherTimer { Interval = CopiedHold };
-        _copiedHold.Tick += (_, _) => { _copiedHold.Stop(); RenderCopyLabel(copied: false); };
+        _copiedHold.Tick += (_, _) =>
+        {
+            _copiedHold.Stop();
+            RenderCopyLabel(copied: false);
+            HideAutoCopyConfirmation(immediate: false);
+        };
 
         _foregroundWatch = new DispatcherTimer { Interval = ForegroundWatchInterval };
         _foregroundWatch.Tick += (_, _) => CheckForeground();
@@ -929,6 +931,8 @@ public partial class QuickLookupWindow : Window
         var text = SourceTextBox.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
 
+        HideAutoCopyConfirmation(immediate: true);
+
         var settings = SettingsService.Instance.Current;
         var srcLang = LanguageData.GetValidSourceCode(SrcLangBox.SelectedValue as string);
         var tgtLang = LanguageData.GetValidTargetCode(TgtLangBox.SelectedValue as string);
@@ -953,8 +957,8 @@ public partial class QuickLookupWindow : Window
             SetTranslationLoading(false);
             _detectedLang = detected ?? "";
             TranslatedText.Text = results.FirstOrDefault()?.TranslatedText ?? "";
-            _lastResultAutoCopied = settings.QuickLookup.AutoCopyTranslation
-                                    && CopyTranslation(showConfirmation: false);
+            if (settings.QuickLookup.AutoCopyTranslation)
+                CopyTranslation(showConfirmation: false);
             StatusText.Visibility = Visibility.Collapsed;
             RenderCompactCompletion();
             ShowResult();
@@ -968,7 +972,6 @@ public partial class QuickLookupWindow : Window
 
             SetTranslationLoading(false);
             Log.Warn(ex, "取詞翻譯 could not translate");
-            _lastResultAutoCopied = false;
             TranslatedText.Text = "";
             ShowStatus(
                 LocalizationService.Format(
@@ -1069,18 +1072,10 @@ public partial class QuickLookupWindow : Window
 
     private void RenderCompactCompletion()
     {
-        CompactStatusText.Text = _lastResultAutoCopied
-            ? LocalizationService.Get("S.QuickLookup.TranslationCopied")
-            : "";
-        CompactStatusText.SetResourceReference(ForegroundProperty, "AppAccent");
-        CompactStatusText.Visibility = _lastResultAutoCopied
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-
+        CompactStatusText.Text = "";
+        CompactStatusText.Visibility = Visibility.Collapsed;
         CompactTranslatedText.Text = TranslatedText.Text;
-        CompactTranslationRow.Margin = _lastResultAutoCopied
-            ? new Thickness(0, 3, 0, 0)
-            : new Thickness(0);
+        CompactTranslationRow.Margin = new Thickness(0);
         CompactTranslatedText.Visibility = TranslatedText.Text.Length > 0
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -1193,9 +1188,8 @@ public partial class QuickLookupWindow : Window
     // ══════════════════════════ Copying ══════════════════════════
 
     /// <remarks>
-    /// Confirmed on the button itself rather than with a toast. A toast would appear outside this
-    /// window, which is a place the pointer then has to not be for the popup to survive — and the
-    /// message would outlive the window it was about.
+    /// Manual copies confirm on their button. Automatic copies use an in-window overlay because
+    /// neither the expanded nor compact result should gain a status line for transient feedback.
     /// </remarks>
     private void CopyBtn_Click(object sender, RoutedEventArgs e)
     {
@@ -1216,9 +1210,17 @@ public partial class QuickLookupWindow : Window
             return false;
         }
 
-        if (!showConfirmation) return true;
+        if (showConfirmation)
+        {
+            HideAutoCopyConfirmation(immediate: true);
+            RenderCopyLabel(copied: true);
+        }
+        else
+        {
+            RenderCopyLabel(copied: false);
+            ShowAutoCopyConfirmation();
+        }
 
-        RenderCopyLabel(copied: true);
         _copiedHold.Stop();
         _copiedHold.Start();
         return true;
@@ -1227,6 +1229,35 @@ public partial class QuickLookupWindow : Window
     private void RenderCopyLabel(bool copied) =>
         CopyLabel.Text = LocalizationService.Get(
             copied ? "S.QuickLookup.Copied" : "S.QuickLookup.Copy");
+
+    private void ShowAutoCopyConfirmation()
+    {
+        AutoCopyConfirmation.BeginAnimation(OpacityProperty, null);
+        AutoCopyConfirmation.Opacity = 1;
+        AutoCopyConfirmation.Visibility = Visibility.Visible;
+    }
+
+    private void HideAutoCopyConfirmation(bool immediate)
+    {
+        AutoCopyConfirmation.BeginAnimation(OpacityProperty, null);
+        if (AutoCopyConfirmation.Visibility != Visibility.Visible) return;
+
+        if (immediate)
+        {
+            AutoCopyConfirmation.Visibility = Visibility.Collapsed;
+            AutoCopyConfirmation.Opacity = 1;
+            return;
+        }
+
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150));
+        fade.Completed += (_, _) =>
+        {
+            AutoCopyConfirmation.Visibility = Visibility.Collapsed;
+            AutoCopyConfirmation.Opacity = 1;
+            AutoCopyConfirmation.BeginAnimation(OpacityProperty, null);
+        };
+        AutoCopyConfirmation.BeginAnimation(OpacityProperty, fade);
+    }
 
     // ══════════════════════════ Settings panel ══════════════════════════
 

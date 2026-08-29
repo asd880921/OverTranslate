@@ -133,7 +133,7 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.QuickLookup.AutoCopyHint">Automatically copies the result to the clipboard when translation finishes</sys:String>
     <sys:String x:Key="S.QuickLookup.Collapse">Collapse</sys:String>
     <sys:String x:Key="S.QuickLookup.Expand">Expand</sys:String>
-    <sys:String x:Key="S.QuickLookup.TranslationCopied">Automatically copied to the clipboard</sys:String>
+    <sys:String x:Key="S.QuickLookup.TranslationCopied">Copied to clipboard</sys:String>
     <sys:String x:Key="S.QuickLookup.OpenFullSettings">All settings</sys:String>
     <sys:String x:Key="S.QuickLookup.SettingsHint">Press {0} to open it. It closes when you switch to another window; pin it to keep it on screen.</sys:String>
 
