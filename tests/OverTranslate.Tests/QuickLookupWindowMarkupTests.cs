@@ -83,6 +83,7 @@ public class QuickLookupWindowMarkupTests
         Assert.Equal("14", (string?)result.Attribute("FontSize"));
         Assert.Equal("SemiBold", (string?)result.Attribute("FontWeight"));
         Assert.Equal("20", (string?)result.Attribute("LineHeight"));
+        Assert.Equal("Ideal", (string?)result.Attribute("TextOptions.TextFormattingMode"));
         Assert.Equal("0,5,0,0", (string?)result.Attribute("Margin"));
         Assert.Equal("Top", (string?)result.Attribute("VerticalAlignment"));
         Assert.Equal("{Binding Foreground, ElementName=TranslatedText}", (string?)result.Attribute("Foreground"));
