@@ -710,9 +710,12 @@
                      neither has a claim on the extra width, so a shared row of their own keeps the
                      split off the columns the rows above depend on. -->
                 <Grid Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2">
+                    <!-- Not an even split: 外觀 is two radio buttons and a list, while 進階設定 carries
+                         the row of buttons whose labels are the longest on the page in every
+                         language. The extra width goes where there is something to fit. -->
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="0.8*"/>
+                        <ColumnDefinition Width="1.2*"/>
                     </Grid.ColumnDefinitions>
                     <!-- ══════════ 外觀 ══════════ -->
                     <Border Grid.Column="0"
@@ -884,101 +887,118 @@
                                     CornerRadius="6"
                                     Padding="12,10">
                                 <StackPanel>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
+                                    <!-- Docked rather than laid out in columns. In a row of Auto
+                                         columns the heading took its full width whatever the card
+                                         could spare, so an English title two words longer than the
+                                         Chinese one pushed 開啟檔案 off the edge. Here the buttons
+                                         take what they need first and the heading gets what is
+                                         left: what gives is the wording, not a control the user
+                                         has to be able to press. -->
+                                    <DockPanel LastChildFill="True">
+                                        <!-- 14 to the left of the group: without it a heading that
+                                             happens to fill the row ends up touching the first
+                                             button, and the two read as one run-on control. -->
+                                        <StackPanel DockPanel.Dock="Right"
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Center"
+                                                    Margin="14,0,0,0">
+
+                                            <!-- The next step, and the only accent in this panel: the
+                                                 export is done and this is what the user came here to
+                                                 do with it. Gone once a code is showing, because by
+                                                 then it has been done — and back if the send failed,
+                                                 where it is the retry.
+
+                                                 Upload and Copy are never on screen together, so
+                                                 neither needs a margin and only Open carries one. -->
+                                            <Button x:Name="UploadDiagnosticsBtn"
+                                                    Style="{StaticResource AccentButton}"
+                                                    Height="30"
+                                                    Padding="12,0"
+                                                    Visibility="Collapsed"
+                                                    Click="UploadDiagnosticsBtn_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE898;"
+                                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                               FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,6,0"/>
+                                                    <TextBlock Text="{DynamicResource S.Settings.UploadBundle}"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+
+                                            <Button x:Name="CopyDiagnosticsCodeBtn"
+                                                    Style="{StaticResource FlatButton}"
+                                                    Height="30"
+                                                    Padding="12,0"
+                                                    Click="CopyDiagnosticsCodeBtn_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE8C8;"
+                                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                               FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,6,0"/>
+                                                    <TextBlock Text="{DynamicResource S.Settings.CopyCode}"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+
+                                            <Button x:Name="OpenDiagnosticsBundleBtn"
+                                                    Style="{StaticResource FlatButton}"
+                                                    Height="30"
+                                                    Padding="12,0"
+                                                    Margin="6,0,0,0"
+                                                    Click="OpenDiagnosticsBundleBtn_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE8E5;"
+                                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                               FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,6,0"/>
+                                                    <TextBlock Text="{DynamicResource S.Settings.OpenBundle}"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
 
                                         <!-- The glyph carries the state, because the rest of the row
                                              changes shape between the two: on failure there is no
                                              code and no Copy, and a heading that differs only in its
                                              wording is one a reader has to actually read before they
-                                             know which of the two happened. -->
-                                        <TextBlock Grid.Column="0" x:Name="DiagnosticsResultGlyph"
-                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   FontSize="15"
-                                                   Foreground="{DynamicResource AppTextSecondary}"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,8,0"/>
+                                             know which of the two happened.
 
-                                        <TextBlock Grid.Column="1" x:Name="DiagnosticsResultTitle"
-                                                   Style="{StaticResource OptionTitle}"
-                                                   VerticalAlignment="Center"/>
+                                             The heading trims rather than wraps: it sits beside a row
+                                             of buttons, and a second line would push them off their
+                                             own vertical centre. It only reaches that on a window
+                                             narrow enough that the card is already tight. -->
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock x:Name="DiagnosticsResultGlyph"
+                                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                       FontSize="15"
+                                                       Foreground="{DynamicResource AppTextSecondary}"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"/>
 
-                                        <!-- A monospaced face, because these characters get read back
-                                             one at a time against whatever the user typed into a forum
-                                             post, and a proportional face is where 0/O and 1/I go
-                                             wrong. The alphabet the worker draws from already excludes
-                                             that pair; the face makes the exclusion visible. -->
-                                        <TextBlock Grid.Column="2" x:Name="DiagnosticsCodeText"
-                                                   FontFamily="Consolas, Cascadia Mono, Courier New"
-                                                   FontSize="18"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource AppAccent}"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="DiagnosticsResultTitle"
+                                                       Style="{StaticResource OptionTitle}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"/>
 
-                                        <!-- The next step, and the only accent in this panel: the
-                                             export is done and this is what the user came here to
-                                             do with it. Gone once a code is showing, because by
-                                             then it has been done — and back if the send failed,
-                                             where it is the retry. -->
-                                        <Button Grid.Column="4" x:Name="UploadDiagnosticsBtn"
-                                                Style="{StaticResource AccentButton}"
-                                                Height="30"
-                                                Padding="12,0"
-                                                Visibility="Collapsed"
-                                                Click="UploadDiagnosticsBtn_Click">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="&#xE898;"
-                                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                           FontSize="13"
-                                                           VerticalAlignment="Center"
-                                                           Margin="0,0,6,0"/>
-                                                <TextBlock Text="{DynamicResource S.Settings.UploadBundle}"
-                                                           VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-
-                                        <Button Grid.Column="5" x:Name="CopyDiagnosticsCodeBtn"
-                                                Style="{StaticResource FlatButton}"
-                                                Height="30"
-                                                Padding="12,0"
-                                                Click="CopyDiagnosticsCodeBtn_Click">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="&#xE8C8;"
-                                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                           FontSize="13"
-                                                           VerticalAlignment="Center"
-                                                           Margin="0,0,6,0"/>
-                                                <TextBlock Text="{DynamicResource S.Settings.CopyCode}"
-                                                           VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-
-                                        <Button Grid.Column="6" x:Name="OpenDiagnosticsBundleBtn"
-                                                Style="{StaticResource FlatButton}"
-                                                Height="30"
-                                                Padding="12,0"
-                                                Margin="6,0,0,0"
-                                                Click="OpenDiagnosticsBundleBtn_Click">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="&#xE8E5;"
-                                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                           FontSize="13"
-                                                           VerticalAlignment="Center"
-                                                           Margin="0,0,6,0"/>
-                                                <TextBlock Text="{DynamicResource S.Settings.OpenBundle}"
-                                                           VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                    </Grid>
+                                            <!-- A monospaced face, because these characters get read back
+                                                 one at a time against whatever the user typed into a forum
+                                                 post, and a proportional face is where 0/O and 1/I go
+                                                 wrong. The alphabet the worker draws from already excludes
+                                                 that pair; the face makes the exclusion visible. -->
+                                            <TextBlock x:Name="DiagnosticsCodeText"
+                                                       FontFamily="Consolas, Cascadia Mono, Courier New"
+                                                       FontSize="18"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AppAccent}"
+                                                       Margin="10,0,0,0"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DockPanel>
 
                                     <TextBlock x:Name="DiagnosticsResultHint"
                                                Style="{StaticResource OptionDescription}"
