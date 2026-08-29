@@ -135,8 +135,8 @@
     <sys:String x:Key="S.QuickLookup.SpeakSourceUnknown">還不知道原文是什麼語言，翻譯完成後就可以朗讀。</sys:String>
     <sys:String x:Key="S.QuickLookup.Provider">翻譯服務</sys:String>
     <sys:String x:Key="S.QuickLookup.ProviderHint">與螢幕翻譯及文字翻譯共用此服務</sys:String>
-    <sys:String x:Key="S.QuickLookup.AutoCopy">翻譯後自動將結果複製到剪貼簿</sys:String>
-    <sys:String x:Key="S.QuickLookup.AutoCopyHint">每次取詞翻譯完成後，立即取代剪貼簿內容</sys:String>
+    <sys:String x:Key="S.QuickLookup.AutoCopy">自動複製翻譯結果</sys:String>
+    <sys:String x:Key="S.QuickLookup.AutoCopyHint">翻譯完成後，自動將結果複製到剪貼簿</sys:String>
     <sys:String x:Key="S.QuickLookup.OpenFullSettings">完整設定</sys:String>
     <sys:String x:Key="S.QuickLookup.SettingsHint">按 {0} 開啟。切換至其他視窗時會自動關閉；如需持續顯示，可釘選此視窗。</sys:String>
 
