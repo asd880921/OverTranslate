@@ -9,6 +9,7 @@ public enum HotkeyAction
     TranslationWindow,
     RealtimePause,
     QuickLookup,
+    QuickTranslate,
 }
 
 /// <summary>
@@ -89,8 +90,8 @@ public readonly record struct HotkeyBinding(
 ///
 /// So the order is declared rather than discovered, and it runs from the feature the application is
 /// for down to the most recently added: capture, then the translation window, then pausing a
-/// realtime session, then 取詞翻譯. A shortcut shadowed by a higher one is reported rather than
-/// silently dropped.
+/// realtime session, then 取詞翻譯, then 快速翻譯. A shortcut shadowed by a higher one is reported
+/// rather than silently dropped.
 /// </remarks>
 public static class HotkeyBindings
 {
@@ -117,6 +118,11 @@ public static class HotkeyBindings
             settings.QuickLookupHotkeyModifiers,
             settings.QuickLookupHotkeyVirtualKey,
             settings.QuickLookupHotkeyGamepadButton),
+        HotkeyAction.QuickTranslate => BuildTrigger(
+            settings.QuickTranslateHotkeyInputKind,
+            settings.QuickTranslateHotkeyModifiers,
+            settings.QuickTranslateHotkeyVirtualKey,
+            settings.QuickTranslateHotkeyGamepadButton),
         _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
     };
 
@@ -189,6 +195,9 @@ public static class HotkeyBindings
             (HotkeyAction.QuickLookup,
                 TriggerFor(settings, HotkeyAction.QuickLookup),
                 settings.QuickLookupHotkeyEnabled),
+            (HotkeyAction.QuickTranslate,
+                TriggerFor(settings, HotkeyAction.QuickTranslate),
+                settings.QuickTranslateHotkeyEnabled),
         };
 
         var claimed = new Dictionary<ShortcutTrigger, HotkeyAction>();
