@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using NLog;
 using OverTranslate.Services;
 
 namespace OverTranslate.Views.Shell;
@@ -16,6 +17,8 @@ public enum ToastKind
 
 public partial class ToastWindow : Window
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
     private const int DisplayMs = 3000;
     private const int FadeMs    = 350;
 
@@ -42,8 +45,17 @@ public partial class ToastWindow : Window
     private bool _userDismissed;
 
     /// <summary>Shows a toast, replacing whichever one is currently on screen.</summary>
+    /// <remarks>
+    /// Here rather than at the call sites: half of them reach a toast without logging anything of
+    /// their own, so a report that says "an error popped up" cannot be matched to a message. The
+    /// title is enough to identify which one, and unlike the message it is always a fixed resource
+    /// string — a message can carry an exception's text or a path, and the translation failures
+    /// carry whatever was being translated.
+    /// </remarks>
     public static void Show(string title, string message, Rect? selPhysRect = null, ToastKind kind = ToastKind.Info)
     {
+        Log.Info("Toast shown, kind={Kind}, title=\"{Title}\"", kind, title);
+
         Dismiss();
 
         var toast = new ToastWindow(title, message, selPhysRect, kind);
@@ -213,12 +225,78 @@ public partial class ToastWindow : Window
         BeginAnimation(OpacityProperty, fade);
     }
 
+    /// <remarks>
+    /// The clipboard belongs to whatever else is running, and any of it can hold the clipboard open
+    /// long enough for this to fail — WPF already retries for about a second before throwing. Left
+    /// unhandled that throw reaches the dispatcher and takes the whole app down, over a copy button
+    /// on a toast the reader was about to dismiss anyway.
+    /// </remarks>
     private void CopyButton_Click(object sender, RoutedEventArgs e)
     {
-        System.Windows.Clipboard.SetText($"{TitleText.Text}\n{MessageText.Text}");
+        var text = $"{TitleText.Text}\n{MessageText.Text}";
+        var copied = TryCopy(text);
 
         // Confirm in place: the toast is about to be dismissed by the pointer leaving, so a second
-        // toast announcing the copy would replace this one and lose the message just copied.
+        // toast announcing the copy would replace this one and lose the message just copied. On a
+        // failure the message is still on screen above this line, which is where the reader gets it
+        // from instead.
+        ShowCopyHint(
+            copied ? "S.Toast.Copied" : "S.Toast.CopyFailed",
+            copied ? "AppSuccess" : "AppError");
+    }
+
+    /// <remarks>
+    /// A throw does not settle whether the text was copied. SetText publishes it and then flushes
+    /// it so it outlives this process, and the flush is the half that fails most often — which
+    /// leaves the text on the clipboard, pasteable until OverTranslate exits. Telling the reader it
+    /// failed when their next paste would have worked is the worse of the two mistakes, so ask the
+    /// clipboard what actually happened rather than inferring it from the exception.
+    /// </remarks>
+    private static bool TryCopy(string text)
+    {
+        try
+        {
+            System.Windows.Clipboard.SetText(text);
+
+            // Debug rather than Info: on its own a successful copy is not worth a line in everyone's
+            // log, but without it a log cannot tell a copy that worked from a button that was never
+            // pressed — which is exactly the question when someone reports the copy doing nothing.
+            Log.Debug("Toast message copied to the clipboard");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Could not copy the toast message to the clipboard");
+        }
+
+        try
+        {
+            var landed = System.Windows.Clipboard.ContainsText()
+                && System.Windows.Clipboard.GetText() == text;
+
+            // Pairs with the warning above: it says the copy threw, this says whether the text got
+            // there anyway. Without both, that warning reads as a failure the user never saw.
+            Log.Debug(landed
+                ? "Toast message was on the clipboard despite the failed copy"
+                : "Toast message did not reach the clipboard");
+            return landed;
+        }
+        catch (Exception ex)
+        {
+            // Whatever holds the clipboard shut holds it shut both ways. Unreadable is not the same
+            // as absent, but from here the two are indistinguishable and the safe answer is the one
+            // that leaves the message on screen.
+            Log.Trace(ex, "Could not read the clipboard back after a failed copy");
+            return false;
+        }
+    }
+
+    // Resource references rather than literals so the line follows a language or theme change the
+    // same way the rest of the toast does.
+    private void ShowCopyHint(string textKey, string brushKey)
+    {
+        CopyHint.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, textKey);
+        CopyHint.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, brushKey);
         CopyHint.Visibility = Visibility.Visible;
     }
 

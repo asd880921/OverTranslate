@@ -45,6 +45,7 @@
     <!-- ── Toast ── -->
     <sys:String x:Key="S.Toast.CopyMessage">Copy message</sys:String>
     <sys:String x:Key="S.Toast.Copied">Copied to the clipboard</sys:String>
+    <sys:String x:Key="S.Toast.CopyFailed">Copy failed. Please try again later.</sys:String>
 
     <!-- ── Update ── -->
     <sys:String x:Key="S.Update.WindowTitle">Update available</sys:String>
