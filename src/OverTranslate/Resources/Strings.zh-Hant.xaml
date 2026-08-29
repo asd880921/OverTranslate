@@ -45,7 +45,7 @@
     <!-- ── Toast ── -->
     <sys:String x:Key="S.Toast.CopyMessage">複製訊息</sys:String>
     <sys:String x:Key="S.Toast.Copied">已複製到剪貼簿</sys:String>
-    <sys:String x:Key="S.Toast.CopyFailed">✗ 無法複製，訊息仍在上方。</sys:String>
+    <sys:String x:Key="S.Toast.CopyFailed">複製失敗，請稍後再試。</sys:String>
 
     <!-- ── Update ── -->
     <sys:String x:Key="S.Update.WindowTitle">發現新版本</sys:String>
