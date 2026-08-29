@@ -34,7 +34,7 @@
 
 ## Translation Features
 
-OverTranslate offers five translation features, so you can pick the one that suits what you are doing:
+OverTranslate currently offers five translation features, so you can pick the one that suits what you are doing:
 
 - **[Screenshot Translation](#screenshot-translation)** — select an area of the screen; the text is recognised and the translation is shown right on it
 - **[Real-time Translation](#real-time-translation)** — continuously translates a chosen area of a video or a game, with the translation shown in place
@@ -104,7 +104,7 @@ The window closes itself when you switch to another window; pin it if you need i
 ---
 
 ## Quick Translate
-> The hotkey (default `Ctrl + Alt + E`), with no window to open.
+> The hotkey (default `Ctrl + Alt + E`); translating opens no window at all.
 
 Select some text and press the hotkey: the translation is pasted straight over it (only in fields that accept typed text; nothing can be pasted outside an input area).
 
