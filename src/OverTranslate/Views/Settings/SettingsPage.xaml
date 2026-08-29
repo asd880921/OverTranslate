@@ -316,23 +316,34 @@
                                      simply ran off the end of the card. -->
                                 <!-- The mark hangs off the first line, not the middle of the note:
                                      centred, it drifts down between two lines and stops reading as
-                                     the start of anything. The 1px is optical rather than nominal —
-                                     the mark is 12px Segoe Fluent Icons and the note is 11px Segoe
-                                     UI, and aligning their boxes does not align what is drawn in
-                                     them. It was measured against both, at both sizes. -->
+                                     the start of anything.
+
+                                     The 1.7 is measured, not chosen. Both the mark and the text sit
+                                     in boxes taller than what is drawn in them, and the two sit at
+                                     different heights inside those boxes — so aligning the boxes,
+                                     which is all VerticalAlignment can do, leaves the mark visibly
+                                     off the line. Rendered and scanned for where the ink actually
+                                     falls: the mark's own middle is 5.94 from its top, an 11px line
+                                     of ideographs has its middle at 7.56, and a line of Latin caps
+                                     at 7.94. This is the offset that puts the mark on both, nearer
+                                     the first because that is the language the interface is read in
+                                     most. Changing the size of either one makes it wrong again. -->
                                 <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0"
-                                               Text="&#xE946;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Top"
-                                               Margin="0,1,8,0"/>
+                                    <Path Grid.Column="0"
+                                          Data="{StaticResource InfoMarkGeometry}"
+                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          StrokeThickness="1.1"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Stretch="None"
+                                          Width="12" Height="12"
+                                          VerticalAlignment="Top"
+                                          Margin="0,1.7,8,0"/>
                                     <TextBlock Grid.Column="1"
                                                Text="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
@@ -404,13 +415,16 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0"
-                                               Text="&#xE946;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Top"
-                                               Margin="0,1,8,0"/>
+                                    <Path Grid.Column="0"
+                                          Data="{StaticResource InfoMarkGeometry}"
+                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          StrokeThickness="1.1"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Stretch="None"
+                                          Width="12" Height="12"
+                                          VerticalAlignment="Top"
+                                          Margin="0,1.7,8,0"/>
                                     <TextBlock Grid.Column="1"
                                                Text="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
@@ -566,13 +580,16 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0"
-                                               Text="&#xE946;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Top"
-                                               Margin="0,1,8,0"/>
+                                    <Path Grid.Column="0"
+                                          Data="{StaticResource InfoMarkGeometry}"
+                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          StrokeThickness="1.1"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Stretch="None"
+                                          Width="12" Height="12"
+                                          VerticalAlignment="Top"
+                                          Margin="0,1.7,8,0"/>
                                     <TextBlock Grid.Column="1"
                                                Text="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
                                                Style="{StaticResource FieldHint}"

@@ -300,6 +300,17 @@
          what makes it "look this word up". -->
     <Geometry x:Key="QuickLookupMarkGeometry">M0.8,6.9 A6.1,6.1 0 1 1 13,6.9 A6.1,6.1 0 1 1 0.8,6.9 Z M11.3,11.3 L15.2,15.2 M4.95,9.3 L6.9,3.9 L8.85,9.3 M5.42,8 H8.38</Geometry>
 
+    <!-- The ⓘ that opens a note under a settings row. Drawn rather than set as Segoe's E946,
+         which is the only way to know where it is: a glyph is positioned inside a line box by its
+         font's own metrics, so aligning it with the text beside it means aligning two boxes whose
+         contents sit at different heights within them — and it moves again on any machine that
+         falls back to another icon font. A path has no metrics but its own coordinates.
+
+         Twelve units rather than the sixteen the feature marks use, because that is the size it is
+         drawn at. The circle reaches the edges of that box, so the box centre is the mark's centre,
+         and the row can place it by measurement — see the note rows in SettingsPage.xaml. -->
+    <Geometry x:Key="InfoMarkGeometry">M0.55,6 A5.45,5.45 0 1 0 11.45,6 A5.45,5.45 0 1 0 0.55,6 Z M6,3.15 L6,3.25 M6,5.3 L6,8.9</Geometry>
+
     <!-- 快速翻譯: A and 文 each on their own tile, with an arrow curving from one to the other and
          back. Converted from the drawing this feature's icon was designed as, scaled into the same
          16-unit square the marks around it are drawn in.
