@@ -549,6 +549,30 @@
 
                             <Rectangle Height="1" Fill="{DynamicResource AppSeparator}" Margin="0,0,0,12"/>
 
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="{DynamicResource S.QuickLookup.AutoCopy}"
+                                               Style="{StaticResource SettingRowLabel}"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="{DynamicResource S.QuickLookup.AutoCopyHint}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0,2,0,0"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <CheckBox x:Name="AutoCopyToggle"
+                                          Grid.Column="1"
+                                          Style="{StaticResource ToggleSwitch}"
+                                          AutomationProperties.Name="{DynamicResource S.QuickLookup.AutoCopy}"/>
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="{DynamicResource AppSeparator}" Margin="0,0,0,12"/>
+
                             <!-- Wayfinding: this panel holds the two settings worth reaching without
                                  leaving the popup, and this line is how the reader gets to the rest
                                  of them rather than concluding there are none. -->

@@ -312,6 +312,8 @@ public partial class QuickLookupWindow : Window
         SrcLangBox.SelectionChanged  += LangBox_SelectionChanged;
         TgtLangBox.SelectionChanged  += LangBox_SelectionChanged;
         ProviderBox.SelectionChanged += ProviderBox_SelectionChanged;
+        AutoCopyToggle.Checked       += AutoCopyToggle_Toggled;
+        AutoCopyToggle.Unchecked     += AutoCopyToggle_Toggled;
 
         foreach (var picker in new[] { SrcLangBox, TgtLangBox, ProviderBox })
         {
@@ -929,6 +931,8 @@ public partial class QuickLookupWindow : Window
             SetTranslationLoading(false);
             _detectedLang = detected ?? "";
             TranslatedText.Text = results.FirstOrDefault()?.TranslatedText ?? "";
+            if (settings.QuickLookup.AutoCopyTranslation)
+                CopyTranslation(showConfirmation: false);
             StatusText.Visibility = Visibility.Collapsed;
             ShowResult();
 
@@ -1141,6 +1145,11 @@ public partial class QuickLookupWindow : Window
     /// </remarks>
     private void CopyBtn_Click(object sender, RoutedEventArgs e)
     {
+        CopyTranslation(showConfirmation: true);
+    }
+
+    private void CopyTranslation(bool showConfirmation)
+    {
         if (TranslatedText.Text.Length == 0) return;
 
         try
@@ -1152,6 +1161,8 @@ public partial class QuickLookupWindow : Window
             Log.Warn(ex, "Could not copy the translation");
             return;
         }
+
+        if (!showConfirmation) return;
 
         RenderCopyLabel(copied: true);
         _copiedHold.Stop();
@@ -1235,6 +1246,16 @@ public partial class QuickLookupWindow : Window
         TgtLangBox.SelectedValue = LanguageData.GetValidTargetCode(settings.TargetLanguage);
         ProviderBox.SelectedValue = settings.Provider;
         if (ProviderBox.SelectedValue is null) ProviderBox.SelectedIndex = 0;
+        AutoCopyToggle.IsChecked = settings.QuickLookup.AutoCopyTranslation;
+    }
+
+    private void AutoCopyToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressAuto) return;
+
+        SettingsService.Instance.Current.QuickLookup.AutoCopyTranslation =
+            AutoCopyToggle.IsChecked == true;
+        SettingsService.Instance.Save();
     }
 
     private void LangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
