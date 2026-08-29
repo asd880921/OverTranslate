@@ -440,8 +440,8 @@
     <sys:String x:Key="S.Settings.DiagnosticsUploadHint" xml:space="preserve">診斷資訊包含記錄檔、系統資訊與目前設定，敏感資料會被替換。&#x0a;診斷檔會保留在本機，並於 30 天後自動刪除。</sys:String>
     <sys:String x:Key="S.Settings.UploadBundle">上傳</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">回報代碼</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsExportedTitle">診斷資訊已匯出</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsExportedHint">檔案已存在你的電腦上，目前還沒有送出任何資料。按「上傳」可以連同問題說明一起交給開發者。按「開啟檔案」可查看內容。</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExportedTitle">診斷資訊已匯出，尚未上傳</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExportedHint">檔案已儲存在你的電腦上，目前尚未上傳。按「上傳」可將診斷資訊與補充說明一併傳送給開發者；按「開啟檔案」可查看內容。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsNoEndpointHint">檔案已存在你的電腦上，目前還沒有送出任何資料。請透過 GitHub 或論壇回報問題並附上此檔案。按「開啟檔案」可查看內容。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">診斷資訊已匯出</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadedHint">診斷資訊已成功上傳。如需進一步說明，可透過 GitHub 或論壇提供此回報代碼。按「開啟檔案」可查看本次匯出的診斷資訊。</sys:String>

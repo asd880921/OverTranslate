@@ -416,8 +416,8 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.DiagnosticsUploadHint" xml:space="preserve">The diagnostics contain the log files, system information and your current settings, with sensitive data replaced.&#x0a;The diagnostic file is kept on your device and deleted automatically after 30 days.</sys:String>
     <sys:String x:Key="S.Settings.UploadBundle">Upload</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">Report code</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsExportedTitle">Diagnostics exported</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsExportedHint">The file is on your device and nothing has been sent. Upload sends it to the developer, together with a note about what went wrong. Open file to see what it contains.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExportedTitle">Exported, not uploaded yet</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExportedHint">The file is saved on your device and has not been uploaded. Upload sends the diagnostics to the developer together with your own account of the problem; Open file shows what it contains.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsNoEndpointHint">The file is on your device and nothing has been sent. Report the problem through GitHub or the forum and attach it. Open file to see what it contains.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">Diagnostics exported</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadedHint">The diagnostics were uploaded. If you have more to add, give this report code through GitHub or the forum. Open file to see what was exported this time.</sys:String>

@@ -832,12 +832,14 @@
                                         Margin="0,0,4,0"
                                         Click="ExportDiagnosticsBtn_Click">
                                     <StackPanel Orientation="Horizontal">
-                                        <!-- Upload, the pair of the Download glyph 更新 already uses
-                                             on this same shape of control. No Foreground on
-                                             either block: both inherit the button's, which is
-                                             the one thing that differs between these two styles
-                                             and the one thing that must keep differing. -->
-                                        <TextBlock Text="&#xE898;"
+                                        <!-- Save, because that is now all this press does: it writes
+                                             a file and stops. The upload arrow it used to carry has
+                                             moved to the button that actually uploads, in the panel
+                                             below, where the two now read as the two steps they are.
+                                             No Foreground on either block: both inherit the button's,
+                                             which is the one thing that differs between these two
+                                             styles and the one thing that must keep differing. -->
+                                        <TextBlock Text="&#xE74E;"
                                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                    FontSize="13"
                                                    VerticalAlignment="Center"
