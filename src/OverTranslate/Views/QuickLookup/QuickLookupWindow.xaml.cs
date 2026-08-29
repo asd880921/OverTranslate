@@ -77,7 +77,7 @@ public partial class QuickLookupWindow : Window
     private static readonly TimeSpan ForegroundWatchInterval = TimeSpan.FromMilliseconds(150);
 
     private static readonly TimeSpan ManualCopyHold = TimeSpan.FromMilliseconds(1400);
-    private static readonly TimeSpan AutoCopyHold = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan AutoCopyHold = TimeSpan.FromMilliseconds(1500);
 
     private readonly TtsService _tts = new();
     private readonly DispatcherTimer _debounce;
