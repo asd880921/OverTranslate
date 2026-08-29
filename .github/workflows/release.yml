@@ -140,10 +140,51 @@ jobs:
           # 不要用 here-string。它的結尾 "@ 必須頂在行首，而這整段是 YAML 的 run: | 區塊，
           # 行首沒有縮排就會把 block scalar 截斷，整個 workflow 檔變成無效 YAML
           # ——症狀是每次 push 都產生一個 0 秒就失敗的 run，連 tag 觸發都不會執行。
+          # 骨架先寫好，只留下這一版真正改了什麼要填。TODO 是刻意會被算繪出來的：
+          # 用 HTML 註解當佔位符的話，忘了填就是安安靜靜發出一則空的更新說明。
           $notes = @(
-              '自動打包產出，尚未正式發布。'
+              '> ⚠️ 自動打包產出，尚未正式發布。'
+              '>'
+              '> 更新內容請取代下方的 TODO，確認無誤後按 **Edit release** 取消勾選'
+              '> *Set as a pre-release*，使用者才會收到這一版。'
               ''
-              '確認無誤後，到本頁按 **Edit release** 取消勾選 *Set as a pre-release*，使用者才會收到這一版。'
+              '<details open>'
+              '<summary><b>English</b></summary>'
+              ''
+              "# OverTranslate $v"
+              ''
+              '## ◆ TODO'
+              '- TODO'
+              ''
+              '## ◇ Other improvements'
+              '- TODO'
+              ''
+              '## ↓ Install / Update'
+              '- Existing users are updated automatically; there is no need to download anything from GitHub.'
+              '- New users: download `OverTranslate-win-Setup.exe` to install.'
+              '- If you would rather not install anything, download `OverTranslate-win-Portable.zip`, unzip it and run it directly — it updates automatically too.'
+              ''
+              '</details>'
+              ''
+              '<details>'
+              '<summary><b>繁體中文</b></summary>'
+              ''
+              "# OverTranslate $v"
+              ''
+              '## ◆ TODO'
+              '- TODO'
+              ''
+              '## ◇ 其他改善'
+              '- TODO'
+              ''
+              '## ↓ 安裝 / 更新'
+              '- 現有使用者會自動更新，不需要至 GitHub 手動下載。'
+              '- 新使用者請下載 `OverTranslate-win-Setup.exe` 進行安裝'
+              '- 不想安裝的使用者可下載 `OverTranslate-win-Portable.zip`，解壓後直接執行，同樣支援自動更新'
+              ''
+              '</details>'
+              ''
+              '---'
               ''
               "- commit: ${{ github.sha }}"
               "- 觸發：${{ github.event_name }}"
