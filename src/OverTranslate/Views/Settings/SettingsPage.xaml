@@ -265,18 +265,175 @@
 
                                 <!-- The one thing about this shortcut that the name does not say,
                                      inside the row it is about. -->
-                                <StackPanel Orientation="Horizontal" Margin="47,8,0,0">
-                                    <TextBlock Text="&#xE946;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
-                                    <TextBlock Text="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Path Grid.Column="0"
+                                          Data="{StaticResource InfoMarkGeometry}"
+                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          StrokeThickness="1.1"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Stretch="None"
+                                          Width="12" Height="12"
+                                          VerticalAlignment="Top"
+                                          Margin="0,1.7,8,0"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
                                                Margin="0"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
+                                               VerticalAlignment="Top"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 快速翻譯. Beside 取詞翻譯 because the two start from the same gesture —
+                             select some text, press a key — and differ only in where the answer
+                             goes: that one shows it, this one writes it into the document. After
+                             it, because reading an answer is the smaller step of the two and the
+                             one to meet first. -->
+                        <Border Style="{StaticResource HotkeyRow}">
+                            <StackPanel>
+                                <Grid>
+                                    <!-- The column widths are the rows above this one's, and have to
+                                         stay that way: they are what makes the boxes end at the same
+                                         place. See the capture row for why the minimum is on the
+                                         column rather than the box. -->
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*" MinWidth="140"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
+                                        <!-- The one mark in the set drawn in more than one pass —
+                                             see the geometries in SharedStyles.xaml for why, and
+                                             for why all three are given the same explicit box.
+
+                                             And the one drawn larger than 16. Its two plates sit on
+                                             a diagonal, so the corners of the square it is drawn in
+                                             are empty and it reads smaller than the single shapes
+                                             beside it at the same size. The Viewbox is what takes it
+                                             up to the tile: scaling the drawing rather than redrawing
+                                             it keeps the geometries in the same 16-unit square every
+                                             other mark is authored in. -->
+                                        <Viewbox Width="22" Height="22">
+                                            <Grid Width="16" Height="16">
+                                                <Path Data="{StaticResource QuickTranslateTilesGeometry}"
+                                                      Fill="{DynamicResource QuickTranslateTileFill}"
+                                                      Stretch="None" Width="16" Height="16"/>
+                                                <Path Data="{StaticResource QuickTranslateGlyphsGeometry}"
+                                                      Fill="{DynamicResource QuickTranslateGlyphFill}"
+                                                      Stretch="None" Width="16" Height="16"/>
+                                                <!-- 0.92 is the drawing's own 2.8 scaled to 16; the
+                                                     Viewbox takes it back up to about the 1.2 the
+                                                     marks beside it are stroked at. -->
+                                                <Path Data="{StaticResource QuickTranslateArrowsGeometry}"
+                                                      Stroke="{DynamicResource QuickTranslateArrowStroke}"
+                                                      StrokeThickness="0.92"
+                                                      StrokeLineJoin="Round"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round"
+                                                      Stretch="None" Width="16" Height="16"/>
+                                            </Grid>
+                                        </Viewbox>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
+                                        <TextBlock Text="{DynamicResource S.Settings.QuickTranslateHotkey}"
+                                                   Style="{StaticResource OptionTitle}"/>
+                                        <TextBlock controls:HighlightedText.Source="{DynamicResource S.Settings.QuickTranslateHotkeyHint}"
+                                                   Style="{StaticResource OptionDescription}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxHeight="34"/>
+                                    </StackPanel>
+
+                                    <TextBox Grid.Column="2" x:Name="QuickTranslateHotkeyBox"
+                                             Style="{StaticResource HotkeyBox}"
+                                             PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
+                                             PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                             GotFocus="HotkeyBox_GotFocus"
+                                             LostFocus="HotkeyBox_LostFocus"/>
+
+                                    <StackPanel Grid.Column="3"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Margin="12,0,0,0">
+                                        <CheckBox x:Name="QuickTranslateHotkeyEnabledCheckBox"
+                                                  Style="{StaticResource ToggleSwitch}"
+                                                  ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
+                                                  Checked="HotkeyEnabled_Toggled"
+                                                  Unchecked="HotkeyEnabled_Toggled"/>
+                                        <TextBlock x:Name="QuickTranslateHotkeyEnabledLabel"
+                                                   Style="{StaticResource FieldLabel}"
+                                                   MinWidth="56"
+                                                   Margin="9,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Two sentences under one ⓘ, and deliberately not two ⓘ lines.
+                                     Every other row carries exactly one, so a second turns the mark
+                                     from a footnote into a bullet: the eye reads "this row has two
+                                     points" before it reads either of them, and the rhythm of the
+                                     card breaks at this row.
+
+                                     Both sentences are here because this feature has no interface of
+                                     its own. Every other way into a translation shows the reader
+                                     what it is about to do — 取詞翻譯 carries the language and
+                                     service pickers in its own header — while this one is a key
+                                     press over somebody else's window. What it will not do, and what
+                                     settings it will do it with, are answerable nowhere else.
+
+                                     So this note wraps where the others are cut with an ellipsis: a
+                                     second line here is the paragraph continuing, which is what it
+                                     is, while on the other rows it would be one sentence that did
+                                     not fit. The Grid is what gives either behaviour an edge to work
+                                     against — a horizontal StackPanel, which is what these were,
+                                     hands its children all the width they ask for, and the notes
+                                     simply ran off the end of the card. -->
+                                <!-- The mark hangs off the first line, not the middle of the note:
+                                     centred, it drifts down between two lines and stops reading as
+                                     the start of anything.
+
+                                     The 1.7 is measured, not chosen. Both the mark and the text sit
+                                     in boxes taller than what is drawn in them, and the two sit at
+                                     different heights inside those boxes — so aligning the boxes,
+                                     which is all VerticalAlignment can do, leaves the mark visibly
+                                     off the line. Rendered and scanned for where the ink actually
+                                     falls: the mark's own middle is 5.94 from its top, an 11px line
+                                     of ideographs has its middle at 7.56, and a line of Latin caps
+                                     at 7.94. This is the offset that puts the mark on both, nearer
+                                     the first because that is the language the interface is read in
+                                     most. Changing the size of either one makes it wrong again. -->
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Path Grid.Column="0"
+                                          Data="{StaticResource InfoMarkGeometry}"
+                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          StrokeThickness="1.1"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Stretch="None"
+                                          Width="12" Height="12"
+                                          VerticalAlignment="Top"
+                                          Margin="0,1.7,8,0"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0"
+                                               VerticalAlignment="Top"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -417,18 +574,31 @@
                                 <!-- When this shortcut does nothing, inside the row it is about
                                      rather than under the three of them: nothing here applies to
                                      the other two. -->
-                                <StackPanel Orientation="Horizontal" Margin="47,8,0,0">
-                                    <TextBlock Text="&#xE946;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
-                                    <TextBlock Text="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Path Grid.Column="0"
+                                          Data="{StaticResource InfoMarkGeometry}"
+                                          Stroke="{DynamicResource AppTextSecondary}"
+                                          StrokeThickness="1.1"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Stretch="None"
+                                          Width="12" Height="12"
+                                          VerticalAlignment="Top"
+                                          Margin="0,1.7,8,0"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
                                                Margin="0"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{DynamicResource S.Settings.RealtimePauseHotkeyNote}"
+                                               VerticalAlignment="Top"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
 

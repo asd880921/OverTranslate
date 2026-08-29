@@ -300,6 +300,42 @@
          what makes it "look this word up". -->
     <Geometry x:Key="QuickLookupMarkGeometry">M0.8,6.9 A6.1,6.1 0 1 1 13,6.9 A6.1,6.1 0 1 1 0.8,6.9 Z M11.3,11.3 L15.2,15.2 M4.95,9.3 L6.9,3.9 L8.85,9.3 M5.42,8 H8.38</Geometry>
 
+    <!-- The ⓘ that opens a note under a settings row. Drawn rather than set as Segoe's E946,
+         which is the only way to know where it is: a glyph is positioned inside a line box by its
+         font's own metrics, so aligning it with the text beside it means aligning two boxes whose
+         contents sit at different heights within them — and it moves again on any machine that
+         falls back to another icon font. A path has no metrics but its own coordinates.
+
+         Twelve units rather than the sixteen the feature marks use, because that is the size it is
+         drawn at. The circle reaches the edges of that box, so the box centre is the mark's centre,
+         and the row can place it by measurement — see the note rows in SettingsPage.xaml. -->
+    <Geometry x:Key="InfoMarkGeometry">M0.55,6 A5.45,5.45 0 1 0 11.45,6 A5.45,5.45 0 1 0 0.55,6 Z M6,3.15 L6,3.25 M6,5.3 L6,8.9</Geometry>
+
+    <!-- 快速翻譯: A and 文 each on their own tile, with an arrow curving from one to the other and
+         back. Converted from the drawing this feature's icon was designed as, scaled into the same
+         16-unit square the marks around it are drawn in.
+
+         Three layers because the tiles are filled and the letters are knocked out of them, which no
+         single Path can do: the fill, the letters, then the arrows over both. They are stacked in
+         SettingsPage.xaml, which is the only place they are used, and each one is given the same
+         explicit 16x16 box there — a Shape left to size itself is placed by its own bounds, and
+         three layers with different bounds would each sit somewhere else.
+
+         No frame around the whole thing, unlike a shipped app icon: 設定's rows put every mark on a
+         tile already.
+
+         The two tiles. -->
+    <Geometry x:Key="QuickTranslateTilesGeometry">M1.951 1.311 H6.672 A1.246 1.246 0.0 0 1 7.918 2.557 V7.279 A1.246 1.246 0.0 0 1 6.672 8.525 H1.951 A1.246 1.246 0.0 0 1 0.705 7.279 V2.557 A1.246 1.246 0.0 0 1 1.951 1.311 Z M9.328 8.525 H14.049 A1.246 1.246 0.0 0 1 15.295 9.77 V14.492 A1.246 1.246 0.0 0 1 14.049 15.738 H9.328 A1.246 1.246 0.0 0 1 8.082 14.492 V9.77 A1.246 1.246 0.0 0 1 9.328 8.525 Z</Geometry>
+
+    <!-- A and 文, knocked out of the tiles above them. F1 is the nonzero fill rule the drawing was
+         authored with; the counter of the A is a hole only under that rule. -->
+    <Geometry x:Key="QuickTranslateGlyphsGeometry">F1 M2.158 7.213 H3.153 L3.498 5.952 H5.085 L5.43 7.213 H6.465 L4.892 2.295 H3.731 ZM3.711 5.189 3.857 4.651 C4.003 4.14 4.142 3.583 4.275 3.045 H4.302 C4.448 3.569 4.58 4.14 4.733 4.651 L4.879 5.189 Z M11.158 9.794 C11.273 10.009 11.387 10.293 11.442 10.497 H9.324 V11.08 H10.112 C10.381 11.783 10.729 12.386 11.178 12.884 C10.66 13.288 10.012 13.572 9.23 13.766 C9.349 13.906 9.529 14.185 9.593 14.329 C10.396 14.095 11.068 13.761 11.622 13.313 C12.15 13.756 12.793 14.085 13.58 14.294 C13.67 14.13 13.849 13.871 13.984 13.736 C13.231 13.567 12.603 13.268 12.085 12.874 C12.528 12.391 12.867 11.798 13.121 11.08 H13.889 V10.497 H11.716 L12.14 10.363 C12.08 10.158 11.93 9.839 11.796 9.605 ZM11.631 12.466 C11.248 12.072 10.949 11.603 10.729 11.08 H12.454 C12.249 11.628 11.98 12.087 11.631 12.466 Z</Geometry>
+
+    <!-- The two arrows, stroked rather than filled. The drawing's own 2.8 comes to 0.92 once
+         scaled; the row draws them at 1.05 instead, because every mark beside this one is a 1.2
+         outline and arrows a third lighter than their neighbours read as a different set. -->
+    <Geometry x:Key="QuickTranslateArrowsGeometry">M13.0 6.623 V4.951 C13.0 2.918 11.557 1.574 9.459 1.574 H8.705 M9.852 0.459 L8.705 1.574 L9.852 2.689 M2.213 9.377 V11.049 C2.213 13.082 3.656 14.426 5.754 14.426 H6.508 M5.361 13.311 L6.508 14.426 L5.361 15.541</Geometry>
+
     <!-- 文字翻譯: a letter in a field — text you type in, as against text the app goes and finds
          for you. -->
     <Geometry x:Key="TextTranslateMarkGeometry">M4.2,1.2 H11.8 A3,3 0 0 1 14.8,4.2 V11.8 A3,3 0 0 1 11.8,14.8 H4.2 A3,3 0 0 1 1.2,11.8 V4.2 A3,3 0 0 1 4.2,1.2 Z M5.6,5.5 H10.4 M8,5.5 V10.5</Geometry>

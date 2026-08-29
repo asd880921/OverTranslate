@@ -122,6 +122,17 @@ public partial class SettingsPage : UserControl
                 (s, on) => s.QuickLookupHotkeyEnabled = on,
                 QuickLookupHotkeyEnabledLabel),
             new HotkeyField(
+                HotkeyAction.QuickTranslate,
+                "S.Settings.QuickTranslateHotkey",
+                QuickTranslateHotkeyBox,
+                s => s.QuickTranslateHotkeyDisplay,
+                s => HotkeyBindings.TriggerFor(s, HotkeyAction.QuickTranslate),
+                ApplyQuickTranslateTrigger,
+                AdvertisedInShell: false,
+                QuickTranslateHotkeyEnabledCheckBox,
+                (s, on) => s.QuickTranslateHotkeyEnabled = on,
+                QuickTranslateHotkeyEnabledLabel),
+            new HotkeyField(
                 HotkeyAction.TranslationWindow,
                 "S.Settings.WindowHotkey",
                 WindowHotkeyBox,
@@ -956,6 +967,22 @@ public partial class SettingsPage : UserControl
         else if (trigger.Kind == ShortcutInputKind.Gamepad)
         {
             s.QuickLookupHotkeyGamepadButton = trigger.GamepadButton;
+        }
+    }
+
+    private static void ApplyQuickTranslateTrigger(AppSettings s, ShortcutTrigger trigger, string display)
+    {
+        s.QuickTranslateHotkeyInputKind = trigger.Kind;
+        s.QuickTranslateHotkeyDisplay = display;
+        if (trigger.Kind == ShortcutInputKind.Keyboard)
+        {
+            s.QuickTranslateHotkeyModifiers = trigger.Modifiers;
+            s.QuickTranslateHotkeyVirtualKey = trigger.VirtualKey;
+            s.QuickTranslateHotkeyGamepadButton = GamepadShortcutButton.None;
+        }
+        else if (trigger.Kind == ShortcutInputKind.Gamepad)
+        {
+            s.QuickTranslateHotkeyGamepadButton = trigger.GamepadButton;
         }
     }
 

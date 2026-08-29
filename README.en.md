@@ -58,6 +58,14 @@ The window closes itself when you switch to another window; pin it if you need i
 
 ---
 
+## Quick Translate
+> The hotkey (default `Ctrl + Alt + E`), with no window to open.
+
+Select some text and press the hotkey: the translation replaces what you selected, which is what you want while writing a message or a document in another language.  
+A small hint appears beside the pointer while it works. With nothing selected, or somewhere a paste cannot land (a web page, say), nothing happens at all.
+
+---
+
 ## Real-time Translation
 
 Ideal for **video subtitles, game screens**, and other situations that need continuous translation. After selecting the area, the screen content is recognized continuously, and the translation updates automatically in the original position whenever the text changes.
@@ -111,6 +119,7 @@ built-in text to speech (TTS) reads both the original text and the translation a
 | Open translation window (hotkey) | Hotkey to bring up the main window on the page you left it on (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
 | Pause / resume (hotkey) | Pauses or resumes **real-time translation** (default `Ctrl + Alt + S`); available only while real-time translation is running, and handy for reading the original text |
 | Quick lookup (hotkey) | Opens the **quick lookup** window (default `Ctrl + Alt + Q`); any text you have selected is picked up and translated automatically |
+| Quick translate (hotkey) | Replaces the selected text with its translation (default `Ctrl + Alt + E`); nothing happens when nothing is selected |
 | Auto translate | **Screenshot translation** translates **immediately** once the area is selected, with nothing left to click (off by default) |
 | Run at startup | Launch automatically when Windows starts |
 | Save screenshots | Save captures to your machine automatically, with a customizable folder (off by default) |

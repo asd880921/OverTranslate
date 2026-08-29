@@ -107,6 +107,35 @@
     <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="#D8D8D8"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
+    <!-- 快速翻譯's mark. The drawing it was made from is dark-interface artwork — pale plates with
+         dark letters — and see DarkTheme.xaml, where it is kept exactly as drawn. It cannot be
+         carried over here: 設定 sets every mark on an AppAccentSubtle tile, #DEEDFB, and pale plates
+         land within a few percent of that brightness. Deepening them alone was not enough either —
+         plate, tile and letters then all sit in one narrow low-saturation band and the mark reads as
+         muddy rather than light.
+         
+         So the light theme inverts it, which is what a light interface does anyway: solid plates in
+         the blue the marks beside this one are drawn in, and the letters knocked out white. The
+         arrows follow the plates so the mark stays one object. -->
+    <LinearGradientBrush x:Key="QuickTranslateTileFill" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#2B9FD9"/>
+        <GradientStop Offset="1" Color="#0B72B8"/>
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#FFFFFF"/>
+
+    <LinearGradientBrush x:Key="QuickTranslateArrowStroke" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#2B9FD9"/>
+        <GradientStop Offset="1" Color="#0B72B8"/>
+    </LinearGradientBrush>
+
+    <!-- 快速翻譯's hint card. The surface colours of the theme, but not quite solid: the card lands
+         in the middle of the user's own text, and letting a little of what is underneath through is
+         what keeps it reading as something laid over that text rather than a hole punched in it.
+         The toast above has carried the same 0.91 since it was written. -->
+    <SolidColorBrush x:Key="HintCardBg"     Color="#E8FFFFFF"/>
+    <SolidColorBrush x:Key="HintCardBorder" Color="#E8E0E0E0"/>
+
     <!-- Toast — same in both themes (always dark) -->
     <SolidColorBrush x:Key="ToastBg"           Color="#E8202020"/>
     <SolidColorBrush x:Key="ToastBorder"       Color="#44FFFFFF"/>

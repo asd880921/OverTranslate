@@ -1,0 +1,121 @@
+<Window x:Class="OverTranslate.Views.QuickTranslate.QuickTranslateHintWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        MaxWidth="360"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <!-- The application's own icon button at the size this surface can carry. A hint is one
+             line of text tall, so the 32px control would set the height of the whole thing and turn
+             a remark into a panel.
+
+             IconButton rather than the toast's ToastIconButton: that one is drawn for a surface
+             that is dark in both themes, and this card is not — see the card itself. -->
+        <Style x:Key="HintIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Width"      Value="22"/>
+            <Setter Property="Height"     Value="22"/>
+            <Setter Property="FontSize"   Value="11"/>
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        </Style>
+    </Window.Resources>
+
+    <!-- At least the blur radius on every side, plus the offset below — the same margin the toast
+         carries, and for the same reason: short of it the blur is cut off by the window's edge and
+         the cut reads as a faint grey rectangle around the card. -->
+    <Border Margin="14,12,14,16">
+        <!-- A capsule rather than the toast's rounded rectangle. This is the smallest thing the
+             application puts on screen and it carries one line, so the shape says so: the corner
+             radius is half the height it has when nothing has gone wrong, which is the shape of a
+             remark rather than of a panel. A failure wraps to two lines and the same radius then
+             reads as a rounded card, which is the right weight for something that has to be read.
+
+             The theme's own surface colours rather than the toast's, which are dark in both themes.
+             A toast is a notification and reads as a system layer; this is a reply to something the
+             user just did, in the middle of their own text, and a dark slab over a light desktop is
+             far heavier than that moment deserves. Not quite solid, for the same reason — see
+             HintCardBg. -->
+        <Border x:Name="Card"
+                Background="{DynamicResource HintCardBg}"
+                CornerRadius="17"
+                BorderBrush="{DynamicResource HintCardBorder}"
+                BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
+                                  Opacity="0.20" Color="#000000"/>
+            </Border.Effect>
+
+            <Grid MinHeight="34" Margin="13,5,7,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- The state, in the one place the reader's eye lands first. The ring turns while
+                     the translation is in flight and is replaced — not joined — by the mark that
+                     says how it ended, so the card never shows two answers at once. -->
+                <Grid Grid.Column="0" Width="14" Height="14" VerticalAlignment="Center">
+                    <Path x:Name="Spinner"
+                          Data="M7,1.5 A5.5,5.5 0 1 1 1.5,7"
+                          Stroke="{DynamicResource AppAccent}"
+                          StrokeThickness="1.8"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Stretch="None"
+                          RenderTransformOrigin="0.5,0.5">
+                        <!-- Three quarters of a circle rather than a full ring: a closed circle
+                             turning is indistinguishable from one standing still. -->
+                        <Path.RenderTransform>
+                            <RotateTransform x:Name="SpinnerAngle"/>
+                        </Path.RenderTransform>
+                    </Path>
+
+                    <TextBlock x:Name="StatusGlyph"
+                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="13"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Visibility="Collapsed"/>
+                </Grid>
+
+                <TextBlock x:Name="MessageText"
+                           Grid.Column="1"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppTextPrimary}"
+                           TextWrapping="Wrap"
+                           MaxHeight="60"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           Margin="9,0,4,0"/>
+
+                <!-- Close is here in every state, because a card the reader is done with must always
+                     have a way out. Copy joins it only on a failure — see the code behind. -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button x:Name="CopyBtn"
+                            Content="&#xE8C8;"
+                            Style="{StaticResource HintIconButton}"
+                            Visibility="Collapsed"
+                            ToolTip="{DynamicResource S.Toast.CopyMessage}"
+                            Click="CopyButton_Click"/>
+
+                    <Button Content="&#xE711;"
+                            Style="{StaticResource HintIconButton}"
+                            ToolTip="{DynamicResource S.Common.Close}"
+                            Click="CloseButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Border>
+</Window>

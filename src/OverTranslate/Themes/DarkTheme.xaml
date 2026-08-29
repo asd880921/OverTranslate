@@ -115,6 +115,29 @@
     <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="Transparent"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
+    <!-- 快速翻譯's mark, which keeps the palette it was drawn in rather than taking the accent: A
+         and 文 are told apart by the plates they sit on, and repainting both plates one colour
+         throws that away. The values here are the drawing's own — it was drawn for a dark interface,
+         and this is the theme it was drawn for. See LightTheme.xaml for the half that had to move. -->
+    <LinearGradientBrush x:Key="QuickTranslateTileFill" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#D6F6FF"/>
+        <GradientStop Offset="1" Color="#A8E5F6"/>
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#0B4A63"/>
+
+    <LinearGradientBrush x:Key="QuickTranslateArrowStroke" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#28CCFF"/>
+        <GradientStop Offset="1" Color="#08A7EA"/>
+    </LinearGradientBrush>
+
+    <!-- 快速翻譯's hint card. The surface colours of the theme, but not quite solid: the card lands
+         in the middle of the user's own text, and letting a little of what is underneath through is
+         what keeps it reading as something laid over that text rather than a hole punched in it.
+         The toast above has carried the same 0.91 since it was written. -->
+    <SolidColorBrush x:Key="HintCardBg"     Color="#E82C2C2C"/>
+    <SolidColorBrush x:Key="HintCardBorder" Color="#E83C3C3C"/>
+
     <!-- Toast — same in both themes (always dark) -->
     <SolidColorBrush x:Key="ToastBg"           Color="#E8202020"/>
     <SolidColorBrush x:Key="ToastBorder"       Color="#44FFFFFF"/>

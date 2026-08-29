@@ -14,9 +14,9 @@ namespace OverTranslate.Tests;
 // Read as XML rather than through XamlReader, which would want an STA thread for what is really a
 // question about the source file: a string that asks for a line break has to be marked to keep one.
 //
-// Only the strings the diagnostics card composes. Four older strings elsewhere have the same problem
-// and are deliberately not covered — fixing them changes screens this had no business touching, and
-// a test that fails for something nobody is fixing is a test people learn to ignore.
+// Only the strings that are written as two lines on purpose. Four older strings elsewhere have the
+// same problem and are deliberately not covered — fixing them changes screens this had no business
+// touching, and a test that fails for something nobody is fixing is a test people learn to ignore.
 public class LocalizedLineBreakTests
 {
     // The two result-panel hints were written as two lines and have since been rewritten as one
@@ -26,12 +26,17 @@ public class LocalizedLineBreakTests
     private static readonly string[] TwoLineKeys =
     {
         "S.Settings.DiagnosticsUploadHint",
+
+        // 快速翻譯's row says two things — where the shortcut works, and whose language and service
+        // settings it uses — and they are two lines because they are two separate facts about a
+        // feature that has no interface of its own to put either one in.
+        "S.Settings.QuickTranslateHotkeyNote",
     };
 
     [Theory]
     [InlineData("Strings.en.xaml")]
     [InlineData("Strings.zh-Hant.xaml")]
-    public void TheDiagnosticsHints_KeepTheirLineBreak(string file)
+    public void TheTwoLineHints_KeepTheirLineBreak(string file)
     {
         XNamespace xml = "http://www.w3.org/XML/1998/namespace";
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";

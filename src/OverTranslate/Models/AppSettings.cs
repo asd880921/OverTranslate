@@ -105,6 +105,33 @@ public class AppSettings
     /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
     public bool QuickLookupHotkeyEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Replaces the selected text with its translation, in place. Ctrl+Alt+E by default.
+    /// </summary>
+    /// <remarks>
+    /// E for 取代 — the letters the other four are named after are taken (A, W, S, Q), and this one
+    /// is the shortcut people reach for while writing in a language that is not theirs, where what
+    /// they want is the replacement rather than a window about it. Ctrl+Alt+E is claimed by nothing
+    /// on a stock Windows.
+    ///
+    /// On by default, like every other optional shortcut here. It costs nothing until it is pressed,
+    /// and a feature nobody can find is not a safer one — see
+    /// <see cref="Views.QuickTranslate.QuickTranslateFlow"/> for what it does when there is nothing
+    /// selected, which is nothing at all.
+    /// </remarks>
+    public uint QuickTranslateHotkeyModifiers { get; set; } = 3;
+
+    /// <inheritdoc cref="QuickTranslateHotkeyModifiers"/>
+    public uint QuickTranslateHotkeyVirtualKey { get; set; } = 0x45;
+
+    /// <inheritdoc cref="QuickTranslateHotkeyModifiers"/>
+    public string QuickTranslateHotkeyDisplay { get; set; } = "Ctrl+Alt+E";
+    public ShortcutInputKind QuickTranslateHotkeyInputKind { get; set; } = ShortcutInputKind.Keyboard;
+    public GamepadShortcutButton QuickTranslateHotkeyGamepadButton { get; set; } = GamepadShortcutButton.None;
+
+    /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
+    public bool QuickTranslateHotkeyEnabled { get; set; } = true;
+
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;

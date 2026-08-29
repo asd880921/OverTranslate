@@ -26,11 +26,6 @@ internal static class SelectedTextReader
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
     /// <summary>
-    /// Keeps the managed data object alive while this process owns the restored clipboard.
-    /// </summary>
-    private static System.Windows.DataObject? _restoredClipboardOwner;
-
-    /// <summary>
     /// How long the foreground application is given to start answering the copy.
     /// </summary>
     /// <remarks>
@@ -44,9 +39,6 @@ internal static class SelectedTextReader
     private static readonly TimeSpan CopyCompletionTimeout = TimeSpan.FromMilliseconds(320);
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(15);
-
-    /// <summary>How long Ctrl+C stays physically observable to applications that poll per frame.</summary>
-    private static readonly TimeSpan CopyChordHold = TimeSpan.FromMilliseconds(40);
 
     /// <summary>
     /// The most text this will carry into the popup.
@@ -77,14 +69,14 @@ internal static class SelectedTextReader
 
         try
         {
-            snapshot = Snapshot();
+            snapshot = ClipboardBackup.Capture();
             before = GetClipboardSequenceNumber();
         }
         catch (Exception ex)
         {
             // The clipboard is one system-wide resource and any process can have it locked. With no
             // snapshot there is nothing to put back, so the copy is not attempted at all.
-            Log.Debug(ex, "Could not snapshot the clipboard; 取詞翻譯 opens with an empty box");
+            Log.Debug(ex, "Could not snapshot the clipboard; the selection is read as empty");
             return "";
         }
 
@@ -106,29 +98,12 @@ internal static class SelectedTextReader
         }
         catch (Exception ex)
         {
-            Log.Debug(ex, "Reading the selection failed; 取詞翻譯 opens with an empty box");
+            Log.Debug(ex, "Reading the selection failed; it is read as empty");
             return "";
         }
         finally
         {
-            Restore(snapshot);
-        }
-    }
-
-    /// <summary>Keeps an injected copy chord down long enough to cross a frame boundary.</summary>
-    internal static async Task HoldCopyChordAsync(
-        Action press,
-        Func<Task> hold,
-        Action release)
-    {
-        press();
-        try
-        {
-            await hold();
-        }
-        finally
-        {
-            release();
+            ClipboardBackup.Restore(snapshot);
         }
     }
 
@@ -218,172 +193,10 @@ internal static class SelectedTextReader
     }
 
     /// <summary>
-    /// Everything the clipboard holds, in a form <see cref="Restore"/> can put back.
+    /// Sends Ctrl+C to whatever has the foreground — see <see cref="KeyboardInput"/> for how the
+    /// chord is shaped so an application on the other end actually sees it.
     /// </summary>
-    /// <remarks>
-    /// Format by format rather than by handing the live data object back later: the object the
-    /// clipboard gives out is owned by whichever process put it there, and by the time it would be
-    /// restored that process may have exited and taken its handles with it.
-    ///
-    /// A format that will not come out is skipped rather than failing the snapshot. The alternative
-    /// is to abandon the read whenever anything exotic is on the clipboard, which in practice means
-    /// abandoning it for anyone who has recently copied out of Office.
-    /// </remarks>
-    private static object? Snapshot()
-    {
-        var source = Clipboard.GetDataObject();
-        if (source is null) return null;
-
-        var copy = new System.Windows.DataObject();
-        var kept = 0;
-
-        foreach (var format in source.GetFormats())
-        {
-            try
-            {
-                var data = source.GetData(format);
-                if (data is null) continue;
-                copy.SetData(format, data);
-                kept++;
-            }
-            catch
-            {
-                // See the remarks: one unreadable format is not a reason to lose the others.
-            }
-        }
-
-        return kept > 0 ? copy : null;
-    }
-
-    /// <remarks>
-    /// An empty snapshot clears the clipboard rather than leaving the copied selection on it. The
-    /// user never asked for that text to be on their clipboard, and leaving it there is a surprise
-    /// they would find later, in whatever they next paste into.
-    /// </remarks>
-    private static void Restore(object? snapshot)
-    {
-        try
-        {
-            if (snapshot is System.Windows.DataObject data)
-            {
-                // copy:true calls OleFlushClipboard after publishing every format. Some third-party
-                // clipboard data providers make that native call access-violate inside ole32.dll;
-                // a corrupted-state exception cannot be caught here and terminates the process.
-                // Keep the data object alive instead so OLE can request its formats lazily without
-                // taking that unsafe flush path.
-                Clipboard.SetDataObject(data, copy: false);
-                _restoredClipboardOwner = data;
-            }
-            else
-            {
-                Clipboard.Clear();
-                _restoredClipboardOwner = null;
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warn(ex, "Could not restore the clipboard after reading the selection");
-        }
-    }
-
-    /// <summary>
-    /// Sends Ctrl+C to whatever has the foreground.
-    /// </summary>
-    /// <remarks>
-    /// The modifiers are released first so the injected chord is a plain Ctrl+C. Ctrl and C then
-    /// remain down briefly rather than being pressed and released in one SendInput batch: ordinary
-    /// controls consume every key event, but a game may sample keyboard state once per frame and
-    /// miss a chord whose complete lifetime falls between two samples.
-    ///
-    /// The user's own key releases arrive afterwards as repeats of an up state, which every
-    /// application already tolerates.
-    /// </remarks>
-    private static Task SendCopy()
-    {
-        var press = new List<INPUT>();
-
-        foreach (var modifier in new ushort[] { VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN, VK_CONTROL })
-            press.Add(Key(modifier, up: true));
-
-        press.Add(Key(VK_CONTROL, up: false));
-        press.Add(Key(VK_C, up: false));
-
-        return HoldCopyChordAsync(
-            () => InjectKeys(press.ToArray()),
-            () => Task.Delay(CopyChordHold),
-            () => InjectKeys([Key(VK_C, up: true), Key(VK_CONTROL, up: true)]));
-    }
-
-    private static void InjectKeys(INPUT[] inputs)
-    {
-        var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
-        if (sent != (uint)inputs.Length)
-            Log.Debug("SendInput accepted {SentCount} of {RequestedCount} keyboard events", sent, inputs.Length);
-    }
-
-    private const ushort VK_SHIFT = 0x10;
-    private const ushort VK_CONTROL = 0x11;
-    private const ushort VK_MENU = 0x12;
-    private const ushort VK_LWIN = 0x5B;
-    private const ushort VK_RWIN = 0x5C;
-    private const ushort VK_C = 0x43;
-    private const uint INPUT_KEYBOARD = 1;
-    private const uint KEYEVENTF_KEYUP = 0x0002;
-
-    private static INPUT Key(ushort virtualKey, bool up) => new()
-    {
-        type = INPUT_KEYBOARD,
-        u = new INPUTUNION
-        {
-            ki = new KEYBDINPUT
-            {
-                wVk = virtualKey,
-                dwFlags = up ? KEYEVENTF_KEYUP : 0,
-            },
-        },
-    };
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct INPUT
-    {
-        public uint type;
-        public INPUTUNION u;
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct INPUTUNION
-    {
-        [FieldOffset(0)] public KEYBDINPUT ki;
-
-        // SendInput rejects a structure that is not the size it expects, and the size it expects is
-        // that of the widest member of the union — so MOUSEINPUT has to be declared even though
-        // nothing here sends a mouse event.
-        [FieldOffset(0)] public MOUSEINPUT mi;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct KEYBDINPUT
-    {
-        public ushort wVk;
-        public ushort wScan;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MOUSEINPUT
-    {
-        public int dx;
-        public int dy;
-        public uint mouseData;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(uint count, INPUT[] inputs, int size);
+    private static Task SendCopy() => KeyboardInput.SendControlChordAsync(KeyboardInput.VK_C);
 
     /// <summary>
     /// Counts every change to the clipboard, system-wide.

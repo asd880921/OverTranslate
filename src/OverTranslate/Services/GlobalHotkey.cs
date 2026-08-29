@@ -31,6 +31,9 @@ public class GlobalHotkey : IDisposable
     /// <summary>The shortcut that summons 取詞翻譯's popup.</summary>
     public const int QuickLookupId = 9005;
 
+    /// <summary>The shortcut that replaces the selection with its translation.</summary>
+    public const int QuickTranslateId = 9006;
+
     public GlobalHotkey(int id) => _id = id;
 
     [DllImport("user32.dll", SetLastError = true)]

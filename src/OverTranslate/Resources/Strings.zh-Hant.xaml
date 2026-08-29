@@ -101,6 +101,12 @@
     <sys:String x:Key="S.Translation.Translating">翻譯中…</sys:String>
     <sys:String x:Key="S.Translation.SpeakFailed">朗讀失敗：{0}</sys:String>
 
+    <!-- ── 快速翻譯 ── 只在提示卡片上出現的字，一行以內，因為它蓋在使用者自己的視窗上。 -->
+    <sys:String x:Key="S.QuickTranslate.Replaced">已完成翻譯並貼上譯文。</sys:String>
+    <sys:String x:Key="S.QuickTranslate.EmptyResult">翻譯結果是空的，已保留原本的文字。</sys:String>
+    <sys:String x:Key="S.QuickTranslate.FocusMoved">已切換視窗，無法貼上翻譯結果。</sys:String>
+    <sys:String x:Key="S.QuickTranslate.ClipboardBusy">剪貼簿目前無法使用，沒有貼上翻譯。</sys:String>
+
     <!-- ── Rich dictionary ── -->
     <sys:String x:Key="S.Dictionary.Alternatives">其他翻譯</sys:String>
     <sys:String x:Key="S.Dictionary.NoResult">該詞查無對應的詞典資料。</sys:String>
@@ -370,6 +376,9 @@
     <sys:String x:Key="S.Settings.QuickLookupHotkey">取詞翻譯</sys:String>
     <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">按下快捷鍵開啟[[取詞翻譯]]</sys:String>
     <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">若有選取文字，開啟視窗時會自動帶入並翻譯。</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkey">快速翻譯</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">將[[選取文字]]替換成譯文</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote" xml:space="preserve">僅適用於可輸入文字的欄位，非輸入區域則無法貼上。&#x0a;翻譯前後的語言與服務皆跟隨「文字翻譯」共用相同設置。</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ 單一按鍵只能是 F1–F24、Pause 或 Scroll Lock，其他按鍵請搭配 Ctrl／Alt／Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">一般設定</sys:String>

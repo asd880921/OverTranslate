@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private GlobalHotkey? _windowHotkey;
     private GlobalHotkey? _realtimePauseHotkey;
     private GlobalHotkey? _quickLookupHotkey;
+    private GlobalHotkey? _quickTranslateHotkey;
     private GlobalAuxiliaryHotkeys? _auxiliaryHotkeys;
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
@@ -84,7 +85,10 @@ public partial class MainWindow : Window
     private void OnRealtimeStateChanged(object? sender, EventArgs e) =>
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            if (RealtimeSessionController.Instance.IsActive) QuickLookup.QuickLookupWindow.Dismiss();
+            if (!RealtimeSessionController.Instance.IsActive) return;
+
+            QuickLookup.QuickLookupWindow.Dismiss();
+            QuickTranslate.QuickTranslateHintWindow.Dismiss();
         }));
 
     private void OnRealtimeSessionEnded(object? sender, string message) =>
@@ -148,12 +152,16 @@ public partial class MainWindow : Window
         _quickLookupHotkey = new GlobalHotkey(GlobalHotkey.QuickLookupId);
         _quickLookupHotkey.HotkeyPressed += OnQuickLookupHotkeyPressed;
 
+        _quickTranslateHotkey = new GlobalHotkey(GlobalHotkey.QuickTranslateId);
+        _quickTranslateHotkey.HotkeyPressed += OnQuickTranslateHotkeyPressed;
+
         var hooks = new Dictionary<HotkeyAction, GlobalHotkey>
         {
             [HotkeyAction.Capture] = _hotkey,
             [HotkeyAction.TranslationWindow] = _windowHotkey,
             [HotkeyAction.RealtimePause] = _realtimePauseHotkey,
             [HotkeyAction.QuickLookup] = _quickLookupHotkey,
+            [HotkeyAction.QuickTranslate] = _quickTranslateHotkey,
         };
 
         var resolved = HotkeyBindings.Resolve(settings);
@@ -214,6 +222,9 @@ public partial class MainWindow : Window
             case HotkeyAction.QuickLookup:
                 OnQuickLookupHotkeyPressed(this, EventArgs.Empty);
                 break;
+            case HotkeyAction.QuickTranslate:
+                OnQuickTranslateHotkeyPressed(this, EventArgs.Empty);
+                break;
         }
     }
 
@@ -263,6 +274,7 @@ public partial class MainWindow : Window
         _windowHotkey?.Unregister();
         _realtimePauseHotkey?.Unregister();
         _quickLookupHotkey?.Unregister();
+        _quickTranslateHotkey?.Unregister();
         _auxiliaryHotkeys?.Dispose();
         _auxiliaryHotkeys = null;
         RegisterHotkey();
@@ -318,6 +330,25 @@ public partial class MainWindow : Window
     /// </remarks>
     private void OnQuickLookupHotkeyPressed(object? sender, EventArgs e) =>
         StartQuickLookup(pinned: false);
+
+    /// <summary>
+    /// Replaces the selection with its translation, in whatever the user is writing in.
+    /// </summary>
+    /// <remarks>
+    /// Turned away in the same two states as 取詞翻譯 and for the same reasons — a capture in
+    /// progress is a gesture of the user's not to be interrupted, and a realtime session composes
+    /// the monitor without this application's own layers, so a card created afterwards would be read
+    /// back into the subtitles. Silently in both cases: this shortcut is silent whenever it has
+    /// nothing to do, and one refusal that talks would be the exception nobody expects.
+    /// </remarks>
+    private void OnQuickTranslateHotkeyPressed(object? sender, EventArgs e) =>
+        Dispatcher.Invoke(async () =>
+        {
+            if (HasActiveSession) return;
+            if (RealtimeSessionController.Instance.IsActive) return;
+
+            await Views.QuickTranslate.QuickTranslateFlow.RunAsync();
+        });
 
     /// <summary>
     /// Opens 取詞翻譯 from the shell window's nav rail, pinned.
@@ -1213,6 +1244,7 @@ public partial class MainWindow : Window
         _windowHotkey?.Dispose();
         _realtimePauseHotkey?.Dispose();
         _quickLookupHotkey?.Dispose();
+        _quickTranslateHotkey?.Dispose();
         _auxiliaryHotkeys?.Dispose();
         _auxiliaryHotkeys = null;
         if (_notifyIcon != null)
