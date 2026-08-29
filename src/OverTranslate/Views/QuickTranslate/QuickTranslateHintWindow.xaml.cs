@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using NLog;
@@ -25,6 +26,10 @@ namespace OverTranslate.Views.QuickTranslate;
 /// rather than on the answer. It leaves with a fade, which is the opposite case: nothing is waiting
 /// on it, and a card that vanished between two frames would leave the reader unsure what they saw.
 ///
+/// It sits by the pointer, which is where the hand and the eye already are at the end of the gesture
+/// that made the selection — and the one anchor that is always available. See
+/// <see cref="HintPlacement"/>.
+///
 /// One at a time. A second shortcut press replaces the card outright rather than stacking another on
 /// top of it — see <see cref="Show"/> — because the newer one is the only one whose outcome the user
 /// is still waiting for.
@@ -47,7 +52,7 @@ public partial class QuickTranslateHintWindow : Window
     /// underneath, where the user is looking, and this is only the part that says the change came
     /// from the key they pressed.
     /// </remarks>
-    private static readonly TimeSpan SuccessHold = TimeSpan.FromMilliseconds(1000);
+    private static readonly TimeSpan SuccessHold = TimeSpan.FromMilliseconds(700);
 
     /// <summary>
     /// How long a failure stays up.
@@ -57,15 +62,18 @@ public partial class QuickTranslateHintWindow : Window
     /// screen carries it — the document is simply unchanged, which is also what a shortcut that
     /// missed looks like.
     /// </remarks>
-    private static readonly TimeSpan FailureHold = TimeSpan.FromMilliseconds(2500);
+    private static readonly TimeSpan FailureHold = TimeSpan.FromMilliseconds(2000);
 
     private const int FadeMs = 260;
 
     /// <summary>Shorter than the timed fade: the reader has already decided.</summary>
     private const int CloseFadeMs = 120;
 
+    /// <summary>One turn of the ring, fast enough to read as working and slow enough not to buzz.</summary>
+    private static readonly TimeSpan SpinCycle = TimeSpan.FromMilliseconds(900);
+
     /// <summary>
-    /// How far the card sits from the selection, and the closest it comes to a screen edge.
+    /// How far the card sits from the pointer, and the closest it comes to a screen edge.
     /// </summary>
     /// <remarks>
     /// Small because it is not the whole distance: the window carries a transparent margin around
@@ -81,11 +89,8 @@ public partial class QuickTranslateHintWindow : Window
     private const string DoneGlyph = "";
     private const string FailedGlyph = "";
 
-    /// <summary>Where the selection was, in physical pixels, or null when nothing would say.</summary>
-    private readonly Rect? _anchor;
-
     /// <summary>
-    /// Where the pointer was when the card was put up, which is the fallback anchor.
+    /// Where the pointer was when the card was put up.
     /// </summary>
     /// <remarks>
     /// Taken once rather than read again on every placement: the card is placed a second time when
@@ -109,17 +114,12 @@ public partial class QuickTranslateHintWindow : Window
     /// <summary>Set once the reader has dismissed it, so hovering stops reviving it.</summary>
     private bool _userDismissed;
 
-    /// <summary>
-    /// Puts a card up in its working state, replacing whichever one is on screen.
-    /// </summary>
-    /// <param name="anchor">
-    /// Where the selection is in physical pixels, or null to sit by the pointer instead.
-    /// </param>
-    public static QuickTranslateHintWindow Show(Rect? anchor)
+    /// <summary>Puts a card up in its working state, replacing whichever one is on screen.</summary>
+    public static QuickTranslateHintWindow Show()
     {
         Dismiss();
 
-        var hint = new QuickTranslateHintWindow(anchor);
+        var hint = new QuickTranslateHintWindow();
         _current = hint;
         ((Window)hint).Show();
         return hint;
@@ -139,14 +139,13 @@ public partial class QuickTranslateHintWindow : Window
 
     // Private on purpose: constructing one directly and calling the inherited Window.Show() would
     // bypass the single-card bookkeeping and leave two of them on the same spot.
-    private QuickTranslateHintWindow(Rect? anchor)
+    private QuickTranslateHintWindow()
     {
         InitializeComponent();
-        _anchor = anchor;
         _pointer = System.Windows.Forms.Cursor.Position;
 
         MessageText.Text = LocalizationService.Get("S.Translation.Translating");
-        RenderCopyAvailability();
+        StartSpinning();
 
         Closed += (_, _) =>
         {
@@ -156,9 +155,9 @@ public partial class QuickTranslateHintWindow : Window
             if (ReferenceEquals(_current, this)) _current = null;
         };
 
-        // Only a failure waits for a pointer resting on it. A success is gone in a second by design,
-        // and it is placed against the text the user just acted on — which is where their pointer
-        // already is, so holding on hover would leave it up until they moved the mouse.
+        // Only a failure waits for a pointer resting on it. A success is gone in well under a second
+        // by design, and the card sits where the pointer already is — so holding on hover would
+        // leave every successful translation on screen until the user moved the mouse.
         MouseEnter += (_, _) => { if (_holdsForPointer) PauseHold(); };
         MouseLeave += (_, _) => { if (_holdsForPointer) ResumeHold(); };
 
@@ -176,7 +175,7 @@ public partial class QuickTranslateHintWindow : Window
                 new Action(() => { Position(); Opacity = 1; }), DispatcherPriority.Loaded);
         };
 
-        // Every state change resizes the card, and it has to stay against the same text afterwards.
+        // Every state change resizes the card, and it has to stay against the same spot afterwards.
         SizeChanged += (_, _) => { if (IsLoaded && !_fadingOut) Position(); };
     }
 
@@ -188,35 +187,40 @@ public partial class QuickTranslateHintWindow : Window
 
     // ══════════════════════════ What the card says ══════════════════════════
 
-    /// <summary>Reports that the selection now holds <paramref name="translation"/>.</summary>
-    public void ReportSuccess(string translation)
+    /// <summary>Reports that the selection now holds its translation.</summary>
+    /// <remarks>
+    /// With no copy button. The words are already in the document the user was writing in, which is
+    /// the whole point of this feature — offering to put them on the clipboard as well would be a
+    /// control for something that has already happened.
+    /// </remarks>
+    public void ReportSuccess()
     {
         if (_closed) return;
 
-        WorkingBar.Visibility = Visibility.Collapsed;
         ShowGlyph(DoneGlyph, "AppSuccess");
         MessageText.Text = LocalizationService.Get("S.QuickTranslate.Replaced");
 
-        // The translation rather than the line above it: the words are what someone reaching for the
-        // copy button wants, and they have just been pasted somewhere that may not have taken them.
-        _copyText = translation;
-        RenderCopyAvailability();
+        _copyText = "";
+        CopyBtn.Visibility = Visibility.Collapsed;
 
         _holdsForPointer = false;
         StartHold(SuccessHold);
     }
 
     /// <summary>Reports that the selection was left as it was, and why.</summary>
+    /// <remarks>
+    /// The one state with a copy button: this is the only text on the card that exists nowhere else,
+    /// and it is the text somebody reporting a problem needs to be able to quote.
+    /// </remarks>
     public void ReportFailure(string message)
     {
         if (_closed) return;
 
-        WorkingBar.Visibility = Visibility.Collapsed;
         ShowGlyph(FailedGlyph, "AppError");
         MessageText.Text = message;
 
         _copyText = message;
-        RenderCopyAvailability();
+        CopyBtn.Visibility = Visibility.Visible;
 
         _holdsForPointer = true;
         StartHold(FailureHold);
@@ -225,16 +229,32 @@ public partial class QuickTranslateHintWindow : Window
     // Resource reference rather than a resolved brush, so the mark follows a live theme switch.
     private void ShowGlyph(string glyph, string brushKey)
     {
+        StopSpinning();
+
         StatusGlyph.Text = glyph;
         StatusGlyph.SetResourceReference(ForegroundProperty, brushKey);
         StatusGlyph.Visibility = Visibility.Visible;
     }
 
     /// <remarks>
-    /// Disabled rather than hidden while there is nothing to copy: showing it later would change the
-    /// card's width under a pointer already on its way to the close button beside it.
+    /// Windows' "animation effects" setting is the local equivalent of a reduced-motion preference.
+    /// The ring stays where it is rather than disappearing with the motion: it is the only thing on
+    /// the card saying that something is under way, and the accent colour carries that on its own.
     /// </remarks>
-    private void RenderCopyAvailability() => CopyBtn.IsEnabled = _copyText.Length > 0;
+    private void StartSpinning()
+    {
+        if (!SystemParameters.ClientAreaAnimation) return;
+
+        SpinnerAngle.BeginAnimation(
+            RotateTransform.AngleProperty,
+            new DoubleAnimation(0, 360, SpinCycle) { RepeatBehavior = RepeatBehavior.Forever });
+    }
+
+    private void StopSpinning()
+    {
+        SpinnerAngle.BeginAnimation(RotateTransform.AngleProperty, null);
+        Spinner.Visibility = Visibility.Collapsed;
+    }
 
     // ══════════════════════════ Placement ══════════════════════════
 
@@ -245,19 +265,10 @@ public partial class QuickTranslateHintWindow : Window
     /// </remarks>
     private void Position()
     {
-        // The monitor the card is going to, which is the selection's when there is one: it and the
-        // pointer are not always on the same screen.
-        var origin = _anchor is { } selection
-            ? new System.Drawing.Point(
-                (int)Math.Round(selection.Left + selection.Width / 2),
-                (int)Math.Round(selection.Top))
-            : _pointer;
-
-        var area = System.Windows.Forms.Screen.FromPoint(origin).WorkingArea;
-        var scale = ScreenGeometry.ScaleAt(origin.X, origin.Y);
+        var area = System.Windows.Forms.Screen.FromPoint(_pointer).WorkingArea;
+        var scale = ScreenGeometry.ScaleAt(_pointer.X, _pointer.Y);
 
         var (left, top) = HintPlacement.Place(
-            _anchor,
             new Point(_pointer.X, _pointer.Y),
             new Size(ActualWidth * scale, ActualHeight * scale),
             new Rect(area.Left, area.Top, area.Width, area.Height),

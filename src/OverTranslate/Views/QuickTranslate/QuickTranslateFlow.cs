@@ -45,10 +45,8 @@ internal static class QuickTranslateFlow
     {
         var seq = ++_seq;
 
-        // Both before anything is shown. Putting a window on the screen takes the foreground away
-        // from the application holding the selection — the copy would then be sent to our own card,
-        // and UI Automation would be asked about our own text box.
-        var locating = SelectionBounds.LocateAsync();
+        // Before anything is shown. Putting a window on the screen takes the foreground away from
+        // the application holding the selection, and the copy would then be sent to our own card.
         var source = await SelectedTextReader.ReadAsync();
         var foreground = GetForegroundWindow();
 
@@ -63,10 +61,9 @@ internal static class QuickTranslateFlow
         Log.Debug("快速翻譯 is translating a selection of {Length} characters: {Text}",
             source.Length, source);
 
-        var anchor = await locating;
         if (seq != _seq) return;
 
-        var hint = QuickTranslateHintWindow.Show(anchor);
+        var hint = QuickTranslateHintWindow.Show();
         var settings = SettingsService.Instance.Current;
 
         if (AppServices.Translation.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
@@ -103,7 +100,7 @@ internal static class QuickTranslateFlow
             switch (outcome)
             {
                 case PasteOutcome.Pasted:
-                    hint.ReportSuccess(translation);
+                    hint.ReportSuccess();
                     break;
                 case PasteOutcome.FocusMoved:
                     hint.ReportFailure(LocalizationService.Get("S.QuickTranslate.FocusMoved"));

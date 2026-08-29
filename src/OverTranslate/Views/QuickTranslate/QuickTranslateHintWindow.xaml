@@ -14,13 +14,14 @@
         TextOptions.TextFormattingMode="Display">
 
     <Window.Resources>
-        <!-- The toast's buttons at the size this surface can carry. A hint is a line of text tall,
+        <!-- The toast's buttons at the size this surface can carry. A hint is one line of text tall,
              so the 28px controls that suit a toast would set the height of the whole thing and turn
              a remark into a panel. -->
         <Style x:Key="HintIconButton" TargetType="Button" BasedOn="{StaticResource ToastIconButton}">
-            <Setter Property="Width"    Value="22"/>
-            <Setter Property="Height"   Value="22"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Width"      Value="22"/>
+            <Setter Property="Height"     Value="22"/>
+            <Setter Property="FontSize"   Value="11"/>
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
         </Style>
     </Window.Resources>
 
@@ -28,9 +29,14 @@
          carries, and for the same reason: short of it the blur is cut off by the window's edge and
          the cut reads as a faint grey rectangle around the card. -->
     <Border Margin="14,12,14,16">
+        <!-- A capsule rather than the toast's rounded rectangle. This is the smallest thing the
+             application puts on screen and it carries one line, so the shape says so: the corner
+             radius is half the height it has when nothing has gone wrong, which is the shape of a
+             remark rather than of a panel. A failure wraps to two lines and the same radius then
+             reads as a rounded card, which is the right weight for something that has to be read. -->
         <Border x:Name="Card"
                 Background="{DynamicResource ToastBg}"
-                CornerRadius="10"
+                CornerRadius="17"
                 BorderBrush="{DynamicResource ToastBorder}"
                 BorderThickness="1">
             <!-- Dark in both themes and floating over the user's own window, exactly as the toast
@@ -41,74 +47,68 @@
                                   Opacity="0.20" Color="#000000"/>
             </Border.Effect>
 
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+            <Grid MinHeight="34" Margin="13,5,7,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <!-- The application's own way of saying "working", at the size this card can spare.
-                     Inset from the sides rather than run to the edges: the card's corners are
-                     rounded and a bar squared off against them would show its own two corners. -->
-                <ProgressBar x:Name="WorkingBar"
-                             Grid.Row="0"
-                             Height="2"
-                             Margin="10,0,10,0"
-                             IsIndeterminate="True"
-                             BorderThickness="0"
-                             Background="Transparent"
-                             Foreground="{DynamicResource AppAccent}"/>
+                <!-- The state, in the one place the reader's eye lands first. The ring turns while
+                     the translation is in flight and is replaced — not joined — by the mark that
+                     says how it ended, so the card never shows two answers at once. -->
+                <Grid Grid.Column="0" Width="14" Height="14" VerticalAlignment="Center">
+                    <Path x:Name="Spinner"
+                          Data="M7,1.5 A5.5,5.5 0 1 1 1.5,7"
+                          Stroke="{DynamicResource AppAccent}"
+                          StrokeThickness="1.8"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Stretch="None"
+                          RenderTransformOrigin="0.5,0.5">
+                        <!-- Three quarters of a circle rather than a full ring: a closed circle
+                             turning is indistinguishable from one standing still. -->
+                        <Path.RenderTransform>
+                            <RotateTransform x:Name="SpinnerAngle"/>
+                        </Path.RenderTransform>
+                    </Path>
 
-                <Grid Grid.Row="1" Margin="12,8,6,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Carries the outcome on its own, for the glance that is all this gets: the
-                         reader has already turned back to their text. Absent while the bar above is
-                         still running, because there is no outcome yet to name. -->
                     <TextBlock x:Name="StatusGlyph"
-                               Grid.Column="0"
-                               Text="&#xE73E;"
                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                               FontSize="12"
+                               FontSize="13"
+                               HorizontalAlignment="Center"
                                VerticalAlignment="Center"
-                               Visibility="Collapsed"
-                               Margin="0,0,7,0"/>
-
-                    <TextBlock x:Name="MessageText"
-                               Grid.Column="1"
-                               FontFamily="{StaticResource AppFont}"
-                               FontSize="12"
-                               Foreground="{DynamicResource ToastTitle}"
-                               TextWrapping="Wrap"
-                               MaxHeight="60"
-                               TextTrimming="CharacterEllipsis"
-                               VerticalAlignment="Center"/>
-
-                    <!-- Close sits rightmost, where Windows puts it on every other surface. Both
-                         stay in place through every state so the card never changes shape under a
-                         pointer that is on its way to one of them. -->
-                    <StackPanel Grid.Column="2"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center"
-                                Margin="8,0,0,0">
-                        <Button x:Name="CopyBtn"
-                                Content="&#xE8C8;"
-                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                Style="{StaticResource HintIconButton}"
-                                ToolTip="{DynamicResource S.Toast.CopyMessage}"
-                                Click="CopyButton_Click"/>
-
-                        <Button Content="&#xE711;"
-                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                Style="{StaticResource HintIconButton}"
-                                ToolTip="{DynamicResource S.Common.Close}"
-                                Click="CloseButton_Click"/>
-                    </StackPanel>
+                               Visibility="Collapsed"/>
                 </Grid>
+
+                <TextBlock x:Name="MessageText"
+                           Grid.Column="1"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="12"
+                           Foreground="{DynamicResource ToastTitle}"
+                           TextWrapping="Wrap"
+                           MaxHeight="60"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           Margin="9,0,4,0"/>
+
+                <!-- Close is here in every state, because a card the reader is done with must always
+                     have a way out. Copy joins it only on a failure — see the code behind. -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button x:Name="CopyBtn"
+                            Content="&#xE8C8;"
+                            Style="{StaticResource HintIconButton}"
+                            Visibility="Collapsed"
+                            ToolTip="{DynamicResource S.Toast.CopyMessage}"
+                            Click="CopyButton_Click"/>
+
+                    <Button Content="&#xE711;"
+                            Style="{StaticResource HintIconButton}"
+                            ToolTip="{DynamicResource S.Common.Close}"
+                            Click="CloseButton_Click"/>
+                </StackPanel>
             </Grid>
         </Border>
     </Border>

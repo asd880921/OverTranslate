@@ -300,10 +300,12 @@
          what makes it "look this word up". -->
     <Geometry x:Key="QuickLookupMarkGeometry">M0.8,6.9 A6.1,6.1 0 1 1 13,6.9 A6.1,6.1 0 1 1 0.8,6.9 Z M11.3,11.3 L15.2,15.2 M4.95,9.3 L6.9,3.9 L8.85,9.3 M5.42,8 H8.38</Geometry>
 
-    <!-- 快速翻譯: two lines of text with an arrow running back under them to where they started.
-         The other marks in this set say what a feature reads; this one has to say where the answer
-         goes, because that is the whole of what separates it from 取詞翻譯. -->
-    <Geometry x:Key="QuickTranslateMarkGeometry">M2.6,4.2 H13.4 M2.6,7.4 H9.6 M13.4,11.4 H4.8 M7,9.2 L4.8,11.4 L7,13.6</Geometry>
+    <!-- 快速翻譯: a pair of arrows exchanging places inside a tile. The tile is the frame every
+         translate mark on this platform is drawn in; the exchange is what separates this feature
+         from 取詞翻譯 — the answer does not appear beside the text, it takes its place. Corners are
+         rounded far less than 文字翻譯's, so the two read as different shapes at 16px rather than as
+         the same one with different contents. -->
+    <Geometry x:Key="QuickTranslateMarkGeometry">M4,1.6 H12 A2.4,2.4 0 0 1 14.4,4 V12 A2.4,2.4 0 0 1 12,14.4 H4 A2.4,2.4 0 0 1 1.6,12 V4 A2.4,2.4 0 0 1 4,1.6 Z M4.9,6.5 H11.1 M9.7,5.1 L11.1,6.5 L9.7,7.9 M11.1,9.5 H4.9 M6.3,8.1 L4.9,9.5 L6.3,10.9</Geometry>
 
     <!-- 文字翻譯: a letter in a field — text you type in, as against text the app goes and finds
          for you. -->

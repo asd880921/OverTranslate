@@ -6,14 +6,15 @@ using Size = System.Windows.Size;
 namespace OverTranslate.Layout;
 
 /// <summary>
-/// Where 快速翻譯's hint goes: by the text it is about, or by the pointer when nothing will say
-/// where that text is.
+/// Where 快速翻譯's hint goes: beside the pointer, inside the monitor the pointer is on.
 /// </summary>
 /// <remarks>
 /// The hint is the only thing telling the user that a shortcut they pressed over someone else's
-/// window did anything at all, so it has to land where they are already looking. Above the selection
-/// rather than over it: what they are reading is the text underneath, and the reply to a request
-/// about it must not be the thing that hides it.
+/// window did anything at all, so it has to land where they are already looking. The pointer is that
+/// place: selecting text is a gesture made with the mouse, and it is the one anchor that is always
+/// available — the applications that will say where their selected characters are on screen are a
+/// minority, and a hint that appeared in two different places depending on which application was in
+/// front would be a rule nobody could learn.
 ///
 /// Everything here is physical pixels on one monitor's work area, and every value it is given has
 /// already been scaled for that monitor — see <see cref="Services.ScreenGeometry"/>. It computes and
@@ -24,50 +25,21 @@ internal static class HintPlacement
     /// <summary>
     /// The hint's top-left corner.
     /// </summary>
-    /// <param name="anchor">
-    /// The selection, or null when nothing would say where it is.
-    /// </param>
-    /// <param name="pointer">Where the pointer is, which is the fallback anchor.</param>
+    /// <param name="pointer">Where the pointer was when the shortcut was pressed.</param>
     /// <param name="size">The hint window's size.</param>
     /// <param name="workArea">The monitor being placed on, taskbar already taken off.</param>
     /// <param name="gap">
-    /// The breathing room between the hint and whatever it is placed against, and the closest it may
-    /// come to the edge of the screen.
+    /// The breathing room between the hint and the pointer, and the closest it may come to the edge
+    /// of the screen.
     /// </param>
-    public static (int Left, int Top) Place(
-        Rect? anchor, Point pointer, Size size, Rect workArea, double gap)
-    {
-        var (left, top) = anchor is { } selection
-            ? BySelection(selection, size, workArea, gap)
-            : ByPointer(pointer, gap);
-
-        return (
-            (int)Math.Round(Clamp(left, workArea.Left, workArea.Right - size.Width, gap)),
-            (int)Math.Round(Clamp(top, workArea.Top, workArea.Bottom - size.Height, gap)));
-    }
-
-    /// <remarks>
-    /// Centred on the selection and above it, which is where a reader's eye already is at the end of
-    /// the gesture that made the selection. Below it when there is no room above — a selection on the
-    /// first line of a maximised window has none — because the alternative is a hint clamped to the
-    /// top edge, sitting over the text it is about.
-    /// </remarks>
-    private static (double Left, double Top) BySelection(
-        Rect selection, Size size, Rect workArea, double gap)
-    {
-        var left = selection.Left + selection.Width / 2 - size.Width / 2;
-        var above = selection.Top - size.Height - gap;
-
-        return (left, above >= workArea.Top + gap ? above : selection.Bottom + gap);
-    }
-
     /// <remarks>
     /// Down and to the right, the way every tooltip on this platform sits: the pointer's hotspot is
-    /// its top-left corner, so that is the one direction where the hint cannot come out from under
+    /// its top-left corner, so that is the one direction where the card cannot come out from under
     /// the cursor itself.
     /// </remarks>
-    private static (double Left, double Top) ByPointer(Point pointer, double gap) =>
-        (pointer.X + gap * 2, pointer.Y + gap * 2);
+    public static (int Left, int Top) Place(Point pointer, Size size, Rect workArea, double gap) => (
+        (int)Math.Round(Clamp(pointer.X + gap * 2, workArea.Left, workArea.Right - size.Width, gap)),
+        (int)Math.Round(Clamp(pointer.Y + gap * 2, workArea.Top, workArea.Bottom - size.Height, gap)));
 
     /// <summary>Keeps a coordinate inside the work area, <paramref name="gap"/> off the edge.</summary>
     /// <remarks>
