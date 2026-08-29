@@ -55,6 +55,32 @@ public class QuickLookupWindowMarkupTests
     }
 
     /// <summary>
+    /// The presentation toggle belongs to the always-visible header rather than either result
+    /// panel, so a compact popup can always be expanded again.
+    /// </summary>
+    [Fact]
+    public void The_result_presentation_toggle_is_always_available()
+    {
+        var toggle = Window()
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == "CollapseBtn");
+
+        Assert.Null((string?)toggle.Attribute("Visibility"));
+    }
+
+    /// <summary>The compact preview must stay compact even when the translation is long.</summary>
+    [Fact]
+    public void The_compact_translation_is_one_trimmed_line()
+    {
+        var result = Window()
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == "CompactTranslatedText");
+
+        Assert.Equal("NoWrap", (string?)result.Attribute("TextWrapping"));
+        Assert.Equal("CharacterEllipsis", (string?)result.Attribute("TextTrimming"));
+    }
+
+    /// <summary>
     /// The transparent shadow canvas is an implementation detail. It must not leave the visible
     /// card below the screen edge when Windows places the popup's actual window against that edge.
     /// </summary>

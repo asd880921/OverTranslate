@@ -190,6 +190,7 @@ public class SettingsParsingTests
         Assert.Equal("Ctrl+Alt+A", settings.HotkeyDisplay);
         Assert.Equal(LanguageData.AutomaticSourceLanguage, settings.SourceLanguage);
         Assert.False(settings.QuickLookup.AutoCopyTranslation);
+        Assert.False(settings.QuickLookup.ResultsCollapsed);
     }
 
     // A round trip has to survive, or the tolerant read would quietly drop values on every save.
@@ -224,6 +225,7 @@ public class SettingsParsingTests
             QuickLookup =
             {
                 AutoCopyTranslation = true,
+                ResultsCollapsed = true,
             },
             Realtime =
             {
@@ -266,6 +268,7 @@ public class SettingsParsingTests
         Assert.False(settings.RealtimePauseHotkeyEnabled);
         Assert.True(settings.Capture.VerticalText);
         Assert.True(settings.QuickLookup.AutoCopyTranslation);
+        Assert.True(settings.QuickLookup.ResultsCollapsed);
         Assert.Equal(3, settings.Realtime.BlockCount);
         Assert.Equal(RealtimeCaptureMode.Window, settings.Realtime.CaptureMode);
         Assert.Equal(@"\\.\DISPLAY2", settings.Realtime.CaptureScreenDeviceName);
