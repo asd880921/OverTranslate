@@ -148,7 +148,9 @@ jobs:
               '> 更新內容請取代下方的 TODO，確認無誤後按 **Edit release** 取消勾選'
               '> *Set as a pre-release*，使用者才會收到這一版。'
               ''
-              '<details open>'
+              '## 🌐 Select your language ｜ 選擇語言'
+              ''
+              '<details>'
               '<summary><b>English</b></summary>'
               ''
               "# OverTranslate $v"
