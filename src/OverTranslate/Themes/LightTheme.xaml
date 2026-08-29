@@ -107,23 +107,21 @@
     <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="#D8D8D8"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
-    <!-- 快速翻譯's mark — see DarkTheme.xaml, which carries the palette this is derived from.
-         The plates are the one part that could not be kept: they were drawn pale for a dark
-         interface, and 設定 sets every mark on an AppAccentSubtle tile, which here is #DEEDFB —
-         within a few percent of the same brightness, so the plates disappeared into it and the
-         letters were left floating. Deepened until they read as plates again, with the hue and the
-         diagonal shading of the original kept; the letters stay the drawing's dark navy, which has
-         the contrast for it. The arrows follow the plates down for the same reason. -->
+    <!-- 快速翻譯's mark, in the light-interface version of the drawing it was made from — see
+         DarkTheme.xaml for the other one. The two differ only in these three values, and they have
+         to: 設定 sets every mark on an AppAccentSubtle tile, which here is #DEEDFB, and the plates
+         drawn for a dark interface are within a few percent of that brightness — they disappeared
+         into it and left the letters floating. -->
     <LinearGradientBrush x:Key="QuickTranslateTileFill" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Offset="0" Color="#6FCFEA"/>
-        <GradientStop Offset="1" Color="#35B0DC"/>
+        <GradientStop Offset="0" Color="#BFEAF6"/>
+        <GradientStop Offset="1" Color="#78CCE4"/>
     </LinearGradientBrush>
 
-    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#0B4A63"/>
+    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#083C52"/>
 
     <LinearGradientBrush x:Key="QuickTranslateArrowStroke" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Offset="0" Color="#10A9E6"/>
-        <GradientStop Offset="1" Color="#0286C4"/>
+        <GradientStop Offset="0" Color="#13A8D8"/>
+        <GradientStop Offset="1" Color="#087DB8"/>
     </LinearGradientBrush>
 
     <!-- Toast — same in both themes (always dark) -->
