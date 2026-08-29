@@ -81,6 +81,7 @@
 
         <!-- Settings cards scroll; the auto-save bar below stays put so it is always reachable -->
         <ScrollViewer Grid.Row="1"
+                      x:Name="CardsScroll"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="0,0,8,0">

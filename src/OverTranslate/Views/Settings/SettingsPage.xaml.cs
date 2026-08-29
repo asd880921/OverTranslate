@@ -627,7 +627,7 @@ public partial class SettingsPage : UserControl
         UploadDiagnosticsBtn.Visibility =
             DiagnosticUploadService.IsConfigured ? Visibility.Visible : Visibility.Collapsed;
 
-        DiagnosticsResultPanel.Visibility = Visibility.Visible;
+        ShowDiagnosticsResultPanel();
     }
 
     /// <summary>The panel as it looks when a bundle went up and came back with a code.</summary>
@@ -647,7 +647,7 @@ public partial class SettingsPage : UserControl
         // which arrives at the other end as a second report from someone who only had one problem.
         UploadDiagnosticsBtn.Visibility = Visibility.Collapsed;
 
-        DiagnosticsResultPanel.Visibility = Visibility.Visible;
+        ShowDiagnosticsResultPanel();
     }
 
     /// <summary>
@@ -682,8 +682,89 @@ public partial class SettingsPage : UserControl
         // still sitting on the disk.
         UploadDiagnosticsBtn.Visibility = Visibility.Visible;
 
-        DiagnosticsResultPanel.Visibility = Visibility.Visible;
+        ShowDiagnosticsResultPanel();
     }
+
+    /// <summary>
+    /// Shows the result panel, and scrolls to it when it has landed past the bottom of the page.
+    /// </summary>
+    /// <remarks>
+    /// The panel appears at the foot of the last card on a page that scrolls, so on anything short
+    /// of a tall window it arrives off screen. Without this the press looks like it did nothing:
+    /// the status line flashes and fades, and everything it produced — the code, the upload button,
+    /// the file — is somewhere the user has been given no reason to look.
+    ///
+    /// After a layout pass, because the panel became visible a moment ago and has no height yet;
+    /// scrolling to a zero-height element lands in the wrong place.
+    /// </remarks>
+    private void ShowDiagnosticsResultPanel()
+    {
+        DiagnosticsResultPanel.Visibility = Visibility.Visible;
+        Dispatcher.BeginInvoke(new Action(RevealDiagnosticsResult), DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Room left under the panel once it has been scrolled to, so it is not flush.</summary>
+    private const double RevealPadding = 12;
+
+    private static readonly Duration RevealDuration = new(TimeSpan.FromMilliseconds(280));
+
+    /// <remarks>
+    /// Animated rather than jumped, and that is the point rather than decoration: movement is what
+    /// says something appeared down here, where an instant re-position is indistinguishable from
+    /// the page having always looked that way — which is the thing this is trying to fix. Windows'
+    /// animation setting is the local reduced-motion preference, and with it off the scroll goes
+    /// straight there.
+    /// </remarks>
+    private void RevealDiagnosticsResult()
+    {
+        if (CardsScroll.Content is not FrameworkElement content) return;
+
+        // False if the user has navigated off the page while the export was running, in which case
+        // there is nothing on screen to scroll and no ancestor to measure against.
+        if (!DiagnosticsResultPanel.IsVisible) return;
+
+        var top = DiagnosticsResultPanel
+            .TransformToAncestor(content)
+            .Transform(new System.Windows.Point(0, 0)).Y;
+
+        var target = Math.Min(
+            top + DiagnosticsResultPanel.ActualHeight + RevealPadding - CardsScroll.ViewportHeight,
+            CardsScroll.ScrollableHeight);
+
+        // Only when it is genuinely out of sight. Moving the page under the eyes of someone who can
+        // already see the panel is the same interruption for none of the benefit.
+        if (target <= CardsScroll.VerticalOffset) return;
+
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            CardsScroll.ScrollToVerticalOffset(target);
+            return;
+        }
+
+        CardsScroll.BeginAnimation(ScrollOffsetProperty, new DoubleAnimation
+        {
+            From = CardsScroll.VerticalOffset,
+            To = target,
+            Duration = RevealDuration,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+
+            // Held rather than released at the end, unlike every other animation on this page:
+            // releasing hands the property back to its default of zero, and the callback below
+            // would scroll the page to the top the moment the movement finished.
+        });
+    }
+
+    /// <summary>
+    /// What the scroll animation drives. <see cref="ScrollViewer.VerticalOffset"/> is read-only, so
+    /// the animation moves this instead and every tick scrolls by hand.
+    /// </summary>
+    private static readonly DependencyProperty ScrollOffsetProperty =
+        DependencyProperty.RegisterAttached(
+            "ScrollOffset",
+            typeof(double),
+            typeof(SettingsPage),
+            new PropertyMetadata(0.0, (d, e) =>
+                ((ScrollViewer)d).ScrollToVerticalOffset((double)e.NewValue)));
 
     /// <summary>Segoe MDL2 Completed, the tick in a circle.</summary>
     private const string CompletedGlyph = "\uE930";
