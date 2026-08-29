@@ -69,19 +69,22 @@ public class QuickLookupWindowMarkupTests
         Assert.Equal("0", (string?)toggle.Parent?.Attribute("Grid.Column"));
     }
 
-    /// <summary>The compact preview must stay compact even when the translation is long.</summary>
+    /// <summary>The compact preview wraps long translations while keeping the speech action beside them.</summary>
     [Fact]
-    public void The_compact_translation_is_one_trimmed_line()
+    public void The_compact_translation_wraps_before_the_tts_action()
     {
         var result = Window()
             .Descendants()
             .Single(e => (string?)e.Attribute(X + "Name") == "CompactTranslatedText");
 
-        Assert.Equal("NoWrap", (string?)result.Attribute("TextWrapping"));
-        Assert.Equal("CharacterEllipsis", (string?)result.Attribute("TextTrimming"));
+        Assert.Equal("Wrap", (string?)result.Attribute("TextWrapping"));
+        Assert.Equal("540", (string?)result.Attribute("MaxWidth"));
+        Assert.Null((string?)result.Attribute("TextTrimming"));
         Assert.Equal("14", (string?)result.Attribute("FontSize"));
-        Assert.Equal("Bold", (string?)result.Attribute("FontWeight"));
+        Assert.Equal("SemiBold", (string?)result.Attribute("FontWeight"));
+        Assert.Equal("20", (string?)result.Attribute("LineHeight"));
         Assert.Equal("{Binding Foreground, ElementName=TranslatedText}", (string?)result.Attribute("Foreground"));
+        Assert.Equal("Horizontal", (string?)result.Parent?.Attribute("Orientation"));
     }
 
     /// <summary>The compact result exposes the same target-language speech action as the full result.</summary>

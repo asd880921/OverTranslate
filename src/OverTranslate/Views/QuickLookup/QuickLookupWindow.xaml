@@ -556,25 +556,19 @@
                                            FontSize="12"
                                            TextWrapping="Wrap"
                                            Visibility="Collapsed"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-
+                                <StackPanel Orientation="Horizontal">
                                     <TextBlock x:Name="CompactTranslatedText"
-                                               Grid.Column="0"
                                                FontFamily="{StaticResource AppFont}"
                                                FontSize="14"
-                                               FontWeight="Bold"
+                                               FontWeight="SemiBold"
+                                               LineHeight="20"
                                                Foreground="{Binding Foreground, ElementName=TranslatedText}"
                                                VerticalAlignment="Center"
-                                               TextWrapping="NoWrap"
-                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="540"
                                                Visibility="Collapsed"/>
 
                                     <Button x:Name="CompactTgtTtsBtn"
-                                            Grid.Column="1"
                                             Style="{StaticResource HeaderIconButton}"
                                             Content="{Binding Content, ElementName=TgtTtsBtn}"
                                             Margin="6,0,0,0"
@@ -582,7 +576,7 @@
                                             Visibility="{Binding Visibility, ElementName=CompactTranslatedText}"
                                             ToolTip="{DynamicResource S.Translation.SpeakResult}"
                                             Click="TgtTtsBtn_Click"/>
-                                </Grid>
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
 
