@@ -11,7 +11,7 @@
     <br/>
     OverTranslate
   </h1>
-  <p>A Windows screen translator with screenshot, real-time, and quick lookup translation, showing the results right on the original screen.</p>
+  <p>A Windows screen translator with screenshot, real-time, quick lookup and quick translate, showing the results right on the original screen.</p>
 
   <p>
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
@@ -32,6 +32,18 @@
 
 ---
 
+## Ways to Translate
+
+OverTranslate offers five ways to translate, so you can pick the one that suits what you are doing:
+
+- **Screenshot Translation** — select an area of the screen; the text is recognised and the translation is shown right on it
+- **Real-time Translation** — continuously translates a chosen area of a video or a game, with the translation shown in place
+- **Quick Lookup** — select some text and a compact translation popup opens; it can be pinned to stay on screen
+- **Quick Translate** — select some text and press the hotkey to translate it and replace it in place
+- **Text Translation** — the full translation window, with text input, swapping languages and reading aloud
+
+---
+
 ## Screenshot Translation
 
 **The main window can be closed so the app just sits in the system tray**, there's no need to keep the window open all the time.  
@@ -45,25 +57,6 @@ When you need a translation, press the hotkey (default Ctrl + Alt + A) and selec
 | ![截圖翻譯1-前.png](docs/images/截圖翻譯1-前.png) | ![截圖翻譯1-後.png](docs/images/截圖翻譯1-後.png) |
 | ![截圖翻譯2-前.png](docs/images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](docs/images/截圖翻譯2-後.png) |
 | ![截圖翻譯3-前.png](docs/images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](docs/images/截圖翻譯3-後.png) |
-
----
-
-## Quick Lookup
-> The hotkey (default `Ctrl + Alt + Q`) opens it on top of whatever is on screen.
-
-Select some text and press the hotkey and it is picked up and translated straight away; with nothing selected, you can type the text in yourself.  
-The window closes itself when you switch to another window; pin it if you need it to stay on screen.
-
-![Quick lookup](docs/images/選詞翻譯.png)
-
----
-
-## Quick Translate
-> The hotkey (default `Ctrl + Alt + E`), with no window to open.
-
-Select some text and press the hotkey: the translation is pasted straight over it (only in fields that accept typed text; nothing can be pasted outside an input area).
-
-![Quick translate](docs/images/快速翻譯.png)
 
 ---
 
@@ -99,6 +92,25 @@ Translation blocks come in two modes, **Subtitles / Dialogue** and **Game / UI**
 | Selection | Translation result |
 |-----------|--------------------|
 | ![Real-time translation - game selection](docs/images/即時翻譯-遊戲翻譯框.png) | ![Real-time translation - game result](docs/images/即時翻譯-遊戲翻譯.png) |
+
+## Quick Lookup
+> The hotkey (default `Ctrl + Alt + Q`) opens it on top of whatever is on screen.
+
+Select some text and press the hotkey and it is picked up and translated straight away; with nothing selected, you can type the text in yourself.  
+The window closes itself when you switch to another window; pin it if you need it to stay on screen.
+
+![Quick lookup](docs/images/選詞翻譯.png)
+
+---
+
+## Quick Translate
+> The hotkey (default `Ctrl + Alt + E`), with no window to open.
+
+Select some text and press the hotkey: the translation is pasted straight over it (only in fields that accept typed text; nothing can be pasted outside an input area).
+
+![Quick translate](docs/images/快速翻譯.png)
+
+---
 
 ## Text Translation
 
