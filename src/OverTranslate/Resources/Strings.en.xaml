@@ -420,7 +420,7 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.DiagnosticsExportedHint">The file is on your device and nothing has been sent. Upload sends it to the developer, together with a note about what went wrong. Open file to see what it contains.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsNoEndpointHint">The file is on your device and nothing has been sent. Report the problem through GitHub or the forum and attach it. Open file to see what it contains.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">Diagnostics exported</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint" xml:space="preserve">Give this report code to the developer through GitHub or the forum — the diagnostics were uploaded successfully. Open file to see what was exported this time.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint">The diagnostics were uploaded. If you have more to add, give this report code through GitHub or the forum. Open file to see what was exported this time.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsNotUploadedHint" xml:space="preserve">The diagnostics were exported but could not be uploaded. Please report the problem through GitHub or the forum and attach the file. Open file to get what was exported this time.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsRetention">Files are deleted automatically after 30 days</sys:String>
     <sys:String x:Key="S.Settings.CopyCode">Copy</sys:String>
@@ -448,9 +448,9 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailed">⚠ The diagnostics were exported but could not be uploaded</sys:String>
 
     <!-- ── Diagnostics note ── -->
-    <sys:String x:Key="S.Settings.NoteTitle">Tell the developer what happened</sys:String>
-    <sys:String x:Key="S.Settings.NoteIntro">The diagnostics say what the app was doing. This is where you say what you were doing — it goes up with the file. You can leave it empty.</sys:String>
-    <sys:String x:Key="S.Settings.NotePlaceholder" xml:space="preserve">What went wrong, and what you were doing at the time.&#x0a;Anything that makes it happen again is the most useful thing you can write here.</sys:String>
+    <sys:String x:Key="S.Settings.NoteTitle">Report a problem</sys:String>
+    <sys:String x:Key="S.Settings.NoteIntro">What you write here is sent together with the diagnostics, and is used only to help work out what went wrong.</sys:String>
+    <sys:String x:Key="S.Settings.NotePlaceholder">Add what you were doing when the problem appeared, or anything else that might be related — it helps the developer find the cause sooner. This field can be left empty.</sys:String>
     <sys:String x:Key="S.Settings.NoteSending">Uploading…</sys:String>
     <sys:String x:Key="S.Settings.NoteUploadFailed">The upload did not go through. The file is still on your device, so you can try again.</sys:String>
     <sys:String x:Key="S.Settings.NoteAttachFailed">Your message could not be written into the file, so nothing was sent. Please try again.</sys:String>

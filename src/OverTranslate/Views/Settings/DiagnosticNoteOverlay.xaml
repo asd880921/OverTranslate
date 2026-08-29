@@ -32,12 +32,11 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" Margin="0,0,0,14">
+                <Grid Grid.Row="0" Margin="0,0,0,2">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="&#xE939;" Style="{StaticResource CardHeaderIcon}" FontSize="18"/>
+                        <TextBlock Text="&#xE8BD;" Style="{StaticResource CardHeaderIcon}" FontSize="18"/>
                         <TextBlock Text="{DynamicResource S.Settings.NoteTitle}"
                                    FontFamily="{StaticResource AppFont}"
                                    FontSize="17"
@@ -57,9 +56,10 @@
                             Click="CloseBtn_Click"/>
                 </Grid>
 
-                <Rectangle Grid.Row="1" Height="1" Fill="{DynamicResource AppSeparator}"/>
-
-                <StackPanel Grid.Row="2" Margin="0,16,0,0">
+                <!-- No rule under the header. The card is one question with one field: a line across
+                     it divides nothing, and the intro underneath is the title's own second sentence
+                     rather than a separate section. -->
+                <StackPanel Grid.Row="1" Margin="0,14,0,0">
                     <TextBlock Text="{DynamicResource S.Settings.NoteIntro}"
                                FontFamily="{StaticResource AppFont}"
                                FontSize="{StaticResource AppFontSize}"
@@ -141,7 +141,7 @@
                     </Border>
                 </StackPanel>
 
-                <StackPanel Grid.Row="3"
+                <StackPanel Grid.Row="2"
                             Orientation="Horizontal"
                             HorizontalAlignment="Right"
                             Margin="0,18,0,0">
