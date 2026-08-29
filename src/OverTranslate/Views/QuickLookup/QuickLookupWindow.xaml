@@ -420,6 +420,7 @@
                                            TextOptions.TextFormattingMode="Ideal"
                                            TextOptions.TextRenderingMode="ClearType"
                                            Foreground="{DynamicResource AppTextPrimary}"
+                                           VerticalAlignment="Top"
                                            TextWrapping="Wrap"
                                            MaxWidth="440"/>
 
@@ -430,7 +431,7 @@
                                 <Button x:Name="TgtTtsBtn"
                                         Style="{StaticResource HeaderIconButton}"
                                         Content="&#xE767;"
-                                        Margin="8,4,0,0"
+                                        Margin="8,1,0,0"
                                         VerticalAlignment="Top"
                                         Visibility="Collapsed"
                                         ToolTip="{DynamicResource S.Translation.SpeakResult}"
@@ -556,14 +557,15 @@
                                            FontSize="12"
                                            TextWrapping="Wrap"
                                            Visibility="Collapsed"/>
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel x:Name="CompactTranslationRow" Orientation="Horizontal">
                                     <TextBlock x:Name="CompactTranslatedText"
                                                FontFamily="{StaticResource AppFont}"
                                                FontSize="14"
                                                FontWeight="SemiBold"
                                                LineHeight="20"
                                                Foreground="{Binding Foreground, ElementName=TranslatedText}"
-                                               VerticalAlignment="Center"
+                                               Margin="0,5,0,0"
+                                               VerticalAlignment="Top"
                                                TextWrapping="Wrap"
                                                MaxWidth="440"
                                                Visibility="Collapsed"/>
@@ -571,7 +573,7 @@
                                     <Button x:Name="CompactTgtTtsBtn"
                                             Style="{StaticResource HeaderIconButton}"
                                             Content="{Binding Content, ElementName=TgtTtsBtn}"
-                                            Margin="8,4,0,0"
+                                            Margin="8,0,0,0"
                                             VerticalAlignment="Top"
                                             Visibility="{Binding Visibility, ElementName=CompactTranslatedText}"
                                             ToolTip="{DynamicResource S.Translation.SpeakResult}"

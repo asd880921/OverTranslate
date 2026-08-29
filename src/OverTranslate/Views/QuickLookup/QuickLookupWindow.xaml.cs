@@ -1078,7 +1078,7 @@ public partial class QuickLookupWindow : Window
             : Visibility.Collapsed;
 
         CompactTranslatedText.Text = TranslatedText.Text;
-        CompactTranslatedText.Margin = _lastResultAutoCopied
+        CompactTranslationRow.Margin = _lastResultAutoCopied
             ? new Thickness(0, 3, 0, 0)
             : new Thickness(0);
         CompactTranslatedText.Visibility = TranslatedText.Text.Length > 0

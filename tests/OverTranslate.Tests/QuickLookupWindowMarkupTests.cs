@@ -83,6 +83,8 @@ public class QuickLookupWindowMarkupTests
         Assert.Equal("14", (string?)result.Attribute("FontSize"));
         Assert.Equal("SemiBold", (string?)result.Attribute("FontWeight"));
         Assert.Equal("20", (string?)result.Attribute("LineHeight"));
+        Assert.Equal("0,5,0,0", (string?)result.Attribute("Margin"));
+        Assert.Equal("Top", (string?)result.Attribute("VerticalAlignment"));
         Assert.Equal("{Binding Foreground, ElementName=TranslatedText}", (string?)result.Attribute("Foreground"));
         Assert.Equal("Horizontal", (string?)result.Parent?.Attribute("Orientation"));
     }
@@ -98,9 +100,27 @@ public class QuickLookupWindowMarkupTests
         Assert.Equal("{StaticResource HeaderIconButton}", (string?)button.Attribute("Style"));
         Assert.Equal("{Binding Content, ElementName=TgtTtsBtn}", (string?)button.Attribute("Content"));
         Assert.Equal("{Binding Visibility, ElementName=CompactTranslatedText}", (string?)button.Attribute("Visibility"));
-        Assert.Equal("8,4,0,0", (string?)button.Attribute("Margin"));
+        Assert.Equal("8,0,0,0", (string?)button.Attribute("Margin"));
         Assert.Equal("Top", (string?)button.Attribute("VerticalAlignment"));
         Assert.Equal("TgtTtsBtn_Click", (string?)button.Attribute("Click"));
+    }
+
+    /// <summary>Each speech button is centered on the first line box, independent of script glyph size.</summary>
+    [Fact]
+    public void The_result_tts_buttons_align_to_the_first_line_box()
+    {
+        var window = Window();
+        XElement Element(string name) => window
+            .Descendants()
+            .Single(e => (string?)e.Attribute(X + "Name") == name);
+
+        Assert.Equal("32", (string?)Element("TranslatedText").Attribute("LineHeight"));
+        Assert.Equal("Top", (string?)Element("TranslatedText").Attribute("VerticalAlignment"));
+        Assert.Equal("8,1,0,0", (string?)Element("TgtTtsBtn").Attribute("Margin"));
+        Assert.Equal("Top", (string?)Element("TgtTtsBtn").Attribute("VerticalAlignment"));
+        Assert.Equal("20", (string?)Element("CompactTranslatedText").Attribute("LineHeight"));
+        Assert.Equal("0,5,0,0", (string?)Element("CompactTranslatedText").Attribute("Margin"));
+        Assert.Equal("8,0,0,0", (string?)Element("CompactTgtTtsBtn").Attribute("Margin"));
     }
 
     /// <summary>
