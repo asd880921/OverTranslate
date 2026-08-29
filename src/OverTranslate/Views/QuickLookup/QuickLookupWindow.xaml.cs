@@ -1069,14 +1069,18 @@ public partial class QuickLookupWindow : Window
 
     private void RenderCompactCompletion()
     {
-        CompactStatusText.Text = LocalizationService.Get(
-            _lastResultAutoCopied
-                ? "S.QuickLookup.TranslationCopied"
-                : "S.QuickLookup.TranslationComplete");
+        CompactStatusText.Text = _lastResultAutoCopied
+            ? LocalizationService.Get("S.QuickLookup.TranslationCopied")
+            : "";
         CompactStatusText.SetResourceReference(ForegroundProperty, "AppAccent");
-        CompactStatusText.Visibility = Visibility.Visible;
+        CompactStatusText.Visibility = _lastResultAutoCopied
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         CompactTranslatedText.Text = TranslatedText.Text;
+        CompactTranslatedText.Margin = _lastResultAutoCopied
+            ? new Thickness(0, 3, 0, 0)
+            : new Thickness(0);
         CompactTranslatedText.Visibility = TranslatedText.Text.Length > 0
             ? Visibility.Visible
             : Visibility.Collapsed;

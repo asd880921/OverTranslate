@@ -139,8 +139,7 @@
     <sys:String x:Key="S.QuickLookup.AutoCopyHint">翻譯完成後，自動將結果複製到剪貼簿</sys:String>
     <sys:String x:Key="S.QuickLookup.Collapse">收起</sys:String>
     <sys:String x:Key="S.QuickLookup.Expand">展開</sys:String>
-    <sys:String x:Key="S.QuickLookup.TranslationComplete">翻譯完成</sys:String>
-    <sys:String x:Key="S.QuickLookup.TranslationCopied">翻譯完成，已自動複製到剪貼簿</sys:String>
+    <sys:String x:Key="S.QuickLookup.TranslationCopied">已自動複製到剪貼簿</sys:String>
     <sys:String x:Key="S.QuickLookup.OpenFullSettings">完整設定</sys:String>
     <sys:String x:Key="S.QuickLookup.SettingsHint">按 {0} 開啟。切換至其他視窗時會自動關閉；如需持續顯示，可釘選此視窗。</sys:String>
 

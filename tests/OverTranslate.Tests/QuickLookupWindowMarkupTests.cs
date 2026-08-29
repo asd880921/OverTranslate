@@ -66,6 +66,7 @@ public class QuickLookupWindowMarkupTests
             .Single(e => (string?)e.Attribute(X + "Name") == "CollapseBtn");
 
         Assert.Null((string?)toggle.Attribute("Visibility"));
+        Assert.Equal("0", (string?)toggle.Parent?.Attribute("Grid.Column"));
     }
 
     /// <summary>The compact preview must stay compact even when the translation is long.</summary>
@@ -78,6 +79,9 @@ public class QuickLookupWindowMarkupTests
 
         Assert.Equal("NoWrap", (string?)result.Attribute("TextWrapping"));
         Assert.Equal("CharacterEllipsis", (string?)result.Attribute("TextTrimming"));
+        Assert.Equal("13", (string?)result.Attribute("FontSize"));
+        Assert.Equal("Bold", (string?)result.Attribute("FontWeight"));
+        Assert.Equal("{DynamicResource AppTextPrimary}", (string?)result.Attribute("Foreground"));
     }
 
     /// <summary>
