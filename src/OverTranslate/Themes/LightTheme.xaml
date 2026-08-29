@@ -107,21 +107,26 @@
     <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="#D8D8D8"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
-    <!-- 快速翻譯's mark, in the light-interface version of the drawing it was made from — see
-         DarkTheme.xaml for the other one. The two differ only in these three values, and they have
-         to: 設定 sets every mark on an AppAccentSubtle tile, which here is #DEEDFB, and the plates
-         drawn for a dark interface are within a few percent of that brightness — they disappeared
-         into it and left the letters floating. -->
+    <!-- 快速翻譯's mark. The drawing it was made from is dark-interface artwork — pale plates with
+         dark letters — and see DarkTheme.xaml, where it is kept exactly as drawn. It cannot be
+         carried over here: 設定 sets every mark on an AppAccentSubtle tile, #DEEDFB, and pale plates
+         land within a few percent of that brightness. Deepening them alone was not enough either —
+         plate, tile and letters then all sit in one narrow low-saturation band and the mark reads as
+         muddy rather than light.
+         
+         So the light theme inverts it, which is what a light interface does anyway: solid plates in
+         the blue the marks beside this one are drawn in, and the letters knocked out white. The
+         arrows follow the plates so the mark stays one object. -->
     <LinearGradientBrush x:Key="QuickTranslateTileFill" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Offset="0" Color="#BFEAF6"/>
-        <GradientStop Offset="1" Color="#78CCE4"/>
+        <GradientStop Offset="0" Color="#2B9FD9"/>
+        <GradientStop Offset="1" Color="#0B72B8"/>
     </LinearGradientBrush>
 
-    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#083C52"/>
+    <SolidColorBrush x:Key="QuickTranslateGlyphFill" Color="#FFFFFF"/>
 
     <LinearGradientBrush x:Key="QuickTranslateArrowStroke" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Offset="0" Color="#13A8D8"/>
-        <GradientStop Offset="1" Color="#087DB8"/>
+        <GradientStop Offset="0" Color="#2B9FD9"/>
+        <GradientStop Offset="1" Color="#0B72B8"/>
     </LinearGradientBrush>
 
     <!-- Toast — same in both themes (always dark) -->
