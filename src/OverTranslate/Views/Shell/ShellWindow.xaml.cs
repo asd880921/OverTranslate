@@ -132,6 +132,7 @@ public partial class ShellWindow : Window
         // Subscribed once here rather than per open, so the handler is not stacked up by a user who
         // opens the service panel more than once.
         ServiceSettings.Closed += (_, _) => _settingsPage.RefreshServiceTiles();
+        DiagnosticNote.Closed += (_, result) => _settingsPage.ReportDiagnosticUpload(result);
 
         // Subscribed rather than refreshed on show: a session ending brings this window back with
         // Show(), not through ShowOrActivate, so nothing else would clear the disabled state and
@@ -605,6 +606,18 @@ public partial class ShellWindow : Window
     /// </remarks>
     public void OpenServiceSettings(Models.TranslationProvider provider)
         => ServiceSettings.Open(provider);
+
+    /// <summary>
+    /// Opens the panel that collects what the user wants to say about the problem and sends the
+    /// bundle with it.
+    /// </summary>
+    /// <remarks>
+    /// Hosted here for the same reason the service panel is: the scrim has to cover the nav rail,
+    /// and an upload in flight is exactly the moment the user must not be able to navigate away
+    /// from the thing that will tell them how it went.
+    /// </remarks>
+    public void OpenDiagnosticNote(string bundlePath)
+        => DiagnosticNote.Open(bundlePath);
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {

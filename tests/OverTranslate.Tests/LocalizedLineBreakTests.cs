@@ -19,11 +19,13 @@ namespace OverTranslate.Tests;
 // a test that fails for something nobody is fixing is a test people learn to ignore.
 public class LocalizedLineBreakTests
 {
+    // The two result-panel hints were written as two lines and have since been rewritten as one
+    // paragraph each — deliberately, as the wording changed around the export and upload being
+    // separate presses. They are out because a break is no longer what they are asking for; the
+    // card's own hint still is, and is what this guards.
     private static readonly string[] TwoLineKeys =
     {
         "S.Settings.DiagnosticsUploadHint",
-        "S.Settings.DiagnosticsUploadedHint",
-        "S.Settings.DiagnosticsNotUploadedHint",
     };
 
     [Theory]

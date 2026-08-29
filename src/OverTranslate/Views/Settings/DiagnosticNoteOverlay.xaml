@@ -1,0 +1,210 @@
+<UserControl x:Class="OverTranslate.Views.Settings.DiagnosticNoteOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed"
+             Focusable="True">
+
+    <!-- Scrim: swallows clicks so the page underneath stays inert, and dismisses on click -->
+    <Grid x:Name="Scrim"
+          Background="#8C000000"
+          MouseLeftButtonDown="Scrim_MouseLeftButtonDown">
+
+        <Border x:Name="Card"
+                Width="520"
+                UseLayoutRounding="True"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                CornerRadius="12"
+                Background="{DynamicResource AppCardBg}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1"
+                RenderTransformOrigin="0.5,0.5"
+                MouseLeftButtonDown="Card_MouseLeftButtonDown">
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+            </Border.RenderTransform>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.3" Color="#000000"/>
+            </Border.Effect>
+
+            <Grid Margin="24,18,24,18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,2">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE8BD;" Style="{StaticResource CardHeaderIcon}" FontSize="18"/>
+                        <TextBlock Text="{DynamicResource S.Settings.NoteTitle}"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="17"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppTextPrimary}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <!-- Hidden while the upload is in flight, along with every other way out: the
+                         request is already on the wire and closing the card would leave the page
+                         behind it with no idea how it ended. -->
+                    <Button x:Name="CloseBtn"
+                            Style="{StaticResource OverlayCloseButton}"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Margin="0,0,-8,0"
+                            ToolTip="{DynamicResource S.Common.Close}"
+                            Click="CloseBtn_Click"/>
+                </Grid>
+
+                <!-- No rule under the header. The card is one question with one field: a line across
+                     it divides nothing, and the intro underneath is the title's own second sentence
+                     rather than a separate section. -->
+                <StackPanel Grid.Row="1" Margin="0,14,0,0">
+                    <TextBlock Text="{DynamicResource S.Settings.NoteIntro}"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="{StaticResource AppFontSize}"
+                               Foreground="{DynamicResource AppTextSecondary}"
+                               TextWrapping="Wrap"
+                               LineHeight="20"
+                               Margin="0,0,0,10"/>
+
+                    <Grid>
+                        <!-- A fixed height, unlike the prompt editor this style was written for:
+                             that one is in a card that scrolls, while this card is centred on the
+                             screen, so a box that grew with the text would push the send button
+                             down the screen as someone typed towards it. The template's own
+                             scroller takes over instead. -->
+                        <!-- On the box rather than on the ScrollViewer inside the style's template,
+                             where it looks like it belongs and does nothing: TextBoxBase pushes its
+                             own value onto PART_ContentHost when the template is applied, and its
+                             own default is Hidden. The box scrolls either way — this is what makes
+                             the bar appear while it does. -->
+                        <TextBox x:Name="NoteBox"
+                                 Style="{StaticResource SettingsMultilineTextBox}"
+                                 Height="150"
+                                 VerticalScrollBarVisibility="Auto"
+                                 SpellCheck.IsEnabled="False"
+                                 TextChanged="NoteBox_TextChanged"/>
+                        <!-- IsHitTestVisible off so clicking the prompt still lands in the box -->
+                        <TextBlock x:Name="NotePlaceholder"
+                                   Text="{DynamicResource S.Settings.NotePlaceholder}"
+                                   IsHitTestVisible="False"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="{StaticResource AppFontSize}"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   Opacity="0.7"
+                                   Margin="15,11,15,0"
+                                   LineHeight="21"
+                                   VerticalAlignment="Top"
+                                   TextWrapping="Wrap"/>
+                    </Grid>
+
+                    <!-- What is actually about to leave the machine, named next to the box that is
+                         about to send it. The file name is the one thing here the user can check
+                         against what they exported a moment ago. -->
+                    <StackPanel Orientation="Horizontal" Margin="2,10,0,0">
+                        <TextBlock Text="&#xE7C3;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,6,0"/>
+                        <TextBlock x:Name="BundleNameText"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- The failure state stays inside the card rather than dismissing it: what was
+                         typed is still in the box, the button is still there to press again, and the
+                         one thing that changes is that there is now a way out that does not need the
+                         upload to work. -->
+                    <Border x:Name="FailurePanel"
+                            Visibility="Collapsed"
+                            Margin="0,12,0,0"
+                            Background="{DynamicResource AppInputBg}"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7BA;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="13"
+                                       Foreground="{DynamicResource AppError}"
+                                       VerticalAlignment="Top"
+                                       Margin="0,1,9,0"/>
+                            <TextBlock x:Name="FailureText"
+                                       FontFamily="{StaticResource AppFont}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource AppTextSecondary}"
+                                       TextWrapping="Wrap"
+                                       LineHeight="18"
+                                       MaxWidth="404">
+                                <Run x:Name="FailureRun"/>
+                                <LineBreak/>
+                                <Hyperlink NavigateUri="https://github.com/asd880921/OverTranslate/issues"
+                                           RequestNavigate="Hyperlink_RequestNavigate"><Run Text="{DynamicResource S.Settings.NoteReportManually}"/></Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Margin="0,18,0,0">
+                    <Button x:Name="CancelBtn"
+                            Style="{StaticResource FlatButton}"
+                            Height="34"
+                            Padding="18,0"
+                            Margin="0,0,8,0"
+                            Content="{DynamicResource S.Common.Cancel}"
+                            Click="CancelBtn_Click"/>
+
+                    <Button x:Name="SendBtn"
+                            Style="{StaticResource AccentButton}"
+                            Height="34"
+                            Padding="18,0"
+                            Click="SendBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Same ring as the overlay's own processing indicator, at the size
+                                 this button's text is set in. Collapsed until the press, so the
+                                 button reads as a button rather than as something already working. -->
+                            <Viewbox x:Name="SendSpinner"
+                                     Width="13" Height="13"
+                                     Visibility="Collapsed"
+                                     Margin="0,0,8,0"
+                                     VerticalAlignment="Center">
+                                <Path Data="M 8,0 A 8,8 0 1 1 0,8 L 2.2,8 A 5.8,5.8 0 1 0 8,2.2 Z"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      RenderTransformOrigin="0.5,0.5">
+                                    <Path.RenderTransform>
+                                        <RotateTransform/>
+                                    </Path.RenderTransform>
+                                    <Path.Triggers>
+                                        <EventTrigger RoutedEvent="Path.Loaded">
+                                            <BeginStoryboard>
+                                                <Storyboard RepeatBehavior="Forever">
+                                                    <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle"
+                                                                     From="0"
+                                                                     To="360"
+                                                                     Duration="0:0:0.9"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Path.Triggers>
+                                </Path>
+                            </Viewbox>
+                            <TextBlock x:Name="SendLabel"
+                                       Text="{DynamicResource S.Settings.UploadBundle}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -9,6 +9,7 @@
     <!-- ── Shared ── -->
     <sys:String x:Key="S.Common.Reset">重設</sys:String>
     <sys:String x:Key="S.Common.Close">關閉</sys:String>
+    <sys:String x:Key="S.Common.Cancel">取消</sys:String>
     <sys:String x:Key="S.Common.Configure">設定</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API Key</sys:String>
 
@@ -436,11 +437,14 @@
     <sys:String x:Key="S.Settings.DiagnosticsHint">匯出時會將記錄檔、系統資訊與目前設定整理成診斷檔，方便附在問題回報中。API 金鑰等敏感資訊不會包含在內，也不會自動上傳任何資料。</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">匯出診斷資訊</sys:String>
     <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">開啟資料夾</sys:String>
-    <sys:String x:Key="S.Settings.UploadDiagnostics">上傳診斷資訊</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadHint" xml:space="preserve">診斷資訊包含記錄檔、系統資訊與目前設定，敏感資料會被替換。&#x0a;診斷檔會保留在本機，並於 30 天後自動刪除。</sys:String>
+    <sys:String x:Key="S.Settings.UploadBundle">上傳</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">回報代碼</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExportedTitle">診斷資訊已匯出，尚未上傳</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExportedHint">檔案已儲存在你的電腦上，目前尚未上傳。按「上傳」可將診斷資訊與補充說明一併傳送給開發者；按「開啟檔案」可查看內容。</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsNoEndpointHint">檔案已存在你的電腦上，目前還沒有送出任何資料。請透過 GitHub 或論壇回報問題並附上此檔案。按「開啟檔案」可查看內容。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">診斷資訊已匯出</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint" xml:space="preserve">將此回報代碼透過 GitHub 或論壇提供給開發者即可，診斷資訊已成功上傳。按「開啟檔案」可查看本次匯出的診斷資訊。</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint">診斷資訊已成功上傳。如需進一步說明，可透過 GitHub 或論壇提供此回報代碼。按「開啟檔案」可查看本次匯出的診斷資訊。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsNotUploadedHint" xml:space="preserve">診斷資訊已成功匯出，但無法上傳。請透過 GitHub 或論壇回報問題並附上檔案。按「開啟檔案」可取得本次匯出的診斷資訊。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsRetention">檔案將於 30 天後自動刪除</sys:String>
     <sys:String x:Key="S.Settings.CopyCode">複製</sys:String>
@@ -461,11 +465,20 @@
     <sys:String x:Key="S.Settings.OpenFolderFailed">✗ 無法開啟資料夾：{0}</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsExported">✓ 已匯出診斷資訊</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsFailed">✗ 無法匯出診斷資訊：{0}</sys:String>
-    <sys:String x:Key="S.Settings.DiagnosticsUploading">正在整理並上傳…</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExporting">正在整理診斷資訊…</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploaded">✓ 已上傳，代碼 {0}</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsCodeCopied">✓ 已複製代碼</sys:String>
     <sys:String x:Key="S.Settings.CopyFailed">✗ 無法複製，請直接看上方顯示的代碼。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsUploadFailed">⚠ 診斷資訊已成功匯出，但無法進行上傳</sys:String>
+
+    <!-- ── 診斷資訊說明 ── -->
+    <sys:String x:Key="S.Settings.NoteTitle">回報問題</sys:String>
+    <sys:String x:Key="S.Settings.NoteIntro">你填寫的內容會隨診斷資訊一起送出，僅用於協助問題排查。</sys:String>
+    <sys:String x:Key="S.Settings.NotePlaceholder">可補充問題發生時的操作情況或其他相關資訊，幫助開發者更快找到原因。此欄位可以留空。</sys:String>
+    <sys:String x:Key="S.Settings.NoteSending">上傳中…</sys:String>
+    <sys:String x:Key="S.Settings.NoteUploadFailed">這次沒有上傳成功。檔案還在你的電腦上，可以再試一次。</sys:String>
+    <sys:String x:Key="S.Settings.NoteAttachFailed">無法將訊息寫入診斷檔案，因此沒有送出任何資料，請再試一次。</sys:String>
+    <sys:String x:Key="S.Settings.NoteReportManually">改用 GitHub 回報</sys:String>
     <sys:String x:Key="S.Settings.HotkeyTaken">✗ {0} 已指派給「{1}」</sys:String>
 
 </ResourceDictionary>
