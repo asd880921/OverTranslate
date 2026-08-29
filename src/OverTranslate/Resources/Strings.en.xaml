@@ -359,8 +359,7 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">If text is selected, it is carried in and translated as the popup opens.</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkey">Quick translate</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">Replaces the [[selected text]] with its translation</sys:String>
-    <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote">Only in fields that accept typed text; nothing can be pasted outside an input area.</sys:String>
-    <sys:String x:Key="S.Settings.QuickTranslateHotkeySharedNote">The languages and the translation service are the ones text translation is set to.</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote">Only in fields that accept typed text; nothing can be pasted outside an input area. The languages and the translation service are the ones text translation is set to.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ A single key can only be F1–F24, Pause or Scroll Lock — other keys need Ctrl/Alt/Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>

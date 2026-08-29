@@ -294,23 +294,27 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <!-- A Grid rather than a horizontal StackPanel, which is what these
-                                     were: a StackPanel hands its children all the width they ask
-                                     for, so a note longer than the card simply ran off the end of
-                                     it — which the English wording of these two does. The star
-                                     column is what gives the text an end to reach, and it is cut
-                                     with an ellipsis there rather than wrapped, so a note never
-                                     changes the height of the row it is in. The whole line is on
-                                     the tooltip for whoever needs the rest of it.
+                                <!-- Two sentences under one ⓘ, and deliberately not two ⓘ lines.
+                                     Every other row carries exactly one, so a second turns the mark
+                                     from a footnote into a bullet: the eye reads "this row has two
+                                     points" before it reads either of them, and the rhythm of the
+                                     card breaks at this row.
 
-                                     Two of them here, which no other row needs, and both are here
-                                     because this feature has no interface of its own. Every other
-                                     way into a translation shows the reader what it is about to do —
-                                     取詞翻譯 carries the language and service pickers in its own
-                                     header — while this one is a key press over somebody else's
-                                     window. What it will not do, and what settings it will do it
-                                     with, are answerable nowhere else. -->
-                                <Grid Margin="47,8,0,0">
+                                     Both sentences are here because this feature has no interface of
+                                     its own. Every other way into a translation shows the reader
+                                     what it is about to do — 取詞翻譯 carries the language and
+                                     service pickers in its own header — while this one is a key
+                                     press over somebody else's window. What it will not do, and what
+                                     settings it will do it with, are answerable nowhere else.
+
+                                     So this note wraps where the others are cut with an ellipsis: a
+                                     second line here is the paragraph continuing, which is what it
+                                     is, while on the other rows it would be one sentence that did
+                                     not fit. The Grid is what gives either behaviour an edge to work
+                                     against — a horizontal StackPanel, which is what these were,
+                                     hands its children all the width they ask for, and the notes
+                                     simply ran off the end of the card. -->
+                                <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
@@ -321,39 +325,13 @@
                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                FontSize="12"
                                                Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
+                                               VerticalAlignment="Top"
+                                               Margin="0,1,8,0"/>
                                     <TextBlock Grid.Column="1"
                                                Text="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
                                                Margin="0"
-                                               TextWrapping="NoWrap"
-                                               TextTrimming="CharacterEllipsis"
-                                               ToolTip="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
-                                               VerticalAlignment="Center"/>
-                                </Grid>
-
-                                <Grid Margin="47,4,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBlock Grid.Column="0"
-                                               Text="&#xE946;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
-                                    <TextBlock Grid.Column="1"
-                                               Text="{DynamicResource S.Settings.QuickTranslateHotkeySharedNote}"
-                                               Style="{StaticResource FieldHint}"
-                                               Margin="0"
-                                               TextWrapping="NoWrap"
-                                               TextTrimming="CharacterEllipsis"
-                                               ToolTip="{DynamicResource S.Settings.QuickTranslateHotkeySharedNote}"
-                                               VerticalAlignment="Center"/>
+                                               VerticalAlignment="Top"/>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -414,7 +392,7 @@
 
                                 <!-- The one thing about this shortcut that the name does not say,
                                      inside the row it is about. -->
-                                <Grid Margin="47,8,0,0">
+                                <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
