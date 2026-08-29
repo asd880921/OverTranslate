@@ -294,38 +294,67 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <!-- Two lines, which no other row needs, and both of them are here
+                                <!-- A Grid rather than a horizontal StackPanel, which is what these
+                                     were: a StackPanel hands its children all the width they ask
+                                     for, so a note longer than the card simply ran off the end of
+                                     it — which the English wording of these two does. The star
+                                     column is what gives the text an end to reach, and it is cut
+                                     with an ellipsis there rather than wrapped, so a note never
+                                     changes the height of the row it is in. The whole line is on
+                                     the tooltip for whoever needs the rest of it.
+
+                                     Two of them here, which no other row needs, and both are here
                                      because this feature has no interface of its own. Every other
                                      way into a translation shows the reader what it is about to do —
                                      取詞翻譯 carries the language and service pickers in its own
                                      header — while this one is a key press over somebody else's
                                      window. What it will not do, and what settings it will do it
                                      with, are answerable nowhere else. -->
-                                <StackPanel Orientation="Horizontal" Margin="47,8,0,0">
-                                    <TextBlock Text="&#xE946;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0"/>
-                                    <TextBlock Text="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
-                                               Style="{StaticResource FieldHint}"
-                                               Margin="0"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
+                                <Grid Margin="47,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <StackPanel Orientation="Horizontal" Margin="47,4,0,0">
-                                    <TextBlock Text="&#xE946;"
+                                    <TextBlock Grid.Column="0"
+                                               Text="&#xE946;"
                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                FontSize="12"
                                                Foreground="{DynamicResource AppTextSecondary}"
                                                VerticalAlignment="Center"
                                                Margin="0,0,8,0"/>
-                                    <TextBlock Text="{DynamicResource S.Settings.QuickTranslateHotkeySharedNote}"
+                                    <TextBlock Grid.Column="1"
+                                               Text="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
                                                Margin="0"
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
                                                VerticalAlignment="Center"/>
-                                </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="47,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="&#xE946;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{DynamicResource S.Settings.QuickTranslateHotkeySharedNote}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0"
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{DynamicResource S.Settings.QuickTranslateHotkeySharedNote}"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -385,18 +414,28 @@
 
                                 <!-- The one thing about this shortcut that the name does not say,
                                      inside the row it is about. -->
-                                <StackPanel Orientation="Horizontal" Margin="47,8,0,0">
-                                    <TextBlock Text="&#xE946;"
+                                <Grid Margin="47,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="&#xE946;"
                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                FontSize="12"
                                                Foreground="{DynamicResource AppTextSecondary}"
                                                VerticalAlignment="Center"
                                                Margin="0,0,8,0"/>
-                                    <TextBlock Text="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
+                                    <TextBlock Grid.Column="1"
+                                               Text="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
                                                Style="{StaticResource FieldHint}"
                                                Margin="0"
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{DynamicResource S.Settings.QuickLookupHotkeyNote}"
                                                VerticalAlignment="Center"/>
-                                </StackPanel>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
