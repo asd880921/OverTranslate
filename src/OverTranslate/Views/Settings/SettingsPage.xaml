@@ -714,8 +714,8 @@
                          the row of buttons whose labels are the longest on the page in every
                          language. The extra width goes where there is something to fit. -->
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="0.8*"/>
-                        <ColumnDefinition Width="1.2*"/>
+                        <ColumnDefinition Width="0.9*"/>
+                        <ColumnDefinition Width="1.1*"/>
                     </Grid.ColumnDefinitions>
                     <!-- ══════════ 外觀 ══════════ -->
                     <Border Grid.Column="0"
