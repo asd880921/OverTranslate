@@ -31,7 +31,7 @@ namespace OverTranslate.Views.QuickTranslate;
 /// <see cref="HintPlacement"/>.
 ///
 /// One at a time. A second shortcut press replaces the card outright rather than stacking another on
-/// top of it — see <see cref="Show"/> — because the newer one is the only one whose outcome the user
+/// top of it — see <see cref="Summon"/> — because the newer one is the only one whose outcome the user
 /// is still waiting for.
 ///
 /// It never takes activation. The paste that replaces the selection is sent to whatever window has
@@ -115,7 +115,7 @@ public partial class QuickTranslateHintWindow : Window
     private bool _userDismissed;
 
     /// <summary>Puts a card up in its working state, replacing whichever one is on screen.</summary>
-    public static QuickTranslateHintWindow Show()
+    public static QuickTranslateHintWindow Summon()
     {
         Dismiss();
 

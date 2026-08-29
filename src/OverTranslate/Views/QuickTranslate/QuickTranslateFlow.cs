@@ -63,7 +63,7 @@ internal static class QuickTranslateFlow
 
         if (seq != _seq) return;
 
-        var hint = QuickTranslateHintWindow.Show();
+        var hint = QuickTranslateHintWindow.Summon();
         var settings = SettingsService.Instance.Current;
 
         if (AppServices.Translation.RequiresApiKey && string.IsNullOrWhiteSpace(settings.ApiKey))
