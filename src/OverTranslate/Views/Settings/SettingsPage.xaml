@@ -229,14 +229,24 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Border Grid.Column="0" Style="{StaticResource HotkeyRowIcon}">
-                                        <!-- A hair thinner than the shared 1.2. This mark carries
-                                             two lettered tiles and two arrows where the others
-                                             carry one shape, and at 16px the house weight closes
-                                             the counters of the 文 into a blot. -->
-                                        <Path Style="{StaticResource DrawnMark}"
-                                              Data="{StaticResource QuickTranslateMarkGeometry}"
-                                              StrokeThickness="1"
-                                              Stroke="{DynamicResource AppAccent}"/>
+                                        <!-- The one mark in the set drawn in more than one pass —
+                                             see the geometries in SharedStyles.xaml for why, and
+                                             for why all three are given the same explicit box. -->
+                                        <Grid Width="16" Height="16">
+                                            <Path Data="{StaticResource QuickTranslateTilesGeometry}"
+                                                  Fill="{DynamicResource AppAccent}"
+                                                  Stretch="None" Width="16" Height="16"/>
+                                            <Path Data="{StaticResource QuickTranslateGlyphsGeometry}"
+                                                  Fill="{DynamicResource AppAccentFg}"
+                                                  Stretch="None" Width="16" Height="16"/>
+                                            <Path Data="{StaticResource QuickTranslateArrowsGeometry}"
+                                                  Stroke="{DynamicResource AppAccent}"
+                                                  StrokeThickness="1.05"
+                                                  StrokeLineJoin="Round"
+                                                  StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round"
+                                                  Stretch="None" Width="16" Height="16"/>
+                                        </Grid>
                                     </Border>
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
