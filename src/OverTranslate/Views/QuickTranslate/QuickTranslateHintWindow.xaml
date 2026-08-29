@@ -14,10 +14,13 @@
         TextOptions.TextFormattingMode="Display">
 
     <Window.Resources>
-        <!-- The toast's buttons at the size this surface can carry. A hint is one line of text tall,
-             so the 28px controls that suit a toast would set the height of the whole thing and turn
-             a remark into a panel. -->
-        <Style x:Key="HintIconButton" TargetType="Button" BasedOn="{StaticResource ToastIconButton}">
+        <!-- The application's own icon button at the size this surface can carry. A hint is one
+             line of text tall, so the 32px control would set the height of the whole thing and turn
+             a remark into a panel.
+
+             IconButton rather than the toast's ToastIconButton: that one is drawn for a surface
+             that is dark in both themes, and this card is not — see the card itself. -->
+        <Style x:Key="HintIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
             <Setter Property="Width"      Value="22"/>
             <Setter Property="Height"     Value="22"/>
             <Setter Property="FontSize"   Value="11"/>
@@ -33,15 +36,17 @@
              application puts on screen and it carries one line, so the shape says so: the corner
              radius is half the height it has when nothing has gone wrong, which is the shape of a
              remark rather than of a panel. A failure wraps to two lines and the same radius then
-             reads as a rounded card, which is the right weight for something that has to be read. -->
+             reads as a rounded card, which is the right weight for something that has to be read.
+
+             The application's own surface colours rather than the toast's, which are dark in both
+             themes. A toast is a notification and reads as a system layer; this is a reply to
+             something the user just did, in the middle of their own text, and a dark slab over a
+             light desktop is far heavier than that moment deserves. -->
         <Border x:Name="Card"
-                Background="{DynamicResource ToastBg}"
+                Background="{DynamicResource AppSurfaceBg}"
                 CornerRadius="17"
-                BorderBrush="{DynamicResource ToastBorder}"
+                BorderBrush="{DynamicResource AppBorder}"
                 BorderThickness="1">
-            <!-- Dark in both themes and floating over the user's own window, exactly as the toast
-                 is: this is the same kind of momentary remark, and two different-looking answers to
-                 that would be two things for the reader to learn. -->
             <Border.Effect>
                 <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
                                   Opacity="0.20" Color="#000000"/>
@@ -85,7 +90,7 @@
                            Grid.Column="1"
                            FontFamily="{StaticResource AppFont}"
                            FontSize="12"
-                           Foreground="{DynamicResource ToastTitle}"
+                           Foreground="{DynamicResource AppTextPrimary}"
                            TextWrapping="Wrap"
                            MaxHeight="60"
                            TextTrimming="CharacterEllipsis"
