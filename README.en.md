@@ -61,8 +61,7 @@ The window closes itself when you switch to another window; pin it if you need i
 ## Quick Translate
 > The hotkey (default `Ctrl + Alt + E`), with no window to open.
 
-Select some text and press the hotkey: the translation replaces what you selected, which is what you want while writing a message or a document in another language.  
-A small hint appears beside the pointer while it works. With nothing selected, or somewhere a paste cannot land (a web page, say), nothing happens at all.
+Select some text and press the hotkey: the translation is pasted straight over it (only in fields that accept typed text; nothing can be pasted outside an input area).
 
 ---
 
