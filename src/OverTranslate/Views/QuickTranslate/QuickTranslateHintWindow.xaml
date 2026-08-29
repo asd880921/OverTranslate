@@ -38,14 +38,15 @@
              remark rather than of a panel. A failure wraps to two lines and the same radius then
              reads as a rounded card, which is the right weight for something that has to be read.
 
-             The application's own surface colours rather than the toast's, which are dark in both
-             themes. A toast is a notification and reads as a system layer; this is a reply to
-             something the user just did, in the middle of their own text, and a dark slab over a
-             light desktop is far heavier than that moment deserves. -->
+             The theme's own surface colours rather than the toast's, which are dark in both themes.
+             A toast is a notification and reads as a system layer; this is a reply to something the
+             user just did, in the middle of their own text, and a dark slab over a light desktop is
+             far heavier than that moment deserves. Not quite solid, for the same reason — see
+             HintCardBg. -->
         <Border x:Name="Card"
-                Background="{DynamicResource AppSurfaceBg}"
+                Background="{DynamicResource HintCardBg}"
                 CornerRadius="17"
-                BorderBrush="{DynamicResource AppBorder}"
+                BorderBrush="{DynamicResource HintCardBorder}"
                 BorderThickness="1">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
