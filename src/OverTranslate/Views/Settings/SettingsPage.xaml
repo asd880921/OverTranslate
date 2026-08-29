@@ -294,9 +294,13 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <!-- The condition the shortcut does nothing without, inside the row
-                                     it is about: with no selection there is nothing to replace, and
-                                     the key is silent rather than wrong. -->
+                                <!-- Two lines, which no other row needs, and both of them are here
+                                     because this feature has no interface of its own. Every other
+                                     way into a translation shows the reader what it is about to do —
+                                     取詞翻譯 carries the language and service pickers in its own
+                                     header — while this one is a key press over somebody else's
+                                     window. What it will not do, and what settings it will do it
+                                     with, are answerable nowhere else. -->
                                 <StackPanel Orientation="Horizontal" Margin="47,8,0,0">
                                     <TextBlock Text="&#xE946;"
                                                FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
@@ -305,6 +309,19 @@
                                                VerticalAlignment="Center"
                                                Margin="0,0,8,0"/>
                                     <TextBlock Text="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Margin="47,4,0,0">
+                                    <TextBlock Text="&#xE946;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource AppTextSecondary}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"/>
+                                    <TextBlock Text="{DynamicResource S.Settings.QuickTranslateHotkeySharedNote}"
                                                Style="{StaticResource FieldHint}"
                                                Margin="0"
                                                VerticalAlignment="Center"/>
