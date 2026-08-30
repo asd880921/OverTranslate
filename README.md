@@ -13,7 +13,7 @@
   </p>
 
   <h1>
-    <img src="src/OverTranslate/icons/icon.svg" width="180" alt="OverTranslate Icon"/>
+    <img src="docs/images/icon.svg" width="180" alt="OverTranslate Icon"/>
     <br/>
     OverTranslate
   </h1>
