@@ -8,7 +8,7 @@ namespace OverTranslate.Models;
 /// The alternative was to search whatever the list happens to be showing, and that is the one thing
 /// the search must not be limited to: the label a picker draws is one language's name for the item
 /// (see <see cref="LangItem.Display"/>, which drops the Chinese half in an English interface), while
-/// someone hunting for 日語 in an English build, or typing <c>ja</c> in a Chinese one, is searching
+/// someone hunting for 日文 in an English build, or typing <c>ja</c> in a Chinese one, is searching
 /// by a name that is not on screen at all. Letting the item answer means every spelling it has —
 /// code, local name, English name — is reachable no matter which one is being displayed today.
 /// </remarks>

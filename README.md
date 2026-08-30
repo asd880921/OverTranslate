@@ -185,9 +185,9 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 
 | 參數 | 說明 | 範例 |
 |------|------|------|
-| `{source_name}` | 來源語言名稱 | 英語 |
+| `{source_name}` | 來源語言名稱 | 英文 |
 | `{source_code}` | 來源語言代碼 | en |
-| `{target_name}` | 目標語言名稱 | 日語 |
+| `{target_name}` | 目標語言名稱 | 日文 |
 | `{target_code}` | 目標語言代碼 | ja |
 
 > 內建提示詞僅使用語言名稱；語言代碼參數可依模型需求自行搭配使用，例如 `{target_name} (target_code)` -> `Japanese (ja)`。

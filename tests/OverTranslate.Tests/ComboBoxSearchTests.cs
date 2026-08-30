@@ -11,7 +11,7 @@ namespace OverTranslate.Tests;
 public class ComboBoxSearchTests
 {
     private static LangItem TraditionalChinese => new("ZH-HANT", "繁體中文", "Traditional Chinese");
-    private static LangItem Japanese           => new("JA",      "日語",     "Japanese");
+    private static LangItem Japanese           => new("JA",      "日文",     "Japanese");
 
     [Theory]
     [InlineData("繁體")]              // the local name, which is what the list shows in Chinese

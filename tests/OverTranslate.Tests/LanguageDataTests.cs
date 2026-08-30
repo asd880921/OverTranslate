@@ -83,7 +83,7 @@ public class LanguageDataTests
     /// way, so nothing about the model's instructions is lost by following the interface.
     /// </remarks>
     [Theory]
-    [InlineData("zh-Hant", "英語", "繁體中文")]
+    [InlineData("zh-Hant", "英文", "繁體中文")]
     [InlineData("en", "English", "Traditional Chinese")]
     public void DisplayNames_FollowTheInterfaceLanguage(
         string uiLanguage, string expectedSource, string expectedTarget)

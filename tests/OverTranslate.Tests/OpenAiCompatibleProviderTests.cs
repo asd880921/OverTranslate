@@ -98,7 +98,7 @@ public class OpenAiCompatibleProviderTests
         {
             var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "EN-US");
 
-            Assert.Contains("從(日語)翻譯成(英語)", prompt);
+            Assert.Contains("從(日文)翻譯成(英文)", prompt);
             Assert.DoesNotContain("Translate", prompt);
         });
     }
@@ -175,7 +175,7 @@ public class OpenAiCompatibleProviderTests
             // tags existed — a template written back then reads the way it was written. A template
             // that wants the tag asks for it with {source_code} / {target_code}.
             Assert.Equal("自動用：翻成繁體中文", automatic);
-            Assert.Equal("指定用：日語→繁體中文", chosen);
+            Assert.Equal("指定用：日文→繁體中文", chosen);
         });
     }
 
