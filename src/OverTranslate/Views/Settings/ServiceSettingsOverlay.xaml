@@ -223,8 +223,7 @@
                                                TextWrapping="Wrap">
                                         <Hyperlink x:Name="OllamaGuideLink"
                                                    Foreground="{DynamicResource AppAccent}"
-                                                   RequestNavigate="OllamaGuideLink_RequestNavigate"
-                                                   NavigateUri="https://github.com/asd880921/OverTranslate/blob/main/OLLAMA_GUIDE.md"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
+                                                   RequestNavigate="OllamaGuideLink_RequestNavigate"><Run Text="{DynamicResource S.Settings.OllamaGuide}"/></Hyperlink>
                                     </TextBlock>
                                 </StackPanel>
                             </Border>

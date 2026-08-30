@@ -212,6 +212,10 @@ public partial class ServiceSettingsOverlay : UserControl
             TemperatureBox.Text = FormatTemperature(s.OpenAiTemperature);
             LoadPromptEditor(s);
 
+            // Set here rather than in XAML because the guide has a copy per interface language, and
+            // LoadSettings is what runs again when that language changes — see OnLanguageChanged.
+            OllamaGuideLink.NavigateUri = new Uri(DocumentationLinks.OllamaGuide);
+
             UpdateOpenAiFieldChrome();
             UpdateTemperatureChrome();
         }
