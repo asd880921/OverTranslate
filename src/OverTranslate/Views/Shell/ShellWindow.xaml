@@ -91,6 +91,21 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
                         WindowChrome.IsHitTestVisibleInChrome="True">
+                <!-- Not one of the three the system strip is otherwise made of, and placed
+                     before them on purpose: the leading edge of that group is where a window's own
+                     caption action goes, and putting it after would break the minimise/restore/close
+                     order that muscle memory is older than this application.
+
+                     Drawn the way 取詞翻譯's pin is — the glyph is the action and the accent is the
+                     state — so the two pins in the app are recognisably the same control, even
+                     though they hold against different things: that one keeps a popup from closing
+                     itself, this one only keeps the window on top. Quieter than the caption glyphs
+                     until it is on, because it is a preference this window carries, not one of the
+                     three things every window does. Content and tooltip come from RefreshPinButton. -->
+                <Button x:Name="PinBtn"
+                        Style="{StaticResource WindowCaptionButton}"
+                        FontSize="12"
+                        Click="PinBtn_Click"/>
                 <Button x:Name="MinimizeBtn"
                         Style="{StaticResource WindowCaptionButton}"
                         Content="&#xE921;"

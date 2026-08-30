@@ -61,6 +61,19 @@ public partial class ShellWindow : Window
     private static bool _lastRailCollapsed;
 
     /// <summary>
+    /// Whether the pin was on the last time the shell was open, for as long as the process lives.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not in the settings file, and this is the whole of the pin's memory: it is a
+    /// choice about the sitting the user is in — reading something beside a window they are typing
+    /// into — not a preference about the application, so a restart starts unpinned. Remembered
+    /// across a close and reopen for the same reason the size and the page are: closing this window
+    /// is how it is put away, and a user who pinned it should not have to pin it again every time
+    /// it comes back within the same sitting.
+    /// </remarks>
+    private static bool _lastPinned;
+
+    /// <summary>
     /// The page the shell was last showing, so opening it again lands where the user left off
     /// rather than always on 文字翻譯.
     /// </summary>
@@ -181,6 +194,8 @@ public partial class ShellWindow : Window
         _railCollapsed = _lastRailCollapsed;
         SetRailWidth(_railCollapsed ? 0 : RailWidth);
         RefreshSidebarToggle();
+
+        SetPinned(_lastPinned);
     }
 
     // The window's outer edge is the compositor's, not this window's, so it is the one colour in
@@ -192,6 +207,7 @@ public partial class ShellWindow : Window
         RefreshQuickToolAvailability();
         RefreshUpdateAvailability();
         RefreshSidebarToggle();
+        RefreshPinButton();
     }
 
     /// <summary>
@@ -445,6 +461,54 @@ public partial class ShellWindow : Window
         AutomationProperties.SetName(SidebarToggleBtn, label);
     }
 
+    /// <summary>Whether the user has asked for this window to stay above the others.</summary>
+    private bool _pinned;
+
+    private void PinBtn_Click(object sender, RoutedEventArgs e) => SetPinned(!_pinned);
+
+    /// <summary>
+    /// Turns the pin on or off, which is only ever the window's z-order.
+    /// </summary>
+    /// <remarks>
+    /// Topmost and nothing else, on purpose. Everything that already takes this window off the
+    /// screen goes on doing it while pinned — the shortcut that closes the shell when it is the
+    /// window in front, 截圖翻譯 hiding it so it is not baked into the shot, a realtime session
+    /// putting it away for the duration. A pin that also held against those would be a second,
+    /// invisible rule about when the window may close, and the user asked for one thing: that it
+    /// stop going behind whatever they click next.
+    /// </remarks>
+    private void SetPinned(bool pinned)
+    {
+        _pinned = pinned;
+        Topmost = pinned;
+        RefreshPinButton();
+    }
+
+    /// <summary>
+    /// Draws the pin: the glyph is the action, the accent is the state.
+    /// </summary>
+    /// <remarks>
+    /// The same two glyphs and the same accent as 取詞翻譯's pin, so the two read as one control
+    /// even though they hold against different things. Segoe MDL2 codepoints so they survive
+    /// Windows 10, where Segoe Fluent Icons is not installed; see Views/Controls/TtsGlyphs.
+    ///
+    /// Off, it is quieter than the caption glyphs beside it: unpinned is the state every session
+    /// starts in, and a strip where four buttons are equally loud says the pin is as ordinary as
+    /// closing the window. The tooltip is the accessible name too — there is nothing else on a
+    /// glyph-only button for a screen reader to read out.
+    /// </remarks>
+    private void RefreshPinButton()
+    {
+        PinBtn.Content = _pinned ? "" : "";
+
+        var label = LocalizationService.Get(_pinned ? "S.Shell.Unpin" : "S.Shell.Pin");
+        PinBtn.ToolTip = label;
+        AutomationProperties.SetName(PinBtn, label);
+
+        PinBtn.SetResourceReference(
+            ForegroundProperty, _pinned ? "AppAccent" : "AppTextSecondary");
+    }
+
     private void CaptureBtn_Click(object sender, RoutedEventArgs e)
     {
         // MainWindow owns the whole capture session (hotkey, screenshot, overlay, teardown), so
@@ -632,6 +696,7 @@ public partial class ShellWindow : Window
         // Minimised is a state to reopen out of, not into.
         _lastWindowState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
         _lastRailCollapsed = _railCollapsed;
+        _lastPinned = _pinned;
 
         base.OnClosing(e);
     }

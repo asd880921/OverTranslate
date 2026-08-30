@@ -31,6 +31,8 @@
     <sys:String x:Key="S.Shell.Settings">설정</sys:String>
     <sys:String x:Key="S.Shell.HideSidebar">사이드바 접기</sys:String>
     <sys:String x:Key="S.Shell.ShowSidebar">사이드바 펼치기</sys:String>
+    <sys:String x:Key="S.Shell.Pin">창을 항상 위에 표시합니다</sys:String>
+    <sys:String x:Key="S.Shell.Unpin">고정 해제</sys:String>
     <sys:String x:Key="S.Shell.CaptureBlockedByRealtime">실시간 번역이 실행 중입니다. 종료한 뒤 캡처 번역을 사용하세요</sys:String>
     <sys:String x:Key="S.Shell.QuickLookupBlockedByRealtime">실시간 번역이 실행 중입니다. 종료한 뒤 빠른 조회를 사용하세요</sys:String>
     <sys:String x:Key="S.Shell.UpdateAvailable">v{0}(으)로 업데이트</sys:String>

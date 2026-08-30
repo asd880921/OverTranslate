@@ -30,6 +30,8 @@
     <sys:String x:Key="S.Shell.Settings">设置</sys:String>
     <sys:String x:Key="S.Shell.HideSidebar">收起侧边栏</sys:String>
     <sys:String x:Key="S.Shell.ShowSidebar">展开侧边栏</sys:String>
+    <sys:String x:Key="S.Shell.Pin">固定后，窗口会常驻最上层</sys:String>
+    <sys:String x:Key="S.Shell.Unpin">取消固定</sys:String>
     <sys:String x:Key="S.Shell.CaptureBlockedByRealtime">实时翻译进行中，请先结束后再使用截图翻译</sys:String>
     <sys:String x:Key="S.Shell.QuickLookupBlockedByRealtime">实时翻译进行中，请先结束后再使用取词翻译</sys:String>
     <sys:String x:Key="S.Shell.UpdateAvailable">可更新至 v{0}</sys:String>
