@@ -179,7 +179,8 @@ public partial class TranslationPage : UserControl
     }
 
     /// <summary>
-    /// Re-reads the shared translation preferences after another page changes them.
+    /// Re-reads the shared translation preferences after another page changes them, and the
+    /// interface language along with them.
     /// </summary>
     public void Reload()
     {
@@ -196,6 +197,18 @@ public partial class TranslationPage : UserControl
         _reloadingPreferences = true;
         try
         {
+            // Rebound, not just re-selected. The item labels are read per draw but the containers
+            // holding them are not rebuilt on their own, so a page that only re-selects goes on
+            // showing the language it was built in — and this page, unlike its siblings, is kept
+            // alive by the shell and reached again rather than recreated, so "built in" meant
+            // "since the window opened". See LocalizationService.BindLocalizedItems.
+            //
+            // Inside the guarded block because clearing ItemsSource drops the selection, which
+            // reaches the handlers as a change to nothing and would otherwise be saved as one.
+            LocalizationService.BindLocalizedItems(SrcLangBox,  LanguageData.SourceLanguages);
+            LocalizationService.BindLocalizedItems(TgtLangBox,  LanguageData.TargetLanguages);
+            LocalizationService.BindLocalizedItems(ProviderBox, LanguageData.Providers);
+
             SrcLangBox.SelectedValue = sourceLanguage;
             TgtLangBox.SelectedValue = targetLanguage;
             ProviderBox.SelectedValue = provider;
