@@ -9,7 +9,7 @@
              Declared here rather than in the shared dictionary because nothing outside this page
              lays a setting out this way. -->
         <Style x:Key="OptionTitle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
             <Setter Property="FontSize"   Value="{StaticResource AppFontSize}"/>
             <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
         </Style>
@@ -142,12 +142,12 @@
                                          system paints its background with. -->
                                     <StackPanel MaxWidth="420">
                                         <TextBlock Text="{DynamicResource S.Settings.HotkeyKinds}"
-                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontFamily="{DynamicResource AppFont}"
                                                    FontSize="{StaticResource AppFontSize}"
                                                    TextWrapping="Wrap"
                                                    LineHeight="18"/>
                                         <TextBlock Text="{DynamicResource S.Settings.HotkeyKindsExample}"
-                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontFamily="{DynamicResource AppFont}"
                                                    FontSize="11"
                                                    Opacity="0.85"
                                                    TextWrapping="Wrap"
@@ -951,7 +951,7 @@
                                         <TextBlock x:Name="DiagnosticsHintText"
                                                    Text="{DynamicResource S.Settings.DiagnosticsHint}"
                                                    MaxWidth="420"
-                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontFamily="{DynamicResource AppFont}"
                                                    FontSize="{StaticResource AppFontSize}"
                                                    TextWrapping="Wrap"
                                                    LineHeight="18"/>
@@ -1219,13 +1219,13 @@
                                Margin="0,0,9,0"/>
                     <TextBlock Text="{DynamicResource S.Settings.AutoSaveHint}"
                                VerticalAlignment="Center"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                Foreground="{DynamicResource AppTextSecondary}"/>
                 </StackPanel>
                 <TextBlock x:Name="StatusText"
                            VerticalAlignment="Center"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontSize="12"
                            TextWrapping="NoWrap"
                            Opacity="0"

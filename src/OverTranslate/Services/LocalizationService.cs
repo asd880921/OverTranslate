@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Windows;
-// UseWindowsForms puts System.Windows.Forms in the implicit usings, so this name collides
+// UseWindowsForms puts System.Windows.Forms and System.Drawing in the implicit usings, so these
+// names collide
 using Application = System.Windows.Application;
+using FontFamily = System.Windows.Media.FontFamily;
 
 namespace OverTranslate.Services;
 
@@ -70,6 +72,30 @@ public static class LocalizationService
     /// <summary>Whether <paramref name="language"/> is one this app actually has strings for.</summary>
     public static bool IsSupported(string? language) =>
         !string.IsNullOrEmpty(language) && Dictionaries.ContainsKey(language);
+
+    /// <summary>
+    /// The interface font for each language, overriding the one SharedStyles declares.
+    /// </summary>
+    /// <remarks>
+    /// WPF falls through a family list per character rather than per family, which is why Segoe UI
+    /// can lead every one of these and CJK text still lands somewhere sensible. What it does not do
+    /// is tell Chinese, Japanese and Korean apart: the Han characters they share have different
+    /// printed shapes in each, and a single list ending in one CJK family renders all three in that
+    /// language's shapes. Reading Japanese set in a Traditional Chinese face is the sort of thing a
+    /// native reader notices immediately and cannot name, so the CJK family follows the interface.
+    ///
+    /// English keeps the Traditional Chinese family it already had. Nothing in an English interface
+    /// is Han to begin with; what reaches it is the text the user is translating, and that was
+    /// already being set this way.
+    /// </remarks>
+    private static readonly Dictionary<string, string> Fonts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [TraditionalChinese] = "Segoe UI Variable Text, Segoe UI, Microsoft JhengHei UI, Sans-Serif",
+        [SimplifiedChinese]  = "Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI, Sans-Serif",
+        [English]            = "Segoe UI Variable Text, Segoe UI, Microsoft JhengHei UI, Sans-Serif",
+        [Japanese]           = "Segoe UI Variable Text, Segoe UI, Yu Gothic UI, Meiryo UI, Sans-Serif",
+        [Korean]             = "Segoe UI Variable Text, Segoe UI, Malgun Gothic, Sans-Serif",
+    };
 
     /// <summary>
     /// Raised after the dictionary swap, for text that DynamicResource cannot reach.
@@ -166,6 +192,13 @@ public static class LocalizationService
                 ? source
                 : Dictionaries[TraditionalChinese]
         });
+
+        // Straight onto the application's own dictionary rather than into a merged one, so it wins
+        // over the family SharedStyles declares. Every reference to it is a DynamicResource for this
+        // reason — a StaticResource would have been resolved once, at parse time, and would keep
+        // whichever font the app started in.
+        Application.Current.Resources["AppFont"] = new FontFamily(
+            Fonts.TryGetValue(language, out var font) ? font : Fonts[TraditionalChinese]);
 
         LanguageChanged?.Invoke(null, EventArgs.Empty);
     }

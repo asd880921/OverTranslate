@@ -78,7 +78,7 @@
                        VerticalAlignment="Center"
                        RenderOptions.BitmapScalingMode="HighQuality"/>
                 <TextBlock Text="OverTranslate"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontSize="12"
                            Margin="8,0,0,0"
                            VerticalAlignment="Center"
@@ -176,12 +176,12 @@
                                 Grid.Row="0" Grid.Column="1"
                                 Margin="12,0,0,0">
                         <TextBlock Text="OverTranslate"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="15"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource AppTextPrimary}"/>
                         <TextBlock x:Name="VersionText"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="11"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
                     </StackPanel>

@@ -56,7 +56,7 @@
                                               SelectedValuePath="Code"/>
                                     <TextBlock x:Name="SrcLangPlaceholder"
                                                Text="{DynamicResource S.Realtime.SourceLanguagePrompt}"
-                                               FontFamily="{StaticResource AppFont}"
+                                               FontFamily="{DynamicResource AppFont}"
                                                FontSize="{StaticResource AppFontSize}"
                                                Foreground="{DynamicResource AppTextSecondary}"
                                                Margin="9,0,28,0"
@@ -191,7 +191,7 @@
                                            Margin="0,0,10,0"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{DynamicResource S.Realtime.ScreenModeUnsupported}"
-                                           FontFamily="{StaticResource AppFont}"
+                                           FontFamily="{DynamicResource AppFont}"
                                            FontSize="{StaticResource AppFontSize}"
                                            Foreground="{DynamicResource AppTextPrimary}"
                                            TextWrapping="Wrap"
@@ -303,7 +303,7 @@
                                         </ComboBox>
                                         <TextBlock x:Name="WindowPlaceholder"
                                                    Text="{DynamicResource S.Realtime.CaptureWindowPrompt}"
-                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontFamily="{DynamicResource AppFont}"
                                                    FontSize="{StaticResource AppFontSize}"
                                                    Foreground="{DynamicResource AppTextSecondary}"
                                                    Margin="9,0,28,0"
@@ -602,7 +602,7 @@
                                                    Margin="2,0,14,0"/>
                                         <StackPanel Grid.Column="1">
                                             <TextBlock Text="{DynamicResource S.Realtime.NaturalBackground}"
-                                                       FontFamily="{StaticResource AppFont}"
+                                                       FontFamily="{DynamicResource AppFont}"
                                                        FontSize="{StaticResource AppFontSize}"
                                                        Foreground="{DynamicResource AppTextPrimary}"/>
                                             <TextBlock Text="{DynamicResource S.Realtime.NaturalBackgroundHint}"
@@ -633,7 +633,7 @@
                                                    Margin="2,0,14,0"/>
                                         <StackPanel Grid.Column="1">
                                             <TextBlock Text="{DynamicResource S.Realtime.SampleTextColor}"
-                                                       FontFamily="{StaticResource AppFont}"
+                                                       FontFamily="{DynamicResource AppFont}"
                                                        FontSize="{StaticResource AppFontSize}"
                                                        Foreground="{DynamicResource AppTextPrimary}"/>
                                             <TextBlock Text="{DynamicResource S.Realtime.SampleTextColorHint}"
@@ -720,7 +720,7 @@
             <TextBlock x:Name="StatusText"
                        VerticalAlignment="Center"
                        TextWrapping="Wrap"
-                       FontFamily="{StaticResource AppFont}"
+                       FontFamily="{DynamicResource AppFont}"
                        FontSize="12"
                        Foreground="{DynamicResource AppTextSecondary}"/>
         </DockPanel>

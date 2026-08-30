@@ -10,7 +10,7 @@
         <!-- A page header, not a control to set: the underline is the whole of the selected look,
              so nothing here can be mistaken for a switch that is on. -->
         <Style x:Key="PromptTab" TargetType="RadioButton">
-            <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
             <Setter Property="FontSize"   Value="{StaticResource AppFontSize}"/>
             <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -52,7 +52,7 @@
              as damage rather than as a control. Its own template because FlatButton is built the
              other way round — a surface that fills. -->
         <Style x:Key="AdvancedToggleRow" TargetType="Button">
-            <Setter Property="FontFamily"          Value="{StaticResource AppFont}"/>
+            <Setter Property="FontFamily"          Value="{DynamicResource AppFont}"/>
             <Setter Property="FontSize"            Value="{StaticResource AppFontSize}"/>
             <Setter Property="Foreground"          Value="{DynamicResource AppTextSecondary}"/>
             <Setter Property="Background"          Value="Transparent"/>
@@ -123,7 +123,7 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="&#xE713;" Style="{StaticResource CardHeaderIcon}" FontSize="18"/>
                         <TextBlock x:Name="TitleText"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="17"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource AppTextPrimary}"
@@ -217,7 +217,7 @@
                                                 C11.1,12.1 9.3,12.5 8,13.5
                                                 M8,4.3 L8,13.5"/>
 
-                                    <TextBlock FontFamily="{StaticResource AppFont}"
+                                    <TextBlock FontFamily="{DynamicResource AppFont}"
                                                FontSize="{StaticResource AppFontSize}"
                                                VerticalAlignment="Center"
                                                TextWrapping="Wrap">
@@ -237,7 +237,7 @@
                                          TextChanged="OpenAiSetting_TextChanged"/>
                                 <TextBlock x:Name="OpenAiBaseUrlPlaceholder"
                                            IsHitTestVisible="False"
-                                           FontFamily="{StaticResource AppFont}"
+                                           FontFamily="{DynamicResource AppFont}"
                                            FontSize="{StaticResource AppFontSize}"
                                            Foreground="{DynamicResource AppTextSecondary}"
                                            Opacity="0.7"
@@ -264,7 +264,7 @@
                                      rather than described somewhere else. -->
                                 <TextBlock x:Name="OpenAiModelPlaceholder"
                                            IsHitTestVisible="False"
-                                           FontFamily="{StaticResource AppFont}"
+                                           FontFamily="{DynamicResource AppFont}"
                                            FontSize="{StaticResource AppFontSize}"
                                            Foreground="{DynamicResource AppTextSecondary}"
                                            Opacity="0.7"
@@ -367,7 +367,7 @@
                                                        Text="{DynamicResource S.Settings.TemperatureRange}"
                                                        Margin="10,0,0,0"
                                                        VerticalAlignment="Center"
-                                                       FontFamily="{StaticResource AppFont}"
+                                                       FontFamily="{DynamicResource AppFont}"
                                                        FontSize="11"
                                                        Foreground="{DynamicResource AppTextSecondary}"/>
                                         </StackPanel>
@@ -455,7 +455,7 @@
                                                            VerticalAlignment="Top"
                                                            Margin="0,2,9,0"/>
                                                 <TextBlock x:Name="PromptTabHint"
-                                                           FontFamily="{StaticResource AppFont}"
+                                                           FontFamily="{DynamicResource AppFont}"
                                                            FontSize="12"
                                                            Foreground="{DynamicResource AppTextSecondary}"
                                                            TextWrapping="Wrap"/>
@@ -472,7 +472,7 @@
                                                  off so clicking the text still lands in the box. -->
                                             <TextBlock x:Name="PromptPlaceholder"
                                                        IsHitTestVisible="False"
-                                                       FontFamily="{StaticResource AppFont}"
+                                                       FontFamily="{DynamicResource AppFont}"
                                                        FontSize="{StaticResource AppFontSize}"
                                                        Foreground="{DynamicResource AppTextSecondary}"
                                                        Opacity="0.7"
@@ -543,7 +543,7 @@
                                                                 <Setter Property="BorderThickness" Value="0"/>
                                                             </Style>
                                                             <Style x:Key="ParamText" TargetType="TextBlock">
-                                                                <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+                                                                <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
                                                                 <Setter Property="FontSize" Value="11"/>
                                                                 <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
                                                                 <Setter Property="VerticalAlignment" Value="Center"/>
@@ -695,7 +695,7 @@
                                                                VerticalAlignment="Center"
                                                                Margin="0,0,7,0"/>
                                                     <TextBlock Text="{DynamicResource S.Settings.ResetDefault}"
-                                                               FontFamily="{StaticResource AppFont}"
+                                                               FontFamily="{DynamicResource AppFont}"
                                                                FontSize="12"
                                                                Foreground="{DynamicResource AppTextSecondary}"
                                                                VerticalAlignment="Center"/>
@@ -720,7 +720,7 @@
                                Margin="0,0,8,0"/>
                     <TextBlock Text="{DynamicResource S.Settings.AutoSaveHint}"
                                VerticalAlignment="Center"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                Foreground="{DynamicResource AppTextSecondary}"/>
                 </StackPanel>

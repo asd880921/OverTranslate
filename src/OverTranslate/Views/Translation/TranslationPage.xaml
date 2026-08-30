@@ -98,7 +98,7 @@
                         <DockPanel VerticalAlignment="Center" LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left"
                                        Text="{DynamicResource S.Translation.Source}"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource AppTextSecondary}"
@@ -182,7 +182,7 @@
                                     ToolTip="{DynamicResource S.Translation.SpeakResult}"
                                     Click="TgtTtsBtn_Click"/>
                             <TextBlock Text="{DynamicResource S.Translation.Result}"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource AppTextSecondary}"
@@ -302,7 +302,7 @@
             <TextBlock x:Name="StatusText"
                        VerticalAlignment="Center"
                        TextWrapping="Wrap"
-                       FontFamily="{StaticResource AppFont}"
+                       FontFamily="{DynamicResource AppFont}"
                        FontSize="12"
                        Foreground="{DynamicResource AppTextSecondary}"/>
         </DockPanel>

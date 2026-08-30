@@ -12,7 +12,7 @@
     <!--  SECTION HEADER                             -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="SectionHeader" TargetType="TextBlock">
-        <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"  Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"    Value="11"/>
         <Setter Property="FontWeight"  Value="SemiBold"/>
         <Setter Property="Foreground"  Value="{DynamicResource AppSectionHeader}"/>
@@ -23,7 +23,7 @@
     <!--  FIELD LABEL                                -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="FieldLabel" TargetType="TextBlock">
-        <Setter Property="FontFamily"        Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"        Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"          Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"        Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -34,7 +34,7 @@
     <!--  FIELD HINT                                 -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="FieldHint" TargetType="TextBlock">
-        <Setter Property="FontFamily"   Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"   Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"     Value="11"/>
         <Setter Property="Foreground"   Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="Margin"       Value="2,3,0,0"/>
@@ -134,7 +134,7 @@
     <!--  for the sub-headings inside a card.        -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="CardTitle" TargetType="TextBlock">
-        <Setter Property="FontFamily"        Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"        Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"          Value="15"/>
         <Setter Property="FontWeight"        Value="Bold"/>
         <Setter Property="Foreground"        Value="{DynamicResource AppTextPrimary}"/>
@@ -390,7 +390,7 @@
     </Style>
 
     <Style x:Key="ServiceBadgeText" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"   Value="11"/>
     </Style>
 
@@ -553,7 +553,7 @@
     <!--  the whole cell it happens to occupy.       -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="IconTextButton" TargetType="Button">
-        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"      Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="Background"      Value="Transparent"/>
@@ -596,7 +596,7 @@
     <!--  don't repeat it on the ScrollViewer.       -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="ModernTextBox" TargetType="TextBox">
-        <Setter Property="FontFamily"              Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"              Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"                Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"              Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"              Value="{DynamicResource AppInputBg}"/>
@@ -680,7 +680,7 @@
 
     <!-- Multi-line textbox (translation content area) -->
     <Style x:Key="MultilineTextBox" TargetType="TextBox">
-        <Setter Property="FontFamily"              Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"              Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"                Value="14"/>
         <Setter Property="Foreground"              Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"              Value="{DynamicResource AppSurfaceBg}"/>
@@ -712,7 +712,7 @@
     <!--  FLAT BUTTON                                -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="FlatButton" TargetType="Button">
-        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"      Value="{DynamicResource AppButtonBg}"/>
@@ -755,7 +755,7 @@
     <!--  ACCENT BUTTON                              -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="AccentButton" TargetType="Button">
-        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"      Value="{DynamicResource AppAccentFg}"/>
         <Setter Property="Background"      Value="{DynamicResource AppAccent}"/>
@@ -796,7 +796,7 @@
     <!--  ICON BUTTON                                -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="IconButton" TargetType="Button">
-        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="14"/>
         <Setter Property="Foreground"      Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="Background"      Value="Transparent"/>
@@ -897,7 +897,7 @@
         <Setter Property="Foreground"               Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="CaretBrush"               Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="SelectionBrush"           Value="{DynamicResource AppAccent}"/>
-        <Setter Property="FontFamily"               Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"               Value="{DynamicResource AppFont}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -945,7 +945,7 @@
          list entry, because an entry is something the user can land on and pick. -->
     <Style x:Key="ComboSearchEmptyText" TargetType="TextBlock">
         <Setter Property="Text"                Value="{DynamicResource S.Common.SearchNoMatch}"/>
-        <Setter Property="FontFamily"          Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"          Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"            Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"          Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="Margin"              Value="12,10,12,12"/>
@@ -955,7 +955,7 @@
     </Style>
 
     <Style x:Key="ModernComboBox" TargetType="ComboBox">
-        <Setter Property="FontFamily"              Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"              Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"                Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"              Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"              Value="{DynamicResource AppInputBg}"/>
@@ -969,7 +969,7 @@
             <Setter.Value>
                 <DataTemplate>
                     <TextBlock Text="{Binding Display}"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                TextTrimming="CharacterEllipsis"/>
                 </DataTemplate>
             </Setter.Value>
@@ -977,7 +977,7 @@
         <Setter Property="ItemContainerStyle">
             <Setter.Value>
                 <Style TargetType="ComboBoxItem">
-                    <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+                    <Setter Property="FontFamily"  Value="{DynamicResource AppFont}"/>
                     <Setter Property="FontSize"    Value="{StaticResource AppFontSize}"/>
                     <Setter Property="Foreground"  Value="{DynamicResource AppTextPrimary}"/>
                     <Setter Property="Background"  Value="Transparent"/>
@@ -1128,7 +1128,7 @@
     <!--  RADIO BUTTON (theme selector pill style)   -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="ThemeRadioButton" TargetType="RadioButton">
-        <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"  Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"    Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"  Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Cursor"      Value="Hand"/>
@@ -1232,7 +1232,7 @@
     </Style>
 
     <Style x:Key="StepperValue" TargetType="TextBlock">
-        <Setter Property="FontFamily"          Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"          Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"            Value="{StaticResource AppFontSize}"/>
         <Setter Property="FontWeight"          Value="SemiBold"/>
         <Setter Property="Foreground"          Value="{DynamicResource AppTextPrimary}"/>
@@ -1244,7 +1244,7 @@
     </Style>
 
     <Style x:Key="SegmentedRadioButton" TargetType="RadioButton">
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"   Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Cursor"     Value="Hand"/>
@@ -1306,7 +1306,7 @@
     </Style>
 
     <Style x:Key="StepBadgeText" TargetType="TextBlock">
-        <Setter Property="FontFamily"           Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"           Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"             Value="12"/>
         <Setter Property="FontWeight"           Value="SemiBold"/>
         <Setter Property="Foreground"           Value="{DynamicResource AppAccentFg}"/>
@@ -1315,7 +1315,7 @@
     </Style>
 
     <Style x:Key="StepLabel" TargetType="TextBlock">
-        <Setter Property="FontFamily"        Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"        Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"          Value="12"/>
         <Setter Property="Foreground"        Value="{DynamicResource AppAccent}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -1323,7 +1323,7 @@
     </Style>
 
     <Style x:Key="StepTitle" TargetType="TextBlock">
-        <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"  Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"    Value="15"/>
         <Setter Property="FontWeight"  Value="SemiBold"/>
         <Setter Property="Foreground"  Value="{DynamicResource AppTextPrimary}"/>
@@ -1358,7 +1358,7 @@
     <!--  thing rather than as one choice.           -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="ChoiceTile" TargetType="RadioButton">
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"   Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="Cursor"     Value="Hand"/>
@@ -1457,7 +1457,7 @@
     </Style>
 
     <Style x:Key="ChoiceTileTitle" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"   Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
@@ -1507,7 +1507,7 @@
                 <DataTemplate>
                     <TextBlock x:Name="Label"
                                Text="{Binding Display}"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                TextTrimming="CharacterEllipsis"/>
                     <DataTemplate.Triggers>
                         <DataTrigger Value="{x:Null}"
@@ -1597,7 +1597,7 @@
     </Style>
 
     <Style x:Key="ToolbarStackButton" TargetType="Button">
-        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="11"/>
         <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"      Value="Transparent"/>
@@ -1692,7 +1692,7 @@
          options sit on a page with room to breathe and are separate outlined pills, which is the
          right shape for a form and the wrong one for a bar the user meets over their own screen. -->
     <Style x:Key="ToolbarSegmentButton" TargetType="RadioButton">
-        <Setter Property="FontFamily"         Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"         Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"           Value="11"/>
         <Setter Property="Foreground"         Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="Height"             Value="26"/>
@@ -1842,7 +1842,7 @@
          accent hue for an alternating rhythm but never competes with the one true primary action.
          Fills with the solid accent on hover. -->
     <Style x:Key="ToolbarSubtleAccentButton" TargetType="Button">
-        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="12"/>
         <Setter Property="Foreground"      Value="{DynamicResource AppAccent}"/>
         <Setter Property="Background"      Value="{DynamicResource AppAccentSubtle}"/>
@@ -1889,7 +1889,7 @@
     <!--  CHECKBOX                                   -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="ModernCheckBox" TargetType="CheckBox">
-        <Setter Property="FontFamily"              Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"              Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"                Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"              Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Cursor"                  Value="Hand"/>
@@ -1996,14 +1996,14 @@
     <!--  PAGE HEADER (shell content pages)          -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="PageTitle" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"   Value="26"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
     </Style>
 
     <Style x:Key="PageSubtitle" TargetType="TextBlock">
-        <Setter Property="FontFamily"   Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"   Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"     Value="13"/>
         <Setter Property="Foreground"   Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="Margin"       Value="0,4,0,0"/>
@@ -2144,7 +2144,7 @@
     <!--  recolours both.                            -->
     <!-- ═══════════════════════════════════════════ -->
     <Style x:Key="NavItem" TargetType="RadioButton">
-        <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"  Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"    Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"  Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"  Value="Transparent"/>
@@ -2197,7 +2197,7 @@
          Hover and press walk AppAccentSubtle's own steps rather than the neutral button greys: a
          tinted surface that turns grey under the pointer reads as a different control appearing. -->
     <Style x:Key="RailUpdateChip" TargetType="Button">
-        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="10"/>
         <Setter Property="Foreground"      Value="{DynamicResource AppAccent}"/>
         <Setter Property="Background"      Value="{DynamicResource AppAccentSubtle}"/>
@@ -2235,7 +2235,7 @@
     <!-- Same visuals, no selected state — for actions that open a dialog
          rather than switching pages (關於) -->
     <Style x:Key="NavActionItem" TargetType="Button">
-        <Setter Property="FontFamily"  Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"  Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"    Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"  Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="Background"  Value="Transparent"/>
@@ -2285,7 +2285,7 @@
          antialiasing cannot run — text inside a shadowed Border came out visibly soft next to the
          nav items. Same trap ShellWindow's page transition documents for BitmapCache. -->
     <Style x:Key="RailQuickTool" TargetType="Button">
-        <Setter Property="FontFamily"      Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="{StaticResource AppFontSize}"/>
         <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"      Value="{DynamicResource AppCardBg}"/>
@@ -2356,7 +2356,7 @@
     <!-- The shortcut trailing a 快速工具 row: a reference the user reads once, not a second label
          competing with the row's name. -->
     <Style x:Key="RailQuickToolHotkey" TargetType="TextBlock">
-        <Setter Property="FontFamily"        Value="{StaticResource AppFont}"/>
+        <Setter Property="FontFamily"        Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"          Value="11"/>
         <Setter Property="Foreground"        Value="{DynamicResource AppTextSecondary}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>

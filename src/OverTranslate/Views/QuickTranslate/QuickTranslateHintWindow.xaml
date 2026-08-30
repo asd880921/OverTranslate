@@ -89,7 +89,7 @@
 
                 <TextBlock x:Name="MessageText"
                            Grid.Column="1"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontSize="12"
                            Foreground="{DynamicResource AppTextPrimary}"
                            TextWrapping="Wrap"

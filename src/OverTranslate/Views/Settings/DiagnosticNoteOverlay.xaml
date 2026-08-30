@@ -38,7 +38,7 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="&#xE8BD;" Style="{StaticResource CardHeaderIcon}" FontSize="18"/>
                         <TextBlock Text="{DynamicResource S.Settings.NoteTitle}"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="17"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource AppTextPrimary}"
@@ -61,7 +61,7 @@
                      rather than a separate section. -->
                 <StackPanel Grid.Row="1" Margin="0,14,0,0">
                     <TextBlock Text="{DynamicResource S.Settings.NoteIntro}"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="{StaticResource AppFontSize}"
                                Foreground="{DynamicResource AppTextSecondary}"
                                TextWrapping="Wrap"
@@ -89,7 +89,7 @@
                         <TextBlock x:Name="NotePlaceholder"
                                    Text="{DynamicResource S.Settings.NotePlaceholder}"
                                    IsHitTestVisible="False"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="{StaticResource AppFontSize}"
                                    Foreground="{DynamicResource AppTextSecondary}"
                                    Opacity="0.7"
@@ -110,7 +110,7 @@
                                    VerticalAlignment="Center"
                                    Margin="0,0,6,0"/>
                         <TextBlock x:Name="BundleNameText"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="12"
                                    Foreground="{DynamicResource AppTextSecondary}"
                                    TextTrimming="CharacterEllipsis"
@@ -137,7 +137,7 @@
                                        VerticalAlignment="Top"
                                        Margin="0,1,9,0"/>
                             <TextBlock x:Name="FailureText"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12"
                                        Foreground="{DynamicResource AppTextSecondary}"
                                        TextWrapping="Wrap"
