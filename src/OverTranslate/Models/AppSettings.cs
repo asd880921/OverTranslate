@@ -193,7 +193,9 @@ public class AppSettings
     public double OpenAiTemperature { get; set; }
     public string Theme { get; set; } = "Dark";
     /// <summary>
-    /// The interface language, "zh-Hant" or "en". Empty means "not chosen yet".
+    /// The interface language — one of the codes in
+    /// <see cref="Services.LocalizationService.Options"/> ("zh-Hant", "zh-Hans", "en", "ja", "ko").
+    /// Empty means "not chosen yet".
     /// </summary>
     /// <remarks>
     /// Empty rather than a hardcoded default so a first run can follow the OS language — see

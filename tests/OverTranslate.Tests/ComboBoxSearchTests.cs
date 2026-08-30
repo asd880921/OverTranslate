@@ -10,8 +10,12 @@ namespace OverTranslate.Tests;
 /// </summary>
 public class ComboBoxSearchTests
 {
-    private static LangItem TraditionalChinese => new("ZH-HANT", "繁體中文", "Traditional Chinese");
-    private static LangItem Japanese           => new("JA",      "日文",     "Japanese");
+    // The real resource keys, so Name resolves through the dictionary the way it does in the app —
+    // a made-up key would come back as itself and the search would still "pass" on nothing.
+    private static LangItem TraditionalChinese =>
+        new("ZH-HANT", "S.Lang.TraditionalChinese", "Traditional Chinese");
+
+    private static LangItem Japanese => new("JA", "S.Lang.Japanese", "Japanese");
 
     [Theory]
     [InlineData("繁體")]              // the local name, which is what the list shows in Chinese

@@ -32,17 +32,44 @@ public record UiLanguageOption(string Code, string Display);
 public static class LocalizationService
 {
     public const string TraditionalChinese = "zh-Hant";
-    public const string English             = "en";
+    public const string SimplifiedChinese  = "zh-Hans";
+    public const string English            = "en";
+    public const string Japanese           = "ja";
+    public const string Korean             = "ko";
 
-    private static readonly Uri ZhHantUri = new("Resources/Strings.zh-Hant.xaml", UriKind.Relative);
-    private static readonly Uri EnglishUri = new("Resources/Strings.en.xaml",      UriKind.Relative);
+    /// <summary>The dictionary each language is served by, and the set of languages that exist.</summary>
+    /// <remarks>
+    /// One table rather than a field per language and a switch beside it: <see cref="Apply"/>,
+    /// <see cref="Options"/> and <see cref="IsSupported"/> all have to agree on which codes are real,
+    /// and a language added to one place but not another is exactly the kind of half-addition that
+    /// ships as an interface that silently stays in the previous language.
+    /// </remarks>
+    private static readonly Dictionary<string, Uri> Dictionaries = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [TraditionalChinese] = new("Resources/Strings.zh-Hant.xaml", UriKind.Relative),
+        [SimplifiedChinese]  = new("Resources/Strings.zh-Hans.xaml", UriKind.Relative),
+        [English]            = new("Resources/Strings.en.xaml",      UriKind.Relative),
+        [Japanese]           = new("Resources/Strings.ja.xaml",      UriKind.Relative),
+        [Korean]             = new("Resources/Strings.ko.xaml",      UriKind.Relative),
+    };
 
     /// <summary>The languages offered in settings, in the order they are listed.</summary>
+    /// <remarks>
+    /// The two Chinese entries sit together because a reader scanning for one of them is scanning
+    /// for the script, and splitting them across the list makes the second look like it is missing.
+    /// </remarks>
     public static readonly List<UiLanguageOption> Options =
     [
         new(TraditionalChinese, "繁體中文"),
+        new(SimplifiedChinese,  "简体中文"),
         new(English,            "English"),
+        new(Japanese,           "日本語"),
+        new(Korean,             "한국어"),
     ];
+
+    /// <summary>Whether <paramref name="language"/> is one this app actually has strings for.</summary>
+    public static bool IsSupported(string? language) =>
+        !string.IsNullOrEmpty(language) && Dictionaries.ContainsKey(language);
 
     /// <summary>
     /// Raised after the dictionary swap, for text that DynamicResource cannot reach.
@@ -63,7 +90,12 @@ public static class LocalizationService
         get
         {
             var stored = SettingsService.Instance.Current.UiLanguage;
-            return string.IsNullOrEmpty(stored) ? ResolveSystemDefault() : stored;
+
+            // Not just "is it empty": a code this build has no dictionary for would otherwise be
+            // handed out here and compared against by everything downstream — LangItem.Display and
+            // the prompt templates both branch on it — while Apply had already quietly fallen back
+            // to something else, leaving the two disagreeing about what language is on screen.
+            return IsSupported(stored) ? stored : ResolveSystemDefault();
         }
     }
 
@@ -71,8 +103,11 @@ public static class LocalizationService
     /// The language to start a first-run profile in, from the display language Windows is set to.
     /// </summary>
     /// <remarks>
-    /// Chinese of any flavour gets Traditional — this app has no Simplified UI, and Traditional is
-    /// far closer for a Simplified reader than English is. Everything else gets English.
+    /// Chinese is split by script rather than by region, because that is the thing a reader can or
+    /// cannot read: Windows reports zh-TW, zh-HK and zh-MO for the Traditional-writing regions and
+    /// zh-CN, zh-SG and plain zh for the rest, so the region list is the script list. A Chinese
+    /// tag nobody thought of lands on Simplified, which is what the unlisted ones overwhelmingly
+    /// are. Japanese and Korean match on the language alone; everything else gets English.
     ///
     /// CurrentUICulture, not InstalledUICulture: the latter is the language Windows was installed
     /// in and does not move when the user changes their display language afterwards, so someone
@@ -82,10 +117,36 @@ public static class LocalizationService
     /// </remarks>
     public static string ResolveSystemDefault()
     {
-        var name = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        return name.Equals("zh", StringComparison.OrdinalIgnoreCase)
-            ? TraditionalChinese
-            : English;
+        var culture = CultureInfo.CurrentUICulture;
+
+        return culture.TwoLetterISOLanguageName.ToLowerInvariant() switch
+        {
+            "zh" => IsTraditionalScript(culture) ? TraditionalChinese : SimplifiedChinese,
+            "ja" => Japanese,
+            "ko" => Korean,
+            _    => English,
+        };
+    }
+
+    /// <summary>
+    /// Whether a Chinese culture is one of the Traditional-writing ones.
+    /// </summary>
+    /// <remarks>
+    /// Read off the name rather than asked of <see cref="CultureInfo"/>, which has no "which script"
+    /// property to ask. The explicit zh-Hant tag is checked first because Windows does hand it out
+    /// for a culture set that way, and it carries no region to match on at all.
+    /// </remarks>
+    private static bool IsTraditionalScript(CultureInfo culture)
+    {
+        var name = culture.Name.Replace('_', '-');
+
+        if (name.Contains("Hant", StringComparison.OrdinalIgnoreCase)) return true;
+        if (name.Contains("Hans", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var region = name.Split('-').LastOrDefault() ?? "";
+        return region.Equals("TW", StringComparison.OrdinalIgnoreCase)
+            || region.Equals("HK", StringComparison.OrdinalIgnoreCase)
+            || region.Equals("MO", StringComparison.OrdinalIgnoreCase);
     }
 
     public static void Apply(string language)
@@ -98,7 +159,12 @@ public static class LocalizationService
 
         dicts.Add(new ResourceDictionary
         {
-            Source = language == English ? EnglishUri : ZhHantUri
+            // An unknown code lands on the language these strings are authored in rather than on
+            // nothing at all: a hand-edited settings file or a language retired since should leave
+            // the interface readable, not blank.
+            Source = Dictionaries.TryGetValue(language, out var source)
+                ? source
+                : Dictionaries[TraditionalChinese]
         });
 
         LanguageChanged?.Invoke(null, EventArgs.Empty);

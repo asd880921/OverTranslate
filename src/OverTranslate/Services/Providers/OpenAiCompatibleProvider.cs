@@ -319,6 +319,14 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// A template the user wrote replaces this wholesale and is stored once, not per interface
     /// language — having written their own, they own it in whatever language they wrote it.
     ///
+    /// Three wordings, not five. The Chinese pair are the same sentence in the two scripts. The
+    /// Japanese and Korean interfaces are given the English one rather than a wording of their own,
+    /// because this string is fed to a model as well as read by a user, and the two shipped wordings
+    /// are the ones that were actually measured against the model this ships against — see the note
+    /// below on the restructured sentence that cut a Japanese line in half. A third and fourth
+    /// wording nobody has run would be an unmeasured variable on the translation path, and a user
+    /// who wants one in their own language can write it: this is the editable starting point.
+    ///
     /// Both automatic forms deliberately keep the "from … to …" skeleton of the explicit one rather
     /// than restructuring the sentence. Translation-only models are trained on that shape, and one
     /// measurably stopped half-way through a Japanese line when handed the restructured wording.
@@ -335,24 +343,48 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// the difference between editing a prompt and not being able to.
     /// </remarks>
     internal static string DefaultPromptTemplate(bool automatic) =>
-        UsesChinesePrompt()
-            ? (automatic
+        Wording switch
+        {
+            PromptWording.TraditionalChinese => automatic
                 ? $"從(各種語言)翻譯成({TargetPlaceholder})。" +
                   "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。"
                 : $"從({SourcePlaceholder})翻譯成({TargetPlaceholder})。" +
-                  "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。")
-            : (automatic
+                  "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。",
+
+            PromptWording.SimplifiedChinese => automatic
+                ? $"从(各种语言)翻译成({TargetPlaceholder})。" +
+                  "不要思考或加入额外文字，只返回自然、人性化的翻译结果。"
+                : $"从({SourcePlaceholder})翻译成({TargetPlaceholder})。" +
+                  "不要思考或加入额外文字，只返回自然、人性化的翻译结果。",
+
+            _ => automatic
                 ? $"Translate the input text from (any language) to ({TargetPlaceholder}). " +
                   "Do not think or add extra text. Return only a natural, human-sounding translation."
                 : $"Translate the input text from ({SourcePlaceholder}) to ({TargetPlaceholder}). " +
-                  "Do not think or add extra text. Return only a natural, human-sounding translation.");
+                  "Do not think or add extra text. Return only a natural, human-sounding translation.",
+        };
 
-    private static bool UsesChinesePrompt() =>
-        LocalizationService.Current != LocalizationService.English;
+    /// <summary>The built-in wordings, one per language the templates are actually written in.</summary>
+    private enum PromptWording { TraditionalChinese, SimplifiedChinese, English }
+
+    /// <summary>Which of them the interface language calls for.</summary>
+    /// <remarks>
+    /// Five interface languages, three wordings — Japanese and Korean read the English one. Whatever
+    /// it answers governs the language names <see cref="Fill"/> substitutes as well as the template
+    /// itself, so the filled sentence is in one language rather than a template in one and the
+    /// languages it names in another.
+    /// </remarks>
+    private static PromptWording Wording => LocalizationService.Current switch
+    {
+        LocalizationService.TraditionalChinese => PromptWording.TraditionalChinese,
+        LocalizationService.SimplifiedChinese  => PromptWording.SimplifiedChinese,
+        _                                      => PromptWording.English,
+    };
 
     /// <summary>
-    /// Substitutes the language placeholders, naming the languages in the interface's language so a
-    /// filled built-in template reads as one sentence.
+    /// Substitutes the language placeholders, naming the languages in the same language the template
+    /// is written in — see <see cref="Wording"/> — so a filled built-in template reads as one
+    /// sentence.
     /// </summary>
     /// <remarks>
     /// A custom template gets those same names: there is no way to tell what language the user's
@@ -372,11 +404,18 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     {
         // Nothing to name when the source is 自動, so a template that asks for one anyway is given
         // the same words the built-in automatic template uses in that position.
-        var source = automatic
-            ? (UsesChinesePrompt() ? "各種語言" : "any language")
-            : LanguageData.GetSourceDisplayName(sourceLang);
+        var inEnglish = Wording == PromptWording.English;
 
-        var target = LanguageData.GetTargetDisplayName(targetLang);
+        var source = automatic
+            ? Wording switch
+            {
+                PromptWording.TraditionalChinese => "各種語言",
+                PromptWording.SimplifiedChinese  => "各种语言",
+                _                                => "any language",
+            }
+            : LanguageData.GetSourceDisplayName(sourceLang, inEnglish);
+
+        var target = LanguageData.GetTargetDisplayName(targetLang, inEnglish);
 
         return template
             .Replace(SourceCodePlaceholder, automatic ? "" : LanguageData.GetModelLanguageTag(sourceLang),

@@ -2,8 +2,13 @@ using OverTranslate.Services;
 
 namespace OverTranslate.Models;
 
-/// <param name="Name">The language's name in the interface's own language, which is what a
-/// message says it back with.</param>
+/// <param name="NameKey">
+/// Resource key for the language's name in the interface's own language, which is what a message
+/// says it back with. A key rather than the text itself: these lists are built once at type
+/// initialisation and the interface language is not, so a record holding the name would keep
+/// whichever language the app started in. <see cref="Name"/> resolves it per read, the way
+/// <see cref="ProviderItem.Display"/> does.
+/// </param>
 /// <param name="English">
 /// Its English name, carried separately rather than baked into one label: the pickers show both so
 /// a user scanning a long list can find theirs either way, while somewhere with one line to spare
@@ -14,9 +19,12 @@ namespace OverTranslate.Models;
 /// their own, so the Chinese interface shows the name alone instead of the usual pair. For the OCR
 /// picker's automatic entry, whose name already carries its own parenthetical.
 /// </param>
-public record LangItem(string Code, string Name, string English, bool StandsAlone = false)
+public record LangItem(string Code, string NameKey, string English, bool StandsAlone = false)
     : ISearchableItem
 {
+    /// <inheritdoc cref="NameKey"/>
+    public string Name => LocalizationService.Get(NameKey);
+
     /// <summary>
     /// Everything this language can be searched by in the pickers: its code, <see cref="Name"/> and
     /// <see cref="English"/>.
@@ -101,47 +109,47 @@ public static class LanguageData
 
     public static readonly List<LangItem> SourceLanguages =
     [
-        new(AutomaticSourceLanguage, "自動", "Automatic"),
-        new("EN",      "英文", "English"),
-        new("JA",      "日文", "Japanese"),
-        new("KO",      "韓文", "Korean"),
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH",      "簡體中文", "Simplified Chinese"),
-        new("BG",      "保加利亞文", "Bulgarian"),
-        new("CS",      "捷克文", "Czech"),
-        new("DA",      "丹麥文", "Danish"),
-        new("DE",      "德文", "German"),
-        new("EL",      "希臘文", "Greek"),
-        new("ES",      "西班牙文", "Spanish"),
-        new("ET",      "愛沙尼亞文", "Estonian"),
-        new("FI",      "芬蘭文", "Finnish"),
-        new("FR",      "法文", "French"),
-        new("HU",      "匈牙利文", "Hungarian"),
-        new("ID",      "印尼文", "Indonesian"),
-        new("IT",      "義大利文", "Italian"),
-        new("LT",      "立陶宛文", "Lithuanian"),
-        new("LV",      "拉脫維亞文", "Latvian"),
-        new("NB",      "挪威文", "Norwegian"),
-        new("NL",      "荷蘭文", "Dutch"),
-        new("PL",      "波蘭文", "Polish"),
-        new("PT",      "葡萄牙文", "Portuguese"),
-        new("RO",      "羅馬尼亞文", "Romanian"),
-        new("RU",      "俄文", "Russian"),
-        new("SK",      "斯洛伐克文", "Slovak"),
-        new("SL",      "斯洛文尼亞文", "Slovenian"),
-        new("SV",      "瑞典文", "Swedish"),
-        new("TR",      "土耳其文", "Turkish"),
-        new("UK",      "烏克蘭文", "Ukrainian"),
+        new(AutomaticSourceLanguage, "S.Lang.Automatic",          "Automatic"),
+        new("EN",      "S.Lang.English",            "English"),
+        new("JA",      "S.Lang.Japanese",           "Japanese"),
+        new("KO",      "S.Lang.Korean",             "Korean"),
+        new("ZH-HANT", "S.Lang.TraditionalChinese", "Traditional Chinese"),
+        new("ZH",      "S.Lang.SimplifiedChinese",  "Simplified Chinese"),
+        new("BG",      "S.Lang.Bulgarian",          "Bulgarian"),
+        new("CS",      "S.Lang.Czech",              "Czech"),
+        new("DA",      "S.Lang.Danish",             "Danish"),
+        new("DE",      "S.Lang.German",             "German"),
+        new("EL",      "S.Lang.Greek",              "Greek"),
+        new("ES",      "S.Lang.Spanish",            "Spanish"),
+        new("ET",      "S.Lang.Estonian",           "Estonian"),
+        new("FI",      "S.Lang.Finnish",            "Finnish"),
+        new("FR",      "S.Lang.French",             "French"),
+        new("HU",      "S.Lang.Hungarian",          "Hungarian"),
+        new("ID",      "S.Lang.Indonesian",         "Indonesian"),
+        new("IT",      "S.Lang.Italian",            "Italian"),
+        new("LT",      "S.Lang.Lithuanian",         "Lithuanian"),
+        new("LV",      "S.Lang.Latvian",            "Latvian"),
+        new("NB",      "S.Lang.Norwegian",          "Norwegian"),
+        new("NL",      "S.Lang.Dutch",              "Dutch"),
+        new("PL",      "S.Lang.Polish",             "Polish"),
+        new("PT",      "S.Lang.Portuguese",         "Portuguese"),
+        new("RO",      "S.Lang.Romanian",           "Romanian"),
+        new("RU",      "S.Lang.Russian",            "Russian"),
+        new("SK",      "S.Lang.Slovak",             "Slovak"),
+        new("SL",      "S.Lang.Slovenian",          "Slovenian"),
+        new("SV",      "S.Lang.Swedish",            "Swedish"),
+        new("TR",      "S.Lang.Turkish",            "Turkish"),
+        new("UK",      "S.Lang.Ukrainian",          "Ukrainian"),
     ];
 
     public static readonly List<LangItem> OcrSourceLanguages =
     [
-        new(AutomaticSourceLanguage, "自動（中英日）", "Automatic (ZH/EN/JA)", StandsAlone: true),
-        new("EN",      "英文", "English"),
-        new("JA",      "日文", "Japanese"),
-        new("KO",      "韓文", "Korean"),
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new(AutomaticSourceLanguage, "S.Lang.AutomaticOcr",       "Automatic (ZH/EN/JA)", StandsAlone: true),
+        new("EN",      "S.Lang.English",            "English"),
+        new("JA",      "S.Lang.Japanese",           "Japanese"),
+        new("KO",      "S.Lang.Korean",             "Korean"),
+        new("ZH-HANT", "S.Lang.TraditionalChinese", "Traditional Chinese"),
+        new("ZH",      "S.Lang.SimplifiedChinese",  "Simplified Chinese"),
     ];
 
     public static readonly List<ProviderItem> Providers =
@@ -163,36 +171,36 @@ public static class LanguageData
 
     public static readonly List<LangItem> TargetLanguages =
     [
-        new("EN-US",   "英文", "English"),
-        new("JA",      "日文", "Japanese"),
-        new("KO",      "韓文", "Korean"),
-        new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("ZH-HANS", "簡體中文", "Simplified Chinese"),
-        new("BG",      "保加利亞文", "Bulgarian"),
-        new("CS",      "捷克文", "Czech"),
-        new("DA",      "丹麥文", "Danish"),
-        new("DE",      "德文", "German"),
-        new("EL",      "希臘文", "Greek"),
-        new("ES",      "西班牙文", "Spanish"),
-        new("ET",      "愛沙尼亞文", "Estonian"),
-        new("FI",      "芬蘭文", "Finnish"),
-        new("FR",      "法文", "French"),
-        new("HU",      "匈牙利文", "Hungarian"),
-        new("ID",      "印尼文", "Indonesian"),
-        new("IT",      "義大利文", "Italian"),
-        new("LT",      "立陶宛文", "Lithuanian"),
-        new("LV",      "拉脫維亞文", "Latvian"),
-        new("NB",      "挪威文", "Norwegian"),
-        new("NL",      "荷蘭文", "Dutch"),
-        new("PL",      "波蘭文", "Polish"),
-        new("PT-BR",   "葡萄牙文", "Portuguese"),
-        new("RO",      "羅馬尼亞文", "Romanian"),
-        new("RU",      "俄文", "Russian"),
-        new("SK",      "斯洛伐克文", "Slovak"),
-        new("SL",      "斯洛文尼亞文", "Slovenian"),
-        new("SV",      "瑞典文", "Swedish"),
-        new("TR",      "土耳其文", "Turkish"),
-        new("UK",      "烏克蘭文", "Ukrainian"),
+        new("EN-US",   "S.Lang.English",            "English"),
+        new("JA",      "S.Lang.Japanese",           "Japanese"),
+        new("KO",      "S.Lang.Korean",             "Korean"),
+        new("ZH-HANT", "S.Lang.TraditionalChinese", "Traditional Chinese"),
+        new("ZH-HANS", "S.Lang.SimplifiedChinese",  "Simplified Chinese"),
+        new("BG",      "S.Lang.Bulgarian",          "Bulgarian"),
+        new("CS",      "S.Lang.Czech",              "Czech"),
+        new("DA",      "S.Lang.Danish",             "Danish"),
+        new("DE",      "S.Lang.German",             "German"),
+        new("EL",      "S.Lang.Greek",              "Greek"),
+        new("ES",      "S.Lang.Spanish",            "Spanish"),
+        new("ET",      "S.Lang.Estonian",           "Estonian"),
+        new("FI",      "S.Lang.Finnish",            "Finnish"),
+        new("FR",      "S.Lang.French",             "French"),
+        new("HU",      "S.Lang.Hungarian",          "Hungarian"),
+        new("ID",      "S.Lang.Indonesian",         "Indonesian"),
+        new("IT",      "S.Lang.Italian",            "Italian"),
+        new("LT",      "S.Lang.Lithuanian",         "Lithuanian"),
+        new("LV",      "S.Lang.Latvian",            "Latvian"),
+        new("NB",      "S.Lang.Norwegian",          "Norwegian"),
+        new("NL",      "S.Lang.Dutch",              "Dutch"),
+        new("PL",      "S.Lang.Polish",             "Polish"),
+        new("PT-BR",   "S.Lang.Portuguese",         "Portuguese"),
+        new("RO",      "S.Lang.Romanian",           "Romanian"),
+        new("RU",      "S.Lang.Russian",            "Russian"),
+        new("SK",      "S.Lang.Slovak",             "Slovak"),
+        new("SL",      "S.Lang.Slovenian",          "Slovenian"),
+        new("SV",      "S.Lang.Swedish",            "Swedish"),
+        new("TR",      "S.Lang.Turkish",            "Turkish"),
+        new("UK",      "S.Lang.Ukrainian",          "Ukrainian"),
     ];
 
     public static string? MapTargetToSourceCode(string targetCode)
@@ -333,12 +341,24 @@ public static class LanguageData
     /// language's worth of room has a reader who already knows which language they are reading in.
     /// Falls back to the code, which is still readable, rather than to an empty string.
     /// </summary>
-    public static string GetSourceDisplayName(string? code) =>
-        OcrSourceLanguages.FirstOrDefault(l =>
-            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.ShortName ?? code ?? "";
+    /// <param name="inEnglish">
+    /// Names it in English regardless of the interface language, for a caller whose sentence is in
+    /// English while the interface is not — the built-in prompt templates, which ship in three
+    /// wordings for five interface languages and must not end up naming a language in a sixth.
+    /// </param>
+    public static string GetSourceDisplayName(string? code, bool inEnglish = false) =>
+        NameIn(OcrSourceLanguages, code, inEnglish);
 
     /// <inheritdoc cref="GetSourceDisplayName"/>
-    public static string GetTargetDisplayName(string? code) =>
-        TargetLanguages.FirstOrDefault(l =>
-            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.ShortName ?? code ?? "";
+    public static string GetTargetDisplayName(string? code, bool inEnglish = false) =>
+        NameIn(TargetLanguages, code, inEnglish);
+
+    private static string NameIn(List<LangItem> languages, string? code, bool inEnglish)
+    {
+        var match = languages.FirstOrDefault(l =>
+            l.Code.Equals(code, StringComparison.OrdinalIgnoreCase));
+        if (match is null) return code ?? "";
+
+        return inEnglish && !string.IsNullOrEmpty(match.English) ? match.English : match.ShortName;
+    }
 }
