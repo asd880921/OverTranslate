@@ -14,7 +14,12 @@ namespace OverTranslate.Views.Realtime;
 
 /// <summary>One monitor, as offered in the screen picker.</summary>
 public sealed record ScreenItem(
-    string DeviceName, string Display, System.Drawing.Rectangle Bounds, bool IsPrimary);
+    string DeviceName, string Display, System.Drawing.Rectangle Bounds, bool IsPrimary)
+    : ISearchableItem
+{
+    /// <summary>The label, which is the whole of what a monitor is known by here.</summary>
+    public string SearchText => Display;
+}
 
 /// <summary>One open window, as offered in the source picker.</summary>
 /// <remarks>
@@ -22,7 +27,20 @@ public sealed record ScreenItem(
 /// the list is rebuilt on demand rather than kept, and why the controller checks the handle again
 /// before it builds anything around it.
 /// </remarks>
-public sealed record WindowItem(IntPtr Hwnd, string Display, string Detail, string ProcessName);
+public sealed record WindowItem(IntPtr Hwnd, string Display, string Detail, string ProcessName)
+    : ISearchableItem
+{
+    /// <summary>
+    /// Title, detail line and process name together, because any of the three is a reasonable thing
+    /// to look a window up by.
+    /// </summary>
+    /// <remarks>
+    /// The process name especially: a browser tab's title is whatever page it happens to be on, and
+    /// changes while the user is deciding, whereas "msedge" is what they would think to type. It is
+    /// not shown in the list, which is exactly why it has to be listed here to be reachable.
+    /// </remarks>
+    public string SearchText => $"{Display} {Detail} {ProcessName}";
+}
 
 /// <summary>
 /// Sets up a realtime session and then gets out of the way — everything after 選取翻譯區塊 happens on
@@ -488,10 +506,23 @@ public partial class RealtimePage : UserControl
     /// full-screen framing layer — has to be said out loud, and it is decided by a window they may
     /// have dragged somewhere since they last looked.
     /// </remarks>
+    /// <summary>Shows the prompt only while the field is both unanswered and not being answered.</summary>
+    /// <remarks>
+    /// The prompt is a TextBlock laid over the picker rather than anything the picker owns, so it
+    /// knows nothing about the picker being open — and the open picker is a search field the user is
+    /// typing into. Left alone the prompt sits on top of what they type.
+    /// </remarks>
+    private void SyncWindowPlaceholder() =>
+        WindowPlaceholder.Visibility =
+            WindowBox.SelectedItem is null && !WindowBox.IsDropDownOpen
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+    private void WindowBox_DropDownStateChanged(object sender, EventArgs e) => SyncWindowPlaceholder();
+
     private void RenderWindowChoice(int count)
     {
-        WindowPlaceholder.Visibility =
-            WindowBox.SelectedItem is null ? Visibility.Visible : Visibility.Collapsed;
+        SyncWindowPlaceholder();
 
         if (count == 0)
         {

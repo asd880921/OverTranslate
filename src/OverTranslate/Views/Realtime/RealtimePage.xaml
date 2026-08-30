@@ -238,6 +238,7 @@
                                 <ComboBox x:Name="ScreenBox"
                                           Style="{StaticResource ModernComboBox}"
                                           ctl:ComboBoxDropDown.FitsControlWidth="True"
+                                          ctl:ComboBoxSearch.IsEnabled="True"
                                           SelectedValuePath="DeviceName"
                                           SelectionChanged="ScreenBox_SelectionChanged">
                                     <ComboBox.ItemTemplate>
@@ -283,7 +284,10 @@
                                         <ComboBox x:Name="WindowBox"
                                                   Style="{StaticResource ModernComboBox}"
                                                   ctl:ComboBoxDropDown.FitsControlWidth="True"
-                                                  SelectionChanged="WindowBox_SelectionChanged">
+                                                  ctl:ComboBoxSearch.IsEnabled="True"
+                                                  SelectionChanged="WindowBox_SelectionChanged"
+                                                  DropDownOpened="WindowBox_DropDownStateChanged"
+                                                  DropDownClosed="WindowBox_DropDownStateChanged">
                                             <ComboBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <StackPanel Orientation="Horizontal">
