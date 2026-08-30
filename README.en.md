@@ -3,17 +3,11 @@
     🌐
     <strong>English ✓</strong>
     &nbsp;｜&nbsp;
-    <strong><a href="README.zh-Hant.md">繁體中文</a></strong>
-    &nbsp;｜&nbsp;
-    <strong><a href="README.zh-Hans.md">简体中文</a></strong>
-    &nbsp;｜&nbsp;
-    <strong><a href="README.ja.md">日本語</a></strong>
-    &nbsp;｜&nbsp;
-    <strong><a href="README.ko.md">한국어</a></strong>
+    <strong><a href="README.md">繁體中文</a></strong>
   </p>
 
   <h1>
-    <img src="images/icon.svg" width="180" alt="OverTranslate Icon"/>
+    <img src="src/OverTranslate/icons/icon.svg" width="180" alt="OverTranslate Icon"/>
     <br/>
     OverTranslate
   </h1>
@@ -25,9 +19,9 @@
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe"><img src="images/ui/btn-setup.en.svg" alt="Download the Windows installer (recommended)" /></a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe"><img src="docs/images/ui/btn-setup.en.svg" alt="Download the Windows installer (recommended)" /></a>
     &nbsp;
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip"><img src="images/ui/btn-portable.en.svg" alt="Download the portable version" /></a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip"><img src="docs/images/ui/btn-portable.en.svg" alt="Download the portable version" /></a>
   </p>
 
   <p>
@@ -39,7 +33,6 @@
 ---
 
 ## Translation Features
-> 🌐 **OverTranslate has a multilingual interface. The screenshots in this README show it in Traditional Chinese or English; the interface language is switchable in the app.**
 
 OverTranslate currently offers five translation features, so you can pick the one that suits what you are doing:
 
@@ -57,13 +50,13 @@ OverTranslate currently offers five translation features, so you can pick the on
 When you need a translation, press the hotkey (default Ctrl + Alt + A) and select the area you want to translate.
 > Works on web pages, PDFs, images, videos, game interfaces, and any other screen where text can't be selected directly.
 
-![Translation comparison](images/翻譯比對圖.png)
+![Translation comparison](docs/images/翻譯比對圖.png)
 
 | Source text | Translation |
 |------|----------|
-| ![截圖翻譯1-前.png](images/截圖翻譯1-前.png) | ![截圖翻譯1-後.png](images/截圖翻譯1-後.png) |
-| ![截圖翻譯2-前.png](images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](images/截圖翻譯2-後.png) |
-| ![截圖翻譯3-前.png](images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](images/截圖翻譯3-後.png) |
+| ![截圖翻譯1-前.png](docs/images/截圖翻譯1-前.png) | ![截圖翻譯1-後.png](docs/images/截圖翻譯1-後.png) |
+| ![截圖翻譯2-前.png](docs/images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](docs/images/截圖翻譯2-後.png) |
+| ![截圖翻譯3-前.png](docs/images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](docs/images/截圖翻譯3-後.png) |
 
 ---
 
@@ -78,7 +71,7 @@ screen capture needs Windows 11 24H2 or later, window capture needs Windows 10 1
 
 > The text color, background color, and background opacity of the translation are all yours to adjust, and turning on **Match the original background** and **Keep the original text color** brings the translation closer to the colors and look already on screen.
 
-![Real-time translation window preview](images/即時翻譯視窗預覽_en.png)
+![Real-time translation window preview](docs/images/即時翻譯視窗預覽_en.png)
 
 ### Translation Block Modes (area selection)
 
@@ -90,15 +83,15 @@ Translation blocks come in two modes, **Subtitles / Dialogue** and **Game / UI**
 
 | Selection | Translation result |
 |-----------|--------------------|
-| ![Real-time translation - video selection](images/即時翻譯-影片框.png) | ![Real-time translation - video result](images/即時翻譯-影片翻譯.png) |
-| ![Real-time translation1 - dialogue game selection](images/即時翻譯1-對話遊戲框.png) | ![Real-time translation1 - dialogue game result](images/即時翻譯1-對話遊戲翻譯.png) |
-| ![Real-time translation2 - dialogue game selection](images/即時翻譯2-對話遊戲框.png) | ![Real-time translation2 - dialogue game result](images/即時翻譯2-對話遊戲翻譯.png) |
+| ![Real-time translation - video selection](docs/images/即時翻譯-影片框.png) | ![Real-time translation - video result](docs/images/即時翻譯-影片翻譯.png) |
+| ![Real-time translation1 - dialogue game selection](docs/images/即時翻譯1-對話遊戲框.png) | ![Real-time translation1 - dialogue game result](docs/images/即時翻譯1-對話遊戲翻譯.png) |
+| ![Real-time translation2 - dialogue game selection](docs/images/即時翻譯2-對話遊戲框.png) | ![Real-time translation2 - dialogue game result](docs/images/即時翻譯2-對話遊戲翻譯.png) |
 
 **Game / UI**: for game menus and prompts, or scenes where the text is spread out and moves around (1 – 2 blocks recommended).
 
 | Selection | Translation result |
 |-----------|--------------------|
-| ![Real-time translation - game selection](images/即時翻譯-遊戲翻譯框.png) | ![Real-time translation - game result](images/即時翻譯-遊戲翻譯.png) |
+| ![Real-time translation - game selection](docs/images/即時翻譯-遊戲翻譯框.png) | ![Real-time translation - game result](docs/images/即時翻譯-遊戲翻譯.png) |
 
 ## Quick Lookup
 > The hotkey (default `Ctrl + Alt + Q`) opens it on top of whatever is on screen.
@@ -106,7 +99,7 @@ Translation blocks come in two modes, **Subtitles / Dialogue** and **Game / UI**
 Select some text and press the hotkey and it is picked up and translated straight away; with nothing selected, you can type the text in yourself.  
 The window closes itself when you switch to another window; pin it if you need it to stay on screen.
 
-![Quick lookup](images/選詞翻譯.png)
+![Quick lookup](docs/images/選詞翻譯.png)
 
 ---
 
@@ -115,7 +108,7 @@ The window closes itself when you switch to another window; pin it if you need i
 
 Select some text and press the hotkey: the translation is pasted straight over it (only in fields that accept typed text; nothing can be pasted outside an input area).
 
-![Quick translate](images/快速翻譯.png)
+![Quick translate](docs/images/快速翻譯.png)
 
 ---
 
@@ -124,17 +117,17 @@ Select some text and press the hotkey: the translation is pasted straight over i
 **Type text and it is translated right away**, and the source and target languages can be swapped in one click;  
 built-in text to speech (TTS) reads both the original text and the translation aloud.
 
-![Translation window preview](images/翻譯視窗預覽_en.png)
+![Translation window preview](docs/images/翻譯視窗預覽_en.png)
 
 ---
 
 ## Settings
 
-![Settings page](images/設定頁_en.png)
+![Settings page](docs/images/設定頁_en.png)
 
 | Setting | Description |
 |---------|-------------|
-| Interface language | Traditional Chinese / Simplified Chinese / English / Japanese / Korean, applied immediately (on first launch it follows your Windows display language) |
+| Interface language | Traditional Chinese / English, applied immediately (on first launch it follows your Windows display language) |
 | Screenshot translation (hotkey) | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`) |
 | Open translation window (hotkey) | Hotkey to bring up the main window on the page you left it on (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
 | Pause / resume (hotkey) | Pauses or resumes **real-time translation** (default `Ctrl + Alt + S`); available only while real-time translation is running, and handy for reading the original text |
@@ -166,17 +159,17 @@ built-in text to speech (TTS) reads both the original text and the translation a
 | Bing Translator | Good translation quality |
 | Microsoft Translator | **(default)** Stable and fast |
 | DeepL | Requires registering on DeepL's site and obtaining an API key |
-| OpenAI | Supports the OpenAI API format; a local LLM is recommended, which you can set up quickly with [Ollama](guides/OLLAMA_GUIDE.en.md); the prompt and temperature are customizable |
+| OpenAI | Supports the OpenAI API format; a local LLM is recommended, which you can set up quickly with [Ollama](OLLAMA_GUIDE.en.md); the prompt and temperature are customizable |
   
 An "automatic fallback" mechanism is provided (it applies to both **screenshot translation** and **real-time translation**):
 when a translation service is unavailable or responds too slowly, the app automatically switches to another available translation API, and the engine actually in use is shown in the toolbar.
-![Fallback](images/備援.png)
+![Fallback](docs/images/備援.png)
 
 > The fallback mechanism is not triggered when using **OpenAI**.
 
 ### OpenAI settings
 
-![OpenAI settings](images/OpenAI.png)
+![OpenAI settings](docs/images/OpenAI.png)
 
 | Setting | Description |
 |---------|-------------|
@@ -220,7 +213,7 @@ OCR runs entirely on your local CPU, and images are never uploaded to any extern
 The following translation services require some extra setup:
 
 - **DeepL**: apply for an API key on the [DeepL website](https://www.deepl.com/pro-api)
-- **OpenAI**: requires your own OpenAI-compatible API service; for setting up a local LLM, see the [Ollama guide](guides/OLLAMA_GUIDE.en.md)
+- **OpenAI**: requires your own OpenAI-compatible API service; for setting up a local LLM, see the [Ollama guide](OLLAMA_GUIDE.en.md)
 
 ---
 
@@ -234,4 +227,4 @@ If this software helps you in your daily life or work, feel free to buy me a cof
 
 This project is licensed under the [GNU General Public License v3.0 (GPL-3.0)](https://www.gnu.org/licenses/gpl-3.0.html).
 You may freely use, modify, and distribute this software; if you distribute a modified version, you must release the corresponding source code under the GPL-3.0 terms.
-See [LICENSE](../LICENSE) for the full license text.
+See [LICENSE](LICENSE) for the full license text.

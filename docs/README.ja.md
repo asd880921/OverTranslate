@@ -3,7 +3,7 @@
     🌐
     <strong><a href="README.en.md">English</a></strong>
     &nbsp;｜&nbsp;
-    <strong><a href="../README.md">繁體中文</a></strong>
+    <strong><a href="README.zh-Hant.md">繁體中文</a></strong>
     &nbsp;｜&nbsp;
     <strong><a href="README.zh-Hans.md">简体中文</a></strong>
     &nbsp;｜&nbsp;
