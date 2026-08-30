@@ -870,55 +870,56 @@
     <!-- ═══════════════════════════════════════════ -->
     <!--  COMBO BOX SEARCH FIELD                     -->
     <!-- ═══════════════════════════════════════════ -->
-    <!-- The box at the top of a searchable picker's open list. See ComboBoxSearch for what drives
-         it; this is only its looks.
+    <!-- What a searchable picker turns into while its list is open: the closed box's own label
+         replaced by a caret, in the same place, at the same size. See ComboBoxSearch for what
+         drives it.
 
-         MinWidth is doing real work, not padding a design: the dropdown border takes its width from
-         MinWidth="{TemplateBinding ActualWidth}" — the closed picker's width — and 取詞翻譯's
-         pickers are 78px. A search field 78px wide cannot show a language name, let alone a query.
-         Setting it here rather than on the dropdown means the list widens only where the search
-         field is actually shown, and a picker already wider than this keeps its own width.
+         Chrome-less on purpose — no border, no background, no corner of its own. It is laid over the
+         spot where the selected language was, inside the border the toggle button is already
+         drawing, so opening the list does not redraw the control, it only changes what the control
+         is showing. Anything of its own here would be a second box inside the first.
 
-         The placeholder lives in the template rather than beside the box: this is the one field in
-         the app that appears already focused and empty, so the label saying what to type into it has
-         to be inside it, and it has to leave the moment anything is typed. -->
-    <Style x:Key="ComboSearchBox" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
-        <Setter Property="Height"   Value="30"/>
-        <Setter Property="MinWidth" Value="204"/>
+         In the picker rather than in the dropdown, and that is not a cosmetic choice: a WPF Popup is
+         a window Windows never activates, so Win32 focus stays on the main window while the list is
+         down. An IME asks the focused window where the caret is, and a window with no caret answers
+         with nothing — which is why a 注音 user composing into a field inside the popup got the
+         composition box parked in the corner of the screen instead of under their cursor. Typed here,
+         in the window that actually holds focus, composition is inline like every other field.
+
+         The placeholder is inside the template because this field appears already focused and empty;
+         the label saying what to type has to be where the typing will go, and has to leave the
+         moment anything arrives. No MinWidth: the field is exactly as wide as the picker, and a
+         query longer than that scrolls the way any other text box's does. -->
+    <Style x:Key="ComboSearchBox" TargetType="TextBox">
+        <Setter Property="Background"               Value="Transparent"/>
+        <Setter Property="BorderThickness"          Value="0"/>
+        <Setter Property="Padding"                  Value="0"/>
+        <Setter Property="Foreground"               Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="CaretBrush"               Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="SelectionBrush"           Value="{DynamicResource AppAccent}"/>
+        <Setter Property="FontFamily"               Value="{StaticResource AppFont}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="Root"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6">
-                        <Grid>
-                            <TextBlock x:Name="Placeholder"
-                                       Text="{DynamicResource S.Common.SearchLanguage}"
-                                       FontFamily="{StaticResource AppFont}"
-                                       FontSize="{StaticResource AppFontSize}"
-                                       Foreground="{DynamicResource AppTextSecondary}"
-                                       Margin="10,0,10,0"
-                                       VerticalAlignment="Center"
-                                       IsHitTestVisible="False"
-                                       Visibility="Collapsed"/>
-                            <ScrollViewer x:Name="PART_ContentHost"
-                                          Margin="9,0"
-                                          VerticalAlignment="Center"
-                                          HorizontalScrollBarVisibility="Hidden"
-                                          VerticalScrollBarVisibility="Hidden"
-                                          Focusable="False"/>
-                        </Grid>
-                    </Border>
+                    <Grid Background="Transparent">
+                        <TextBlock x:Name="Placeholder"
+                                   Text="{DynamicResource S.Common.SearchLanguage}"
+                                   FontFamily="{TemplateBinding FontFamily}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False"
+                                   Visibility="Collapsed"/>
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      VerticalAlignment="Center"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden"
+                                      Focusable="False"/>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Text" Value="">
                             <Setter TargetName="Placeholder" Property="Visibility" Value="Visible"/>
-                        </Trigger>
-                        <Trigger Property="IsFocused" Value="True">
-                            <Setter TargetName="Root" Property="BorderBrush"
-                                    Value="{DynamicResource AppInputFocusBorder}"/>
-                            <Setter TargetName="Root" Property="BorderThickness" Value="1.5"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -1024,6 +1025,15 @@
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Left"/>
 
+                        <!-- Sits exactly where the selected item's label was, and replaces it while
+                             the list is down. Inside the toggle button's border rather than in the
+                             dropdown — see ComboSearchBox for why the IME needs it in this window. -->
+                        <TextBox x:Name="PART_SearchBox"
+                                 Style="{StaticResource ComboSearchBox}"
+                                 FontSize="{TemplateBinding FontSize}"
+                                 Margin="9,0,28,0"
+                                 Visibility="Collapsed"/>
+
                         <Popup x:Name="PART_Popup"
                                Placement="Bottom"
                                IsOpen="{TemplateBinding IsDropDownOpen}"
@@ -1042,32 +1052,20 @@
                                     <DropShadowEffect BlurRadius="12" ShadowDepth="2"
                                                       Opacity="0.15" Color="#000000"/>
                                 </Border.Effect>
-                                <!-- The search row is part of every dropdown and shown in none of
-                                     them unless the picker asks for it, so a picker that does not
-                                     draws exactly the list it drew before. Duplicated in
-                                     QuickLookup's QuietComboBox rather than shared: the behaviour
-                                     finds these by name through the ComboBox's own template, and a
-                                     name inside some other template's namescope is not findable
+                                <!-- The empty-search line shares the list's space rather than taking
+                                     a row of its own: it is only ever shown when every entry is
+                                     hidden, which is exactly when the list takes no room. The names
+                                     are duplicated in QuickLookup's QuietComboBox rather than shared
+                                     — the behaviour finds them through the ComboBox's own template,
+                                     and a name inside another template's namescope is not findable
                                      from there. -->
                                 <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="*"/>
-                                    </Grid.RowDefinitions>
-
-                                    <TextBox x:Name="PART_SearchBox"
-                                             Style="{StaticResource ComboSearchBox}"
-                                             Margin="6,2,6,6"
-                                             Visibility="Collapsed"/>
-
                                     <ScrollViewer x:Name="PART_ItemsScroll"
-                                                  Grid.Row="1"
                                                   CanContentScroll="True">
                                         <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
                                     </ScrollViewer>
 
                                     <TextBlock x:Name="PART_NoResults"
-                                               Grid.Row="1"
                                                Style="{StaticResource ComboSearchEmptyText}"/>
                                 </Grid>
                             </Border>
@@ -1078,12 +1076,22 @@
                             <Setter Property="Opacity" Value="0.45"/>
                         </Trigger>
                         <Trigger Property="ctl:ComboBoxSearch.IsEnabled" Value="True">
-                            <Setter TargetName="PART_SearchBox" Property="Visibility" Value="Visible"/>
                             <!-- Pixel scrolling while filtering. Item scrolling counts the panel's
                                  children, collapsed ones included, so a list with most of its
                                  entries hidden scrolls in jumps of items that are not there. -->
                             <Setter TargetName="PART_ItemsScroll" Property="CanContentScroll" Value="False"/>
                         </Trigger>
+                        <!-- The field is only there while the list is: a picker sitting closed is a
+                             label, not something to type into, and leaving a text box in the closed
+                             state would put a caret in every language picker in the app. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="ctl:ComboBoxSearch.IsEnabled" Value="True"/>
+                                <Condition Property="IsDropDownOpen" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="PART_SearchBox" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="ContentSite" Property="Visibility" Value="Collapsed"/>
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

@@ -63,7 +63,8 @@
                                  a single line beside a text box, and the doubled-up label is what
                                  pushes these controls wide. The list keeps the pair — that is where
                                  someone scanning for their language needs both halves. -->
-                            <ContentPresenter IsHitTestVisible="False"
+                            <ContentPresenter x:Name="ContentSite"
+                                              IsHitTestVisible="False"
                                               Content="{TemplateBinding SelectionBoxItem}"
                                               Margin="7,0,22,0"
                                               VerticalAlignment="Center"
@@ -76,6 +77,13 @@
                                     </DataTemplate>
                                 </ContentPresenter.ContentTemplate>
                             </ContentPresenter>
+
+                            <!-- Over the label, inside the toggle's border — see ComboSearchBox. -->
+                            <TextBox x:Name="PART_SearchBox"
+                                     Style="{StaticResource ComboSearchBox}"
+                                     FontSize="{TemplateBinding FontSize}"
+                                     Margin="7,0,22,0"
+                                     Visibility="Collapsed"/>
 
                             <Popup x:Name="PART_Popup"
                                    Placement="Bottom"
@@ -94,29 +102,17 @@
                                         <DropShadowEffect BlurRadius="12" ShadowDepth="2"
                                                           Opacity="0.15" Color="#000000"/>
                                     </Border.Effect>
-                                    <!-- Same search row as ModernComboBox's dropdown, and the same
-                                         reason it is copied rather than shared: ComboBoxSearch
-                                         looks these names up in the ComboBox's own template. -->
+                                    <!-- Same names as ModernComboBox's dropdown, and the same reason
+                                         they are copied rather than shared: ComboBoxSearch looks
+                                         them up in the ComboBox's own template. -->
                                     <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                        </Grid.RowDefinitions>
-
-                                        <TextBox x:Name="PART_SearchBox"
-                                                 Style="{StaticResource ComboSearchBox}"
-                                                 Margin="6,2,6,6"
-                                                 Visibility="Collapsed"/>
-
                                         <ScrollViewer x:Name="PART_ItemsScroll"
-                                                      Grid.Row="1"
                                                       CanContentScroll="True">
                                             <StackPanel IsItemsHost="True"
                                                         KeyboardNavigation.DirectionalNavigation="Contained"/>
                                         </ScrollViewer>
 
                                         <TextBlock x:Name="PART_NoResults"
-                                                   Grid.Row="1"
                                                    Style="{StaticResource ComboSearchEmptyText}"/>
                                     </Grid>
                                 </Border>
@@ -127,9 +123,16 @@
                                 <Setter Property="Opacity" Value="0.45"/>
                             </Trigger>
                             <Trigger Property="ctl:ComboBoxSearch.IsEnabled" Value="True">
-                                <Setter TargetName="PART_SearchBox" Property="Visibility" Value="Visible"/>
                                 <Setter TargetName="PART_ItemsScroll" Property="CanContentScroll" Value="False"/>
                             </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="ctl:ComboBoxSearch.IsEnabled" Value="True"/>
+                                    <Condition Property="IsDropDownOpen" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="PART_SearchBox" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Collapsed"/>
+                            </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>

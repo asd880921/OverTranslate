@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 using OverTranslate.Models;
@@ -14,8 +13,8 @@ using KeyEventHandler = System.Windows.Input.KeyEventHandler;
 namespace OverTranslate.Controls;
 
 /// <summary>
-/// Turns a plain <see cref="ComboBox"/> into a searchable one: a box at the top of the open list
-/// that narrows the list as it is typed into.
+/// Turns a plain <see cref="ComboBox"/> into a searchable one: while the list is open the picker
+/// itself becomes a field, and typing into it narrows the list.
 /// </summary>
 /// <remarks>
 /// An attached behaviour rather than a control of its own, because a searchable picker is not a
@@ -27,7 +26,8 @@ namespace OverTranslate.Controls;
 ///
 /// The pieces live in the ComboBox template — <c>PART_SearchBox</c>, <c>PART_NoResults</c>,
 /// <c>PART_ItemsScroll</c> — which is also where they are hidden when this is off, so a picker that
-/// does not opt in draws exactly what it drew before.
+/// does not opt in draws exactly what it drew before. The field is in the picker rather than in the
+/// dropdown so that an IME can compose into it; see the ComboSearchBox style for that story.
 ///
 /// <para><b>Nothing here ever moves the selection.</b> Filtering hides item containers instead of
 /// filtering the collection: a collection-view filter that excludes the selected item makes
@@ -47,15 +47,14 @@ public static class ComboBoxSearch
     private const string SearchBoxPart   = "PART_SearchBox";
     private const string NoResultsPart   = "PART_NoResults";
     private const string ItemsScrollPart = "PART_ItemsScroll";
-    private const string PopupPart       = "PART_Popup";
 
     /// <summary>How many dispatcher passes to keep asking for focus before giving up.</summary>
     /// <remarks>
-    /// The search box lives in a <see cref="Popup"/>, which is a window of its own that Windows
-    /// creates when the dropdown opens, and focus cannot land in it until that window exists.
-    /// Usually it does by the first pass. Occasionally — a cold popup, a busy first frame — it does
-    /// not, and a single attempt then fails silently and leaves the user typing into nothing until
-    /// they click the box. So the attempt repeats until it takes.
+    /// The field is collapsed until the list opens, and a collapsed element cannot take focus — so
+    /// the first attempt is made after the layout pass that reveals it. Usually one is enough.
+    /// Occasionally, on a busy frame, it is not, and a single attempt then fails silently and leaves
+    /// the user typing into nothing until they notice and click the box. So it repeats until it
+    /// takes, and stops the moment the list closes.
     /// </remarks>
     private const int FocusAttempts = 8;
 
@@ -85,10 +84,9 @@ public static class ComboBoxSearch
 
     /// <summary>The ComboBox a search box belongs to, so its own handlers can find it again.</summary>
     /// <remarks>
-    /// Set on the TextBox rather than looked up through the visual tree: the search box lives in a
-    /// <see cref="System.Windows.Controls.Primitives.Popup"/>, whose contents hang off a window of
-    /// their own, so walking up from it does not arrive at the ComboBox. It doubles as the "already
-    /// hooked" mark — the template is applied once, but the dropdown opens many times.
+    /// Set on the TextBox rather than walked to through the tree, so a handler has its ComboBox in
+    /// one read whatever the template around it looks like. It doubles as the "already hooked" mark
+    /// — the template is applied once, but the dropdown opens many times.
     /// </remarks>
     private static readonly DependencyProperty OwnerProperty =
         DependencyProperty.RegisterAttached(
@@ -122,12 +120,6 @@ public static class ComboBoxSearch
             box.SetValue(OwnerProperty, combo);
             box.TextChanged += OnSearchTextChanged;
             box.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnSearchKeyDown), true);
-
-            // The dropdown's own window announcing that it exists — the earliest moment focus can
-            // actually land in it. It does not fire before the first DropDownOpened, which is why
-            // the retry below has to cover that one on its own.
-            if (FindPart<Popup>(combo, PopupPart) is { } popup)
-                popup.Opened += (_, _) => FocusSearchBoxWhenReady(combo, box, FocusAttempts);
         }
 
         // Every open starts from the whole list. A query left over from last time would be a filter
@@ -139,7 +131,7 @@ public static class ComboBoxSearch
         FocusSearchBoxWhenReady(combo, box, FocusAttempts);
     }
 
-    /// <summary>Puts the caret in the search box as soon as the popup will take it.</summary>
+    /// <summary>Puts the caret in the search box as soon as it is there to take it.</summary>
     private static void FocusSearchBoxWhenReady(ComboBox combo, TextBox box, int attemptsLeft)
     {
         if (!combo.IsDropDownOpen) return;
