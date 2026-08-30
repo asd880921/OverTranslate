@@ -39,6 +39,7 @@
 ---
 
 ## Translation Features
+> 🌐 **OverTranslate has a multilingual interface. The screenshots in this README show it in Traditional Chinese or English; the interface language is switchable in the app.**
 
 OverTranslate currently offers five translation features, so you can pick the one that suits what you are doing:
 
