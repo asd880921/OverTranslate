@@ -87,13 +87,19 @@ public static class LocalizationService
     /// English keeps the Traditional Chinese family it already had. Nothing in an English interface
     /// is Han to begin with; what reaches it is the text the user is translating, and that was
     /// already being set this way.
+    ///
+    /// Japanese is Meiryo and deliberately not Yu Gothic UI, which is what Windows sets its own
+    /// interface in. Every Japanese family with a "UI" suffix — Yu Gothic UI, Meiryo UI, MS UI
+    /// Gothic — is a narrowed cut made to fit more into a cramped dialog, and at the 13px this app
+    /// runs at the narrowing reads as squashed rather than as compact. Meiryo is the uncondensed
+    /// face and the one that holds up small.
     /// </remarks>
     private static readonly Dictionary<string, string> Fonts = new(StringComparer.OrdinalIgnoreCase)
     {
         [TraditionalChinese] = "Segoe UI Variable Text, Segoe UI, Microsoft JhengHei UI, Sans-Serif",
         [SimplifiedChinese]  = "Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI, Sans-Serif",
         [English]            = "Segoe UI Variable Text, Segoe UI, Microsoft JhengHei UI, Sans-Serif",
-        [Japanese]           = "Segoe UI Variable Text, Segoe UI, Yu Gothic UI, Meiryo UI, Sans-Serif",
+        [Japanese]           = "Segoe UI Variable Text, Segoe UI, Meiryo, Sans-Serif",
         [Korean]             = "Segoe UI Variable Text, Segoe UI, Malgun Gothic, Sans-Serif",
     };
 
