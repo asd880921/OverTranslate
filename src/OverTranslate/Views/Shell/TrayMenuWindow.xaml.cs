@@ -41,9 +41,23 @@ public partial class TrayMenuWindow : Window
         PreviewMouseDown += DismissOnNonButtonClick;
     }
 
+    /// <remarks>
+    /// The monitor's full bounds, deliberately not its work area. The work area is the screen minus
+    /// the taskbar, and the tray icon this menu belongs to is <i>on</i> the taskbar — so measured
+    /// against the work area the menu can never reach the thing that opened it. Its corner stops at
+    /// the taskbar's top edge and the menu reads as belonging to nothing, which is exactly what it
+    /// looked like for an icon dragged out of the overflow onto the taskbar. An icon inside the
+    /// overflow flyout sits in the work area instead, which is why the same menu looked correct
+    /// there and hid the problem.
+    ///
+    /// Crossing the taskbar is safe here: the window is topmost and activated, so it is drawn above
+    /// the taskbar rather than clipped by it (verified — a point inside the overlap belongs to this
+    /// window, not to Shell_TrayWnd), and it is gone on the next click either way. Bounds still
+    /// keeps the whole menu on the monitor, which is what the clamping is really for.
+    /// </remarks>
     private void PositionWindow()
     {
-        var area = System.Windows.Forms.Screen.FromPoint(_cursorPhys).WorkingArea;
+        var area = System.Windows.Forms.Screen.FromPoint(_cursorPhys).Bounds;
         var scale = ScreenGeometry.ScaleAt(_cursorPhys.X, _cursorPhys.Y);
         var (left, top) = TrayMenuPlacement.Place(
             new Point(_cursorPhys.X, _cursorPhys.Y),

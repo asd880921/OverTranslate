@@ -903,14 +903,28 @@
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
                     <Grid Background="Transparent">
-                        <TextBlock x:Name="Placeholder"
-                                   Text="{DynamicResource S.Common.SearchLanguage}"
-                                   FontFamily="{TemplateBinding FontFamily}"
-                                   FontSize="{TemplateBinding FontSize}"
-                                   Foreground="{DynamicResource AppTextSecondary}"
-                                   VerticalAlignment="Center"
-                                   IsHitTestVisible="False"
-                                   Visibility="Collapsed"/>
+                        <!-- The glyph belongs to the placeholder, not to the field: it goes when
+                             the first character arrives, along with the words beside it. Keeping it
+                             would mean indenting what is typed past it, and this field is laid over
+                             the spot where the selected language was — text that starts anywhere
+                             else makes the label appear to jump when the list opens. -->
+                        <StackPanel x:Name="Placeholder"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    IsHitTestVisible="False"
+                                    Visibility="Collapsed">
+                            <TextBlock Text="&#xE721;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="{TemplateBinding FontSize}"
+                                       Foreground="{DynamicResource AppTextSecondary}"
+                                       Margin="0,0,6,0"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource S.Common.SearchLanguage}"
+                                       FontFamily="{TemplateBinding FontFamily}"
+                                       FontSize="{TemplateBinding FontSize}"
+                                       Foreground="{DynamicResource AppTextSecondary}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
                         <ScrollViewer x:Name="PART_ContentHost"
                                       VerticalAlignment="Center"
                                       HorizontalScrollBarVisibility="Hidden"
