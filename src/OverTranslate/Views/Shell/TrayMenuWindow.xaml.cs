@@ -9,6 +9,9 @@ namespace OverTranslate.Views.Shell;
 
 public partial class TrayMenuWindow : Window
 {
+    private const double EdgeGap = 4;
+    private const double ShadowInset = 18;
+
     public event EventHandler? OpenTranslationRequested;
     public event EventHandler? OpenSettingsRequested;
     public event EventHandler? ExitRequested;
@@ -42,7 +45,8 @@ public partial class TrayMenuWindow : Window
             new Point(_cursorPhys.X, _cursorPhys.Y),
             new Size(ActualWidth * scale, ActualHeight * scale),
             new Rect(area.Left, area.Top, area.Width, area.Height),
-            4 * scale);
+            EdgeGap * scale,
+            ShadowInset * scale);
 
         ScreenGeometry.MoveToPhysical(this, left, top);
     }

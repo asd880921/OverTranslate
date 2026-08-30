@@ -11,6 +11,8 @@ namespace OverTranslate.Tests;
 /// </summary>
 public class TrayMenuWindowTests
 {
+    private const double ShadowInset = 18;
+
     private static string Source(string file) => File.ReadAllText(Path.Combine(
         StringsParityTests.ProjectDirectory(), "Views", "Shell", file));
 
@@ -40,10 +42,10 @@ public class TrayMenuWindowTests
         var workArea = new Rect(48, 0, 1872, 1080);
 
         var (left, top) = TrayMenuPlacement.Place(
-            new Point(20, 600), new Size(240, 180), workArea, 4);
+            new Point(20, 600), new Size(240, 180), workArea, 4, ShadowInset);
 
-        Assert.Equal(52, left);
-        Assert.Equal(420, top);
+        Assert.Equal(34, left);
+        Assert.Equal(438, top);
     }
 
     [Fact]
@@ -52,10 +54,24 @@ public class TrayMenuWindowTests
         var workArea = new Rect(0, 48, 1920, 1032);
 
         var (left, top) = TrayMenuPlacement.Place(
-            new Point(900, 20), new Size(240, 180), workArea, 4);
+            new Point(900, 20), new Size(240, 180), workArea, 4, ShadowInset);
 
-        Assert.Equal(900, left);
-        Assert.Equal(52, top);
+        Assert.Equal(882, left);
+        Assert.Equal(34, top);
+    }
+
+    [Fact]
+    public void A_right_taskbar_uses_the_visible_bottom_right_corner()
+    {
+        var workArea = new Rect(0, 0, 1872, 1080);
+        var window = new Size(240, 180);
+        var pointer = new Point(1900, 600);
+
+        var (left, top) = TrayMenuPlacement.Place(
+            pointer, window, workArea, 4, ShadowInset);
+
+        Assert.Equal(workArea.Right - 4, left + window.Width - ShadowInset);
+        Assert.Equal(pointer.Y, top + window.Height - ShadowInset);
     }
 
     [Fact]
@@ -64,9 +80,23 @@ public class TrayMenuWindowTests
         var workArea = new Rect(-1920, 0, 1920, 1040);
 
         var (left, top) = TrayMenuPlacement.Place(
-            new Point(-10, 1030), new Size(240, 180), workArea, 4);
+            new Point(-10, 1030), new Size(240, 180), workArea, 4, ShadowInset);
 
-        Assert.Equal(-244, left);
-        Assert.Equal(850, top);
+        Assert.Equal(-232, left);
+        Assert.Equal(868, top);
+    }
+
+    [Fact]
+    public void The_visible_corner_nearest_a_bottom_tray_icon_is_as_close_as_the_work_area_allows()
+    {
+        var workArea = new Rect(0, 0, 1920, 1040);
+        var window = new Size(276, 216);
+        var pointer = new Point(400, 1060);
+
+        var (left, top) = TrayMenuPlacement.Place(
+            pointer, window, workArea, 4, ShadowInset);
+
+        Assert.Equal(pointer.X, left + ShadowInset);
+        Assert.Equal(workArea.Bottom - 4, top + window.Height - ShadowInset);
     }
 }
