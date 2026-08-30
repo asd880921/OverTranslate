@@ -763,6 +763,13 @@ public partial class QuickLookupWindow : Window
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // An open language list owns these two keys while it is down. This handler tunnels from the
+        // window, so it sees them before the list does, and both of its answers are wrong there:
+        // Escape would close the whole popup instead of the list the user just opened, and Enter
+        // would re-translate while they are typing into the list's search box. The list's own
+        // handling of them is in ComboBoxSearch.
+        if (_dropDownOpen) return;
+
         if (e.Key == Key.Escape)
         {
             e.Handled = true;

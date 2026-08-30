@@ -1,6 +1,7 @@
 <UserControl x:Class="OverTranslate.Views.Realtime.RealtimePage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="clr-namespace:OverTranslate.Controls">
 
     <Grid Margin="28,22,28,20">
         <Grid.RowDefinitions>
@@ -68,6 +69,7 @@
                                 <TextBlock Text="{DynamicResource S.Realtime.TargetLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                                 <ComboBox x:Name="TgtLangBox"
                                           Style="{StaticResource ModernComboBox}"
+                                          ctl:ComboBoxSearch.IsEnabled="True"
                                           SelectedValuePath="Code"/>
                             </StackPanel>
 

@@ -15,6 +15,10 @@
     <sys:String x:Key="S.Common.Cancel">Cancel</sys:String>
     <sys:String x:Key="S.Common.Configure">Configure</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API key</sys:String>
+    <!-- The search box in a language picker. Typing narrows the list and never changes the
+         selection on its own — the user still picks. -->
+    <sys:String x:Key="S.Common.SearchLanguage">Search languages (name or code)</sys:String>
+    <sys:String x:Key="S.Common.SearchNoMatch">No matching language</sys:String>
 
     <!-- ── Shell window ── -->
     <sys:String x:Key="S.Shell.About">About</sys:String>

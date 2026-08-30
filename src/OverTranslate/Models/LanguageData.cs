@@ -15,7 +15,21 @@ namespace OverTranslate.Models;
 /// picker's automatic entry, whose name already carries its own parenthetical.
 /// </param>
 public record LangItem(string Code, string Name, string English, bool StandsAlone = false)
+    : ISearchableItem
 {
+    /// <summary>
+    /// Everything this language can be searched by in the pickers: its code, <see cref="Name"/> and
+    /// <see cref="English"/>.
+    /// </summary>
+    /// <remarks>
+    /// All of them regardless of which one is on screen — see <see cref="ISearchableItem"/>. The
+    /// code is in there because it is the shortest way to reach a language for anyone who knows its
+    /// code ("ja", "zh-hant"), and it is never shown in the list at all. Whichever language
+    /// <see cref="Name"/> comes to be written in as more interface languages arrive, it is a name
+    /// this search can find the language by, and no entry here has to change for that.
+    /// </remarks>
+    public string SearchText => $"{Code} {Name} {English}";
+
     /// <summary>
     /// The label for the pickers, in whichever language the interface is currently in.
     /// </summary>

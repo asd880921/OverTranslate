@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:OverTranslate.Views.Controls"
+        xmlns:ctl="clr-namespace:OverTranslate.Controls"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -92,16 +93,41 @@
                                         <DropShadowEffect BlurRadius="12" ShadowDepth="2"
                                                           Opacity="0.15" Color="#000000"/>
                                     </Border.Effect>
-                                    <ScrollViewer CanContentScroll="True">
-                                        <StackPanel IsItemsHost="True"
-                                                    KeyboardNavigation.DirectionalNavigation="Contained"/>
-                                    </ScrollViewer>
+                                    <!-- Same search row as ModernComboBox's dropdown, and the same
+                                         reason it is copied rather than shared: ComboBoxSearch
+                                         looks these names up in the ComboBox's own template. -->
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBox x:Name="PART_SearchBox"
+                                                 Style="{StaticResource ComboSearchBox}"
+                                                 Margin="6,2,6,6"
+                                                 Visibility="Collapsed"/>
+
+                                        <ScrollViewer x:Name="PART_ItemsScroll"
+                                                      Grid.Row="1"
+                                                      CanContentScroll="True">
+                                            <StackPanel IsItemsHost="True"
+                                                        KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+
+                                        <TextBlock x:Name="PART_NoResults"
+                                                   Grid.Row="1"
+                                                   Style="{StaticResource ComboSearchEmptyText}"/>
+                                    </Grid>
                                 </Border>
                             </Popup>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                            <Trigger Property="ctl:ComboBoxSearch.IsEnabled" Value="True">
+                                <Setter TargetName="PART_SearchBox" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="PART_ItemsScroll" Property="CanContentScroll" Value="False"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -304,6 +330,7 @@
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                         <ComboBox x:Name="SrcLangBox"
                                   Style="{StaticResource QuietComboBox}"
+                                  ctl:ComboBoxSearch.IsEnabled="True"
                                   Width="78"
                                   SelectedValuePath="Code"/>
 
@@ -329,6 +356,7 @@
 
                         <ComboBox x:Name="TgtLangBox"
                                   Style="{StaticResource QuietComboBox}"
+                                  ctl:ComboBoxSearch.IsEnabled="True"
                                   Width="78"
                                   SelectedValuePath="Code"/>
                     </StackPanel>
