@@ -44,17 +44,25 @@ public class LanguageDataTests
         Assert.Equal("S.Provider.OpenAIHint", provider.HintKey);
     }
 
+    /// <summary>
+    /// The languages worth reaching first, in the same order in all three lists — a picker that
+    /// reorders them between screens makes the user read a list they already know.
+    /// </summary>
+    /// <remarks>
+    /// 繁體中文 leads the Chinese pair on purpose. It is the interface's own language and the default
+    /// target; the list opens on what most of its users are looking for.
+    /// </remarks>
     [Fact]
     public void PrimaryLanguages_UseConsistentOrder()
     {
         Assert.Equal(
-            ["AUTO", "EN", "JA", "KO", "ZH", "ZH-HANT"],
+            ["AUTO", "EN", "JA", "KO", "ZH-HANT", "ZH"],
             LanguageData.SourceLanguages.Take(6).Select(language => language.Code));
         Assert.Equal(
-            ["AUTO", "EN", "JA", "KO", "ZH", "ZH-HANT"],
+            ["AUTO", "EN", "JA", "KO", "ZH-HANT", "ZH"],
             LanguageData.OcrSourceLanguages.Take(6).Select(language => language.Code));
         Assert.Equal(
-            ["EN-US", "JA", "KO", "ZH-HANS", "ZH-HANT"],
+            ["EN-US", "JA", "KO", "ZH-HANT", "ZH-HANS"],
             LanguageData.TargetLanguages.Take(5).Select(language => language.Code));
     }
 
