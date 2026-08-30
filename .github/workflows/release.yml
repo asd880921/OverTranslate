@@ -143,7 +143,7 @@ jobs:
           # 骨架先寫好，只留下這一版真正改了什麼要填。TODO 是刻意會被算繪出來的：
           # 用 HTML 註解當佔位符的話，忘了填就是安安靜靜發出一則空的更新說明。
           $notes = @(
-              '## 🌐 Select your language ｜ 選擇語言 ｜ 语言选择 ｜ 言語を選択 ｜ 언어 선택'
+              '## 🌐 Select your language'
               ''
               '<details>'
               '<summary><b>English</b></summary>'
