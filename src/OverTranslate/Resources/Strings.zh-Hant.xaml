@@ -12,6 +12,9 @@
     <sys:String x:Key="S.Common.Cancel">取消</sys:String>
     <sys:String x:Key="S.Common.Configure">設定</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API Key</sys:String>
+    <!-- 語言選單裡的搜尋框。輸入不會自動選取，要使用者自己點或按 Enter 才會換語言。 -->
+    <sys:String x:Key="S.Common.SearchLanguage">搜尋語言</sys:String>
+    <sys:String x:Key="S.Common.SearchNoMatch">找不到符合的語言</sys:String>
 
     <!-- ── Shell window ── -->
     <sys:String x:Key="S.Shell.About">關於</sys:String>
@@ -407,7 +410,7 @@
     <sys:String x:Key="S.Settings.PromptAutoHint">正在編輯「自動翻譯 Prompt」，此提示詞只會在來源語言為自動偵測時使用。</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicitHint">正在編輯「指定語言 Prompt」，此提示詞只會在指定來源語言時使用。</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">還原預設</sys:String>
-    <!-- 例子用的是語言選單裡真正會被代入的名稱（英語 / 日語），不是泛稱 -->
+    <!-- 例子用的是語言選單裡真正會被代入的名稱（英文 / 日文），不是泛稱 -->
     <!-- 可用參數表。範例用的是語言選單裡真正會被代入的名稱與代碼，不是泛稱 -->
     <sys:String x:Key="S.Settings.PromptParams">可用參數</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">在提示詞中寫入這些參數，送出前會替換成當次實際使用的語言，因此一份提示詞就能套用到所有語言組合。</sys:String>
@@ -418,8 +421,8 @@
     <sys:String x:Key="S.Settings.PromptParamSourceCode">來源語言代碼</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetName">目標語言名稱</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetCode">目標語言代碼</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamSourceNameEg">英語</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamTargetNameEg">日語</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceNameEg">英文</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetNameEg">日文</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">進階</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">啟用</sys:String>

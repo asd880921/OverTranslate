@@ -15,13 +15,27 @@ namespace OverTranslate.Models;
 /// picker's automatic entry, whose name already carries its own parenthetical.
 /// </param>
 public record LangItem(string Code, string Name, string English, bool StandsAlone = false)
+    : ISearchableItem
 {
+    /// <summary>
+    /// Everything this language can be searched by in the pickers: its code, <see cref="Name"/> and
+    /// <see cref="English"/>.
+    /// </summary>
+    /// <remarks>
+    /// All of them regardless of which one is on screen — see <see cref="ISearchableItem"/>. The
+    /// code is in there because it is the shortest way to reach a language for anyone who knows its
+    /// code ("ja", "zh-hant"), and it is never shown in the list at all. Whichever language
+    /// <see cref="Name"/> comes to be written in as more interface languages arrive, it is a name
+    /// this search can find the language by, and no entry here has to change for that.
+    /// </remarks>
+    public string SearchText => $"{Code} {Name} {English}";
+
     /// <summary>
     /// The label for the pickers, in whichever language the interface is currently in.
     /// </summary>
     /// <remarks>
     /// The Chinese interface shows both names, which is what the pair was carried separately for.
-    /// The English one shows only <see cref="English"/>: "英語 English" beside an English menu is
+    /// The English one shows only <see cref="English"/>: "英文 English" beside an English menu is
     /// noise to a reader who cannot read the first half, and the doubled-up label is what pushed
     /// these combo boxes wide in the first place.
     /// </remarks>
@@ -88,46 +102,46 @@ public static class LanguageData
     public static readonly List<LangItem> SourceLanguages =
     [
         new(AutomaticSourceLanguage, "自動", "Automatic"),
-        new("EN",      "英語", "English"),
-        new("JA",      "日語", "Japanese"),
-        new("KO",      "韓語", "Korean"),
-        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new("EN",      "英文", "English"),
+        new("JA",      "日文", "Japanese"),
+        new("KO",      "韓文", "Korean"),
         new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("BG",      "保加利亞語", "Bulgarian"),
-        new("CS",      "捷克語", "Czech"),
-        new("DA",      "丹麥語", "Danish"),
-        new("DE",      "德語", "German"),
-        new("EL",      "希臘語", "Greek"),
-        new("ES",      "西班牙語", "Spanish"),
-        new("ET",      "愛沙尼亞語", "Estonian"),
-        new("FI",      "芬蘭語", "Finnish"),
-        new("FR",      "法語", "French"),
-        new("HU",      "匈牙利語", "Hungarian"),
-        new("ID",      "印尼語", "Indonesian"),
-        new("IT",      "義大利語", "Italian"),
-        new("LT",      "立陶宛語", "Lithuanian"),
-        new("LV",      "拉脫維亞語", "Latvian"),
-        new("NB",      "挪威語", "Norwegian"),
-        new("NL",      "荷蘭語", "Dutch"),
-        new("PL",      "波蘭語", "Polish"),
-        new("PT",      "葡萄牙語", "Portuguese"),
-        new("RO",      "羅馬尼亞語", "Romanian"),
-        new("RU",      "俄語", "Russian"),
-        new("SK",      "斯洛伐克語", "Slovak"),
-        new("SL",      "斯洛文尼亞語", "Slovenian"),
-        new("SV",      "瑞典語", "Swedish"),
-        new("TR",      "土耳其語", "Turkish"),
-        new("UK",      "烏克蘭語", "Ukrainian"),
+        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new("BG",      "保加利亞文", "Bulgarian"),
+        new("CS",      "捷克文", "Czech"),
+        new("DA",      "丹麥文", "Danish"),
+        new("DE",      "德文", "German"),
+        new("EL",      "希臘文", "Greek"),
+        new("ES",      "西班牙文", "Spanish"),
+        new("ET",      "愛沙尼亞文", "Estonian"),
+        new("FI",      "芬蘭文", "Finnish"),
+        new("FR",      "法文", "French"),
+        new("HU",      "匈牙利文", "Hungarian"),
+        new("ID",      "印尼文", "Indonesian"),
+        new("IT",      "義大利文", "Italian"),
+        new("LT",      "立陶宛文", "Lithuanian"),
+        new("LV",      "拉脫維亞文", "Latvian"),
+        new("NB",      "挪威文", "Norwegian"),
+        new("NL",      "荷蘭文", "Dutch"),
+        new("PL",      "波蘭文", "Polish"),
+        new("PT",      "葡萄牙文", "Portuguese"),
+        new("RO",      "羅馬尼亞文", "Romanian"),
+        new("RU",      "俄文", "Russian"),
+        new("SK",      "斯洛伐克文", "Slovak"),
+        new("SL",      "斯洛文尼亞文", "Slovenian"),
+        new("SV",      "瑞典文", "Swedish"),
+        new("TR",      "土耳其文", "Turkish"),
+        new("UK",      "烏克蘭文", "Ukrainian"),
     ];
 
     public static readonly List<LangItem> OcrSourceLanguages =
     [
         new(AutomaticSourceLanguage, "自動（中英日）", "Automatic (ZH/EN/JA)", StandsAlone: true),
-        new("EN",      "英語", "English"),
-        new("JA",      "日語", "Japanese"),
-        new("KO",      "韓語", "Korean"),
-        new("ZH",      "簡體中文", "Simplified Chinese"),
+        new("EN",      "英文", "English"),
+        new("JA",      "日文", "Japanese"),
+        new("KO",      "韓文", "Korean"),
         new("ZH-HANT", "繁體中文", "Traditional Chinese"),
+        new("ZH",      "簡體中文", "Simplified Chinese"),
     ];
 
     public static readonly List<ProviderItem> Providers =
@@ -149,36 +163,36 @@ public static class LanguageData
 
     public static readonly List<LangItem> TargetLanguages =
     [
-        new("EN-US",   "英語", "English"),
-        new("JA",      "日語", "Japanese"),
-        new("KO",      "韓語", "Korean"),
-        new("ZH-HANS", "簡體中文", "Simplified Chinese"),
+        new("EN-US",   "英文", "English"),
+        new("JA",      "日文", "Japanese"),
+        new("KO",      "韓文", "Korean"),
         new("ZH-HANT", "繁體中文", "Traditional Chinese"),
-        new("BG",      "保加利亞語", "Bulgarian"),
-        new("CS",      "捷克語", "Czech"),
-        new("DA",      "丹麥語", "Danish"),
-        new("DE",      "德語", "German"),
-        new("EL",      "希臘語", "Greek"),
-        new("ES",      "西班牙語", "Spanish"),
-        new("ET",      "愛沙尼亞語", "Estonian"),
-        new("FI",      "芬蘭語", "Finnish"),
-        new("FR",      "法語", "French"),
-        new("HU",      "匈牙利語", "Hungarian"),
-        new("ID",      "印尼語", "Indonesian"),
-        new("IT",      "義大利語", "Italian"),
-        new("LT",      "立陶宛語", "Lithuanian"),
-        new("LV",      "拉脫維亞語", "Latvian"),
-        new("NB",      "挪威語", "Norwegian"),
-        new("NL",      "荷蘭語", "Dutch"),
-        new("PL",      "波蘭語", "Polish"),
-        new("PT-BR",   "葡萄牙語", "Portuguese"),
-        new("RO",      "羅馬尼亞語", "Romanian"),
-        new("RU",      "俄語", "Russian"),
-        new("SK",      "斯洛伐克語", "Slovak"),
-        new("SL",      "斯洛文尼亞語", "Slovenian"),
-        new("SV",      "瑞典語", "Swedish"),
-        new("TR",      "土耳其語", "Turkish"),
-        new("UK",      "烏克蘭語", "Ukrainian"),
+        new("ZH-HANS", "簡體中文", "Simplified Chinese"),
+        new("BG",      "保加利亞文", "Bulgarian"),
+        new("CS",      "捷克文", "Czech"),
+        new("DA",      "丹麥文", "Danish"),
+        new("DE",      "德文", "German"),
+        new("EL",      "希臘文", "Greek"),
+        new("ES",      "西班牙文", "Spanish"),
+        new("ET",      "愛沙尼亞文", "Estonian"),
+        new("FI",      "芬蘭文", "Finnish"),
+        new("FR",      "法文", "French"),
+        new("HU",      "匈牙利文", "Hungarian"),
+        new("ID",      "印尼文", "Indonesian"),
+        new("IT",      "義大利文", "Italian"),
+        new("LT",      "立陶宛文", "Lithuanian"),
+        new("LV",      "拉脫維亞文", "Latvian"),
+        new("NB",      "挪威文", "Norwegian"),
+        new("NL",      "荷蘭文", "Dutch"),
+        new("PL",      "波蘭文", "Polish"),
+        new("PT-BR",   "葡萄牙文", "Portuguese"),
+        new("RO",      "羅馬尼亞文", "Romanian"),
+        new("RU",      "俄文", "Russian"),
+        new("SK",      "斯洛伐克文", "Slovak"),
+        new("SL",      "斯洛文尼亞文", "Slovenian"),
+        new("SV",      "瑞典文", "Swedish"),
+        new("TR",      "土耳其文", "Turkish"),
+        new("UK",      "烏克蘭文", "Ukrainian"),
     ];
 
     public static string? MapTargetToSourceCode(string targetCode)

@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ctl="clr-namespace:OverTranslate.Controls">
 
     <!-- ═══════════════════════════════════════════ -->
     <!--  FONTS / SIZES                              -->
@@ -866,6 +867,79 @@
         </ControlTemplate.Triggers>
     </ControlTemplate>
 
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  COMBO BOX SEARCH FIELD                     -->
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- What a searchable picker turns into while its list is open: the closed box's own label
+         replaced by a caret, in the same place, at the same size. See ComboBoxSearch for what
+         drives it.
+
+         Chrome-less on purpose — no border, no background, no corner of its own. It is laid over the
+         spot where the selected language was, inside the border the toggle button is already
+         drawing, so opening the list does not redraw the control, it only changes what the control
+         is showing. Anything of its own here would be a second box inside the first.
+
+         In the picker rather than in the dropdown, and that is not a cosmetic choice: a WPF Popup is
+         a window Windows never activates, so Win32 focus stays on the main window while the list is
+         down. An IME asks the focused window where the caret is, and a window with no caret answers
+         with nothing — which is why a 注音 user composing into a field inside the popup got the
+         composition box parked in the corner of the screen instead of under their cursor. Typed here,
+         in the window that actually holds focus, composition is inline like every other field.
+
+         The placeholder is inside the template because this field appears already focused and empty;
+         the label saying what to type has to be where the typing will go, and has to leave the
+         moment anything arrives. No MinWidth: the field is exactly as wide as the picker, and a
+         query longer than that scrolls the way any other text box's does. -->
+    <Style x:Key="ComboSearchBox" TargetType="TextBox">
+        <Setter Property="Background"               Value="Transparent"/>
+        <Setter Property="BorderThickness"          Value="0"/>
+        <Setter Property="Padding"                  Value="0"/>
+        <Setter Property="Foreground"               Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="CaretBrush"               Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="SelectionBrush"           Value="{DynamicResource AppAccent}"/>
+        <Setter Property="FontFamily"               Value="{StaticResource AppFont}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Grid Background="Transparent">
+                        <TextBlock x:Name="Placeholder"
+                                   Text="{DynamicResource S.Common.SearchLanguage}"
+                                   FontFamily="{TemplateBinding FontFamily}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False"
+                                   Visibility="Collapsed"/>
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      VerticalAlignment="Center"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden"
+                                      Focusable="False"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The line the list is replaced by when a query matches nothing. Its own element rather than a
+         list entry, because an entry is something the user can land on and pick. -->
+    <Style x:Key="ComboSearchEmptyText" TargetType="TextBlock">
+        <Setter Property="Text"                Value="{DynamicResource S.Common.SearchNoMatch}"/>
+        <Setter Property="FontFamily"          Value="{StaticResource AppFont}"/>
+        <Setter Property="FontSize"            Value="{StaticResource AppFontSize}"/>
+        <Setter Property="Foreground"          Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="Margin"              Value="12,10,12,12"/>
+        <Setter Property="TextWrapping"        Value="Wrap"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="Visibility"          Value="Collapsed"/>
+    </Style>
+
     <Style x:Key="ModernComboBox" TargetType="ComboBox">
         <Setter Property="FontFamily"              Value="{StaticResource AppFont}"/>
         <Setter Property="FontSize"                Value="{StaticResource AppFontSize}"/>
@@ -913,6 +987,16 @@
                                         <Setter TargetName="ItemRoot" Property="Background"
                                                 Value="{DynamicResource AppAccentSubtle}"/>
                                     </Trigger>
+                                    <!-- Arrowing out of a searchable picker's search box lands
+                                         keyboard focus on an entry, and focus is not IsHighlighted:
+                                         without this the list looks unchanged and the user cannot
+                                         tell what Enter is about to pick. Last, so it wins over the
+                                         selected entry's own colour — the entry about to be chosen
+                                         is the one that has to be legible. -->
+                                    <Trigger Property="IsKeyboardFocused" Value="True">
+                                        <Setter TargetName="ItemRoot" Property="Background"
+                                                Value="{DynamicResource AppButtonHoverBg}"/>
+                                    </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Setter.Value>
@@ -941,13 +1025,22 @@
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Left"/>
 
-                        <Popup x:Name="Popup"
+                        <!-- Sits exactly where the selected item's label was, and replaces it while
+                             the list is down. Inside the toggle button's border rather than in the
+                             dropdown — see ComboSearchBox for why the IME needs it in this window. -->
+                        <TextBox x:Name="PART_SearchBox"
+                                 Style="{StaticResource ComboSearchBox}"
+                                 FontSize="{TemplateBinding FontSize}"
+                                 Margin="9,0,28,0"
+                                 Visibility="Collapsed"/>
+
+                        <Popup x:Name="PART_Popup"
                                Placement="Bottom"
                                IsOpen="{TemplateBinding IsDropDownOpen}"
                                AllowsTransparency="True"
                                Focusable="False"
                                PopupAnimation="Slide">
-                            <Border x:Name="DropDown"
+                            <Border x:Name="PART_DropDown"
                                     MinWidth="{TemplateBinding ActualWidth}"
                                     MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                     Background="{DynamicResource AppCardBg}"
@@ -959,15 +1052,57 @@
                                     <DropShadowEffect BlurRadius="12" ShadowDepth="2"
                                                       Opacity="0.15" Color="#000000"/>
                                 </Border.Effect>
-                                <ScrollViewer CanContentScroll="True">
-                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
-                                </ScrollViewer>
+                                <!-- The empty-search line shares the list's space rather than taking
+                                     a row of its own: it is only ever shown when every entry is
+                                     hidden, which is exactly when the list takes no room. The names
+                                     are duplicated in QuickLookup's QuietComboBox rather than shared
+                                     — the behaviour finds them through the ComboBox's own template,
+                                     and a name inside another template's namescope is not findable
+                                     from there. -->
+                                <Grid>
+                                    <ScrollViewer x:Name="PART_ItemsScroll"
+                                                  CanContentScroll="True">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+
+                                    <TextBlock x:Name="PART_NoResults"
+                                               Style="{StaticResource ComboSearchEmptyText}"/>
+                                </Grid>
                             </Border>
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                        <Trigger Property="ctl:ComboBoxSearch.IsEnabled" Value="True">
+                            <!-- Pixel scrolling while filtering. Item scrolling counts the panel's
+                                 children, collapsed ones included, so a list with most of its
+                                 entries hidden scrolls in jumps of items that are not there. -->
+                            <Setter TargetName="PART_ItemsScroll" Property="CanContentScroll" Value="False"/>
+                        </Trigger>
+                        <!-- The field is only there while the list is: a picker sitting closed is a
+                             label, not something to type into, and leaving a text box in the closed
+                             state would put a caret in every language picker in the app. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="ctl:ComboBoxSearch.IsEnabled" Value="True"/>
+                                <Condition Property="IsDropDownOpen" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="PART_SearchBox" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="ContentSite" Property="Visibility" Value="Collapsed"/>
+                        </MultiTrigger>
+                        <!-- MinWidth already ties the list's floor to the picker; this ties the
+                             ceiling to it as well, which is the whole of "same width". Pixel
+                             scrolling for the same reason the filtered lists use it — a horizontal
+                             scrollbar over logical scrolling moves in units of whole items. -->
+                        <Trigger Property="ctl:ComboBoxDropDown.FitsControlWidth" Value="True">
+                            <Setter TargetName="PART_DropDown" Property="MaxWidth"
+                                    Value="{Binding ActualWidth,
+                                            RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <Setter TargetName="PART_ItemsScroll" Property="CanContentScroll" Value="False"/>
+                            <Setter TargetName="PART_ItemsScroll" Property="HorizontalScrollBarVisibility"
+                                    Value="Auto"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

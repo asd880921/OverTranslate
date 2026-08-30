@@ -459,7 +459,7 @@ public partial class ToolbarWindow : Window
     /// </summary>
     /// <remarks>
     /// <para>A ComboBox left to size itself measures every item in its list, which for the language
-    /// pickers means a box wide enough for 斯洛文尼亞語 spelled out both ways — so these carried a
+    /// pickers means a box wide enough for 斯洛文尼亞文 spelled out both ways — so these carried a
     /// number typed into the markup instead. A typed number is a guess about text nobody measured:
     /// 132 was too narrow for the label it was given in Chinese and too wide for the one in English,
     /// and it could only ever be wrong in one of them.</para>

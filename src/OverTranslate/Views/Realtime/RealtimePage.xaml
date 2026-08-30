@@ -1,6 +1,7 @@
 <UserControl x:Class="OverTranslate.Views.Realtime.RealtimePage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="clr-namespace:OverTranslate.Controls">
 
     <Grid Margin="28,22,28,20">
         <Grid.RowDefinitions>
@@ -68,6 +69,7 @@
                                 <TextBlock Text="{DynamicResource S.Realtime.TargetLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
                                 <ComboBox x:Name="TgtLangBox"
                                           Style="{StaticResource ModernComboBox}"
+                                          ctl:ComboBoxSearch.IsEnabled="True"
                                           SelectedValuePath="Code"/>
                             </StackPanel>
 
@@ -235,6 +237,8 @@
                                            Margin="0,4,0,8"/>
                                 <ComboBox x:Name="ScreenBox"
                                           Style="{StaticResource ModernComboBox}"
+                                          ctl:ComboBoxDropDown.FitsControlWidth="True"
+                                          ctl:ComboBoxSearch.IsEnabled="True"
                                           SelectedValuePath="DeviceName"
                                           SelectionChanged="ScreenBox_SelectionChanged">
                                     <ComboBox.ItemTemplate>
@@ -274,9 +278,16 @@
                                          empty because the user has to answer it, and the prompt sits
                                          where the answer will be. -->
                                     <Grid Grid.Column="0">
+                                        <!-- Window titles are somebody else's text and can be any
+                                             length; the list stays the width of the picker and
+                                             scrolls sideways instead of growing across the card. -->
                                         <ComboBox x:Name="WindowBox"
                                                   Style="{StaticResource ModernComboBox}"
-                                                  SelectionChanged="WindowBox_SelectionChanged">
+                                                  ctl:ComboBoxDropDown.FitsControlWidth="True"
+                                                  ctl:ComboBoxSearch.IsEnabled="True"
+                                                  SelectionChanged="WindowBox_SelectionChanged"
+                                                  DropDownOpened="WindowBox_DropDownStateChanged"
+                                                  DropDownClosed="WindowBox_DropDownStateChanged">
                                             <ComboBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <StackPanel Orientation="Horizontal">
