@@ -1,9 +1,9 @@
 <div align="center">
   <p>
     🌐
-    <strong>繁體中文 ✓</strong>
-    &nbsp;｜&nbsp;
     <strong><a href="docs/README.en.md">English</a></strong>
+    &nbsp;｜&nbsp;
+    <strong>繁體中文 ✓</strong>
     &nbsp;｜&nbsp;
     <strong><a href="docs/README.zh-Hans.md">简体中文</a></strong>
     &nbsp;｜&nbsp;
