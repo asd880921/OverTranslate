@@ -1,5 +1,8 @@
 using Xunit;
 using OverTranslate.Layout;
+using OverTranslate.Views.Shell;
+using System.Windows.Controls;
+using Button = System.Windows.Controls.Button;
 using Point = System.Windows.Point;
 using Rect = System.Windows.Rect;
 using Size = System.Windows.Size;
@@ -34,6 +37,30 @@ public class TrayMenuWindowTests
 
         Assert.Contains("Activate();", source);
         Assert.Contains("Deactivated", source);
+    }
+
+    [Fact]
+    public void Clicking_the_menu_chrome_dismisses_it_without_treating_a_button_as_chrome()
+    {
+        var source = Source("TrayMenuWindow.xaml.cs");
+
+        Assert.Contains("PreviewMouseDown", source);
+        Assert.Contains("DismissOnNonButtonClick", source);
+        Assert.Contains("IsInsideButton", source);
+    }
+
+    [Fact]
+    public void A_button_and_its_content_are_not_menu_chrome()
+    {
+        OnUiThread(() =>
+        {
+            var label = new TextBlock();
+            var button = new Button { Content = label };
+
+            Assert.True(TrayMenuWindow.IsInsideButton(button));
+            Assert.True(TrayMenuWindow.IsInsideButton(label));
+            Assert.False(TrayMenuWindow.IsInsideButton(new Border()));
+        });
     }
 
     [Fact]
@@ -98,5 +125,22 @@ public class TrayMenuWindowTests
 
         Assert.Equal(pointer.X, left + ShadowInset);
         Assert.Equal(workArea.Bottom - 4, top + window.Height - ShadowInset);
+    }
+
+    private static void OnUiThread(Action action)
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try { action(); }
+            catch (Exception ex) { failure = ex; }
+        });
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+            throw new Xunit.Sdk.XunitException(failure.ToString());
     }
 }

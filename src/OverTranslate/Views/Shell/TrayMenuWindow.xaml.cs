@@ -1,7 +1,10 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using OverTranslate.Layout;
 using OverTranslate.Services;
+using Button = System.Windows.Controls.Button;
 using Point = System.Windows.Point;
 using Size = System.Windows.Size;
 
@@ -35,6 +38,7 @@ public partial class TrayMenuWindow : Window
         };
         Deactivated += (_, _) => Dismiss();
         KeyDown += (_, e) => { if (e.Key == Key.Escape) Dismiss(); };
+        PreviewMouseDown += DismissOnNonButtonClick;
     }
 
     private void PositionWindow()
@@ -56,6 +60,29 @@ public partial class TrayMenuWindow : Window
         if (_dismissed) return;
         _dismissed = true;
         Close();
+    }
+
+    private void DismissOnNonButtonClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left && e.ChangedButton != MouseButton.Right) return;
+        if (e.OriginalSource is DependencyObject source && IsInsideButton(source)) return;
+
+        Dismiss();
+    }
+
+    internal static bool IsInsideButton(DependencyObject? element)
+    {
+        while (element is not null)
+        {
+            if (element is Button) return true;
+
+            DependencyObject? visualParent = element is Visual or Visual3D
+                ? VisualTreeHelper.GetParent(element)
+                : null;
+            element = visualParent ?? LogicalTreeHelper.GetParent(element);
+        }
+
+        return false;
     }
 
     /// <summary>
