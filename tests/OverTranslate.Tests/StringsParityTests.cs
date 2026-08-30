@@ -6,7 +6,7 @@ namespace OverTranslate.Tests;
 
 /// <summary>
 /// Holds the string dictionaries to each other, so a key added to one is never left out of the
-/// other.
+/// rest.
 /// </summary>
 /// <remarks>
 /// A missing key does not break the build and does not throw: LocalizationService.Get returns the
@@ -51,21 +51,59 @@ public class StringsParityTests
             .ToDictionary(e => e.Attribute(X + "Key")!.Value, e => e.Value);
     }
 
+    /// <summary>
+    /// The dictionary the strings are authored in, and the one every other is held against.
+    /// </summary>
     public static readonly string ChineseFile = "Strings.zh-Hant.xaml";
     public static readonly string EnglishFile = "Strings.en.xaml";
 
+    /// <summary>Every dictionary that ships, the authored one included.</summary>
+    /// <remarks>
+    /// Written out rather than globbed so that adding a language is a deliberate act here too.
+    /// <see cref="Every_dictionary_on_disk_is_covered_here"/> is what stops a file being dropped
+    /// into Resources and quietly going unchecked by everything below.
+    /// </remarks>
+    public static readonly string[] AllFiles =
+    [
+        ChineseFile,
+        "Strings.zh-Hans.xaml",
+        EnglishFile,
+        "Strings.ja.xaml",
+        "Strings.ko.xaml",
+    ];
+
+    /// <summary>The dictionaries held against the authored one, which is every other one.</summary>
+    public static TheoryData<string> TranslatedFiles()
+    {
+        var data = new TheoryData<string>();
+        foreach (var file in AllFiles.Where(f => f != ChineseFile)) data.Add(file);
+        return data;
+    }
+
     [Fact]
-    public void Both_dictionaries_define_exactly_the_same_keys()
+    public void Every_dictionary_on_disk_is_covered_here()
+    {
+        var onDisk = Directory.GetFiles(ResourcesDirectory(), "Strings.*.xaml")
+            .Select(path => Path.GetFileName(path)!)
+            .Order()
+            .ToList();
+
+        Assert.Equal(AllFiles.Order().ToList(), onDisk);
+    }
+
+    [Theory]
+    [MemberData(nameof(TranslatedFiles))]
+    public void Every_dictionary_defines_exactly_the_keys_the_authored_one_does(string file)
     {
         var zh = Load(ChineseFile);
-        var en = Load(EnglishFile);
+        var other = Load(file);
 
-        var missingFromEnglish = zh.Keys.Except(en.Keys).OrderBy(k => k).ToList();
-        var missingFromChinese = en.Keys.Except(zh.Keys).OrderBy(k => k).ToList();
+        var missingFromOther = zh.Keys.Except(other.Keys).OrderBy(k => k).ToList();
+        var missingFromChinese = other.Keys.Except(zh.Keys).OrderBy(k => k).ToList();
 
         Assert.True(
-            missingFromEnglish.Count == 0,
-            $"Missing from {EnglishFile}: {string.Join(", ", missingFromEnglish)}");
+            missingFromOther.Count == 0,
+            $"Missing from {file}: {string.Join(", ", missingFromOther)}");
         Assert.True(
             missingFromChinese.Count == 0,
             $"Missing from {ChineseFile}: {string.Join(", ", missingFromChinese)}");
@@ -75,23 +113,24 @@ public class StringsParityTests
     /// A translation that drops or invents a {0} is a FormatException at the moment the message is
     /// shown — which is to say, on the error path, where it replaces a real diagnostic with a crash.
     /// </summary>
-    [Fact]
-    public void Composite_formats_use_the_same_placeholders_in_both_languages()
+    [Theory]
+    [MemberData(nameof(TranslatedFiles))]
+    public void Composite_formats_use_the_same_placeholders_in_every_language(string file)
     {
         var zh = Load(ChineseFile);
-        var en = Load(EnglishFile);
+        var other = Load(file);
 
         foreach (var (key, chinese) in zh)
         {
-            if (!en.TryGetValue(key, out var english)) continue;
+            if (!other.TryGetValue(key, out var translated)) continue;
 
             var inChinese = Placeholder.Matches(chinese).Select(m => m.Groups[1].Value).ToHashSet();
-            var inEnglish = Placeholder.Matches(english).Select(m => m.Groups[1].Value).ToHashSet();
+            var inOther = Placeholder.Matches(translated).Select(m => m.Groups[1].Value).ToHashSet();
 
             Assert.True(
-                inChinese.SetEquals(inEnglish),
+                inChinese.SetEquals(inOther),
                 $"{key} uses {{{string.Join(",", inChinese.Order())}}} in {ChineseFile} " +
-                $"but {{{string.Join(",", inEnglish.Order())}}} in {EnglishFile}");
+                $"but {{{string.Join(",", inOther.Order())}}} in {file}");
         }
     }
 
@@ -180,9 +219,9 @@ public class StringsParityTests
     /// those users entirely.
     /// </summary>
     [Fact]
-    public void OpenAi_hint_recommends_Ollama_in_both_languages()
+    public void OpenAi_hint_recommends_Ollama_in_every_language()
     {
-        foreach (var file in new[] { ChineseFile, EnglishFile })
+        foreach (var file in AllFiles)
             Assert.Contains("Ollama", Load(file)["S.Provider.OpenAIHint"]);
     }
 
@@ -191,30 +230,31 @@ public class StringsParityTests
     /// they are the easiest thing to drop when translating, because the sentence still reads fine
     /// without them. It just reads flat, in the language nobody here is checking.
     /// </summary>
-    [Fact]
-    public void Highlight_marks_are_balanced_and_appear_in_both_languages()
+    [Theory]
+    [MemberData(nameof(TranslatedFiles))]
+    public void Highlight_marks_are_balanced_and_appear_in_every_language(string file)
     {
         var zh = Load(ChineseFile);
-        var en = Load(EnglishFile);
+        var other = Load(file);
 
         foreach (var (key, chinese) in zh)
         {
-            if (!en.TryGetValue(key, out var english)) continue;
+            if (!other.TryGetValue(key, out var translated)) continue;
 
             var inChinese = HighlightCount(chinese);
-            var inEnglish = HighlightCount(english);
+            var inOther = HighlightCount(translated);
 
             Assert.True(
-                inChinese == inEnglish,
+                inChinese == inOther,
                 $"{key} highlights {inChinese} stretch(es) in {ChineseFile} " +
-                $"but {inEnglish} in {EnglishFile}");
+                $"but {inOther} in {file}");
 
             // A count that matches on both sides is still no use if one of them is a stray bracket,
             // which HighlightedText renders as ordinary text.
-            foreach (var (file, text) in new[] { (ChineseFile, chinese), (EnglishFile, english) })
+            foreach (var (which, text) in new[] { (ChineseFile, chinese), (file, translated) })
                 Assert.True(
                     Occurrences(text, "[[") == Occurrences(text, "]]"),
-                    $"{key} has unbalanced [[ ]] in {file}: {text}");
+                    $"{key} has unbalanced [[ ]] in {which}: {text}");
         }
     }
 
@@ -244,7 +284,10 @@ public class StringsParityTests
     /// </remarks>
     [Theory]
     [InlineData("Strings.zh-Hant.xaml", "浮動(?!視窗列)", "浮動視窗列")]
+    [InlineData("Strings.zh-Hans.xaml", "浮动(?!窗口栏)", "浮动窗口栏")]
     [InlineData("Strings.en.xaml", "(?i)floating (?!bar)", "floating bar")]
+    [InlineData("Strings.ja.xaml", "フローティング(?!バー)", "フローティングバー")]
+    [InlineData("Strings.ko.xaml", "플로팅(?! 바)", "플로팅 바")]
     public void The_floating_bar_is_called_the_same_thing_everywhere(
         string file, string pattern, string agreedName)
     {

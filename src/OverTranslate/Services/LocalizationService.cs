@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Windows;
-// UseWindowsForms puts System.Windows.Forms in the implicit usings, so this name collides
+// UseWindowsForms puts System.Windows.Forms and System.Drawing in the implicit usings, so these
+// names collide
 using Application = System.Windows.Application;
+using FontFamily = System.Windows.Media.FontFamily;
 
 namespace OverTranslate.Services;
 
@@ -32,17 +34,74 @@ public record UiLanguageOption(string Code, string Display);
 public static class LocalizationService
 {
     public const string TraditionalChinese = "zh-Hant";
-    public const string English             = "en";
+    public const string SimplifiedChinese  = "zh-Hans";
+    public const string English            = "en";
+    public const string Japanese           = "ja";
+    public const string Korean             = "ko";
 
-    private static readonly Uri ZhHantUri = new("Resources/Strings.zh-Hant.xaml", UriKind.Relative);
-    private static readonly Uri EnglishUri = new("Resources/Strings.en.xaml",      UriKind.Relative);
+    /// <summary>The dictionary each language is served by, and the set of languages that exist.</summary>
+    /// <remarks>
+    /// One table rather than a field per language and a switch beside it: <see cref="Apply"/>,
+    /// <see cref="Options"/> and <see cref="IsSupported"/> all have to agree on which codes are real,
+    /// and a language added to one place but not another is exactly the kind of half-addition that
+    /// ships as an interface that silently stays in the previous language.
+    /// </remarks>
+    private static readonly Dictionary<string, Uri> Dictionaries = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [TraditionalChinese] = new("Resources/Strings.zh-Hant.xaml", UriKind.Relative),
+        [SimplifiedChinese]  = new("Resources/Strings.zh-Hans.xaml", UriKind.Relative),
+        [English]            = new("Resources/Strings.en.xaml",      UriKind.Relative),
+        [Japanese]           = new("Resources/Strings.ja.xaml",      UriKind.Relative),
+        [Korean]             = new("Resources/Strings.ko.xaml",      UriKind.Relative),
+    };
 
     /// <summary>The languages offered in settings, in the order they are listed.</summary>
+    /// <remarks>
+    /// The two Chinese entries sit together because a reader scanning for one of them is scanning
+    /// for the script, and splitting them across the list makes the second look like it is missing.
+    /// </remarks>
     public static readonly List<UiLanguageOption> Options =
     [
         new(TraditionalChinese, "繁體中文"),
+        new(SimplifiedChinese,  "简体中文"),
         new(English,            "English"),
+        new(Japanese,           "日本語"),
+        new(Korean,             "한국어"),
     ];
+
+    /// <summary>Whether <paramref name="language"/> is one this app actually has strings for.</summary>
+    public static bool IsSupported(string? language) =>
+        !string.IsNullOrEmpty(language) && Dictionaries.ContainsKey(language);
+
+    /// <summary>
+    /// The interface font for each language, overriding the one SharedStyles declares.
+    /// </summary>
+    /// <remarks>
+    /// WPF falls through a family list per character rather than per family, which is why Segoe UI
+    /// can lead every one of these and CJK text still lands somewhere sensible. What it does not do
+    /// is tell Chinese, Japanese and Korean apart: the Han characters they share have different
+    /// printed shapes in each, and a single list ending in one CJK family renders all three in that
+    /// language's shapes. Reading Japanese set in a Traditional Chinese face is the sort of thing a
+    /// native reader notices immediately and cannot name, so the CJK family follows the interface.
+    ///
+    /// English keeps the Traditional Chinese family it already had. Nothing in an English interface
+    /// is Han to begin with; what reaches it is the text the user is translating, and that was
+    /// already being set this way.
+    ///
+    /// Japanese is Yu Gothic UI, which is what Windows sets its own interface in. It is the narrowed
+    /// "UI" cut of Yu Gothic and looks tighter than the Chinese families beside it here — that is
+    /// the typeface, not a mistake in the list, and it is what a Japanese reader expects a Windows
+    /// application to be set in. Meiryo was tried and put back: it is wider, and wider is not what
+    /// this is supposed to look like.
+    /// </remarks>
+    private static readonly Dictionary<string, string> Fonts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [TraditionalChinese] = "Segoe UI Variable Text, Segoe UI, Microsoft JhengHei UI, Sans-Serif",
+        [SimplifiedChinese]  = "Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI, Sans-Serif",
+        [English]            = "Segoe UI Variable Text, Segoe UI, Microsoft JhengHei UI, Sans-Serif",
+        [Japanese]           = "Segoe UI Variable Text, Segoe UI, Yu Gothic UI, Meiryo UI, Sans-Serif",
+        [Korean]             = "Segoe UI Variable Text, Segoe UI, Malgun Gothic, Sans-Serif",
+    };
 
     /// <summary>
     /// Raised after the dictionary swap, for text that DynamicResource cannot reach.
@@ -63,7 +122,12 @@ public static class LocalizationService
         get
         {
             var stored = SettingsService.Instance.Current.UiLanguage;
-            return string.IsNullOrEmpty(stored) ? ResolveSystemDefault() : stored;
+
+            // Not just "is it empty": a code this build has no dictionary for would otherwise be
+            // handed out here and compared against by everything downstream — LangItem.Display and
+            // the prompt templates both branch on it — while Apply had already quietly fallen back
+            // to something else, leaving the two disagreeing about what language is on screen.
+            return IsSupported(stored) ? stored : ResolveSystemDefault();
         }
     }
 
@@ -71,8 +135,11 @@ public static class LocalizationService
     /// The language to start a first-run profile in, from the display language Windows is set to.
     /// </summary>
     /// <remarks>
-    /// Chinese of any flavour gets Traditional — this app has no Simplified UI, and Traditional is
-    /// far closer for a Simplified reader than English is. Everything else gets English.
+    /// Chinese is split by script rather than by region, because that is the thing a reader can or
+    /// cannot read: Windows reports zh-TW, zh-HK and zh-MO for the Traditional-writing regions and
+    /// zh-CN, zh-SG and plain zh for the rest, so the region list is the script list. A Chinese
+    /// tag nobody thought of lands on Simplified, which is what the unlisted ones overwhelmingly
+    /// are. Japanese and Korean match on the language alone; everything else gets English.
     ///
     /// CurrentUICulture, not InstalledUICulture: the latter is the language Windows was installed
     /// in and does not move when the user changes their display language afterwards, so someone
@@ -82,10 +149,36 @@ public static class LocalizationService
     /// </remarks>
     public static string ResolveSystemDefault()
     {
-        var name = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        return name.Equals("zh", StringComparison.OrdinalIgnoreCase)
-            ? TraditionalChinese
-            : English;
+        var culture = CultureInfo.CurrentUICulture;
+
+        return culture.TwoLetterISOLanguageName.ToLowerInvariant() switch
+        {
+            "zh" => IsTraditionalScript(culture) ? TraditionalChinese : SimplifiedChinese,
+            "ja" => Japanese,
+            "ko" => Korean,
+            _    => English,
+        };
+    }
+
+    /// <summary>
+    /// Whether a Chinese culture is one of the Traditional-writing ones.
+    /// </summary>
+    /// <remarks>
+    /// Read off the name rather than asked of <see cref="CultureInfo"/>, which has no "which script"
+    /// property to ask. The explicit zh-Hant tag is checked first because Windows does hand it out
+    /// for a culture set that way, and it carries no region to match on at all.
+    /// </remarks>
+    private static bool IsTraditionalScript(CultureInfo culture)
+    {
+        var name = culture.Name.Replace('_', '-');
+
+        if (name.Contains("Hant", StringComparison.OrdinalIgnoreCase)) return true;
+        if (name.Contains("Hans", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var region = name.Split('-').LastOrDefault() ?? "";
+        return region.Equals("TW", StringComparison.OrdinalIgnoreCase)
+            || region.Equals("HK", StringComparison.OrdinalIgnoreCase)
+            || region.Equals("MO", StringComparison.OrdinalIgnoreCase);
     }
 
     public static void Apply(string language)
@@ -98,8 +191,20 @@ public static class LocalizationService
 
         dicts.Add(new ResourceDictionary
         {
-            Source = language == English ? EnglishUri : ZhHantUri
+            // An unknown code lands on the language these strings are authored in rather than on
+            // nothing at all: a hand-edited settings file or a language retired since should leave
+            // the interface readable, not blank.
+            Source = Dictionaries.TryGetValue(language, out var source)
+                ? source
+                : Dictionaries[TraditionalChinese]
         });
+
+        // Straight onto the application's own dictionary rather than into a merged one, so it wins
+        // over the family SharedStyles declares. Every reference to it is a DynamicResource for this
+        // reason — a StaticResource would have been resolved once, at parse time, and would keep
+        // whichever font the app started in.
+        Application.Current.Resources["AppFont"] = new FontFamily(
+            Fonts.TryGetValue(language, out var font) ? font : Fonts[TraditionalChinese]);
 
         LanguageChanged?.Invoke(null, EventArgs.Empty);
     }

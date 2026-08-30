@@ -1,0 +1,512 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Mirror of Strings.zh-Hant.xaml in Korean. Same keys, same {0} placeholders in the same
+         meaning — StringsParityTests fails the build if the dictionaries drift apart.
+
+         Written as Korean software rather than as a translation of the Chinese: the sentences are
+         rebuilt, not reordered word by word. Feature names are fixed — 캡처 번역, 빠른 조회,
+         빠른 번역, 실시간 번역, 텍스트 번역, 플로팅 바 — and a screen that invents its own wording
+         for one of them is the thing to catch in review. -->
+
+    <!-- ── Shared ── -->
+    <sys:String x:Key="S.Common.Reset">초기화</sys:String>
+    <sys:String x:Key="S.Common.Close">닫기</sys:String>
+    <sys:String x:Key="S.Common.Cancel">취소</sys:String>
+    <sys:String x:Key="S.Common.Configure">설정</sys:String>
+    <sys:String x:Key="S.Common.ApiKey">API 키</sys:String>
+    <!-- The search box in a language picker. Typing narrows the list and never changes the
+         selection on its own — the user still picks. -->
+    <sys:String x:Key="S.Common.SearchLanguage">언어 검색</sys:String>
+    <sys:String x:Key="S.Common.SearchNoMatch">일치하는 언어가 없습니다</sys:String>
+
+    <!-- ── Shell window ── -->
+    <sys:String x:Key="S.Shell.About">정보</sys:String>
+    <sys:String x:Key="S.Shell.QuickTools">빠른 도구</sys:String>
+    <sys:String x:Key="S.Shell.CaptureTranslate">캡처 번역</sys:String>
+    <sys:String x:Key="S.Shell.QuickLookup">빠른 조회</sys:String>
+    <sys:String x:Key="S.Shell.TextTranslate">텍스트 번역</sys:String>
+    <sys:String x:Key="S.Shell.RealtimeTranslate">실시간 번역</sys:String>
+    <sys:String x:Key="S.Shell.Settings">설정</sys:String>
+    <sys:String x:Key="S.Shell.HideSidebar">사이드바 접기</sys:String>
+    <sys:String x:Key="S.Shell.ShowSidebar">사이드바 펼치기</sys:String>
+    <sys:String x:Key="S.Shell.CaptureBlockedByRealtime">실시간 번역이 실행 중입니다. 종료한 뒤 캡처 번역을 사용하세요</sys:String>
+    <sys:String x:Key="S.Shell.QuickLookupBlockedByRealtime">실시간 번역이 실행 중입니다. 종료한 뒤 빠른 조회를 사용하세요</sys:String>
+    <sys:String x:Key="S.Shell.UpdateAvailable">v{0}(으)로 업데이트</sys:String>
+
+    <!-- ── Tray menu ── -->
+    <sys:String x:Key="S.Tray.OpenWindow">번역 창 열기</sys:String>
+    <sys:String x:Key="S.Tray.RealtimeWindow">실시간 번역 창</sys:String>
+    <sys:String x:Key="S.Tray.Settings">설정</sys:String>
+    <sys:String x:Key="S.Tray.Exit">종료</sys:String>
+
+    <!-- ── About ── -->
+    <sys:String x:Key="S.About.Author">만든 사람</sys:String>
+    <sys:String x:Key="S.About.ViewSource">GitHub에서 소스 코드 보기</sys:String>
+    <sys:String x:Key="S.About.Version">버전 {0}</sys:String>
+    <sys:String x:Key="S.About.OpenSourceBefore" xml:space="preserve">무료 오픈 소스로 자유롭게 사용할 수 있습니다. 도움이 되었다면 GitHub에서</sys:String>
+    <sys:String x:Key="S.About.OpenSourceAfter" xml:space="preserve">Star를 눌러 주시면 큰 힘이 됩니다.</sys:String>
+
+    <!-- ── Toast ── -->
+    <sys:String x:Key="S.Toast.CopyMessage">메시지 복사</sys:String>
+    <sys:String x:Key="S.Toast.Copied">클립보드에 복사했습니다</sys:String>
+    <sys:String x:Key="S.Toast.CopyFailed">복사하지 못했습니다. 잠시 후 다시 시도해 주세요.</sys:String>
+
+    <!-- ── Update ── -->
+    <sys:String x:Key="S.Update.WindowTitle">새 버전이 있습니다</sys:String>
+    <sys:String x:Key="S.Update.Heading">새 버전이 있습니다</sys:String>
+    <sys:String x:Key="S.Update.Explanation">‘지금 업데이트’를 누르면 내려받아 적용하고, 완료 후 자동으로 다시 시작합니다.</sys:String>
+    <sys:String x:Key="S.Update.NotesBefore" xml:space="preserve">무엇이 바뀌었는지 궁금하신가요?</sys:String>
+    <sys:String x:Key="S.Update.NotesLink">릴리스 노트 보기</sys:String>
+    <sys:String x:Key="S.Update.Later">나중에</sys:String>
+    <sys:String x:Key="S.Update.Now">지금 업데이트</sys:String>
+    <sys:String x:Key="S.Update.Skip">이 버전 건너뛰고 다시 알리지 않기</sys:String>
+    <sys:String x:Key="S.Update.Downloading">내려받는 중 {0}</sys:String>
+    <sys:String x:Key="S.Update.Applying">적용 중…</sys:String>
+    <sys:String x:Key="S.Update.Retry">다시 시도</sys:String>
+    <sys:String x:Key="S.Update.Failed">업데이트를 내려받지 못했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Update.CloseBlocked">업데이트 중입니다. 완료되면 자동으로 다시 시작합니다</sys:String>
+
+    <!-- ── Service errors ── -->
+    <sys:String x:Key="S.Error.OpenAiHttp">OpenAI 호환 API가 {0}을(를) 반환했습니다: {1}</sys:String>
+    <sys:String x:Key="S.Error.OpenAiUnparsable">OpenAI 호환 API의 응답을 해석할 수 없습니다.</sys:String>
+    <sys:String x:Key="S.Error.OpenAiNoTranslation">OpenAI 호환 API가 번역문을 반환하지 않았습니다.</sys:String>
+    <sys:String x:Key="S.Error.OpenAiBadUrl">OpenAI 호환 API 주소는 올바른 HTTP 또는 HTTPS URL이어야 합니다.</sys:String>
+    <sys:String x:Key="S.Error.UnknownError">알 수 없는 오류</sys:String>
+    <sys:String x:Key="S.Error.NoErrorContent">오류 내용이 없습니다</sys:String>
+    <sys:String x:Key="S.Error.OcrUnsupportedLanguage">OCR은 현재 AUTO, EN, ZH, ZH-HANT, JA, KO만 지원합니다. ‘{0}’은(는) 아직 지원하지 않습니다.</sys:String>
+    <sys:String x:Key="S.Error.OcrSwapTimeout">OCR 모델을 바꾸려고 다른 인식이 끝나기를 기다렸으나 시간이 초과되었습니다.</sys:String>
+    <sys:String x:Key="S.Error.OcrImageConvert">이미지를 ONNX OCR이 읽을 수 있는 형식으로 변환하지 못했습니다.</sys:String>
+    <sys:String x:Key="S.Error.OcrModelMissing">OCR 모델 파일을 찾을 수 없습니다: {0}</sys:String>
+    <sys:String x:Key="S.Error.NotTranslated">번역되지 않음</sys:String>
+
+    <!-- ── Text translation page ── -->
+    <sys:String x:Key="S.Translation.Title">텍스트 번역</sys:String>
+    <sys:String x:Key="S.Translation.Subtitle">텍스트를 입력하거나 붙여넣으면 번역합니다. 캡처 결과도 이곳에 표시됩니다</sys:String>
+    <sys:String x:Key="S.Translation.SwapTip">언어와 내용 바꾸기</sys:String>
+    <sys:String x:Key="S.Translation.ClearSource">원문 지우기</sys:String>
+    <sys:String x:Key="S.Translation.SpeakSource">원문 읽어 주기</sys:String>
+    <sys:String x:Key="S.Translation.SpeakSourceOpenAi">OpenAI 번역 서비스에서는 원본 언어를 지정해야 원문을 읽어 줄 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Translation.SpeakSourceUnknown">원문의 언어를 아직 알 수 없습니다. 번역이 끝나면 읽어 줄 수 있습니다.</sys:String>
+    <!-- The note at the foot of the page and the greyed speaker's tooltip are the same sentence:
+         the note is what is read, the tooltip is for whoever hovers the button instead. -->
+    <sys:String x:Key="S.Translation.Source">원문</sys:String>
+    <sys:String x:Key="S.Translation.SpeakResult">번역문 읽어 주기</sys:String>
+    <sys:String x:Key="S.Translation.Result">번역문</sys:String>
+    <sys:String x:Key="S.Translation.Retry">↻ 다시 시도</sys:String>
+    <sys:String x:Key="S.Translation.MissingApiKey">API 키가 없습니다 — 설정에서 먼저 입력하세요</sys:String>
+    <sys:String x:Key="S.Translation.ProviderUnavailable">{0}을(를) 지금은 사용할 수 없습니다. 다른 번역 서비스를 이용해 보세요.
+번역 실패: {1}</sys:String>
+    <sys:String x:Key="S.Translation.Translating">번역 중…</sys:String>
+    <sys:String x:Key="S.Translation.SpeakFailed">읽어 주지 못했습니다: {0}</sys:String>
+
+    <!-- ── Quick translate ── Only ever seen on the hint card, so each line stays to one: it sits
+         over the window the reader is working in. -->
+    <sys:String x:Key="S.QuickTranslate.Replaced">번역해서 붙여넣었습니다.</sys:String>
+    <sys:String x:Key="S.QuickTranslate.EmptyResult">번역 결과가 비어 있어 원래 텍스트를 그대로 두었습니다.</sys:String>
+    <sys:String x:Key="S.QuickTranslate.FocusMoved">창이 바뀌어 번역 결과를 붙여넣지 못했습니다.</sys:String>
+    <sys:String x:Key="S.QuickTranslate.ClipboardBusy">클립보드를 사용할 수 없어 붙여넣지 않았습니다.</sys:String>
+
+    <!-- ── Rich dictionary ── -->
+    <sys:String x:Key="S.Dictionary.Alternatives">다른 번역</sys:String>
+    <sys:String x:Key="S.Dictionary.NoResult">이 단어에 해당하는 사전 정보를 찾지 못했습니다.</sys:String>
+    <sys:String x:Key="S.Dictionary.Unavailable">이 단어에 해당하는 사전 정보를 찾지 못했습니다.</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Adjective">형용사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Adverb">부사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Article">관사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Conjunction">접속사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Determiner">한정사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Interjection">감탄사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.ModalVerb">조동사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Noun">명사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Other">기타</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Phrase">구</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Preposition">전치사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Pronoun">대명사</sys:String>
+    <sys:String x:Key="S.Dictionary.PartOfSpeech.Verb">동사</sys:String>
+
+    <!-- ── Quick lookup popup ── -->
+    <sys:String x:Key="S.QuickLookup.Placeholder">번역할 텍스트를 입력하세요…</sys:String>
+    <sys:String x:Key="S.QuickLookup.Settings">빠른 조회 설정</sys:String>
+    <sys:String x:Key="S.QuickLookup.BackToResult">번역 결과로 돌아가기</sys:String>
+    <sys:String x:Key="S.QuickLookup.Pin">고정하면 창이 저절로 닫히지 않습니다</sys:String>
+    <sys:String x:Key="S.QuickLookup.Unpin">고정 해제</sys:String>
+    <sys:String x:Key="S.QuickLookup.Copy">복사</sys:String>
+    <sys:String x:Key="S.QuickLookup.Copied">복사됨</sys:String>
+    <sys:String x:Key="S.QuickLookup.SpeakSource">원문 읽기</sys:String>
+    <sys:String x:Key="S.QuickLookup.SpeakSourceTip">원문 읽어 주기</sys:String>
+    <!-- Automatic is not switched off here the way it is on the text translation page: once the
+         translation is back the engine has said which language the original was in, so the only
+         gap is before the first result. -->
+    <sys:String x:Key="S.QuickLookup.SpeakSourceOpenAi">OpenAI 번역 서비스에서는 원본 언어를 지정해야 원문을 읽어 줄 수 있습니다.</sys:String>
+    <sys:String x:Key="S.QuickLookup.SpeakSourceUnknown">원문의 언어를 아직 알 수 없습니다. 번역이 끝나면 읽어 줄 수 있습니다.</sys:String>
+    <sys:String x:Key="S.QuickLookup.Provider">번역 서비스</sys:String>
+    <sys:String x:Key="S.QuickLookup.ProviderHint">캡처 번역·텍스트 번역과 같은 서비스를 사용합니다</sys:String>
+    <sys:String x:Key="S.QuickLookup.AutoCopy">번역 결과 자동 복사</sys:String>
+    <sys:String x:Key="S.QuickLookup.AutoCopyHint">번역이 끝나면 결과를 클립보드에 자동으로 복사합니다</sys:String>
+    <sys:String x:Key="S.QuickLookup.Collapse">접기</sys:String>
+    <sys:String x:Key="S.QuickLookup.Expand">펼치기</sys:String>
+    <sys:String x:Key="S.QuickLookup.TranslationCopied">클립보드에 복사했습니다</sys:String>
+    <sys:String x:Key="S.QuickLookup.OpenFullSettings">전체 설정</sys:String>
+    <sys:String x:Key="S.QuickLookup.SettingsHint">{0} 키로 엽니다. 다른 창으로 전환하면 닫히며, 계속 띄워 두려면 창을 고정하세요.</sys:String>
+
+    <!-- ── Capture toolbar ── -->
+    <sys:String x:Key="S.Toolbar.Translate">번역</sys:String>
+    <sys:String x:Key="S.Toolbar.Translating">번역 중...</sys:String>
+    <sys:String x:Key="S.Toolbar.Retranslate">다시 번역</sys:String>
+    <sys:String x:Key="S.Toolbar.ShowSource">원문 보기</sys:String>
+    <sys:String x:Key="S.Toolbar.ShowTranslation">번역문 보기</sys:String>
+    <sys:String x:Key="S.Toolbar.Screenshot">스크린샷</sys:String>
+    <sys:String x:Key="S.Toolbar.OpenWindow">창으로 열기</sys:String>
+    <sys:String x:Key="S.Toolbar.OpenWindowHint">이번 번역 결과를 창에서 열기</sys:String>
+    <sys:String x:Key="S.Toolbar.Swap">원문과 번역문의 언어 바꾸기</sys:String>
+    <sys:String x:Key="S.Toolbar.Close">캡처 번역 종료</sys:String>
+    <sys:String x:Key="S.Toolbar.Direction">원문의 쓰기 방향</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionHorizontal">가로쓰기</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionVertical">세로쓰기</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">원문이 가로로, 왼쪽에서 오른쪽으로 쓰여 있습니다</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">원문이 세로로, 위에서 아래·오른쪽에서 왼쪽으로 쓰여 있습니다</sys:String>
+    <sys:String x:Key="S.Toolbar.Speak">읽어 주기</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakStopLabel">정지</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakHint">인식한 원문을 읽어 줍니다</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakStop">읽기 정지</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakAutomatic">원본 언어가 ‘자동’이면 읽어 줄 수 없습니다. 실제 언어를 먼저 선택하세요</sys:String>
+    <sys:String x:Key="S.Toolbar.SpeakNoText">아직 읽어 줄 텍스트를 인식하지 못했습니다</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupBadge">⚡백업 {0}</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupTooltip">‘{0}’이(가) 전부 번역하지 못해 백업인 ‘{1}’이(가) 나머지를 번역했습니다.
+이번에 실제로 사용: {2}</sys:String>
+
+    <!-- ── Capture overlay ── -->
+    <sys:String x:Key="S.Capture.CancelTip">캡처 취소</sys:String>
+    <sys:String x:Key="S.Capture.DragPrompt">드래그해서 번역할 영역을 선택하세요</sys:String>
+    <sys:String x:Key="S.Capture.PressPrefix"></sys:String>
+    <sys:String x:Key="S.Capture.CancelSuffix">키로 취소</sys:String>
+    <sys:String x:Key="S.Overlay.Recognising">인식 중</sys:String>
+
+    <!-- ── Secret box ── -->
+    <sys:String x:Key="S.Secret.Show">표시</sys:String>
+    <sys:String x:Key="S.Secret.Hide">숨기기</sys:String>
+
+    <!-- ── Tray notifications and capture balloons ── -->
+    <sys:String x:Key="S.Main.MinimizedTitle">OverTranslate가 실행 중입니다</sys:String>
+    <sys:String x:Key="S.Main.MinimizedBody">시스템 트레이로 최소화했습니다. {0} 키로 캡처 번역을 시작할 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Main.DefaultShortcutName">설정한 단축키</sys:String>
+    <sys:String x:Key="S.Main.RealtimeRunningTitle">실시간 번역 실행 중</sys:String>
+    <sys:String x:Key="S.Main.RealtimeRunningBody">실시간 번역을 종료한 뒤 캡처 번역을 사용하세요.</sys:String>
+    <sys:String x:Key="S.Main.MissingApiKeyTitle">API 키가 없습니다</sys:String>
+    <sys:String x:Key="S.Main.MissingApiKeyBody">설정에서 API 키를 입력하세요.</sys:String>
+    <sys:String x:Key="S.Main.RecogniseFailedTitle">인식 실패</sys:String>
+    <sys:String x:Key="S.Main.NoImageBody">선택한 이미지를 찾을 수 없습니다. 영역을 다시 선택하세요.</sys:String>
+    <sys:String x:Key="S.Main.Recognising">인식 중</sys:String>
+    <sys:String x:Key="S.Main.NoTextTitle">텍스트를 찾지 못했습니다</sys:String>
+    <sys:String x:Key="S.Main.NoTextBody">선택한 영역에서 인식할 수 있는 텍스트가 없습니다.</sys:String>
+    <sys:String x:Key="S.Main.Translating">번역 중</sys:String>
+    <sys:String x:Key="S.Main.TranslateFailedTitle">번역 실패</sys:String>
+    <sys:String x:Key="S.Main.TranslateFailedBody">지금 사용 중인 번역 서비스를 일시적으로 이용할 수 없는 것 같습니다.
+다른 서비스로 바꾼 뒤 다시 시도해 보세요.
+자세히: {0}</sys:String>
+    <sys:String x:Key="S.Main.CopiedTitle">복사됨</sys:String>
+    <sys:String x:Key="S.Main.CopiedBody">선택한 영역의 스크린샷을 클립보드에 복사했습니다.</sys:String>
+    <sys:String x:Key="S.Main.CopiedAndSavedBody">클립보드에 복사하고 다음 위치에 저장했습니다:
+{0}</sys:String>
+    <sys:String x:Key="S.Main.CopiedSaveFailedTitle">복사됨(저장 실패)</sys:String>
+    <sys:String x:Key="S.Main.CopiedSaveFailedBody">클립보드에 복사했지만 저장하지 못했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Main.CopyFailedTitle">복사 실패</sys:String>
+    <sys:String x:Key="S.Main.CopyFailedBody">스크린샷을 복사하지 못했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Main.SpeakFailedTitle">읽어 주지 못했습니다</sys:String>
+    <sys:String x:Key="S.Main.SpeakFailedBody">이 텍스트는 읽어 줄 수 없습니다: {0}</sys:String>
+
+    <!-- ── Realtime translation ── -->
+    <sys:String x:Key="S.Realtime.Title">실시간 번역</sys:String>
+    <sys:String x:Key="S.Realtime.Subtitle">화면에서 영역을 지정하면 글자가 바뀔 때마다 번역해 화면 위에 표시합니다. 영상이나 게임 화면에 적합합니다.</sys:String>
+
+    <sys:String x:Key="S.Realtime.TranslationSettings">번역 설정</sys:String>
+    <sys:String x:Key="S.Realtime.SourceLanguage">원본 언어</sys:String>
+    <sys:String x:Key="S.Realtime.SourceLanguagePrompt">원본 언어를 선택하세요</sys:String>
+    <sys:String x:Key="S.Realtime.TargetLanguage">번역할 언어</sys:String>
+    <sys:String x:Key="S.Realtime.Provider">번역 서비스</sys:String>
+
+    <sys:String x:Key="S.Realtime.ScreenHint">실시간 번역은 현재 한 번에 화면 하나만 지원합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.BlockCount">블록 수</sys:String>
+    <sys:String x:Key="S.Realtime.DecreaseBlocks">블록 줄이기</sys:String>
+    <sys:String x:Key="S.Realtime.IncreaseBlocks">블록 늘리기</sys:String>
+    <sys:String x:Key="S.Realtime.BlockCountHint">블록은 한 번에 최대 3개까지 만들 수 있습니다.</sys:String>
+
+    <sys:String x:Key="S.Realtime.Appearance">표시 모양</sys:String>
+    <sys:String x:Key="S.Realtime.Preview">미리 보기</sys:String>
+    <sys:String x:Key="S.Realtime.PreviewText">번역문은 화면에 이렇게 표시됩니다</sys:String>
+    <sys:String x:Key="S.Realtime.TextColor">글자 색</sys:String>
+    <sys:String x:Key="S.Realtime.ScrimColor">배경 색</sys:String>
+    <sys:String x:Key="S.Realtime.ScrimOpacity">배경 불투명도</sys:String>
+    <sys:String x:Key="S.Realtime.ResetColors">기본값으로 되돌리기</sys:String>
+    <sys:String x:Key="S.Realtime.ResetColorsName">표시 모양 기본값으로</sys:String>
+    <sys:String x:Key="S.Realtime.AdvancedOptions">고급 옵션</sys:String>
+    <sys:String x:Key="S.Realtime.NaturalBackground">배경에 자연스럽게 맞추기</sys:String>
+    <sys:String x:Key="S.Realtime.NaturalBackgroundHint">원문을 지우고 주변 화면으로 배경을 채워 번역문이 화면에 자연스럽게 어울리도록 합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.SampleTextColor">원문 글자 색 사용</sys:String>
+    <sys:String x:Key="S.Realtime.SampleTextColorHint">원문의 글자 색을 우선 가져오고, 인식이 불안정하면 설정한 글자 색을 사용합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.AdvancedOptionsBestFor">고급 옵션은 대화 상자, 메뉴, 정지 화면처럼 변화가 적은 장면에 적합합니다. 화면이 빠르게 바뀌면 배경과 글자 색이 제때 따라가지 못할 수 있습니다.</sys:String>
+
+    <sys:String x:Key="S.Realtime.HowItWorks">사용 방법</sys:String>
+    <sys:String x:Key="S.Realtime.Step1">1. ‘블록 선택’을 누르고 화면에서 번역할 영역을 드래그합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.Step2">2. 플로팅 바의 ‘시작’을 누르면 내용이 바뀔 때마다 다시 인식해 번역문을 갱신합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.Step3">3. 번역 중인 영역은 클릭을 가로채지 않아 게임이나 다른 앱을 그대로 사용할 수 있습니다. 영역을 바꾸려면 ‘편집’을 누르세요.</sys:String>
+    <sys:String x:Key="S.Realtime.Step4">4. 번역 중 {0} 키로 일시 정지·재개할 수 있으며, 일시 정지하면 화면의 원문이 다시 나타납니다.</sys:String>
+
+    <sys:String x:Key="S.Realtime.SelectBlocks">블록 선택</sys:String>
+    <sys:String x:Key="S.Realtime.StopSession">종료</sys:String>
+    <sys:String x:Key="S.Realtime.ActiveHint">실행 중입니다. 화면의 플로팅 바에서 조정하거나 종료할 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Realtime.NoApiKey">API 키가 설정되어 있지 않습니다. 설정에서 입력하지 않으면 실시간 번역이 번역문을 받아올 수 없습니다.</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenItem">화면 {0} · {1}×{2}</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenItemPrimary">화면 {0} · {1}×{2}(주 모니터)</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureInProgress">캡처 번역이 진행 중입니다. 마친 뒤 실시간 번역을 시작하세요.</sys:String>
+    <sys:String x:Key="S.Realtime.ChooseSourceFirst">원본 언어를 먼저 선택하세요.</sys:String>
+    <sys:String x:Key="S.Realtime.NoScreens">사용할 수 있는 화면이 없습니다. 이 페이지를 다시 열어 주세요.</sys:String>
+
+    <!-- Floating control bar -->
+    <sys:String x:Key="S.Realtime.EditHint">화면에서 드래그해 번역할 영역을 만드세요</sys:String>
+    <sys:String x:Key="S.Realtime.StartTranslating">시작</sys:String>
+    <sys:String x:Key="S.Realtime.Running">번역 중</sys:String>
+    <sys:String x:Key="S.Realtime.Paused">일시 정지됨</sys:String>
+    <sys:String x:Key="S.Realtime.Pause">실시간 번역 일시 정지</sys:String>
+    <sys:String x:Key="S.Realtime.Resume">실시간 번역 재개</sys:String>
+    <sys:String x:Key="S.Realtime.EditBlocks">블록 편집</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOff">영역 선택을 멈추고 아래 화면 조작하기</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOn">영역 선택 다시 시작</sys:String>
+    <sys:String x:Key="S.Realtime.CrosshairOffHint">영역 선택을 멈췄습니다. 아래 화면을 바로 조작할 수 있습니다</sys:String>
+
+    <!-- Control bar and edit window messages -->
+    <sys:String x:Key="S.Realtime.MovedToFront">실시간 번역 창을 맨 앞으로 옮겼습니다</sys:String>
+    <sys:String x:Key="S.Realtime.TooManyBlocks">블록은 최대 {0}개까지입니다. 하나를 먼저 지우세요</sys:String>
+    <sys:String x:Key="S.Realtime.NeedOneBlock">드래그해서 블록을 하나 이상 먼저 만드세요</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceLost">번역하던 창이 닫혀 실시간 번역을 중지했습니다</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenCaptureUnavailable">이 환경에서는 ‘전체 화면’으로 실시간 번역을 할 수 없습니다. ‘창 지정’으로 바꾸고 번역할 창을 선택하세요</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceScreen">전체 화면</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceWindow">창 지정</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceScreenHint">화면에 보이는 모든 내용을 가져옵니다.</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenModeUnsupported">이 환경은 현재 ‘전체 화면’을 지원하지 않습니다.</sys:String>
+    <sys:String x:Key="S.Realtime.RealtimeUnsupported">실시간 번역에는 화면 캡처 기능이 필요하지만 이 Windows에서는 사용할 수 없습니다</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureSourceWindowHint">지정한 창 안의 내용만 가져옵니다.</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Label">1단계</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Name">가져오기 방식 선택</sys:String>
+    <sys:String x:Key="S.Realtime.Step1Desc">가져올 범위의 종류를 선택합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Label">2단계</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Name">화면 또는 창 선택</sys:String>
+    <sys:String x:Key="S.Realtime.Step2Desc">앞 단계에서 고른 방식에 맞춰 가져올 화면이나 창을 지정합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Label">3단계</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Name">번역 블록 설정</sys:String>
+    <sys:String x:Key="S.Realtime.Step3Desc">화면에서 번역할 블록의 개수를 정합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.ScreenPrompt">가져올 화면을 선택합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowPromptLine">가져올 창을 선택합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowPrompt">창을 선택하세요</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowHint">창 목록은 ‘새로 고침’을 누를 때 갱신됩니다. 방금 다른 앱을 실행했다면 새로 고친 뒤 선택하세요.</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowNone">가져올 수 있는 창이 없습니다. 번역할 앱을 먼저 실행한 뒤 새로 고치세요.</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowDetail">{0}에서</sys:String>
+    <sys:String x:Key="S.Realtime.CaptureWindowOnScreen">영역 선택은 {0}에서 진행됩니다.</sys:String>
+    <sys:String x:Key="S.Realtime.RefreshWindows">새로 고침</sys:String>
+    <sys:String x:Key="S.Realtime.ChooseWindowFirst">번역할 창을 먼저 선택하세요</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureUnsupported">이 Windows 버전은 화면 캡처를 지원하지 않습니다.</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureGone">그 창은 닫혔거나 최소화되었습니다. 창을 다시 선택하세요.</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFailed">이 창은 가져올 수 없습니다. ‘테두리 없는 창’이나 ‘창 모드’로 바꾼 뒤 다시 시도하세요.</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureFullscreen">현재 표시 모드에서는 가져올 수 없습니다. ‘테두리 없는 창’이나 ‘창 모드’로 바꾼 뒤 다시 시도하세요.</sys:String>
+    <sys:String x:Key="S.Realtime.WindowCaptureNoFrame">창 화면을 가져오지 못했습니다. ‘테두리 없는 창’이나 ‘창 모드’로 바꾼 뒤 다시 시도하세요.</sys:String>
+    <sys:String x:Key="S.Realtime.SessionEndedTitle">실시간 번역을 종료했습니다</sys:String>
+    <sys:String x:Key="S.Realtime.RemoveBlock">이 블록 삭제</sys:String>
+
+    <!-- Block mode picker -->
+    <sys:String x:Key="S.Realtime.ModeSubtitle">자막 / 대사</sys:String>
+    <sys:String x:Key="S.Realtime.ModeGameUi">게임 / UI</sys:String>
+    <sys:String x:Key="S.Realtime.ModeSubtitleSummary">자막이나 대사 창 — 글자가 커서 읽을 때 축소합니다</sys:String>
+    <sys:String x:Key="S.Realtime.ModeGameUiSummary">게임 패널이나 아이템 설명 — 글자가 작아 그대로 읽습니다</sys:String>
+    <sys:String x:Key="S.Realtime.ModeSubtitleGuidance" xml:space="preserve">영상 자막이나 게임 대사처럼 글자 위치가 일정한 장면에 적합합니다.
+영역을 잡을 때 글자 위아래에 여백을 조금 남기고 딱 붙이지 마세요. 좌우는 넓어도 되지만 빈 공간을 너무 많이 넣지 않도록 합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.ModeGameUiGuidance" xml:space="preserve">게임의 메뉴나 안내처럼 글자가 흩어져 있고 위치가 일정하지 않은 장면에 적합합니다.
+전체적으로 여백을 조금 남겨 두세요. 번역할 곳이 여러 군데라면 한 번에 크게 잡지 말고 따로 나눠 잡는 것을 권장합니다.</sys:String>
+    <sys:String x:Key="S.Realtime.CollapseGuidance">모드 설명 접기</sys:String>
+    <sys:String x:Key="S.Realtime.ExpandGuidance">모드 설명 펼치기</sys:String>
+
+    <!-- Session failures -->
+    <sys:String x:Key="S.Realtime.SessionAborted">실시간 번역을 중단했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Realtime.MissingApiKey">API 키가 없습니다. 설정에서 먼저 입력하세요.</sys:String>
+    <sys:String x:Key="S.Realtime.RetryingAfterFailure">번역이 일시적으로 실패해 계속 다시 시도합니다: {0}</sys:String>
+
+    <!-- ── Translation providers ── -->
+    <sys:String x:Key="S.Provider.Google">Google 번역 (Web)</sys:String>
+    <sys:String x:Key="S.Provider.GoogleHint">기존 웹 인터페이스</sys:String>
+    <sys:String x:Key="S.Provider.Google2">Google 번역 (RPC)</sys:String>
+    <sys:String x:Key="S.Provider.Google2Hint">새 RPC 인터페이스</sys:String>
+    <sys:String x:Key="S.Provider.Bing">Bing 번역</sys:String>
+    <sys:String x:Key="S.Provider.Microsoft">Microsoft 번역</sys:String>
+    <sys:String x:Key="S.Provider.DeepL">DeepL 번역</sys:String>
+    <sys:String x:Key="S.Provider.DeepLHint">DeepL 공식 사이트에서 가입해 API 키를 받아야 합니다</sys:String>
+    <sys:String x:Key="S.Provider.OpenAI">OpenAI</sys:String>
+    <sys:String x:Key="S.Provider.OpenAIHint">OpenAI 호환 API를 지원합니다. 로컬 LLM 사용을 권장하며, Ollama로 간편하게 설치할 수 있습니다.</sys:String>
+
+    <!-- ── Settings page ── -->
+    <sys:String x:Key="S.Settings.Title">설정</sys:String>
+    <sys:String x:Key="S.Settings.Subtitle">단축키, 번역 서비스, 외관, 고급 옵션</sys:String>
+
+    <sys:String x:Key="S.Settings.Hotkeys">단축키</sys:String>
+    <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
+    <sys:String x:Key="S.Settings.HotkeyEnable">이 단축키 사용</sys:String>
+    <!-- The shortcut box has no label of its own; this is its ToolTip -->
+    <sys:String x:Key="S.Settings.HotkeyRecordTip">클릭해서 단축키 다시 지정</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyOn">사용</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyOff">사용 안 함</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKinds">단축키는 Ctrl／Alt／Shift와 다른 키의 조합은 물론, 단독 기능 키, 마우스 버튼, 게임패드 버튼도 지원합니다.</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyKindsExample">예: Ctrl+Alt+A, Shift+A, F1, 마우스 가운데／옆 버튼, XInput 등.</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkey">일시 정지 / 재개</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyHint">[[실시간 번역]] 일시 정지·재개</sys:String>
+    <sys:String x:Key="S.Settings.RealtimePauseHotkeyNote">‘일시 정지 / 재개’는 실시간 번역이 실행 중일 때만 동작합니다. (원문을 확인할 때 유용합니다)</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkey">빠른 조회</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">단축키로 [[빠른 조회]] 열기</sys:String>
+    <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">텍스트를 선택해 두면 창이 열릴 때 자동으로 불러와 번역합니다.</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkey">빠른 번역</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">[[선택한 텍스트]]를 번역문으로 바꾸기</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote" xml:space="preserve">글자를 입력할 수 있는 칸에서만 동작하며, 입력란이 아니면 붙여넣을 수 없습니다.&#x0a;번역 전후의 언어와 서비스는 ‘텍스트 번역’과 같은 설정을 따릅니다.</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ 단독으로 쓸 수 있는 키는 F1–F24, Pause, Scroll Lock뿐입니다. 다른 키는 Ctrl／Alt／Shift와 함께 사용하세요</sys:String>
+
+    <sys:String x:Key="S.Settings.General">일반</sys:String>
+    <sys:String x:Key="S.Settings.CaptureHotkey">캡처 번역</sys:String>
+    <sys:String x:Key="S.Settings.CaptureHotkeyHint">단축키로 [[캡처 번역]] 시작</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkey">번역 창 열기</sys:String>
+    <sys:String x:Key="S.Settings.WindowHotkeyHint">단축키로 [[번역 창]] 열기</sys:String>
+    <sys:String x:Key="S.Settings.AutoTranslate">자동 번역</sys:String>
+    <sys:String x:Key="S.Settings.AutoTranslateCheck">캡처 번역에서 영역을 다 지정하면 곧바로 번역해, 따로 누를 필요가 없습니다.</sys:String>
+    <sys:String x:Key="S.Settings.Startup">시작 프로그램</sys:String>
+    <sys:String x:Key="S.Settings.StartupCheck">Windows 시작 시 자동 실행</sys:String>
+
+    <sys:String x:Key="S.Settings.ServiceSetup">번역 서비스 설정</sys:String>
+    <sys:String x:Key="S.Settings.ServiceSetupHint">키나 엔드포인트가 필요한 서비스만 설정하면 됩니다</sys:String>
+    <sys:String x:Key="S.Settings.ServiceNeedsSetup">설정 필요</sys:String>
+    <sys:String x:Key="S.Settings.ServiceReady">설정됨</sys:String>
+    <sys:String x:Key="S.Settings.ServiceDefault">기본값 사용</sys:String>
+    <sys:String x:Key="S.Settings.ServiceDialogTitle">{0} 설정</sys:String>
+    <sys:String x:Key="S.Settings.ApiBaseUrl">API 주소</sys:String>
+    <sys:String x:Key="S.Settings.ModelName">모델 이름</sys:String>
+    <sys:String x:Key="S.Settings.OllamaGuide">로컬 LLM (Ollama) 설치 안내</sys:String>
+    <sys:String x:Key="S.Settings.PromptAuto">자동 감지용 프롬프트</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicit">언어 지정 프롬프트</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">‘자동 감지용 프롬프트’를 편집하고 있습니다. 원본 언어가 자동 감지일 때만 사용됩니다.</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">‘언어 지정 프롬프트’를 편집하고 있습니다. 원본 언어를 지정했을 때만 사용됩니다.</sys:String>
+    <sys:String x:Key="S.Settings.ResetDefault">기본값으로</sys:String>
+    <sys:String x:Key="S.Settings.PromptParams">사용할 수 있는 매개변수</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamsTip">프롬프트에 이 매개변수를 넣어 두면 보내기 전에 그때 사용하는 언어로 바뀌므로, 하나의 프롬프트로 모든 언어 조합에 대응할 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol1">매개변수</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol2">설명</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamCol3">예</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceName">원본 언어 이름</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceCode">원본 언어 코드</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetName">번역할 언어 이름</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetCode">번역할 언어 코드</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceNameEg">영어</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetNameEg">일본어</sys:String>
+    <sys:String x:Key="S.Settings.OpenAiAdvanced">고급</sys:String>
+    <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureEnable">사용</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureRange">범위: 0.0 ~ 2.0</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureHint" xml:space="preserve">Temperature는 출력이 얼마나 달라지는지에 영향을 줍니다. 0이면 되도록 일정하게, 값을 올릴수록 변화가 커집니다.
+사용하지 않으면 이 매개변수를 보내지 않습니다. 적절한 값은 모델마다 다르므로 모델의 권장값에 맞추세요.</sys:String>
+
+    <sys:String x:Key="S.Settings.SaveScreenshot">스크린샷 저장</sys:String>
+    <sys:String x:Key="S.Settings.SaveScreenshotCheck">캡처할 때마다 자동으로 저장</sys:String>
+    <sys:String x:Key="S.Settings.SavePath">저장 위치</sys:String>
+    <sys:String x:Key="S.Settings.SavePathTip">클릭해서 폴더 선택</sys:String>
+    <sys:String x:Key="S.Settings.OpenFolderTip">폴더 열기</sys:String>
+
+    <sys:String x:Key="S.Settings.Appearance">외관</sys:String>
+    <sys:String x:Key="S.Settings.Theme">테마</sys:String>
+    <sys:String x:Key="S.Settings.ThemeLight">라이트</sys:String>
+    <sys:String x:Key="S.Settings.ThemeDark">다크</sys:String>
+    <sys:String x:Key="S.Settings.UiLanguage">인터페이스 언어</sys:String>
+
+    <sys:String x:Key="S.Settings.Advanced">고급 설정</sys:String>
+    <sys:String x:Key="S.Settings.Logging">앱 로그</sys:String>
+    <sys:String x:Key="S.Settings.LoggingCheck">자세한 정보 기록</sys:String>
+    <sys:String x:Key="S.Settings.LoggingHint">앱의 정보를 더 많이 기록합니다. 문제를 확인할 때만 켜는 것을 권장합니다.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsHint">내보내면 로그 파일, 시스템 정보, 현재 설정을 하나의 진단 파일로 모아 문제 신고에 첨부할 수 있습니다. API 키 같은 민감한 정보는 포함되지 않으며, 어떤 데이터도 자동으로 업로드되지 않습니다.</sys:String>
+    <sys:String x:Key="S.Settings.ExportDiagnostics">진단 정보 내보내기</sys:String>
+    <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">폴더 열기</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadHint" xml:space="preserve">진단 정보에는 로그 파일, 시스템 정보, 현재 설정이 담기며 민감한 데이터는 대체됩니다.&#x0a;진단 파일은 내 PC에 남아 있다가 30일 뒤 자동으로 삭제됩니다.</sys:String>
+    <sys:String x:Key="S.Settings.UploadBundle">업로드</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsCodeLabel">신고 코드</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExportedTitle">내보냈으나 아직 업로드하지 않음</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExportedHint">파일이 내 PC에 저장되어 있고 아직 업로드하지 않았습니다. ‘업로드’를 누르면 진단 정보와 남긴 설명을 함께 개발자에게 보냅니다. ‘파일 열기’로 내용을 확인할 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsNoEndpointHint">파일이 내 PC에 있으며 아직 아무것도 전송되지 않았습니다. GitHub나 포럼으로 문제를 신고하면서 이 파일을 첨부해 주세요. ‘파일 열기’로 내용을 확인할 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadFailedTitle">진단 정보를 내보냈습니다</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadedHint">진단 정보를 업로드했습니다. 덧붙일 내용이 있으면 이 신고 코드를 GitHub나 포럼으로 알려 주세요. ‘파일 열기’로 이번에 내보낸 내용을 확인할 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsNotUploadedHint" xml:space="preserve">진단 정보를 내보냈지만 업로드하지 못했습니다. GitHub나 포럼으로 문제를 신고하면서 파일을 첨부해 주세요. ‘파일 열기’로 이번에 내보낸 내용을 가져올 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsRetention">파일은 30일 뒤 자동으로 삭제됩니다</sys:String>
+    <sys:String x:Key="S.Settings.CopyCode">복사</sys:String>
+    <sys:String x:Key="S.Settings.OpenBundle">파일 열기</sys:String>
+
+    <sys:String x:Key="S.Settings.AutoSaveHint">변경 사항은 자동으로 저장됩니다</sys:String>
+
+    <!-- Settings page, composed in code-behind -->
+    <sys:String x:Key="S.Settings.Saved">✓ 저장됨</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyPromptAnyInput">키보드 키, 마우스 가운데／옆 버튼, 게임패드 버튼을 눌러 주세요…</sys:String>
+    <sys:String x:Key="S.Settings.MouseMiddle">마우스 가운데 버튼</sys:String>
+    <sys:String x:Key="S.Settings.MouseX1">마우스 옆 버튼 1</sys:String>
+    <sys:String x:Key="S.Settings.MouseX2">마우스 옆 버튼 2</sys:String>
+    <sys:String x:Key="S.Settings.GamepadButton">게임패드 {0}</sys:String>
+    <sys:String x:Key="S.Settings.FolderPickerTitle">스크린샷을 저장할 폴더 선택</sys:String>
+    <sys:String x:Key="S.Settings.LoggingEnvOverride">지금은 로그 수준이 환경 변수 OVERTRANSLATE_LOGLEVEL로 정해져 있어 이 옵션은 적용되지 않습니다.</sys:String>
+    <sys:String x:Key="S.Settings.StartupFailed">✗ 시작 프로그램 설정을 바꾸지 못했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Settings.OpenFolderFailed">✗ 폴더를 열지 못했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExported">✓ 진단 정보를 내보냈습니다</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsFailed">✗ 진단 정보를 내보내지 못했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsExporting">진단 정보를 모으는 중…</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploaded">✓ 업로드함 — 코드 {0}</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsCodeCopied">✓ 코드를 복사했습니다</sys:String>
+    <sys:String x:Key="S.Settings.CopyFailed">✗ 복사하지 못했습니다. 위에 표시된 코드를 확인해 주세요.</sys:String>
+    <sys:String x:Key="S.Settings.DiagnosticsUploadFailed">⚠ 진단 정보를 내보냈지만 업로드하지 못했습니다</sys:String>
+
+    <!-- ── Diagnostics note ── -->
+    <sys:String x:Key="S.Settings.NoteTitle">문제 신고</sys:String>
+    <sys:String x:Key="S.Settings.NoteIntro">여기에 적은 내용은 진단 정보와 함께 전송되며, 원인을 찾는 데에만 사용됩니다.</sys:String>
+    <sys:String x:Key="S.Settings.NotePlaceholder">문제가 생겼을 때 무엇을 하고 있었는지, 그 밖에 관련될 만한 내용을 적어 주시면 개발자가 원인을 더 빨리 찾을 수 있습니다. 비워 두어도 됩니다.</sys:String>
+    <sys:String x:Key="S.Settings.NoteSending">업로드 중…</sys:String>
+    <sys:String x:Key="S.Settings.NoteUploadFailed">이번에는 업로드하지 못했습니다. 파일은 내 PC에 남아 있으니 다시 시도할 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Settings.NoteAttachFailed">메시지를 진단 파일에 쓰지 못해 아무것도 전송하지 않았습니다. 다시 시도해 주세요.</sys:String>
+    <sys:String x:Key="S.Settings.NoteReportManually">GitHub로 신고하기</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyTaken">✗ {0}은(는) 이미 ‘{1}’에 지정되어 있습니다</sys:String>
+
+    <!-- ── Language names ── -->
+    <!-- The language names in the pickers. LangItem.English carries the English name
+         separately and the pickers show it alongside these, so only this interface's own word
+         for each language belongs here. -->
+    <sys:String x:Key="S.Lang.Automatic">자동</sys:String>
+    <sys:String x:Key="S.Lang.AutomaticOcr">자동(중·영·일)</sys:String>
+    <sys:String x:Key="S.Lang.English">영어</sys:String>
+    <sys:String x:Key="S.Lang.Japanese">일본어</sys:String>
+    <sys:String x:Key="S.Lang.Korean">한국어</sys:String>
+    <sys:String x:Key="S.Lang.TraditionalChinese">중국어 번체</sys:String>
+    <sys:String x:Key="S.Lang.SimplifiedChinese">중국어 간체</sys:String>
+    <sys:String x:Key="S.Lang.Bulgarian">불가리아어</sys:String>
+    <sys:String x:Key="S.Lang.Czech">체코어</sys:String>
+    <sys:String x:Key="S.Lang.Danish">덴마크어</sys:String>
+    <sys:String x:Key="S.Lang.German">독일어</sys:String>
+    <sys:String x:Key="S.Lang.Greek">그리스어</sys:String>
+    <sys:String x:Key="S.Lang.Spanish">스페인어</sys:String>
+    <sys:String x:Key="S.Lang.Estonian">에스토니아어</sys:String>
+    <sys:String x:Key="S.Lang.Finnish">핀란드어</sys:String>
+    <sys:String x:Key="S.Lang.French">프랑스어</sys:String>
+    <sys:String x:Key="S.Lang.Hungarian">헝가리어</sys:String>
+    <sys:String x:Key="S.Lang.Indonesian">인도네시아어</sys:String>
+    <sys:String x:Key="S.Lang.Italian">이탈리아어</sys:String>
+    <sys:String x:Key="S.Lang.Lithuanian">리투아니아어</sys:String>
+    <sys:String x:Key="S.Lang.Latvian">라트비아어</sys:String>
+    <sys:String x:Key="S.Lang.Norwegian">노르웨이어</sys:String>
+    <sys:String x:Key="S.Lang.Dutch">네덜란드어</sys:String>
+    <sys:String x:Key="S.Lang.Polish">폴란드어</sys:String>
+    <sys:String x:Key="S.Lang.Portuguese">포르투갈어</sys:String>
+    <sys:String x:Key="S.Lang.Romanian">루마니아어</sys:String>
+    <sys:String x:Key="S.Lang.Russian">러시아어</sys:String>
+    <sys:String x:Key="S.Lang.Slovak">슬로바키아어</sys:String>
+    <sys:String x:Key="S.Lang.Slovenian">슬로베니아어</sys:String>
+    <sys:String x:Key="S.Lang.Swedish">스웨덴어</sys:String>
+    <sys:String x:Key="S.Lang.Turkish">튀르키예어</sys:String>
+    <sys:String x:Key="S.Lang.Ukrainian">우크라이나어</sys:String>
+
+</ResourceDictionary>

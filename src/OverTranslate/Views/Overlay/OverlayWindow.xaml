@@ -50,7 +50,7 @@
                     </Border>
                     <TextBlock Foreground="{DynamicResource AppTextPrimary}"
                                x:Name="ProcessingText"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="15"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"

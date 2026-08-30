@@ -72,7 +72,7 @@
 
                         <TextBlock x:Name="EditHintText"
                                    VerticalAlignment="Center"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="12.5"
                                    Foreground="{DynamicResource AppTextPrimary}"
                                    Text="{DynamicResource S.Realtime.EditHint}"/>
@@ -83,7 +83,7 @@
                         <TextBlock x:Name="BlockCountText"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="12"
                                    Foreground="{DynamicResource AppTextSecondary}"/>
 
@@ -177,7 +177,7 @@
                         <TextBlock x:Name="RunStatusText"
                                    VerticalAlignment="Center"
                                    Margin="0,0,8,0"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="12.5"
                                    Foreground="{DynamicResource AppTextPrimary}"
                                    Text="{DynamicResource S.Realtime.Running}"/>
@@ -199,7 +199,7 @@
                                     Visibility="Collapsed">
                             <TextBlock x:Name="SourceLangText"
                                        VerticalAlignment="Center"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12.5"
                                        Foreground="{DynamicResource AppTextSecondary}"/>
 
@@ -225,7 +225,7 @@
 
                             <TextBlock x:Name="TargetLangText"
                                        VerticalAlignment="Center"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12.5"
                                        Foreground="{DynamicResource AppTextPrimary}"/>
                         </StackPanel>

@@ -471,4 +471,41 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.NoteReportManually">Report it on GitHub instead</sys:String>
     <sys:String x:Key="S.Settings.HotkeyTaken">✗ {0} is already assigned to "{1}"</sys:String>
 
+    <!-- ── Language names ── -->
+    <!-- The language names in the pickers. The English interface shows LangItem.English
+         instead of these, so they exist here for parity and for anything that asks for a
+         name by key. -->
+    <sys:String x:Key="S.Lang.Automatic">Automatic</sys:String>
+    <sys:String x:Key="S.Lang.AutomaticOcr">Automatic (ZH/EN/JA)</sys:String>
+    <sys:String x:Key="S.Lang.English">English</sys:String>
+    <sys:String x:Key="S.Lang.Japanese">Japanese</sys:String>
+    <sys:String x:Key="S.Lang.Korean">Korean</sys:String>
+    <sys:String x:Key="S.Lang.TraditionalChinese">Traditional Chinese</sys:String>
+    <sys:String x:Key="S.Lang.SimplifiedChinese">Simplified Chinese</sys:String>
+    <sys:String x:Key="S.Lang.Bulgarian">Bulgarian</sys:String>
+    <sys:String x:Key="S.Lang.Czech">Czech</sys:String>
+    <sys:String x:Key="S.Lang.Danish">Danish</sys:String>
+    <sys:String x:Key="S.Lang.German">German</sys:String>
+    <sys:String x:Key="S.Lang.Greek">Greek</sys:String>
+    <sys:String x:Key="S.Lang.Spanish">Spanish</sys:String>
+    <sys:String x:Key="S.Lang.Estonian">Estonian</sys:String>
+    <sys:String x:Key="S.Lang.Finnish">Finnish</sys:String>
+    <sys:String x:Key="S.Lang.French">French</sys:String>
+    <sys:String x:Key="S.Lang.Hungarian">Hungarian</sys:String>
+    <sys:String x:Key="S.Lang.Indonesian">Indonesian</sys:String>
+    <sys:String x:Key="S.Lang.Italian">Italian</sys:String>
+    <sys:String x:Key="S.Lang.Lithuanian">Lithuanian</sys:String>
+    <sys:String x:Key="S.Lang.Latvian">Latvian</sys:String>
+    <sys:String x:Key="S.Lang.Norwegian">Norwegian</sys:String>
+    <sys:String x:Key="S.Lang.Dutch">Dutch</sys:String>
+    <sys:String x:Key="S.Lang.Polish">Polish</sys:String>
+    <sys:String x:Key="S.Lang.Portuguese">Portuguese</sys:String>
+    <sys:String x:Key="S.Lang.Romanian">Romanian</sys:String>
+    <sys:String x:Key="S.Lang.Russian">Russian</sys:String>
+    <sys:String x:Key="S.Lang.Slovak">Slovak</sys:String>
+    <sys:String x:Key="S.Lang.Slovenian">Slovenian</sys:String>
+    <sys:String x:Key="S.Lang.Swedish">Swedish</sys:String>
+    <sys:String x:Key="S.Lang.Turkish">Turkish</sys:String>
+    <sys:String x:Key="S.Lang.Ukrainian">Ukrainian</sys:String>
+
 </ResourceDictionary>

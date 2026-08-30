@@ -33,9 +33,16 @@ public class LocalizedLineBreakTests
         "S.Settings.QuickTranslateHotkeyNote",
     };
 
+    /// <summary>Every shipped dictionary, so a new language cannot lose the break quietly.</summary>
+    public static TheoryData<string> Dictionaries()
+    {
+        var data = new TheoryData<string>();
+        foreach (var file in StringsParityTests.AllFiles) data.Add(file);
+        return data;
+    }
+
     [Theory]
-    [InlineData("Strings.en.xaml")]
-    [InlineData("Strings.zh-Hant.xaml")]
+    [MemberData(nameof(Dictionaries))]
     public void TheTwoLineHints_KeepTheirLineBreak(string file)
     {
         XNamespace xml = "http://www.w3.org/XML/1998/namespace";

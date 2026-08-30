@@ -177,14 +177,14 @@
                                 <!-- Tracking is size-specific: the heading tightens slightly as it
                                      grows, the smaller line opens up a touch to stay legible. -->
                                 <TextBlock Foreground="{DynamicResource AppTextPrimary}"
-                                           FontFamily="{StaticResource AppFont}"
+                                           FontFamily="{DynamicResource AppFont}"
                                            FontSize="14"
                                            FontWeight="SemiBold"
                                            Text="{DynamicResource S.Capture.DragPrompt}"/>
 
                                 <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                                     <TextBlock Foreground="{DynamicResource AppTextSecondary}"
-                                               FontFamily="{StaticResource AppFont}"
+                                               FontFamily="{DynamicResource AppFont}"
                                                FontSize="12"
                                                VerticalAlignment="Center"
                                                Text="{DynamicResource S.Capture.PressPrefix}"/>
@@ -199,14 +199,14 @@
                                             Margin="5,0"
                                             VerticalAlignment="Center">
                                         <TextBlock Foreground="{DynamicResource AppTextSecondary}"
-                                                   FontFamily="{StaticResource AppFont}"
+                                                   FontFamily="{DynamicResource AppFont}"
                                                    FontSize="10.5"
                                                    FontWeight="SemiBold"
                                                    Text="ESC"/>
                                     </Border>
 
                                     <TextBlock Foreground="{DynamicResource AppTextSecondary}"
-                                               FontFamily="{StaticResource AppFont}"
+                                               FontFamily="{DynamicResource AppFont}"
                                                FontSize="12"
                                                VerticalAlignment="Center"
                                                Text="{DynamicResource S.Capture.CancelSuffix}"/>

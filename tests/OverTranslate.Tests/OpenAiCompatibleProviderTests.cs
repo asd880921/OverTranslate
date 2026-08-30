@@ -80,6 +80,52 @@ public class OpenAiCompatibleProviderTests
         });
     }
 
+    /// <summary>
+    /// Three wordings for five interface languages, and which language gets which.
+    /// </summary>
+    /// <remarks>
+    /// The Chinese pair are the same sentence in the two scripts. Japanese and Korean are given the
+    /// English one rather than a wording of their own: this string is fed to a model as well as read
+    /// by a user, and the shipped wordings are the ones measured against the model this ships
+    /// against. Asserted on the skeleton rather than on the language names, which resolve through
+    /// the resource dictionary and so are only meaningful with an Application running.
+    /// </remarks>
+    [Theory]
+    [InlineData(LocalizationService.TraditionalChinese, "從(各種語言)翻譯成(", "只回傳自然、人性化的翻譯結果")]
+    [InlineData(LocalizationService.SimplifiedChinese, "从(各种语言)翻译成(", "只返回自然、人性化的翻译结果")]
+    [InlineData(LocalizationService.English, "from (any language) to (", "human-sounding translation")]
+    [InlineData(LocalizationService.Japanese, "from (any language) to (", "human-sounding translation")]
+    [InlineData(LocalizationService.Korean, "from (any language) to (", "human-sounding translation")]
+    public void BuildPrompt_UsesTheWordingItsInterfaceLanguageCallsFor(
+        string uiLanguage, string opening, string instruction)
+    {
+        WithInterfaceLanguage(uiLanguage, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt("AUTO", "ZH-HANT");
+
+            Assert.Contains(opening, prompt);
+            Assert.Contains(instruction, prompt);
+        });
+    }
+
+    /// <summary>
+    /// The languages a template names are named in the language the template is written in, not the
+    /// one the interface is in — the two part company on a Japanese or Korean interface, which is
+    /// handed the English wording.
+    /// </summary>
+    [Theory]
+    [InlineData(LocalizationService.Japanese)]
+    [InlineData(LocalizationService.Korean)]
+    public void BuildPrompt_NamesLanguagesInTheWordingsOwnLanguage(string uiLanguage)
+    {
+        WithInterfaceLanguage(uiLanguage, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT");
+
+            Assert.Contains("from (Japanese) to (Traditional Chinese)", prompt);
+        });
+    }
+
     // The target language decides what the model is asked to produce; the interface language decides
     // what the sentence asking for it is written in. Translating into Chinese from an English
     // interface has to produce an English instruction naming Chinese.

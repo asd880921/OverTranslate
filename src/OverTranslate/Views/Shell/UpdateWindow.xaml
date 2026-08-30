@@ -46,7 +46,7 @@
                        VerticalAlignment="Center"
                        RenderOptions.BitmapScalingMode="HighQuality"/>
                 <TextBlock Text="OverTranslate"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontSize="12"
                            Margin="8,0,0,0"
                            VerticalAlignment="Center"
@@ -99,7 +99,7 @@
                 </Border>
 
                 <TextBlock Text="{DynamicResource S.Update.Heading}"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontSize="18"
                            FontWeight="SemiBold"
                            Foreground="{DynamicResource AppTextPrimary}"
@@ -115,18 +115,18 @@
                             HorizontalAlignment="Center"
                             Margin="0,6,0,0">
                     <TextBlock x:Name="CurrentVersionText"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="13"
                                Foreground="{DynamicResource AppTextSecondary}"
                                VerticalAlignment="Center"/>
                     <TextBlock Text="→"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="13"
                                Margin="8,0"
                                Foreground="{DynamicResource AppTextSecondary}"
                                VerticalAlignment="Center"/>
                     <TextBlock x:Name="LatestVersionText"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource AppAccent}"
@@ -138,7 +138,7 @@
             <Border Grid.Row="1" Style="{StaticResource CardBorder}">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource S.Update.Explanation}"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                Foreground="{DynamicResource AppTextSecondary}"
                                TextWrapping="Wrap"/>
@@ -156,7 +156,7 @@
                          contrast in the window — the one line that changes every few hundred
                          milliseconds is the last thing to put there. -->
                     <TextBlock x:Name="StatusText"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                Foreground="{DynamicResource AppTextSecondary}"
                                Margin="0,8,0,0"
@@ -165,14 +165,14 @@
                     <!-- Failures are reported here rather than through a system MessageBox, which was
                          the only OS-styled dialog left in the app and matched nothing around it. -->
                     <TextBlock x:Name="ErrorText"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                Foreground="{DynamicResource AppError}"
                                TextWrapping="Wrap"
                                Visibility="Collapsed"
                                Margin="0,12,0,0"/>
 
-                    <TextBlock FontFamily="{StaticResource AppFont}"
+                    <TextBlock FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                Margin="0,8,0,0"
                                TextWrapping="Wrap"
@@ -208,7 +208,7 @@
                                        VerticalAlignment="Center"
                                        Margin="0,0,6,0"/>
                             <TextBlock x:Name="DownloadBtnText" Text="{DynamicResource S.Update.Now}"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
@@ -221,7 +221,7 @@
                      sit next to. -->
                 <TextBlock HorizontalAlignment="Center"
                            Margin="0,10,0,0"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontSize="12"
                            Foreground="{DynamicResource AppTextSecondary}">
                     <Hyperlink x:Name="SkipVersionLink"
