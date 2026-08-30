@@ -5,23 +5,30 @@ using Size = System.Windows.Size;
 namespace OverTranslate.Layout;
 
 /// <summary>
-/// Places the tray menu beside the pointer and inside that monitor's physical-pixel work area.
+/// Places the tray menu beside the pointer, inside that monitor's physical-pixel bounds.
 /// </summary>
+/// <remarks>
+/// The bounds, not the work area — the pointer is on a tray icon, and a tray icon is on the
+/// taskbar, which the work area excludes. See TrayMenuWindow.PositionWindow.
+/// </remarks>
 internal static class TrayMenuPlacement
 {
+    /// <param name="monitor">
+    /// The region the menu has to stay inside: the whole monitor, taskbar included.
+    /// </param>
     public static (int Left, int Top) Place(
         Point pointer,
         Size windowSize,
-        Rect workArea,
+        Rect monitor,
         double gap,
         double contentInset)
     {
         var contentWidth = Math.Max(0, windowSize.Width - contentInset * 2);
         var contentHeight = Math.Max(0, windowSize.Height - contentInset * 2);
-        var minX = workArea.Left + gap;
-        var maxX = Math.Max(minX, workArea.Right - contentWidth - gap);
-        var minY = workArea.Top + gap;
-        var maxY = Math.Max(minY, workArea.Bottom - contentHeight - gap);
+        var minX = monitor.Left + gap;
+        var maxX = Math.Max(minX, monitor.Right - contentWidth - gap);
+        var minY = monitor.Top + gap;
+        var maxY = Math.Max(minY, monitor.Bottom - contentHeight - gap);
 
         var bestLeft = 0.0;
         var bestTop = 0.0;
