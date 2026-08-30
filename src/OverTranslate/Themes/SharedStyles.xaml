@@ -1024,7 +1024,7 @@
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Left"/>
 
-                        <Popup x:Name="Popup"
+                        <Popup x:Name="PART_Popup"
                                Placement="Bottom"
                                IsOpen="{TemplateBinding IsDropDownOpen}"
                                AllowsTransparency="True"

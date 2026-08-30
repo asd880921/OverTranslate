@@ -13,7 +13,7 @@
     <sys:String x:Key="S.Common.Configure">設定</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API Key</sys:String>
     <!-- 語言選單裡的搜尋框。輸入不會自動選取，要使用者自己點或按 Enter 才會換語言。 -->
-    <sys:String x:Key="S.Common.SearchLanguage">搜尋語言（中文、English、代號）</sys:String>
+    <sys:String x:Key="S.Common.SearchLanguage">搜尋語言</sys:String>
     <sys:String x:Key="S.Common.SearchNoMatch">找不到符合的語言</sys:String>
 
     <!-- ── Shell window ── -->

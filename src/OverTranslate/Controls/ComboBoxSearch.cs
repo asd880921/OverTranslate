@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 using OverTranslate.Models;
@@ -46,6 +47,17 @@ public static class ComboBoxSearch
     private const string SearchBoxPart   = "PART_SearchBox";
     private const string NoResultsPart   = "PART_NoResults";
     private const string ItemsScrollPart = "PART_ItemsScroll";
+    private const string PopupPart       = "PART_Popup";
+
+    /// <summary>How many dispatcher passes to keep asking for focus before giving up.</summary>
+    /// <remarks>
+    /// The search box lives in a <see cref="Popup"/>, which is a window of its own that Windows
+    /// creates when the dropdown opens, and focus cannot land in it until that window exists.
+    /// Usually it does by the first pass. Occasionally — a cold popup, a busy first frame — it does
+    /// not, and a single attempt then fails silently and leaves the user typing into nothing until
+    /// they click the box. So the attempt repeats until it takes.
+    /// </remarks>
+    private const int FocusAttempts = 8;
 
     /// <summary>Matching ignores case, width (ＡＢ vs AB) and accents.</summary>
     /// <remarks>
@@ -110,6 +122,12 @@ public static class ComboBoxSearch
             box.SetValue(OwnerProperty, combo);
             box.TextChanged += OnSearchTextChanged;
             box.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnSearchKeyDown), true);
+
+            // The dropdown's own window announcing that it exists — the earliest moment focus can
+            // actually land in it. It does not fire before the first DropDownOpened, which is why
+            // the retry below has to cover that one on its own.
+            if (FindPart<Popup>(combo, PopupPart) is { } popup)
+                popup.Opened += (_, _) => FocusSearchBoxWhenReady(combo, box, FocusAttempts);
         }
 
         // Every open starts from the whole list. A query left over from last time would be a filter
@@ -118,13 +136,18 @@ public static class ComboBoxSearch
         box.Clear();
         ShowAllItems(combo);
 
-        // Focus once the popup has actually been laid out and shown; asking for it while the popup
-        // is still opening leaves the caret nowhere and the first keystrokes go to the ComboBox.
-        combo.Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
-        {
-            box.Focus();
-            Keyboard.Focus(box);
-        });
+        FocusSearchBoxWhenReady(combo, box, FocusAttempts);
+    }
+
+    /// <summary>Puts the caret in the search box as soon as the popup will take it.</summary>
+    private static void FocusSearchBoxWhenReady(ComboBox combo, TextBox box, int attemptsLeft)
+    {
+        if (!combo.IsDropDownOpen) return;
+        if (box.IsKeyboardFocused || box.Focus()) return;
+        if (attemptsLeft <= 0) return;
+
+        combo.Dispatcher.BeginInvoke(DispatcherPriority.Input,
+            () => FocusSearchBoxWhenReady(combo, box, attemptsLeft - 1));
     }
 
     private static void OnDropDownClosed(object? sender, EventArgs e)

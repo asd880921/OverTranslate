@@ -77,7 +77,8 @@
                                 </ContentPresenter.ContentTemplate>
                             </ContentPresenter>
 
-                            <Popup Placement="Bottom"
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True"
                                    Focusable="False"
