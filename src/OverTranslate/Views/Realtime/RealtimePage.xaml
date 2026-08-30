@@ -237,6 +237,7 @@
                                            Margin="0,4,0,8"/>
                                 <ComboBox x:Name="ScreenBox"
                                           Style="{StaticResource ModernComboBox}"
+                                          ctl:ComboBoxDropDown.FitsControlWidth="True"
                                           SelectedValuePath="DeviceName"
                                           SelectionChanged="ScreenBox_SelectionChanged">
                                     <ComboBox.ItemTemplate>
@@ -276,8 +277,12 @@
                                          empty because the user has to answer it, and the prompt sits
                                          where the answer will be. -->
                                     <Grid Grid.Column="0">
+                                        <!-- Window titles are somebody else's text and can be any
+                                             length; the list stays the width of the picker and
+                                             scrolls sideways instead of growing across the card. -->
                                         <ComboBox x:Name="WindowBox"
                                                   Style="{StaticResource ModernComboBox}"
+                                                  ctl:ComboBoxDropDown.FitsControlWidth="True"
                                                   SelectionChanged="WindowBox_SelectionChanged">
                                             <ComboBox.ItemTemplate>
                                                 <DataTemplate>

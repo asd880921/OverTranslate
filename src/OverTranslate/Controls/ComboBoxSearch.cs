@@ -249,6 +249,12 @@ public static class ComboBoxSearch
         {
             case Key.Enter:
                 combo.SelectedItem = combo.Items[index];
+
+                // Focus back on the picker before the list it is standing in goes away. WPF's own
+                // keyboard close does this and closing by hand does not: left alone, focus stays on
+                // an entry inside a popup that is no longer shown, which is focus nowhere — the next
+                // key press goes to no one, and the picker cannot be reopened from the keyboard.
+                combo.Focus();
                 combo.IsDropDownOpen = false;
                 e.Handled = true;
                 break;

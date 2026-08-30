@@ -1040,7 +1040,7 @@
                                AllowsTransparency="True"
                                Focusable="False"
                                PopupAnimation="Slide">
-                            <Border x:Name="DropDown"
+                            <Border x:Name="PART_DropDown"
                                     MinWidth="{TemplateBinding ActualWidth}"
                                     MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                     Background="{DynamicResource AppCardBg}"
@@ -1092,6 +1092,18 @@
                             <Setter TargetName="PART_SearchBox" Property="Visibility" Value="Visible"/>
                             <Setter TargetName="ContentSite" Property="Visibility" Value="Collapsed"/>
                         </MultiTrigger>
+                        <!-- MinWidth already ties the list's floor to the picker; this ties the
+                             ceiling to it as well, which is the whole of "same width". Pixel
+                             scrolling for the same reason the filtered lists use it — a horizontal
+                             scrollbar over logical scrolling moves in units of whole items. -->
+                        <Trigger Property="ctl:ComboBoxDropDown.FitsControlWidth" Value="True">
+                            <Setter TargetName="PART_DropDown" Property="MaxWidth"
+                                    Value="{Binding ActualWidth,
+                                            RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <Setter TargetName="PART_ItemsScroll" Property="CanContentScroll" Value="False"/>
+                            <Setter TargetName="PART_ItemsScroll" Property="HorizontalScrollBarVisibility"
+                                    Value="Auto"/>
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
