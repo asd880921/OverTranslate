@@ -1,11 +1,20 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Media3D;
+using OverTranslate.Layout;
 using OverTranslate.Services;
+using Button = System.Windows.Controls.Button;
+using Point = System.Windows.Point;
+using Size = System.Windows.Size;
 
 namespace OverTranslate.Views.Shell;
 
 public partial class TrayMenuWindow : Window
 {
+    private const double EdgeGap = 4;
+    private const double ShadowInset = 18;
+
     public event EventHandler? OpenTranslationRequested;
     public event EventHandler? OpenSettingsRequested;
     public event EventHandler? ExitRequested;
@@ -20,35 +29,30 @@ public partial class TrayMenuWindow : Window
 
         // Start off-screen; Loaded repositions after ActualWidth/Height are measured
         Left = -9999;
-        Top  = -9999;
+        Top = -9999;
 
-        Loaded      += (_, _) => PositionWindow();
+        Loaded += (_, _) =>
+        {
+            PositionWindow();
+            Activate();
+        };
         Deactivated += (_, _) => Dismiss();
-        KeyDown     += (_, e) => { if (e.Key == Key.Escape) Dismiss(); };
+        KeyDown += (_, e) => { if (e.Key == Key.Escape) Dismiss(); };
+        PreviewMouseDown += DismissOnNonButtonClick;
     }
 
     private void PositionWindow()
     {
-        var src  = PresentationSource.FromVisual(this);
-        double dpiX = src?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-        double dpiY = src?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+        var area = System.Windows.Forms.Screen.FromPoint(_cursorPhys).WorkingArea;
+        var scale = ScreenGeometry.ScaleAt(_cursorPhys.X, _cursorPhys.Y);
+        var (left, top) = TrayMenuPlacement.Place(
+            new Point(_cursorPhys.X, _cursorPhys.Y),
+            new Size(ActualWidth * scale, ActualHeight * scale),
+            new Rect(area.Left, area.Top, area.Width, area.Height),
+            EdgeGap * scale,
+            ShadowInset * scale);
 
-        // Convert physical cursor coords → WPF DIPs
-        double cx = _cursorPhys.X / dpiX;
-        double cy = _cursorPhys.Y / dpiY;
-
-        var wa = SystemParameters.WorkArea;
-
-        // Default: align left edge with cursor, bottom edge with cursor (appears above)
-        double left = cx;
-        double top  = cy - ActualHeight;
-
-        if (left + ActualWidth > wa.Right) left = wa.Right - ActualWidth - 4;
-        if (left < wa.Left)                left = wa.Left  + 4;
-        if (top  < wa.Top)                 top  = cy + 4;  // no room above → show below
-
-        Left = left;
-        Top  = top;
+        ScreenGeometry.MoveToPhysical(this, left, top);
     }
 
     private void Dismiss()
@@ -56,6 +60,29 @@ public partial class TrayMenuWindow : Window
         if (_dismissed) return;
         _dismissed = true;
         Close();
+    }
+
+    private void DismissOnNonButtonClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left && e.ChangedButton != MouseButton.Right) return;
+        if (e.OriginalSource is DependencyObject source && IsInsideButton(source)) return;
+
+        Dismiss();
+    }
+
+    internal static bool IsInsideButton(DependencyObject? element)
+    {
+        while (element is not null)
+        {
+            if (element is Button) return true;
+
+            DependencyObject? visualParent = element is Visual or Visual3D
+                ? VisualTreeHelper.GetParent(element)
+                : null;
+            element = visualParent ?? LogicalTreeHelper.GetParent(element);
+        }
+
+        return false;
     }
 
     /// <summary>
