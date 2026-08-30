@@ -3,7 +3,7 @@
     🌐
     <strong><a href="README.en.md">English</a></strong>
     &nbsp;｜&nbsp;
-    <strong><a href="../README.md">繁體中文</a></strong>
+    <strong><a href="README.zh-Hant.md">繁體中文</a></strong>
     &nbsp;｜&nbsp;
     <strong>简体中文 ✓</strong>
     &nbsp;｜&nbsp;
@@ -39,6 +39,7 @@
 ---
 
 ## 翻译功能
+> 🌐 **OverTranslate 支持多语言界面。README 中的应用界面截图统一以繁体中文显示，实际界面可切换为其他语言。**
 
 OverTranslate 目前提供了五种翻译功能，可依不同使用场景快速选择：
 

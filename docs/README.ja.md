@@ -3,7 +3,7 @@
     🌐
     <strong><a href="README.en.md">English</a></strong>
     &nbsp;｜&nbsp;
-    <strong><a href="../README.md">繁體中文</a></strong>
+    <strong><a href="README.zh-Hant.md">繁體中文</a></strong>
     &nbsp;｜&nbsp;
     <strong><a href="README.zh-Hans.md">简体中文</a></strong>
     &nbsp;｜&nbsp;
@@ -39,6 +39,7 @@
 ---
 
 ## 翻訳機能
+> 🌐 **OverTranslate は多言語インターフェースに対応しています。この README のスクリーンショットは繁体字中国語または英語の画面ですが、表示言語はアプリ内で切り替えられます。**
 
 OverTranslate には 5 つの翻訳機能があり、その場に合ったものをすぐ選べます。
 

@@ -1,13 +1,19 @@
 <div align="center">
   <p>
     🌐
+    <strong><a href="README.en.md">English</a></strong>
+    &nbsp;｜&nbsp;
     <strong>繁體中文 ✓</strong>
     &nbsp;｜&nbsp;
-    <strong><a href="README.en.md">English</a></strong>
+    <strong><a href="README.zh-Hans.md">简体中文</a></strong>
+    &nbsp;｜&nbsp;
+    <strong><a href="README.ja.md">日本語</a></strong>
+    &nbsp;｜&nbsp;
+    <strong><a href="README.ko.md">한국어</a></strong>
   </p>
 
   <h1>
-    <img src="src/OverTranslate/icons/icon.svg" width="180" alt="OverTranslate Icon"/>
+    <img src="images/icon.svg" width="180" alt="OverTranslate Icon"/>
     <br/>
     OverTranslate
   </h1>
@@ -19,9 +25,9 @@
   </p>
 
   <p>
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe"><img src="docs/images/ui/btn-setup.svg" alt="下載 Windows 安裝版（推薦）" /></a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Setup.exe"><img src="images/ui/btn-setup.svg" alt="下載 Windows 安裝版（推薦）" /></a>
     &nbsp;
-    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip"><img src="docs/images/ui/btn-portable.svg" alt="下載免安裝版（Portable）" /></a>
+    <a href="https://github.com/asd880921/OverTranslate/releases/latest/download/OverTranslate-win-Portable.zip"><img src="images/ui/btn-portable.svg" alt="下載免安裝版（Portable）" /></a>
   </p>
 
   <p>
@@ -33,6 +39,7 @@
 ---
 
 ## 翻譯功能
+> 🌐 **OverTranslate 支援多國語言介面。README 中的應用程式圖片統一以繁體中文顯示，實際介面可切換不同語言。**
 
 OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速選擇：
 
@@ -50,13 +57,13 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 需要翻譯時按下快捷鍵（預設 Ctrl + Alt + A），框選想翻譯的畫面即可。
 > 用於網頁、PDF、圖片、影音、遊戲介面等各種無法直接選取文字的畫面。
 
-![翻譯比對圖.png](docs/images/翻譯比對圖.png)
+![翻譯比對圖.png](images/翻譯比對圖.png)
 
 | 原文 | 翻譯結果 |
 |------|----------|
-| ![截圖翻譯1-前.png](docs/images/截圖翻譯1-前.png) | ![截圖翻譯1-後.png](docs/images/截圖翻譯1-後.png) |
-| ![截圖翻譯2-前.png](docs/images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](docs/images/截圖翻譯2-後.png) |
-| ![截圖翻譯3-前.png](docs/images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](docs/images/截圖翻譯3-後.png) |
+| ![截圖翻譯1-前.png](images/截圖翻譯1-前.png) | ![截圖翻譯1-後.png](images/截圖翻譯1-後.png) |
+| ![截圖翻譯2-前.png](images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](images/截圖翻譯2-後.png) |
+| ![截圖翻譯3-前.png](images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](images/截圖翻譯3-後.png) |
 
 ---
 
@@ -72,7 +79,7 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 
 > 譯文的文字顏色、背景色與背景不透明度皆可自由調整，也可開啟 **更符合原背景** 與 **沿用原文字顏色**，讓譯文與背景更貼近原畫面的配色與風格。
 
-![即時翻譯視窗預覽.png](docs/images/即時翻譯視窗預覽.png)
+![即時翻譯視窗預覽.png](images/即時翻譯視窗預覽.png)
 
 ### 翻譯區塊模式 (框選)
 
@@ -84,15 +91,15 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 
 | 框選 | 翻譯結果 |
 |------|----------|
-| ![即時翻譯-影片框.png](docs/images/即時翻譯-影片框.png) | ![即時翻譯-影片翻譯.png](docs/images/即時翻譯-影片翻譯.png) |
-| ![即時翻譯1-對話遊戲框.png](docs/images/即時翻譯1-對話遊戲框.png) | ![即時翻譯1-對話遊戲翻譯.png](docs/images/即時翻譯1-對話遊戲翻譯.png) |
-| ![即時翻譯2-對話遊戲框.png](docs/images/即時翻譯2-對話遊戲框.png) | ![即時翻譯2-對話遊戲翻譯.png](docs/images/即時翻譯2-對話遊戲翻譯.png) |
+| ![即時翻譯-影片框.png](images/即時翻譯-影片框.png) | ![即時翻譯-影片翻譯.png](images/即時翻譯-影片翻譯.png) |
+| ![即時翻譯1-對話遊戲框.png](images/即時翻譯1-對話遊戲框.png) | ![即時翻譯1-對話遊戲翻譯.png](images/即時翻譯1-對話遊戲翻譯.png) |
+| ![即時翻譯2-對話遊戲框.png](images/即時翻譯2-對話遊戲框.png) | ![即時翻譯2-對話遊戲翻譯.png](images/即時翻譯2-對話遊戲翻譯.png) |
 
 **遊戲 / UI**：適合遊戲中的介面、提示或文字位置較分散、不固定的場景 (建議使用 1 ~ 2 個)。
 
 | 框選 | 翻譯結果 |
 |------|----------|
-| ![即時翻譯-遊戲翻譯框.png](docs/images/即時翻譯-遊戲翻譯框.png) | ![即時翻譯-遊戲翻譯.png](docs/images/即時翻譯-遊戲翻譯.png) |
+| ![即時翻譯-遊戲翻譯框.png](images/即時翻譯-遊戲翻譯框.png) | ![即時翻譯-遊戲翻譯.png](images/即時翻譯-遊戲翻譯.png) |
 
 ---
 
@@ -102,7 +109,7 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 選取文字後按下快捷鍵，會自動帶入並翻譯；未選取文字時，也可以直接輸入內容。  
 切換至其他視窗時會自動關閉；若需要持續顯示，可將視窗釘選。
 
-![選詞翻譯.png](docs/images/選詞翻譯.png)
+![選詞翻譯.png](images/選詞翻譯.png)
 
 ---
 
@@ -111,7 +118,7 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 
 選取文字後按下快捷鍵，翻譯結果會直接貼上取代原文 (僅適用於可輸入文字的欄位，非輸入區域則無法貼上)。
 
-![快速翻譯.png](docs/images/快速翻譯.png)
+![快速翻譯.png](images/快速翻譯.png)
 
 ---
 
@@ -120,17 +127,17 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 **輸入文字後即可翻譯**，來源與目標語言可快速互換；  
 內建文字轉語音（TTS），支援朗讀原文與翻譯結果。
 
-![翻譯視窗預覽.png](docs/images/翻譯視窗預覽.png)
+![翻譯視窗預覽.png](images/翻譯視窗預覽.png)
 
 ---
 
 ## 設定
 
-![設定頁.png](docs/images/設定頁.png)
+![設定頁.png](images/設定頁.png)
 
 | 設定項目 | 說明 |
 |----------|------|
-| 介面語言 | 繁體中文 / English，切換後立即生效（首次啟動時依 Windows 顯示語言決定） |
+| 介面語言 | 繁體中文 / 简体中文 / English / 日本語 / 한국어，切換後立即生效（首次啟動時依 Windows 顯示語言決定） |
 | 截圖翻譯 (快捷鍵) | 用於 **截圖翻譯** 功能的快捷鍵 (可自訂修改，預設 `Ctrl + Alt + A`) |
 | 開啟翻譯視窗 (快捷鍵) | 呼叫主視窗的快捷鍵 (預設 `Ctrl + Alt + W`)，會回到上次開啟的頁面；即時翻譯進行中時，改為將浮動視窗列移至最上層 |
 | 暫停 / 繼續 (快捷鍵) | 暫停或繼續 **即時翻譯** (預設 `Ctrl + Alt + S`)；僅在即時翻譯進行中可用，也可用於查看原文 |
@@ -162,17 +169,17 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 | Bing 翻譯 | 翻譯品質佳 |
 | Microsoft 翻譯 | **(預設)** 穩定性佳、回應速度快 |
 | DeepL | 需至 DeepL 官方註冊並取得 API Key |
-| OpenAI | 支援 OpenAI API 格式，建議使用本地 LLM，可透過 [Ollama](OLLAMA_GUIDE.md) 快速安裝與使用；提示詞與 Temperature 可自訂 |
+| OpenAI | 支援 OpenAI API 格式，建議使用本地 LLM，可透過 [Ollama](guides/OLLAMA_GUIDE.md) 快速安裝與使用；提示詞與 Temperature 可自訂 |
   
 提供「自動備援」機制（備援機制適用於 **截圖翻譯** 與 **即時翻譯**）：  
 當某個翻譯無法使用或回應過慢時，會自動切換到其他可用的翻譯 API，實際使用的引擎顯示於工具列。
-![備援.png](docs/images/備援.png)
+![備援.png](images/備援.png)
 
 > 使用 **OpenAI** 時，不會觸發備援機制。
 
 ### OpenAI 設定
 
-![OpenAI.png](docs/images/OpenAI.png)
+![OpenAI.png](images/OpenAI.png)
 
 | 項目 | 說明 |
 |------|------|
@@ -216,7 +223,7 @@ OCR 全程於本機 CPU 執行，不會將圖片上傳至外部服務。
 使用以下翻譯服務時，需另外準備：
 
 - **DeepL**：需至 [DeepL 官網](https://www.deepl.com/pro-api) 申請 API Key
-- **OpenAI**：需自備 OpenAI API 相容服務，本地 LLM 架設使用方式可參考 [Ollama 安裝教學](OLLAMA_GUIDE.md)
+- **OpenAI**：需自備 OpenAI API 相容服務，本地 LLM 架設使用方式可參考 [Ollama 安裝教學](guides/OLLAMA_GUIDE.md)
 
 ---
 
@@ -230,5 +237,5 @@ OCR 全程於本機 CPU 執行，不會將圖片上傳至外部服務。
 
 本專案採用 [GNU General Public License v3.0（GPL-3.0）](https://www.gnu.org/licenses/gpl-3.0.html) 授權。  
 你可以自由使用、修改與散布本軟體；若散布修改後的版本，需依 GPL-3.0 授權條款公開相應的原始碼。  
-完整授權條款請參閱 [LICENSE](LICENSE)。
+完整授權條款請參閱 [LICENSE](../LICENSE)。
 
