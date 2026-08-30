@@ -26,6 +26,8 @@
     <sys:String x:Key="S.Shell.Settings">設定</sys:String>
     <sys:String x:Key="S.Shell.HideSidebar">收起側邊欄</sys:String>
     <sys:String x:Key="S.Shell.ShowSidebar">展開側邊欄</sys:String>
+    <sys:String x:Key="S.Shell.Pin">釘選後，視窗會常駐最上層</sys:String>
+    <sys:String x:Key="S.Shell.Unpin">取消釘選</sys:String>
     <sys:String x:Key="S.Shell.CaptureBlockedByRealtime">即時翻譯進行中，請先結束後再使用截圖翻譯</sys:String>
     <sys:String x:Key="S.Shell.QuickLookupBlockedByRealtime">即時翻譯進行中，請先結束後再使用取詞翻譯</sys:String>
     <sys:String x:Key="S.Shell.UpdateAvailable">可更新至 v{0}</sys:String>
