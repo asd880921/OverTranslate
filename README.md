@@ -3,7 +3,13 @@
     🌐
     <strong>繁體中文 ✓</strong>
     &nbsp;｜&nbsp;
-    <strong><a href="README.en.md">English</a></strong>
+    <strong><a href="docs/README.en.md">English</a></strong>
+    &nbsp;｜&nbsp;
+    <strong><a href="docs/README.zh-Hans.md">简体中文</a></strong>
+    &nbsp;｜&nbsp;
+    <strong><a href="docs/README.ja.md">日本語</a></strong>
+    &nbsp;｜&nbsp;
+    <strong><a href="docs/README.ko.md">한국어</a></strong>
   </p>
 
   <h1>
@@ -130,7 +136,7 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 
 | 設定項目 | 說明 |
 |----------|------|
-| 介面語言 | 繁體中文 / English，切換後立即生效（首次啟動時依 Windows 顯示語言決定） |
+| 介面語言 | 繁體中文 / 简体中文 / English / 日本語 / 한국어，切換後立即生效（首次啟動時依 Windows 顯示語言決定） |
 | 截圖翻譯 (快捷鍵) | 用於 **截圖翻譯** 功能的快捷鍵 (可自訂修改，預設 `Ctrl + Alt + A`) |
 | 開啟翻譯視窗 (快捷鍵) | 呼叫主視窗的快捷鍵 (預設 `Ctrl + Alt + W`)，會回到上次開啟的頁面；即時翻譯進行中時，改為將浮動視窗列移至最上層 |
 | 暫停 / 繼續 (快捷鍵) | 暫停或繼續 **即時翻譯** (預設 `Ctrl + Alt + S`)；僅在即時翻譯進行中可用，也可用於查看原文 |
@@ -162,7 +168,7 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 | Bing 翻譯 | 翻譯品質佳 |
 | Microsoft 翻譯 | **(預設)** 穩定性佳、回應速度快 |
 | DeepL | 需至 DeepL 官方註冊並取得 API Key |
-| OpenAI | 支援 OpenAI API 格式，建議使用本地 LLM，可透過 [Ollama](OLLAMA_GUIDE.md) 快速安裝與使用；提示詞與 Temperature 可自訂 |
+| OpenAI | 支援 OpenAI API 格式，建議使用本地 LLM，可透過 [Ollama](docs/guides/OLLAMA_GUIDE.md) 快速安裝與使用；提示詞與 Temperature 可自訂 |
   
 提供「自動備援」機制（備援機制適用於 **截圖翻譯** 與 **即時翻譯**）：  
 當某個翻譯無法使用或回應過慢時，會自動切換到其他可用的翻譯 API，實際使用的引擎顯示於工具列。
@@ -216,7 +222,7 @@ OCR 全程於本機 CPU 執行，不會將圖片上傳至外部服務。
 使用以下翻譯服務時，需另外準備：
 
 - **DeepL**：需至 [DeepL 官網](https://www.deepl.com/pro-api) 申請 API Key
-- **OpenAI**：需自備 OpenAI API 相容服務，本地 LLM 架設使用方式可參考 [Ollama 安裝教學](OLLAMA_GUIDE.md)
+- **OpenAI**：需自備 OpenAI API 相容服務，本地 LLM 架設使用方式可參考 [Ollama 安裝教學](docs/guides/OLLAMA_GUIDE.md)
 
 ---
 
