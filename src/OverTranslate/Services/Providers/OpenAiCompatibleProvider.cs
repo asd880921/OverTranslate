@@ -311,45 +311,103 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// prompt in use, so the placeholders are visible rather than described in prose elsewhere.
     /// </summary>
     /// <remarks>
-    /// One wording per case, in English, whatever the interface language is. This string is fed to
-    /// a model rather than read by one: the language it is written in is a variable on the
-    /// translation path, and English is what was actually measured against the model this ships
-    /// against. Five interface languages used to mean five built-in wordings — five to keep in step
-    /// and four nobody had run.
+    /// One wording per interface language, because this string is read by a model and the language
+    /// it is written in is a variable on the translation path rather than a matter of presentation.
+    /// A single English wording was tried and reverted: it made every non-English user pay for a
+    /// language switch on every block, and the version of it that read best to a person was three
+    /// times the length of these — a system prompt is re-sent once per recognised block, so its
+    /// length is a per-block cost.
     ///
-    /// A user who wants their own, in their own language or in anyone else's, writes one: the
-    /// settings panel keeps a named list of them and falls back to this when none is picked. See
-    /// <see cref="Models.OpenAiSettings"/>.
+    /// Every wording keeps the same skeleton: "from X to Y", then one sentence forbidding
+    /// everything except the translation. Translation-only models are trained on that shape, and
+    /// one measurably stopped half-way through a Japanese line when handed a restructured wording.
+    /// Japanese and Korean reach the same order with から…へ and 에서…(으)로, so nothing had to be
+    /// bent to keep it.
     ///
-    /// The explicit wording follows TranslateGemma's own documented shape — "You are a professional
-    /// Japanese (ja) to French (fr) translator." — with the placeholders where its documentation
-    /// puts the languages. The automatic one is that same sentence with every mention of a source
-    /// language removed rather than replaced by "any language": 自動 has no source to name, so its
-    /// template carries no source placeholder at all and the two read as one instruction either way.
+    /// The Japanese and Korean wordings are the newest and the least measured — the two Chinese
+    /// ones and the English one predate this. They are written to the same shape and length as the
+    /// rest rather than to what reads best, for the reason above.
+    ///
+    /// That is also why TranslateGemma's own documented wording — "You are a professional Japanese
+    /// (ja) to French (fr) translator." — is not what ships, and why the language tags are not here
+    /// either. Both were tried: on the model this ships against, naming the languages alone reads
+    /// better than naming them with their tags.
+    ///
+    /// The tags keep their own placeholders all the same — see
+    /// <see cref="SourceCodePlaceholder"/> and <see cref="LanguageData.GetModelLanguageTag"/>.
+    /// These defaults are tuned for one model, and someone pointing this provider at a different one
+    /// has to be able to write what that model expects; a placeholder nothing ships with is still
+    /// the difference between editing a prompt and not being able to. That is what the prompt
+    /// library is for — see <see cref="Models.OpenAiSettings"/>.
     /// </remarks>
-    internal static string DefaultPromptTemplate(bool automatic) => automatic
-        ? $"You are a professional translator into {TargetPlaceholder} ({TargetCodePlaceholder}). " +
-          "Your goal is to accurately convey the meaning and nuances of the original text while " +
-          $"adhering to {TargetPlaceholder} grammar, vocabulary, and cultural sensitivities. " +
-          $"Produce only the {TargetPlaceholder} translation, without any additional explanations " +
-          $"or commentary. Please translate the following text into {TargetPlaceholder}:"
-        : $"You are a professional {SourcePlaceholder} ({SourceCodePlaceholder}) to " +
-          $"{TargetPlaceholder} ({TargetCodePlaceholder}) translator. Your goal is to accurately " +
-          $"convey the meaning and nuances of the original {SourcePlaceholder} text while adhering " +
-          $"to {TargetPlaceholder} grammar, vocabulary, and cultural sensitivities. Produce only " +
-          $"the {TargetPlaceholder} translation, without any additional explanations or commentary. " +
-          $"Please translate the following {SourcePlaceholder} text into {TargetPlaceholder}:";
+    internal static string DefaultPromptTemplate(bool automatic) =>
+        Wording switch
+        {
+            PromptWording.TraditionalChinese => automatic
+                ? $"從(各種語言)翻譯成({TargetPlaceholder})。" +
+                  "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。"
+                : $"從({SourcePlaceholder})翻譯成({TargetPlaceholder})。" +
+                  "不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。",
+
+            PromptWording.SimplifiedChinese => automatic
+                ? $"从(各种语言)翻译成({TargetPlaceholder})。" +
+                  "不要思考或加入额外文字，只返回自然、人性化的翻译结果。"
+                : $"从({SourcePlaceholder})翻译成({TargetPlaceholder})。" +
+                  "不要思考或加入额外文字，只返回自然、人性化的翻译结果。",
+
+            PromptWording.Japanese => automatic
+                ? $"(あらゆる言語)から({TargetPlaceholder})へ翻訳してください。" +
+                  "思考や余計な文字は加えず、自然で人間らしい訳文だけを返してください。"
+                : $"({SourcePlaceholder})から({TargetPlaceholder})へ翻訳してください。" +
+                  "思考や余計な文字は加えず、自然で人間らしい訳文だけを返してください。",
+
+            // (으)로 rather than 로 or 으로: the particle alternates on whether the language name
+            // ends in a consonant, and the name is substituted at send time.
+            PromptWording.Korean => automatic
+                ? $"(모든 언어)에서 ({TargetPlaceholder})(으)로 번역하세요. " +
+                  "생각하거나 불필요한 말을 덧붙이지 말고, 자연스럽고 사람이 쓴 것 같은 번역문만 반환하세요."
+                : $"({SourcePlaceholder})에서 ({TargetPlaceholder})(으)로 번역하세요. " +
+                  "생각하거나 불필요한 말을 덧붙이지 말고, 자연스럽고 사람이 쓴 것 같은 번역문만 반환하세요.",
+
+            _ => automatic
+                ? $"Translate the input text from (any language) to ({TargetPlaceholder}). " +
+                  "Do not think or add extra text. Return only a natural, human-sounding translation."
+                : $"Translate the input text from ({SourcePlaceholder}) to ({TargetPlaceholder}). " +
+                  "Do not think or add extra text. Return only a natural, human-sounding translation.",
+        };
+
+    /// <summary>The built-in wordings, one per interface language.</summary>
+    /// <remarks>
+    /// Held here rather than in the string dictionaries, unlike every other per-language string in
+    /// the application. These are not interface text: nobody reads them, a model does, and a wording
+    /// improved for how it reads is an unmeasured change to what comes back from the model. In
+    /// Strings.ja.xaml it would sit among four hundred labels, indistinguishable from one.
+    /// </remarks>
+    private enum PromptWording { TraditionalChinese, SimplifiedChinese, Japanese, Korean, English }
+
+    /// <summary>Which of them the interface language calls for.</summary>
+    /// <remarks>
+    /// Whatever it answers governs the language names <see cref="Fill"/> substitutes as well as the
+    /// template itself, so the filled sentence is in one language rather than a template in one and
+    /// the languages it names in another.
+    /// </remarks>
+    private static PromptWording Wording => LocalizationService.Current switch
+    {
+        LocalizationService.TraditionalChinese => PromptWording.TraditionalChinese,
+        LocalizationService.SimplifiedChinese  => PromptWording.SimplifiedChinese,
+        LocalizationService.Japanese           => PromptWording.Japanese,
+        LocalizationService.Korean             => PromptWording.Korean,
+        _                                      => PromptWording.English,
+    };
 
     /// <summary>
-    /// Substitutes the language placeholders, naming every language in English so a filled built-in
-    /// template reads as one sentence.
+    /// Substitutes the language placeholders, naming the languages in the same language the template
+    /// is written in — see <see cref="Wording"/> — so a filled built-in template reads as one
+    /// sentence.
     /// </summary>
     /// <remarks>
-    /// English regardless of the interface language, and regardless of what the user wrote their own
-    /// template in. One placeholder resolves one way — the alternative was <c>{target_name}</c>
-    /// meaning "日文" in one prompt and "Japanese" in the next, which is invisible from the panel
-    /// that shows the prompt and impossible to write against. It also matches the language tags
-    /// beside it, which have only ever been the model's own spelling.
+    /// A template the user wrote gets those same names: there is no way to tell what language their
+    /// own prose is in, and the interface's is the best guess available.
     /// </remarks>
     /// <remarks>
     /// The code placeholders are replaced before the name ones purely for readability; the two sets
@@ -363,13 +421,22 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// </remarks>
     private static string Fill(string template, string sourceLang, string targetLang, bool automatic)
     {
-        // Nothing to name when the source is 自動. The built-in automatic template names no source
-        // at all, so this only ever reaches a template the user wrote one into themselves.
-        var source = automatic
-            ? "any language"
-            : LanguageData.GetSourceDisplayName(sourceLang, inEnglish: true);
+        // Nothing to name when the source is 自動, so a template that asks for one anyway is given
+        // the same words the built-in automatic template uses in that position.
+        var inEnglish = Wording == PromptWording.English;
 
-        var target = LanguageData.GetTargetDisplayName(targetLang, inEnglish: true);
+        var source = automatic
+            ? Wording switch
+            {
+                PromptWording.TraditionalChinese => "各種語言",
+                PromptWording.SimplifiedChinese  => "各种语言",
+                PromptWording.Japanese           => "あらゆる言語",
+                PromptWording.Korean             => "모든 언어",
+                _                                => "any language",
+            }
+            : LanguageData.GetSourceDisplayName(sourceLang, inEnglish);
+
+        var target = LanguageData.GetTargetDisplayName(targetLang, inEnglish);
 
         return template
             .Replace(SourceCodePlaceholder, automatic ? "" : LanguageData.GetModelLanguageTag(sourceLang),

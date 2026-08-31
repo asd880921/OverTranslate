@@ -62,44 +62,150 @@ public class OpenAiCompatibleProviderTests
         }
     }
 
-    /// <summary>The built-in explicit wording, filled in for Japanese into Traditional Chinese.</summary>
+    /// <summary>The built-in wordings, filled in, on an English interface.</summary>
     /// <remarks>
     /// Written out in full rather than assembled from the same constants the provider uses, which
-    /// would agree with any change including a wrong one. This is the sentence the model is sent.
+    /// would agree with any change including a wrong one. These are the sentences the model is sent.
+    /// English only: the language names in the other four resolve through the resource dictionary,
+    /// which answers with the key itself when no Application is running.
     /// </remarks>
     private const string JapaneseToTraditionalChinese =
-        "You are a professional Japanese (ja) to Traditional Chinese (zh-Hant) translator. " +
-        "Your goal is to accurately convey the meaning and nuances of the original Japanese text " +
-        "while adhering to Traditional Chinese grammar, vocabulary, and cultural sensitivities. " +
-        "Produce only the Traditional Chinese translation, without any additional explanations or " +
-        "commentary. Please translate the following Japanese text into Traditional Chinese:";
+        "Translate the input text from (Japanese) to (Traditional Chinese). " +
+        "Do not think or add extra text. Return only a natural, human-sounding translation.";
 
     /// <inheritdoc cref="JapaneseToTraditionalChinese"/>
     private const string AnythingToTraditionalChinese =
-        "You are a professional translator into Traditional Chinese (zh-Hant). " +
-        "Your goal is to accurately convey the meaning and nuances of the original text " +
-        "while adhering to Traditional Chinese grammar, vocabulary, and cultural sensitivities. " +
-        "Produce only the Traditional Chinese translation, without any additional explanations or " +
-        "commentary. Please translate the following text into Traditional Chinese:";
+        "Translate the input text from (any language) to (Traditional Chinese). " +
+        "Do not think or add extra text. Return only a natural, human-sounding translation.";
 
     /// <summary>
-    /// One wording per case, whatever the interface is set to.
+    /// One wording per interface language, and which language gets which.
     /// </summary>
     /// <remarks>
-    /// This used to be three wordings across five interface languages. The prompt is fed to a model
-    /// rather than read by one, so the language it is written in is a variable on the translation
-    /// path — and four of those five had never been run against the model this ships against. A
-    /// user who wants their own writes one; that is what the prompt library is.
+    /// This was briefly one English wording for all five. It was reverted: the prompt is read by a
+    /// model, so the language it is written in is a variable on the translation path, and asking a
+    /// model to work in English on behalf of a Japanese user is a change nobody measured.
+    ///
+    /// Asserted on the skeleton rather than on the language names, which resolve through the
+    /// resource dictionary and so are only meaningful with an Application running.
+    /// </remarks>
+    [Theory]
+    [InlineData(LocalizationService.TraditionalChinese,
+        "從(各種語言)翻譯成(", "。不要思考或加入額外文字，只回傳自然、人性化的翻譯結果。")]
+    [InlineData(LocalizationService.SimplifiedChinese,
+        "从(各种语言)翻译成(", "。不要思考或加入额外文字，只返回自然、人性化的翻译结果。")]
+    [InlineData(LocalizationService.Japanese,
+        "(あらゆる言語)から(", "思考や余計な文字は加えず、自然で人間らしい訳文だけを返してください。")]
+    [InlineData(LocalizationService.Korean,
+        "(모든 언어)에서 (", "생각하거나 불필요한 말을 덧붙이지 말고, 자연스럽고 사람이 쓴 것 같은 번역문만 반환하세요.")]
+    [InlineData(LocalizationService.English,
+        "Translate the input text from (any language) to (",
+        "Do not think or add extra text. Return only a natural, human-sounding translation.")]
+    public void BuildPrompt_UsesTheWordingItsInterfaceLanguageCallsFor(
+        string uiLanguage, string automaticOpening, string tail)
+    {
+        WithInterfaceLanguage(uiLanguage, () =>
+        {
+            var automatic = OpenAiCompatibleProvider.BuildPrompt("AUTO", "ZH-HANT");
+            var chosen = OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT");
+
+            Assert.StartsWith(automaticOpening, automatic);
+            Assert.EndsWith(tail, automatic);
+
+            // The chosen-source wording is the same sentence with a language named where 自動 named
+            // none, so it ends the same way and never says "any language".
+            Assert.EndsWith(tail, chosen);
+            Assert.DoesNotContain(automaticOpening, chosen);
+        });
+    }
+
+    /// <summary>
+    /// No two interface languages share a wording.
+    /// </summary>
+    /// <remarks>
+    /// The check that would have failed while all five were English. Japanese and Korean used to be
+    /// handed the English one deliberately, on the grounds that an unmeasured wording is a new
+    /// variable — they have their own now, written to the same shape as the rest.
+    /// </remarks>
+    [Fact]
+    public void BuildPrompt_HasAWordingOfItsOwnInEveryInterfaceLanguage()
+    {
+        var wordings = new List<string>();
+        foreach (var option in LocalizationService.Options)
+            WithInterfaceLanguage(option.Code, () =>
+                wordings.Add(OpenAiCompatibleProvider.DefaultPromptTemplate(automatic: true)));
+
+        Assert.Equal(5, wordings.Count);
+        Assert.Equal(wordings.Count, wordings.Distinct().Count());
+    }
+
+    /// <summary>
+    /// The built-in wordings stay short, in every language.
+    /// </summary>
+    /// <remarks>
+    /// A system prompt is re-sent once per recognised block, so its length is a per-block cost paid
+    /// on every capture. A wording three times this long shipped once and the slowdown was the first
+    /// thing anyone noticed. The cap is loose — it is there to catch a wording that has become a
+    /// paragraph, not to police a clause.
+    /// </remarks>
+    [Fact]
+    public void BuildPrompt_KeepsTheBuiltInWordingsShort()
+    {
+        foreach (var option in LocalizationService.Options)
+            WithInterfaceLanguage(option.Code, () =>
+            {
+                foreach (var automatic in new[] { true, false })
+                {
+                    var template = OpenAiCompatibleProvider.DefaultPromptTemplate(automatic);
+                    Assert.True(
+                        template.Length <= 200,
+                        $"{option.Code} ({(automatic ? "自動" : "指定")}) is {template.Length} characters: {template}");
+                }
+            });
+    }
+
+    /// <summary>
+    /// The languages a template names are named in the language the template is written in.
+    /// </summary>
+    /// <remarks>
+    /// A filled built-in template has to read as one sentence rather than as a template in one
+    /// language naming languages in another.
     /// </remarks>
     [Theory]
     [InlineData(LocalizationService.TraditionalChinese)]
     [InlineData(LocalizationService.SimplifiedChinese)]
-    [InlineData(LocalizationService.English)]
     [InlineData(LocalizationService.Japanese)]
     [InlineData(LocalizationService.Korean)]
-    public void BuildPrompt_IsTheSameWordingInEveryInterfaceLanguage(string uiLanguage)
+    public void BuildPrompt_DoesNotNameLanguagesInEnglishOutsideTheEnglishInterface(string uiLanguage)
     {
         WithInterfaceLanguage(uiLanguage, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "EN-US");
+
+            Assert.DoesNotContain("(Japanese)", prompt);
+            Assert.DoesNotContain("(English)", prompt);
+        });
+    }
+
+    [Theory]
+    [InlineData("EN", "JA", "English", "Japanese")]
+    [InlineData("JA", "KO", "Japanese", "Korean")]
+    public void BuildPrompt_NamesBothLanguagesInAnEnglishInterface(
+        string sourceCode, string targetCode, string sourceName, string targetName)
+    {
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt(sourceCode, targetCode);
+
+            Assert.Contains($"from ({sourceName}) to ({targetName})", prompt);
+            Assert.DoesNotContain("只回傳", prompt);
+        });
+    }
+
+    [Fact]
+    public void BuildPrompt_FillsTheBuiltInWordingsEndToEnd()
+    {
+        WithInterfaceLanguage(LocalizationService.English, () =>
         {
             Assert.Equal(
                 JapaneseToTraditionalChinese,
@@ -110,88 +216,42 @@ public class OpenAiCompatibleProviderTests
         });
     }
 
-    /// <summary>
-    /// The languages are named in English too, on a Chinese interface as much as an English one.
-    /// </summary>
-    /// <remarks>
-    /// One placeholder resolves one way. The alternative — a name that follows the interface — meant
-    /// <c>{target_name}</c> was "繁體中文" for one reader and "Traditional Chinese" for the next,
-    /// which is impossible to write a prompt against and invisible from the panel that shows it.
-    /// </remarks>
-    [Fact]
-    public void BuildPrompt_NamesLanguagesInEnglishWhateverTheInterfaceIs()
-    {
-        WithInterfaceLanguage(LocalizationService.TraditionalChinese, () =>
-        {
-            var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT");
-
-            Assert.Contains("Japanese (ja) to Traditional Chinese (zh-Hant)", prompt);
-            Assert.DoesNotContain("繁體中文", prompt);
-            Assert.DoesNotContain("日文", prompt);
-        });
-    }
-
-    [Theory]
-    [InlineData("EN", "JA", "English (en) to Japanese (ja)")]
-    [InlineData("JA", "KO", "Japanese (ja) to Korean (ko)")]
-    public void BuildPrompt_NamesBothLanguagesWithTheirTags(
-        string sourceCode, string targetCode, string pair)
-    {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt(sourceCode, targetCode);
-
-        Assert.Contains($"You are a professional {pair} translator.", prompt);
-    }
-
-    /// <summary>
-    /// 自動 has no source language to name, so its wording mentions none — rather than naming
-    /// "any language" where the other one names Japanese.
-    /// </summary>
-    /// <remarks>
-    /// It keeps everything else about the explicit sentence, including the shape a translation-only
-    /// model is trained on, so the two are one instruction with one clause removed.
-    /// </remarks>
-    [Theory]
-    [InlineData("ZH-HANT", "Traditional Chinese")]
-    [InlineData("EN-US", "English")]
-    public void BuildPrompt_NamesNoSourceLanguageWhenTheSourceIsAutomatic(
-        string targetCode, string targetName)
-    {
-        var automatic = OpenAiCompatibleProvider.BuildPrompt("AUTO", targetCode);
-
-        Assert.StartsWith($"You are a professional translator into {targetName} (", automatic);
-        Assert.EndsWith($"Please translate the following text into {targetName}:", automatic);
-        Assert.DoesNotContain("any language", automatic);
-    }
-
     // The custom prompt belongs to the case it was written for: picking one must not change what
     // the other case sends, which is the whole reason the library has two halves.
     [Fact]
     public void BuildPrompt_PrefersTheCustomPromptForTheCaseInHand()
     {
-        var automatic = OpenAiCompatibleProvider.BuildPrompt(
-            "AUTO", "ZH-HANT", customAuto: "auto: into {target}", customExplicit: "chosen: {source}->{target}");
-        var chosen = OpenAiCompatibleProvider.BuildPrompt(
-            "JA", "ZH-HANT", customAuto: "auto: into {target}", customExplicit: "chosen: {source}->{target}");
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var automatic = OpenAiCompatibleProvider.BuildPrompt(
+                "AUTO", "ZH-HANT", customAuto: "auto: into {target}", customExplicit: "chosen: {source}->{target}");
+            var chosen = OpenAiCompatibleProvider.BuildPrompt(
+                "JA", "ZH-HANT", customAuto: "auto: into {target}", customExplicit: "chosen: {source}->{target}");
 
-        // The name placeholders still mean the name alone, which is what they meant before the tags
-        // existed — a template written back then reads the way it was written. A template that wants
-        // the tag asks for it with {source_code} / {target_code}.
-        Assert.Equal("auto: into Traditional Chinese", automatic);
-        Assert.Equal("chosen: Japanese->Traditional Chinese", chosen);
+            // The name placeholders still mean the name alone, which is what they meant before the
+            // tags existed — a template written back then reads the way it was written. A template
+            // that wants the tag asks for it with {source_code} / {target_code}.
+            Assert.Equal("auto: into Traditional Chinese", automatic);
+            Assert.Equal("chosen: Japanese->Traditional Chinese", chosen);
+        });
     }
 
     // The point of splitting the tag out of the name: a template can place it wherever its own model
-    // expects it. The built-in wording composes the pair itself, but nothing makes a custom one.
+    // expects it, including TranslateGemma's documented wording, which this application does not ship
+    // as its default because a longer sentence is a cost paid once per recognised block.
     [Fact]
     public void BuildPrompt_LetsATemplatePlaceTheLanguageTagItself()
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt(
-            "JA", "EN-US",
-            customExplicit: "You are a professional {source} ({source_code}) to {target} ({target_code}) translator.");
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt(
+                "JA", "EN-US",
+                customExplicit: "You are a professional {source} ({source_code}) to {target} ({target_code}) translator.");
 
-        Assert.Equal(
-            "You are a professional Japanese (ja) to English (en) translator.",
-            prompt);
+            Assert.Equal(
+                "You are a professional Japanese (ja) to English (en) translator.",
+                prompt);
+        });
     }
 
     // {source} / {target} were the names before the tags gained placeholders of their own. A template
@@ -200,10 +260,13 @@ public class OpenAiCompatibleProviderTests
     [Fact]
     public void BuildPrompt_StillFillsThePlaceholderNamesItUsedToAdvertise()
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt(
-            "JA", "EN-US", customExplicit: "from {source} to {target}");
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt(
+                "JA", "EN-US", customExplicit: "from {source} to {target}");
 
-        Assert.Equal("from Japanese to English", prompt);
+            Assert.Equal("from Japanese to English", prompt);
+        });
     }
 
     [Fact]
@@ -232,9 +295,12 @@ public class OpenAiCompatibleProviderTests
     [InlineData("   ")]
     public void BuildPrompt_FallsBackToTheBuiltInWhenTheCustomOneIsBlank(string custom)
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT", customExplicit: custom);
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt("JA", "ZH-HANT", customExplicit: custom);
 
-        Assert.Equal(JapaneseToTraditionalChinese, prompt);
+            Assert.Equal(JapaneseToTraditionalChinese, prompt);
+        });
     }
 
     // A template written for a chosen source language, picked while the source is 自動, would
@@ -242,11 +308,14 @@ public class OpenAiCompatibleProviderTests
     [Fact]
     public void BuildPrompt_FillsTheSourcePlaceholderEvenWhenTheSourceIsAutomatic()
     {
-        var prompt = OpenAiCompatibleProvider.BuildPrompt(
-            "AUTO", "ZH-HANT", customAuto: "from {source} into {target}");
+        WithInterfaceLanguage(LocalizationService.English, () =>
+        {
+            var prompt = OpenAiCompatibleProvider.BuildPrompt(
+                "AUTO", "ZH-HANT", customAuto: "from {source} into {target}");
 
-        Assert.Equal("from any language into Traditional Chinese", prompt);
-        Assert.DoesNotContain("{source}", prompt);
+            Assert.Equal("from any language into Traditional Chinese", prompt);
+            Assert.DoesNotContain("{source}", prompt);
+        });
     }
 
     // ── Which prompt of the library gets sent ────────────────────────────────
