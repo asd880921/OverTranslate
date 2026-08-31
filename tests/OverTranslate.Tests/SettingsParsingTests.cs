@@ -349,17 +349,52 @@ public class SettingsParsingTests
         var captureGroup = json.IndexOf("\"Capture\":", StringComparison.Ordinal);
         var quickLookupGroup = json.IndexOf("\"QuickLookup\":", StringComparison.Ordinal);
         var realtimeGroup = json.IndexOf("\"Realtime\":", StringComparison.Ordinal);
+        var openAiGroup = json.IndexOf("\"OpenAi\":", StringComparison.Ordinal);
         var rootKeys = System.Text.Json.JsonDocument.Parse(json).RootElement
             .EnumerateObject()
             .Select(property => property.Name)
             .ToList();
 
         Assert.True(
-            lastFlatKey >= 0 && captureGroup >= 0 && quickLookupGroup >= 0 && realtimeGroup >= 0);
+            lastFlatKey >= 0 && captureGroup >= 0 && quickLookupGroup >= 0 && realtimeGroup >= 0
+            && openAiGroup >= 0);
         Assert.True(
             captureGroup > lastFlatKey,
             "grouped settings must be written after every flat one");
-        Assert.Equal(["Capture", "QuickLookup", "Realtime"], rootKeys.TakeLast(3));
+        Assert.Equal(["Capture", "QuickLookup", "Realtime", "OpenAi"], rootKeys.TakeLast(4));
+    }
+
+    /// <summary>
+    /// The file keeps what it holds as itself, not as a run of <c>\uXXXX</c>.
+    /// </summary>
+    /// <remarks>
+    /// System.Text.Json escapes every non-ASCII character by default, and <c>+</c> with them. That
+    /// was tolerable while the file held paths and key codes; the prompt library gave it names and
+    /// prose the user wrote, and a settings file someone opens to check their own prompt is not
+    /// allowed to be unreadable.
+    ///
+    /// Pinned because the encoder is one property that can fall off an options object without
+    /// anything else noticing — it changes only how the file reads, so no other test would fail.
+    /// Both halves are asserted: widening the character range alone fixes the Chinese and leaves
+    /// every shortcut written as <c>Ctrl\u002BAlt\u002BA</c>.
+    /// </remarks>
+    [Fact]
+    public void TheFileIsWrittenToBeRead()
+    {
+        var settings = new AppSettings();
+        settings.OpenAi.AutoPrompts.Add(new OpenAiPromptPreset
+        {
+            Id = "a",
+            Name = "測試用",
+            Template = "翻成 {target_name}",
+        });
+
+        var json = SettingsService.Serialize(settings);
+
+        Assert.Contains("\"Name\": \"測試用\"", json);
+        Assert.Contains("翻成 {target_name}", json);
+        Assert.Contains("\"HotkeyDisplay\": \"Ctrl+Alt+A\"", json);
+        Assert.DoesNotContain(@"\u", json);
     }
 
     // Written before either shortcut could be switched off: both have to come back on, or upgrading

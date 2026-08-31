@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using NLog;
@@ -30,7 +31,34 @@ public class SettingsService
     private static readonly string LegacySettingsPath = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
 
-    private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
+    /// <summary>
+    /// How the file is written: indented, and with the whole of Unicode left as itself.
+    /// </summary>
+    /// <remarks>
+    /// The default encoder escapes everything outside a conservative ASCII set, which writes a
+    /// prompt someone named 「測試」 as an unbroken run of <c>\uXXXX</c>. This is a file a user can
+    /// open — see <see cref="Services.Realtime.RealtimeSubtitleColors"/>, which is written on the
+    /// same assumption — and now that it holds the prompt library, the names and the prose in it are
+    /// the user's own words rather than paths and key codes.
+    ///
+    /// The same encoder <see cref="DiagnosticBundleService"/> uses for its redacted copy, and for
+    /// the same reason it gives: this text goes into a file, never into a web page, so the escaping
+    /// of <c>&lt;</c>, <c>&gt;</c> and <c>&amp;</c> that guards against being embedded in HTML buys
+    /// nothing here. Widening only the character range was tried first and is not enough — it
+    /// leaves <c>+</c> escaped, which writes every shortcut in the file as
+    /// <c>Ctrl\u002BAlt\u002BA</c>. Half a readable file is not the point.
+    ///
+    /// The two copies also then read alike, which is worth something on the one occasion both are
+    /// in front of the same person: a bug report held against the file it came from.
+    ///
+    /// Cosmetic by construction: nothing reads this file as text, both forms parse to the same
+    /// string, and <see cref="Parse"/> goes through a JSON reader either way.
+    /// </remarks>
+    private static readonly JsonSerializerOptions WriteOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     private static SettingsService? _instance;
     public static SettingsService Instance => _instance ??= new SettingsService();
@@ -151,6 +179,10 @@ public class SettingsService
         && type != typeof(string)
         && type.Namespace == typeof(AppSettings).Namespace;
 
+    /// <summary>The exact bytes <see cref="Save"/> writes, for a test that has no file to read.</summary>
+    internal static string Serialize(AppSettings settings) =>
+        JsonSerializer.Serialize(settings, WriteOptions);
+
     public void Save()
     {
         try
@@ -160,7 +192,7 @@ public class SettingsService
             // Write-then-rename: losing power mid-write leaves the previous file intact instead of a
             // truncated one, which the next launch would read as corrupt and replace with defaults.
             var tempPath = SettingsPath + ".tmp";
-            File.WriteAllText(tempPath, JsonSerializer.Serialize(Current, WriteOptions));
+            File.WriteAllText(tempPath, Serialize(Current));
             File.Move(tempPath, SettingsPath, overwrite: true);
         }
         catch (Exception ex)

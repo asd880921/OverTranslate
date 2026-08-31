@@ -303,6 +303,42 @@ public class StringsParityTests
     }
 
     /// <summary>
+    /// The instruction sent to an OpenAI-compatible model has one name in each language.
+    /// </summary>
+    /// <remarks>
+    /// The Chinese pair had two — the labels said "Prompt" and the prose beside them said 提示詞 —
+    /// which leaves a reader working out for themselves that the box called Prompt is the thing the
+    /// sentence underneath calls 提示詞. Settled on 提示詞 / 提示词, so the Latin word appears in no
+    /// Chinese string at all; the other three each carry the loanword their own software uses
+    /// (prompt, プロンプト, 프롬프트) and the check is that none of them falls back to the English
+    /// spelling either.
+    ///
+    /// The keys are still named Prompt, and that is not a mistake: identifiers are English
+    /// everywhere in this project, and it is the displayed word that has to agree with itself.
+    /// </remarks>
+    [Theory]
+    [InlineData("Strings.zh-Hant.xaml", "(?i)prompt", "提示詞")]
+    [InlineData("Strings.zh-Hans.xaml", "(?i)prompt", "提示词")]
+    [InlineData("Strings.ja.xaml", "(?i)prompt", "プロンプト")]
+    [InlineData("Strings.ko.xaml", "(?i)prompt", "프롬프트")]
+    // English says "prompt" and not a synonym for it: "wording" and "instruction" are both what it
+    // was called at one point or another in the code that produces this string.
+    [InlineData("Strings.en.xaml", "(?i)wording|(?i)instruction", "prompt")]
+    public void The_model_instruction_is_called_the_same_thing_everywhere(
+        string file, string pattern, string agreedName)
+    {
+        var offenders = Load(file)
+            .Where(kv => Regex.IsMatch(kv.Value, pattern))
+            .Select(kv => $"{kv.Key}: {kv.Value}")
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            $"{file} names it something other than \"{agreedName}\":{Environment.NewLine}" +
+            string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>
     /// Full-width punctuation is correct in Chinese and wrong in English, and it is the single
     /// easiest thing to carry over when translating by copying a line and editing it in place.
     /// </summary>
