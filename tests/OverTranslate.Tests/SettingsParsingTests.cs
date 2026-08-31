@@ -364,6 +364,39 @@ public class SettingsParsingTests
         Assert.Equal(["Capture", "QuickLookup", "Realtime", "OpenAi"], rootKeys.TakeLast(4));
     }
 
+    /// <summary>
+    /// The file keeps what it holds as itself, not as a run of <c>\uXXXX</c>.
+    /// </summary>
+    /// <remarks>
+    /// System.Text.Json escapes every non-ASCII character by default, and <c>+</c> with them. That
+    /// was tolerable while the file held paths and key codes; the prompt library gave it names and
+    /// prose the user wrote, and a settings file someone opens to check their own prompt is not
+    /// allowed to be unreadable.
+    ///
+    /// Pinned because the encoder is one property that can fall off an options object without
+    /// anything else noticing — it changes only how the file reads, so no other test would fail.
+    /// Both halves are asserted: widening the character range alone fixes the Chinese and leaves
+    /// every shortcut written as <c>Ctrl\u002BAlt\u002BA</c>.
+    /// </remarks>
+    [Fact]
+    public void TheFileIsWrittenToBeRead()
+    {
+        var settings = new AppSettings();
+        settings.OpenAi.AutoPrompts.Add(new OpenAiPromptPreset
+        {
+            Id = "a",
+            Name = "測試用",
+            Template = "翻成 {target_name}",
+        });
+
+        var json = SettingsService.Serialize(settings);
+
+        Assert.Contains("\"Name\": \"測試用\"", json);
+        Assert.Contains("翻成 {target_name}", json);
+        Assert.Contains("\"HotkeyDisplay\": \"Ctrl+Alt+A\"", json);
+        Assert.DoesNotContain(@"\u", json);
+    }
+
     // Written before either shortcut could be switched off: both have to come back on, or upgrading
     // would silently disable two shortcuts the user still has.
     [Fact]

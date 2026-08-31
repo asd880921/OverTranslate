@@ -562,7 +562,7 @@ public class OpenAiCompatibleProviderTests
         written.OpenAi.ExplicitPrompts.Add(
             new OpenAiPromptPreset { Id = "explicit", Name = name, Template = prompt });
 
-        var json = JsonSerializer.Serialize(written);
+        var json = SettingsService.Serialize(written);
         var read = SettingsService.Parse(json);
 
         Assert.Equal(prompt, Assert.Single(read.OpenAi.AutoPrompts).Template);
@@ -592,7 +592,7 @@ public class OpenAiCompatibleProviderTests
         written.OpenAi.AutoPrompts.Add(
             new OpenAiPromptPreset { Id = "auto", Name = "壞掉的", Template = prompt });
 
-        var read = SettingsService.Parse(JsonSerializer.Serialize(written));
+        var read = SettingsService.Parse(SettingsService.Serialize(written));
 
         var template = Assert.Single(read.OpenAi.AutoPrompts).Template;
         Assert.StartsWith("壞掉的字元 ", template);
