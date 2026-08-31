@@ -321,12 +321,16 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// reflowed: the shape of a prompt is part of it, and a wording nobody re-measured after editing
     /// is a new variable on a working path.
     ///
-    /// The trailing <c>{TEXT}</c> is NOT one of this application's placeholders and nothing
-    /// substitutes it — see <see cref="SourcePlaceholder"/> for the four that are. The text to
-    /// translate is sent as its own user message, which is what an OpenAI-compatible chat request
-    /// is shaped like; the model therefore receives these words with a literal "{TEXT}" at the end
-    /// of the system message. Kept because it was asked for verbatim. Making it substitute would
-    /// change what a request looks like, not just what it says.
+    /// The trailing <c>{TEXT}</c> is deliberate and is NOT one of this application's placeholders —
+    /// see <see cref="SourcePlaceholder"/> for the four that are. Nothing substitutes it, and
+    /// nothing should: it is part of the prompt shape TranslateGemma's own documentation
+    /// recommends, so what the model is trained to expect includes those characters. The text to
+    /// translate goes in its own user message, which is what an OpenAI-compatible chat request is
+    /// shaped like, and the model reads the literal token at the end of the system message as the
+    /// cue it was trained on.
+    ///
+    /// So this is not a placeholder someone forgot to wire up. Filling it in would send the text
+    /// twice and change the shape the model expects.
     /// </remarks>
     internal static string DefaultPromptTemplate(bool automatic) => automatic
         ? $"You are a professional translator into {TargetPlaceholder} ({TargetCodePlaceholder}). " +

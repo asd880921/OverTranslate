@@ -138,11 +138,14 @@ public class OpenAiCompatibleProviderTests
     /// <c>{TEXT}</c> is not one of this application's placeholders and nothing fills it.
     /// </summary>
     /// <remarks>
-    /// It ships inside the built-in wording because that is how the wording was supplied. The text
-    /// to translate is sent as its own user message — see <see cref="OpenAiCompatibleProvider"/> —
-    /// so the model gets a literal "{TEXT}" at the end of the system message. Pinned so that if it
-    /// ever does start being substituted, that is a deliberate change with a test to update rather
-    /// than something noticed in a request log.
+    /// It ships inside the built-in wording on purpose: it is part of the prompt shape
+    /// TranslateGemma's documentation recommends, so the literal token is what the model was
+    /// trained to see. The text to translate is sent as its own user message — see
+    /// <see cref="OpenAiCompatibleProvider"/>.
+    ///
+    /// Pinned because it reads exactly like a placeholder nobody wired up, and the obvious "fix" is
+    /// to start substituting it. That would send the text twice and change the shape the model
+    /// expects, so it has to be a deliberate change with a test to update.
     /// </remarks>
     [Fact]
     public void BuildPrompt_LeavesTheTextTokenAlone()
