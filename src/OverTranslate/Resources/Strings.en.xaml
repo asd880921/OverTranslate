@@ -403,7 +403,7 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.PromptNamePlaceholder">Name this prompt</sys:String>
     <sys:String x:Key="S.Settings.PromptContent">Prompt text</sys:String>
     <sys:String x:Key="S.Settings.PromptNewName">My prompt {0}</sys:String>
-    <sys:String x:Key="S.Settings.PromptLoadDefault">Load the built-in wording</sys:String>
+    <sys:String x:Key="S.Settings.PromptLoadDefault">Load the built-in prompt</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">Reset to default</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">Available parameters</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">Write these into the prompt; each is replaced with the language actually in use before the request is sent, so one prompt serves every language pair.</sys:String>

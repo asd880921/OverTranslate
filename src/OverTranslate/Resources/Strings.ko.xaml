@@ -404,7 +404,7 @@
     <sys:String x:Key="S.Settings.PromptNamePlaceholder">이 프롬프트의 이름</sys:String>
     <sys:String x:Key="S.Settings.PromptContent">프롬프트 내용</sys:String>
     <sys:String x:Key="S.Settings.PromptNewName">내 프롬프트 {0}</sys:String>
-    <sys:String x:Key="S.Settings.PromptLoadDefault">기본 내용 불러오기</sys:String>
+    <sys:String x:Key="S.Settings.PromptLoadDefault">기본 프롬프트 불러오기</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">기본값으로</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">사용할 수 있는 매개변수</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">프롬프트에 이 매개변수를 넣어 두면 보내기 전에 그때 사용하는 언어로 바뀌므로, 하나의 프롬프트로 모든 언어 조합에 대응할 수 있습니다.</sys:String>

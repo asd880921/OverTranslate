@@ -408,25 +408,25 @@
     <sys:String x:Key="S.Settings.ApiBaseUrl">API 位址</sys:String>
     <sys:String x:Key="S.Settings.ModelName">模型名稱</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">本地 LLM (Ollama) 安裝教學</sys:String>
-    <sys:String x:Key="S.Settings.PromptAuto">自動翻譯 Prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicit">指定語言 Prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoHint">這裡的 Prompt 只會在來源語言為自動偵測時使用。</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitHint">這裡的 Prompt 只會在指定來源語言時使用。</sys:String>
-    <!-- Prompt 清單。預設 Prompt 唯讀，要改就是自己新增一則；名稱是使用者取的 -->
-    <sys:String x:Key="S.Settings.PromptDefaultName">預設 Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptAuto">自動翻譯提示詞</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicit">指定語言提示詞</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">這裡的提示詞只會在來源語言為自動偵測時使用。</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">這裡的提示詞只會在指定來源語言時使用。</sys:String>
+    <!-- 提示詞清單。預設提示詞唯讀，要改就是自己新增一則；名稱是使用者取的 -->
+    <sys:String x:Key="S.Settings.PromptDefaultName">預設提示詞</sys:String>
     <sys:String x:Key="S.Settings.PromptReadOnly">唯讀</sys:String>
-    <sys:String x:Key="S.Settings.PromptAdd">新增 Prompt（{0}/{1}）</sys:String>
-    <sys:String x:Key="S.Settings.PromptInUse">目前使用的 Prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptAddTitle">新增 Prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptEditTitle">編輯 Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptAdd">新增提示詞（{0}/{1}）</sys:String>
+    <sys:String x:Key="S.Settings.PromptInUse">目前使用的提示詞</sys:String>
+    <sys:String x:Key="S.Settings.PromptAddTitle">新增提示詞</sys:String>
+    <sys:String x:Key="S.Settings.PromptEditTitle">編輯提示詞</sys:String>
     <sys:String x:Key="S.Settings.PromptDelete">刪除</sys:String>
     <sys:String x:Key="S.Settings.PromptName">名稱</sys:String>
-    <sys:String x:Key="S.Settings.PromptNamePlaceholder">為這個 Prompt 命名</sys:String>
-    <sys:String x:Key="S.Settings.PromptContent">Prompt 內容</sys:String>
-    <sys:String x:Key="S.Settings.PromptNewName">我的 Prompt {0}</sys:String>
-    <sys:String x:Key="S.Settings.PromptLoadDefault">帶入預設內容</sys:String>
+    <sys:String x:Key="S.Settings.PromptNamePlaceholder">為這個提示詞命名</sys:String>
+    <sys:String x:Key="S.Settings.PromptContent">提示詞內容</sys:String>
+    <sys:String x:Key="S.Settings.PromptNewName">我的提示詞 {0}</sys:String>
+    <sys:String x:Key="S.Settings.PromptLoadDefault">帶入預設提示詞</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">還原預設</sys:String>
-    <!-- 可用參數表。範例欄固定是英文名稱與代碼，因為代入 Prompt 的語言名稱一律是英文 -->
+    <!-- 可用參數表。範例欄固定是英文名稱與代碼，因為代入提示詞的語言名稱一律是英文 -->
     <sys:String x:Key="S.Settings.PromptParams">可用參數</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">在提示詞中寫入這些參數，送出前會替換成當次實際使用的語言，因此一份提示詞就能套用到所有語言組合。</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol1">參數</sys:String>

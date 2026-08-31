@@ -404,7 +404,7 @@
     <sys:String x:Key="S.Settings.PromptNamePlaceholder">このプロンプトの名前</sys:String>
     <sys:String x:Key="S.Settings.PromptContent">プロンプト本文</sys:String>
     <sys:String x:Key="S.Settings.PromptNewName">マイプロンプト {0}</sys:String>
-    <sys:String x:Key="S.Settings.PromptLoadDefault">既定の内容を読み込む</sys:String>
+    <sys:String x:Key="S.Settings.PromptLoadDefault">既定のプロンプトを読み込む</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">既定に戻す</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">使用できるパラメーター</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">プロンプトにこれらを書いておくと、送信前にその回に使う言語へ置き換わるため、1 つのプロンプトですべての言語の組み合わせに対応できます。</sys:String>
