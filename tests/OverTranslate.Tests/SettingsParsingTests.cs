@@ -349,17 +349,19 @@ public class SettingsParsingTests
         var captureGroup = json.IndexOf("\"Capture\":", StringComparison.Ordinal);
         var quickLookupGroup = json.IndexOf("\"QuickLookup\":", StringComparison.Ordinal);
         var realtimeGroup = json.IndexOf("\"Realtime\":", StringComparison.Ordinal);
+        var openAiGroup = json.IndexOf("\"OpenAi\":", StringComparison.Ordinal);
         var rootKeys = System.Text.Json.JsonDocument.Parse(json).RootElement
             .EnumerateObject()
             .Select(property => property.Name)
             .ToList();
 
         Assert.True(
-            lastFlatKey >= 0 && captureGroup >= 0 && quickLookupGroup >= 0 && realtimeGroup >= 0);
+            lastFlatKey >= 0 && captureGroup >= 0 && quickLookupGroup >= 0 && realtimeGroup >= 0
+            && openAiGroup >= 0);
         Assert.True(
             captureGroup > lastFlatKey,
             "grouped settings must be written after every flat one");
-        Assert.Equal(["Capture", "QuickLookup", "Realtime"], rootKeys.TakeLast(3));
+        Assert.Equal(["Capture", "QuickLookup", "Realtime", "OpenAi"], rootKeys.TakeLast(4));
     }
 
     // Written before either shortcut could be switched off: both have to come back on, or upgrading

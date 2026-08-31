@@ -13,6 +13,7 @@
     <sys:String x:Key="S.Common.Reset">Reset</sys:String>
     <sys:String x:Key="S.Common.Close">Close</sys:String>
     <sys:String x:Key="S.Common.Cancel">Cancel</sys:String>
+    <sys:String x:Key="S.Common.Save">Save</sys:String>
     <sys:String x:Key="S.Common.Configure">Configure</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API key</sys:String>
     <!-- The search box in a language picker. Typing narrows the list and never changes the
@@ -389,8 +390,20 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.OllamaGuide">Local LLM (Ollama) setup guide</sys:String>
     <sys:String x:Key="S.Settings.PromptAuto">Auto-detect prompt</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">Chosen-language prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoHint">You are editing the auto-detect prompt. It is used only when the source language is set to auto-detect.</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitHint">You are editing the chosen-language prompt. It is used only when a source language is chosen.</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">These prompts are used only when the source language is set to auto-detect.</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">These prompts are used only when a source language is chosen.</sys:String>
+    <sys:String x:Key="S.Settings.PromptDefaultName">Built-in prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptReadOnly">Read-only</sys:String>
+    <sys:String x:Key="S.Settings.PromptAdd">Add prompt ({0}/{1})</sys:String>
+    <sys:String x:Key="S.Settings.PromptInUse">Prompt in use</sys:String>
+    <sys:String x:Key="S.Settings.PromptAddTitle">Add prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptEditTitle">Edit prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptDelete">Delete</sys:String>
+    <sys:String x:Key="S.Settings.PromptName">Name</sys:String>
+    <sys:String x:Key="S.Settings.PromptNamePlaceholder">Name this prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptContent">Prompt text</sys:String>
+    <sys:String x:Key="S.Settings.PromptNewName">My prompt {0}</sys:String>
+    <sys:String x:Key="S.Settings.PromptLoadDefault">Load the built-in wording</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">Reset to default</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">Available parameters</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">Write these into the prompt; each is replaced with the language actually in use before the request is sent, so one prompt serves every language pair.</sys:String>
@@ -401,8 +414,6 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.PromptParamSourceCode">Source language code</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetName">Target language name</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetCode">Target language code</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamSourceNameEg">English</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamTargetNameEg">Japanese</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">Advanced</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">Enable</sys:String>

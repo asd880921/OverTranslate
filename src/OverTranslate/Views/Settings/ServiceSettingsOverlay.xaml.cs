@@ -16,6 +16,8 @@ using OverTranslate.Views.Controls;
 using UserControl = System.Windows.Controls.UserControl;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using Size = System.Windows.Size;
+using RadioButton = System.Windows.Controls.RadioButton;
+using Button = System.Windows.Controls.Button;
 
 namespace OverTranslate.Views.Settings;
 
@@ -38,21 +40,15 @@ public partial class ServiceSettingsOverlay : UserControl
 
     private readonly DispatcherTimer _apiKeyDebounce;
     private readonly DispatcherTimer _openAiSettingsDebounce;
-    private readonly DispatcherTimer _promptDebounce;
 
     private const int PromptAutoSegment = 0;
     private const int PromptExplicitSegment = 1;
 
-    /// <summary>How many lines of prompt the box accepts.</summary>
-    private const int PromptMaxLines = 200;
-
-    /// <summary>True while the box is being cut back to the line limit, so its own edit is ignored.</summary>
-    private bool _trimmingPrompt;
-
     /// <summary>
-    /// Which of the two prompts the editor is currently holding. Kept alongside the tab's own
-    /// checked state because a pending edit has to be written to the prompt it was typed into, even
-    /// if the user has since switched to the other tab.
+    /// Which of the two prompt libraries the list underneath the tabs is showing. Kept alongside
+    /// the tab's own checked state because every handler that reads or writes a prompt has to know
+    /// which of the two lists it belongs to, and asking two RadioButtons that each time reads worse
+    /// than asking this.
     /// </summary>
     private int _promptSegment = PromptAutoSegment;
 
@@ -89,12 +85,12 @@ public partial class ServiceSettingsOverlay : UserControl
             });
         };
 
-        _promptDebounce = new DispatcherTimer { Interval = EditDebounce };
-        _promptDebounce.Tick += (_, _) =>
-        {
-            _promptDebounce.Stop();
-            PersistPrompt();
-        };
+        // The prompt card writes the settings itself — it is the one surface here that commits on
+        // a button rather than as it is typed — so all this side has to do is re-read the list.
+        PromptEditor.Changed += (_, _) => LoadPromptLibrary(SettingsService.Instance.Current);
+
+        // Focus comes back so Escape closes this panel again: it was on the card, which has gone.
+        PromptEditor.Closed += (_, _) => Focus();
     }
 
     // ── Open / close ─────────────────────────────────────────────────────────
@@ -210,7 +206,7 @@ public partial class ServiceSettingsOverlay : UserControl
             OpenAiModelBox.Text = s.OpenAiModel;
             TemperatureEnabledCheckBox.IsChecked = s.OpenAiTemperatureEnabled;
             TemperatureBox.Text = FormatTemperature(s.OpenAiTemperature);
-            LoadPromptEditor(s);
+            LoadPromptLibrary(s);
 
             // Set here rather than in XAML because the guide has a copy per interface language, and
             // LoadSettings is what runs again when that language changes — see OnLanguageChanged.
@@ -226,8 +222,8 @@ public partial class ServiceSettingsOverlay : UserControl
     }
 
     /// <summary>
-    /// Re-renders the text this panel composes in code: the title, the prompt switch's segment
-    /// labels, and the built-in wording shown behind an empty prompt box.
+    /// Re-renders the text this panel composes in code: the title, the note under the prompt tabs,
+    /// the built-in row's name and the label on the add row.
     /// </summary>
     private void OnLanguageChanged(object? sender, EventArgs e) => LoadSettings();
 
@@ -260,8 +256,6 @@ public partial class ServiceSettingsOverlay : UserControl
                 s.OpenAiTemperature = ReadTemperature();
             });
         }
-
-        FlushPromptEdit();
     }
 
     // ── DeepL ────────────────────────────────────────────────────────────────
@@ -461,22 +455,74 @@ public partial class ServiceSettingsOverlay : UserControl
         TemperatureResetButton.IsEnabled = !enabled || TemperatureBox.Text.Trim() != FormatTemperature(0);
     }
 
-    // ── Prompt editor ────────────────────────────────────────────────────────
+    // ── Prompt library ───────────────────────────────────────────────────────
+
+    /// <summary>One row of the prompt list, as the markup draws it.</summary>
+    /// <remarks>
+    /// A row rather than the stored preset itself, because the built-in prompt is a row too and has
+    /// no preset behind it: it is the entry with the empty id, which is what the settings file means
+    /// by "nothing picked". Properties rather than a record so the markup can bind them by name, and
+    /// Visibility rather than the bool it comes from so no converter is needed for either.
+    /// </remarks>
+    public sealed class PromptPresetRow
+    {
+        /// <summary>The preset's id, or empty for the built-in row.</summary>
+        public string Id { get; init; } = "";
+
+        public string Name { get; init; } = "";
+
+        public bool IsSelected { get; init; }
+
+        public bool IsBuiltIn => Id.Length == 0;
+
+        /// <inheritdoc cref="IsBuiltIn"/>
+        public Visibility ActionsVisibility => IsBuiltIn ? Visibility.Collapsed : Visibility.Visible;
+
+        /// <inheritdoc cref="IsBuiltIn"/>
+        public Visibility BuiltInBadgeVisibility => IsBuiltIn ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     /// <summary>
-    /// Fills the tabs and the editor. Also the language-change path, since the note under the tabs
-    /// and the built-in wording shown behind an empty box are both localized.
+    /// Fills the tabs and the list under them. Also the language-change path, since the built-in
+    /// row's name, the note above the list and the label on the add row are all localized.
     /// </summary>
     /// <remarks>
-    /// Only ever reached with <see cref="_loading"/> set, which is what keeps checking the tab here
-    /// from running <see cref="PromptTab_Checked"/> and reloading the editor a second time.
+    /// Rebuilt whole on every change rather than kept in sync: the list is at most six short rows,
+    /// and the alternative is change notification on a collection that only ever changes because
+    /// this panel changed it.
     /// </remarks>
-    private void LoadPromptEditor(AppSettings s)
+    private void LoadPromptLibrary(AppSettings s)
     {
         if (_promptSegment == PromptAutoSegment) PromptAutoTab.IsChecked = true;
         else PromptExplicitTab.IsChecked = true;
 
-        PromptBox.Text = _promptSegment == PromptAutoSegment ? s.OpenAiPromptAuto : s.OpenAiPromptExplicit;
+        var automatic = _promptSegment == PromptAutoSegment;
+        var presets = s.OpenAi.PresetsFor(automatic);
+        var selectedId = s.OpenAi.SelectedIdFor(automatic);
+
+        // An id naming a preset that is no longer there comes up as the built-in row, which is what
+        // the provider sends in the same situation. Not corrected in the file here — checking that
+        // row writes it back, and nothing reads the stale value in between.
+        if (selectedId.Length > 0 && presets.All(p => p.Id != selectedId)) selectedId = "";
+
+        var rows = new List<PromptPresetRow>
+        {
+            new()
+            {
+                Name = LocalizationService.Get("S.Settings.PromptDefaultName"),
+                IsSelected = selectedId.Length == 0,
+            },
+        };
+
+        rows.AddRange(presets.Select(p => new PromptPresetRow
+        {
+            Id = p.Id,
+            Name = p.Name,
+            IsSelected = p.Id == selectedId,
+        }));
+
+        PromptPresetList.ItemsSource = rows;
+
         UpdatePromptChrome();
     }
 
@@ -484,155 +530,97 @@ public partial class ServiceSettingsOverlay : UserControl
     {
         if (_loading) return;
 
-        // The pending edit belongs to the prompt it was typed into, so it is written out before the
-        // editor is handed to the other one.
-        FlushPromptEdit();
-
         _promptSegment = PromptExplicitTab.IsChecked == true ? PromptExplicitSegment : PromptAutoSegment;
+        LoadPromptLibrary(SettingsService.Instance.Current);
+    }
 
-        var s = SettingsService.Instance.Current;
-        var text = _promptSegment == PromptAutoSegment ? s.OpenAiPromptAuto : s.OpenAiPromptExplicit;
+    /// <summary>Picks the prompt this case sends.</summary>
+    /// <remarks>
+    /// Also the path a rebuilt list takes when the stored selection comes up checked, so it writes
+    /// only when the value actually moved — which is why it needs no guard of its own. The rows are
+    /// realized during layout, i.e. after <see cref="_loading"/> has been put back, so a guard on
+    /// that flag would not have caught them anyway.
+    /// </remarks>
+    private void PromptPreset_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton row || row.Tag is not string id) return;
 
-        // Assigning Text would raise TextChanged and start the debounce, which would then write
-        // this prompt straight back over itself; _loading is what the rest of the panel uses to mean
-        // "this change came from us, not the user".
-        _loading = true;
-        try { PromptBox.Text = text; }
-        finally { _loading = false; }
+        var automatic = _promptSegment == PromptAutoSegment;
+        var openAi = SettingsService.Instance.Current.OpenAi;
+        if (openAi.SelectedIdFor(automatic) != id)
+        {
+            openAi.SelectPreset(automatic, id);
+            SettingsService.Instance.Save();
+        }
 
         UpdatePromptChrome();
     }
 
-    private void PromptBox_TextChanged(object sender, TextChangedEventArgs e)
+    private void PromptAddButton_Click(object sender, RoutedEventArgs e)
     {
-        // The trim below raises this event again for its own edit.
-        if (_trimmingPrompt) return;
+        var automatic = _promptSegment == PromptAutoSegment;
+        var presets = SettingsService.Instance.Current.OpenAi.PresetsFor(automatic);
+        if (presets.Count >= OpenAiSettings.MaxPresets) return;
 
-        // Only what the user types or pastes is held to the limit. A longer prompt already in the
-        // settings file is left alone until they touch it, rather than being quietly cut down on a
-        // panel they only came to look at.
-        if (!_loading) TrimPromptToLineLimit();
+        PromptEditor.Open(automatic, preset: null, suggestedName: SuggestPresetName(presets));
+    }
 
-        // Chrome unconditionally: the reset button describes what is in the box right now, and
-        // waiting for the debounce would leave it a beat behind the typing.
-        UpdatePromptChrome();
+    private void PromptEditPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is not string id) return;
 
-        if (_loading) return;
-        _promptDebounce.Stop();
-        _promptDebounce.Start();
+        var automatic = _promptSegment == PromptAutoSegment;
+        var preset = SettingsService.Instance.Current.OpenAi
+            .PresetsFor(automatic)
+            .FirstOrDefault(p => p.Id == id);
+        if (preset is null) return;
+
+        PromptEditor.Open(automatic, preset, suggestedName: "");
     }
 
     /// <summary>
-    /// Drops anything past <see cref="PromptMaxLines"/> lines, silently.
+    /// A name for a new prompt that nothing in the list is already called.
     /// </summary>
     /// <remarks>
-    /// A cap on the input rather than a check further in: the prompt is sent once per recognised
-    /// block, so a pasted document is a real cost repeated a dozen times over, and the place to
-    /// stop it is where it arrives. Nothing is said about it — the box visibly refuses to grow,
-    /// which is the whole message, and a warning about a limit nobody reaches by writing an
-    /// instruction would only be in the way.
-    ///
-    /// Removed through the selection so the paste stays undoable; the trim is then simply applied
-    /// again if the undone text is still too long.
+    /// Numbered from the first free number rather than from the count, so deleting the first of two
+    /// and adding another does not suggest the name the remaining one already has. The user is
+    /// expected to replace it — it opens selected — and it exists so that saving without thinking
+    /// about a name still leaves a list that can be read.
     /// </remarks>
-    private void TrimPromptToLineLimit()
+    private static string SuggestPresetName(List<OpenAiPromptPreset> presets)
     {
-        var overflow = LineLimitOverflowIndex(PromptBox.Text, PromptMaxLines);
-        if (overflow < 0) return;
+        for (var n = 1; n <= OpenAiSettings.MaxPresets + 1; n++)
+        {
+            var name = LocalizationService.Format("S.Settings.PromptNewName", n);
+            if (presets.All(p => !string.Equals(p.Name, name, StringComparison.CurrentCultureIgnoreCase)))
+                return name;
+        }
 
-        _trimmingPrompt = true;
-        try
-        {
-            PromptBox.Select(overflow, PromptBox.Text.Length - overflow);
-            PromptBox.SelectedText = "";
-            PromptBox.CaretIndex = overflow;
-        }
-        finally
-        {
-            _trimmingPrompt = false;
-        }
+        // Unreachable while the cap holds: the loop tries one more number than there are slots.
+        return LocalizationService.Format("S.Settings.PromptNewName", presets.Count + 1);
     }
 
     /// <summary>
-    /// Where the text passes <paramref name="maxLines"/> lines, or -1 when it does not.
-    /// </summary>
-    /// <remarks>
-    /// Hard line breaks only. <see cref="TextBox.LineCount"/> counts the lines actually drawn, so
-    /// with wrapping on it would make the cap depend on how wide the window happens to be.
-    /// </remarks>
-    internal static int LineLimitOverflowIndex(string text, int maxLines)
-    {
-        var index = -1;
-        for (var line = 0; line < maxLines; line++)
-        {
-            index = text.IndexOf('\n', index + 1);
-            if (index < 0) return -1;
-        }
-
-        // Cut before the break that would have started the next line, and before the carriage
-        // return in front of it, so the kept text does not end on a half of a CRLF pair.
-        return index > 0 && text[index - 1] == '\r' ? index - 1 : index;
-    }
-
-    private void PromptResetButton_Click(object sender, RoutedEventArgs e)
-    {
-        // Cleared through the selection rather than by assigning Text, which would throw away the
-        // undo history: this discards something the user wrote, and Ctrl+Z getting it back is what
-        // makes a confirmation prompt unnecessary.
-        PromptBox.SelectAll();
-        PromptBox.SelectedText = "";
-        PromptBox.Focus();
-
-        _promptDebounce.Stop();
-        PersistPrompt();
-    }
-
-    private void FlushPromptEdit()
-    {
-        if (!_promptDebounce.IsEnabled) return;
-        _promptDebounce.Stop();
-        PersistPrompt();
-    }
-
-    private void PersistPrompt()
-    {
-        var text = PromptBox.Text.Trim();
-        var segment = _promptSegment;
-
-        Persist(s =>
-        {
-            if (segment == PromptAutoSegment) s.OpenAiPromptAuto = text;
-            else s.OpenAiPromptExplicit = text;
-        });
-
-        UpdatePromptChrome();
-    }
-
-    /// <summary>
-    /// Brings the reset button and the placeholder in line with what is on screen.
+    /// Brings the note, the add row and the preview in line with what is on screen.
     /// </summary>
     private void UpdatePromptChrome()
     {
         var automatic = _promptSegment == PromptAutoSegment;
+        var openAi = SettingsService.Instance.Current.OpenAi;
 
         PromptTabHint.Text = LocalizationService.Get(
             automatic ? "S.Settings.PromptAutoHint" : "S.Settings.PromptExplicitHint");
 
-        // Nothing to restore while the built-in one is in use, and a live button that does nothing
-        // would be the only control here that lies about having something to do. This reads the
-        // box rather than the stored setting, so it answers on the first keystroke instead of when
-        // the debounce eventually fires.
-        PromptResetButton.IsEnabled = PromptBox.Text.Trim().Length > 0;
+        var count = openAi.PresetsFor(automatic).Count;
+        PromptAddButton.IsEnabled = count < OpenAiSettings.MaxPresets;
+        PromptAddText.Text = LocalizationService.Format(
+            "S.Settings.PromptAdd", count, OpenAiSettings.MaxPresets);
 
-        PromptPlaceholder.Visibility = PromptBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        WritePlaceholderAware(
-            PromptPlaceholder, OpenAiCompatibleProvider.DefaultPromptTemplate(automatic));
-
-        // 自動 has no source language, so the two rows describing one would be listing parameters
-        // that resolve to nothing. Hidden whole rather than left showing an empty example.
-        var sourceRows = automatic ? Visibility.Collapsed : Visibility.Visible;
-        ParamRowSourceName.Visibility = sourceRows;
-        ParamRowSourceCode.Visibility = sourceRows;
+        // The built-in wording stands in for the built-in row, which stores no template of its own —
+        // the empty string is how the settings file says "whatever the app ships with today".
+        var template = openAi.TemplateFor(automatic);
+        if (template.Length == 0) template = OpenAiCompatibleProvider.DefaultPromptTemplate(automatic);
+        WritePlaceholderAware(PromptPreviewText, template);
     }
 
     /// <summary>

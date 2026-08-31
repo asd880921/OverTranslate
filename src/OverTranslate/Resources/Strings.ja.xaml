@@ -14,6 +14,7 @@
     <sys:String x:Key="S.Common.Reset">リセット</sys:String>
     <sys:String x:Key="S.Common.Close">閉じる</sys:String>
     <sys:String x:Key="S.Common.Cancel">キャンセル</sys:String>
+    <sys:String x:Key="S.Common.Save">保存</sys:String>
     <sys:String x:Key="S.Common.Configure">設定</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API キー</sys:String>
     <!-- The search box in a language picker. Typing narrows the list and never changes the
@@ -390,8 +391,20 @@
     <sys:String x:Key="S.Settings.OllamaGuide">ローカル LLM (Ollama) の導入ガイド</sys:String>
     <sys:String x:Key="S.Settings.PromptAuto">自動判別用プロンプト</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">言語指定時のプロンプト</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoHint">「自動判別用プロンプト」を編集しています。翻訳元の言語が自動判別のときだけ使われます。</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitHint">「言語指定時のプロンプト」を編集しています。翻訳元の言語を指定したときだけ使われます。</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">ここのプロンプトは、翻訳元の言語が自動判別のときだけ使われます。</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">ここのプロンプトは、翻訳元の言語を指定したときだけ使われます。</sys:String>
+    <sys:String x:Key="S.Settings.PromptDefaultName">既定のプロンプト</sys:String>
+    <sys:String x:Key="S.Settings.PromptReadOnly">読み取り専用</sys:String>
+    <sys:String x:Key="S.Settings.PromptAdd">プロンプトを追加（{0}/{1}）</sys:String>
+    <sys:String x:Key="S.Settings.PromptInUse">使用中のプロンプト</sys:String>
+    <sys:String x:Key="S.Settings.PromptAddTitle">プロンプトの追加</sys:String>
+    <sys:String x:Key="S.Settings.PromptEditTitle">プロンプトの編集</sys:String>
+    <sys:String x:Key="S.Settings.PromptDelete">削除</sys:String>
+    <sys:String x:Key="S.Settings.PromptName">名前</sys:String>
+    <sys:String x:Key="S.Settings.PromptNamePlaceholder">このプロンプトの名前</sys:String>
+    <sys:String x:Key="S.Settings.PromptContent">プロンプト本文</sys:String>
+    <sys:String x:Key="S.Settings.PromptNewName">マイプロンプト {0}</sys:String>
+    <sys:String x:Key="S.Settings.PromptLoadDefault">既定の内容を読み込む</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">既定に戻す</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">使用できるパラメーター</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">プロンプトにこれらを書いておくと、送信前にその回に使う言語へ置き換わるため、1 つのプロンプトですべての言語の組み合わせに対応できます。</sys:String>
@@ -402,8 +415,6 @@
     <sys:String x:Key="S.Settings.PromptParamSourceCode">翻訳元の言語コード</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetName">翻訳先の言語名</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetCode">翻訳先の言語コード</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamSourceNameEg">英語</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamTargetNameEg">日本語</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">詳細</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">有効にする</sys:String>

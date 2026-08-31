@@ -141,36 +141,12 @@ public class AppSettings
     /// <see cref="Services.Providers.OpenAiCompatibleProvider.DefaultBaseUrl"/>.
     /// </summary>
     /// <remarks>
-    /// Empty rather than a copy of the default, for the same reason the prompt and the model are —
-    /// see <see cref="OpenAiPromptAuto"/>.
+    /// Empty rather than a copy of the default, for the same reason the model is: stamping today's
+    /// value into the settings file would freeze the user on it if it ever changed.
     /// </remarks>
     public string OpenAiBaseUrl { get; set; } = "";
     public string OpenAiApiKey { get; set; } = "";
     public string OpenAiModel { get; set; } = "";
-
-    /// <summary>
-    /// The instruction sent to an OpenAI-compatible model, or empty to use the built-in one.
-    /// </summary>
-    /// <remarks>
-    /// Editable because the right wording belongs to the model, not to this app: a translation-only
-    /// model is trained on "translate from X to Y" and degrades when handed anything else, while a
-    /// general chat model and a reasoning model each want something different again — the
-    /// &lt;think&gt; stripping elsewhere in the provider is the same problem showing through. One
-    /// built-in wording cannot serve all three, and whoever picked a local model can write a line
-    /// of prose.
-    ///
-    /// Two of them because these are two different sentences rather than one sentence with a blank:
-    /// with a source language chosen the model is told to translate from it, and with 自動 there is
-    /// no language to name, so that wording has no <c>{source}</c> to fill at all.
-    ///
-    /// Empty rather than a copy of the default text, so anyone who never edits keeps following the
-    /// built-in wording as it improves — stamping today's into the settings file would freeze them
-    /// on it forever. See <see cref="Services.Providers.OpenAiCompatibleProvider.BuildPrompt"/>.
-    /// </remarks>
-    public string OpenAiPromptAuto { get; set; } = "";
-
-    /// <inheritdoc cref="OpenAiPromptAuto"/>
-    public string OpenAiPromptExplicit { get; set; } = "";
 
     /// <summary>
     /// Whether the request carries a temperature at all.
@@ -239,4 +215,12 @@ public class AppSettings
 
     /// <summary>What 即時翻譯 keeps between sittings, grouped.</summary>
     public RealtimeSettings Realtime { get; set; } = new();
+
+    /// <summary>The OpenAI-compatible provider's prompt library, grouped.</summary>
+    /// <remarks>
+    /// Last, and the only group not named after one of the three features: this belongs to a
+    /// translation service rather than to a page. See <see cref="OpenAiSettings"/> for why the
+    /// endpoint and the model above it stayed flat.
+    /// </remarks>
+    public OpenAiSettings OpenAi { get; set; } = new();
 }

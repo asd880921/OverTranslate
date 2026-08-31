@@ -13,6 +13,7 @@
     <sys:String x:Key="S.Common.Reset">重置</sys:String>
     <sys:String x:Key="S.Common.Close">关闭</sys:String>
     <sys:String x:Key="S.Common.Cancel">取消</sys:String>
+    <sys:String x:Key="S.Common.Save">保存</sys:String>
     <sys:String x:Key="S.Common.Configure">设置</sys:String>
     <sys:String x:Key="S.Common.ApiKey">API Key</sys:String>
     <!-- The search box in a language picker. Typing narrows the list and never changes the
@@ -389,8 +390,20 @@
     <sys:String x:Key="S.Settings.OllamaGuide">本地 LLM (Ollama) 安装教程</sys:String>
     <sys:String x:Key="S.Settings.PromptAuto">自动翻译 Prompt</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">指定语言 Prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoHint">正在编辑“自动翻译 Prompt”，此提示词只会在源语言为自动检测时使用。</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitHint">正在编辑“指定语言 Prompt”，此提示词只会在指定源语言时使用。</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">这里的 Prompt 只会在源语言为自动检测时使用。</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">这里的 Prompt 只会在指定源语言时使用。</sys:String>
+    <sys:String x:Key="S.Settings.PromptDefaultName">默认 Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptReadOnly">只读</sys:String>
+    <sys:String x:Key="S.Settings.PromptAdd">新增 Prompt（{0}/{1}）</sys:String>
+    <sys:String x:Key="S.Settings.PromptInUse">当前使用的 Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptAddTitle">新增 Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptEditTitle">编辑 Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptDelete">删除</sys:String>
+    <sys:String x:Key="S.Settings.PromptName">名称</sys:String>
+    <sys:String x:Key="S.Settings.PromptNamePlaceholder">为这个 Prompt 命名</sys:String>
+    <sys:String x:Key="S.Settings.PromptContent">Prompt 内容</sys:String>
+    <sys:String x:Key="S.Settings.PromptNewName">我的 Prompt {0}</sys:String>
+    <sys:String x:Key="S.Settings.PromptLoadDefault">载入默认内容</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">恢复默认</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">可用参数</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">在提示词中写入这些参数，发送前会替换成当次实际使用的语言，因此一份提示词就能套用到所有语言组合。</sys:String>
@@ -401,8 +414,6 @@
     <sys:String x:Key="S.Settings.PromptParamSourceCode">源语言代码</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetName">目标语言名称</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetCode">目标语言代码</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamSourceNameEg">英语</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamTargetNameEg">日语</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">高级</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
     <sys:String x:Key="S.Settings.TemperatureEnable">启用</sys:String>
