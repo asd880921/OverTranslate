@@ -120,7 +120,11 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Root" Background="Transparent" Padding="12,0">
+                        <Border x:Name="Root"
+                                Background="Transparent"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="12,0">
                             <ContentPresenter Height="42" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -555,102 +559,175 @@
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- The library. The built-in prompt is its first row and
-                                             carries no button: it cannot be edited, because it is
-                                             what everyone who never writes one keeps following as
-                                             the shipped wording improves. Editing it means adding
-                                             one of your own, which is the row below. -->
+                                        <!-- The list and what it resolves to, side by side. The
+                                             two were stacked, which put the wording that actually
+                                             gets sent below the fold on a card this tall — and the
+                                             names in the list mean nothing without it. Beside each
+                                             other, picking a row and reading the result is one
+                                             glance. -->
                                         <Border BorderBrush="{DynamicResource AppBorder}"
                                                 BorderThickness="1"
-                                                CornerRadius="6"
-                                                Margin="0,4,0,0">
-                                            <StackPanel>
-                                                <ItemsControl x:Name="PromptPresetList">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <RadioButton GroupName="PromptPreset"
-                                                                         Style="{StaticResource PromptPresetRow}"
-                                                                         Tag="{Binding Id}"
-                                                                         IsChecked="{Binding IsSelected, Mode=OneTime}"
-                                                                         Checked="PromptPreset_Checked">
-                                                                <Grid>
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="*"/>
-                                                                        <ColumnDefinition Width="Auto"/>
-                                                                    </Grid.ColumnDefinitions>
+                                                CornerRadius="8"
+                                                Margin="0,10,0,0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <!-- The names are short and the prompt is a
+                                                         paragraph, so the split is not even. -->
+                                                    <ColumnDefinition Width="4*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="6*"/>
+                                                </Grid.ColumnDefinitions>
 
-                                                                    <TextBlock Grid.Column="0"
-                                                                               Text="{Binding Name}"
+                                                <!-- ── The library ──────────────────────────── -->
+                                                <!-- The built-in prompt is its first row and carries
+                                                     no button: it cannot be edited, because it is
+                                                     what everyone who never writes one keeps
+                                                     following as the shipped wording improves.
+                                                     Editing it means adding one of your own, which
+                                                     is the row at the bottom. -->
+                                                <Grid Grid.Column="0" Margin="14,12,14,12">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="*"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Grid.Row="0"
+                                                               Text="{DynamicResource S.Settings.PromptListTitle}"
+                                                               Style="{StaticResource SectionHeader}"
+                                                               Margin="2,0,0,8"/>
+
+                                                    <Border Grid.Row="1"
+                                                            BorderBrush="{DynamicResource AppBorder}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6">
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="*"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                            </Grid.RowDefinitions>
+
+                                                            <!-- Room for three rows whether or not
+                                                                 there are three: the box would
+                                                                 otherwise change height as prompts
+                                                                 are added and deleted, and take the
+                                                                 preview beside it with it. -->
+                                                            <ItemsControl x:Name="PromptPresetList"
+                                                                          Grid.Row="0"
+                                                                          MinHeight="126"
+                                                                          VerticalAlignment="Top">
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <RadioButton GroupName="PromptPreset"
+                                                                                     Style="{StaticResource PromptPresetRow}"
+                                                                                     Tag="{Binding Id}"
+                                                                                     IsChecked="{Binding IsSelected, Mode=OneTime}"
+                                                                                     Checked="PromptPreset_Checked">
+                                                                            <Grid>
+                                                                                <Grid.ColumnDefinitions>
+                                                                                    <ColumnDefinition Width="*"/>
+                                                                                    <ColumnDefinition Width="Auto"/>
+                                                                                </Grid.ColumnDefinitions>
+
+                                                                                <TextBlock Grid.Column="0"
+                                                                                           Text="{Binding Name}"
+                                                                                           VerticalAlignment="Center"
+                                                                                           TextTrimming="CharacterEllipsis"/>
+
+                                                                                <!-- The badge and the
+                                                                                     button share the
+                                                                                     column: exactly one
+                                                                                     of the two is ever
+                                                                                     on a row. -->
+                                                                                <Border Grid.Column="1"
+                                                                                        Visibility="{Binding BuiltInBadgeVisibility}"
+                                                                                        BorderBrush="{DynamicResource AppBorder}"
+                                                                                        BorderThickness="1"
+                                                                                        CornerRadius="4"
+                                                                                        Padding="6,1"
+                                                                                        Margin="8,0,2,0"
+                                                                                        VerticalAlignment="Center">
+                                                                                    <TextBlock Text="{DynamicResource S.Settings.PromptReadOnly}"
+                                                                                               FontFamily="{DynamicResource AppFont}"
+                                                                                               FontSize="11"
+                                                                                               Foreground="{DynamicResource AppTextSecondary}"/>
+                                                                                </Border>
+
+                                                                                <Button Grid.Column="1"
+                                                                                        Visibility="{Binding ActionsVisibility}"
+                                                                                        Style="{StaticResource IconButton}"
+                                                                                        Width="30" Height="30"
+                                                                                        Margin="8,0,0,0"
+                                                                                        Tag="{Binding Id}"
+                                                                                        ToolTip="{DynamicResource S.Settings.PromptEditTitle}"
+                                                                                        Click="PromptEditPreset_Click">
+                                                                                    <TextBlock Text="&#xE70F;"
+                                                                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                                                               FontSize="13"
+                                                                                               Foreground="{DynamicResource AppTextSecondary}"/>
+                                                                                </Button>
+                                                                            </Grid>
+                                                                        </RadioButton>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+
+                                                            <Button x:Name="PromptAddButton"
+                                                                    Grid.Row="1"
+                                                                    Style="{StaticResource PromptAddRow}"
+                                                                    BorderBrush="{DynamicResource AppBorder}"
+                                                                    BorderThickness="0,1,0,0"
+                                                                    Click="PromptAddButton_Click">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock Text="&#xE710;"
+                                                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                                               FontSize="12"
                                                                                VerticalAlignment="Center"
-                                                                               TextTrimming="CharacterEllipsis"/>
+                                                                               Margin="0,0,10,0"/>
+                                                                    <TextBlock x:Name="PromptAddText"
+                                                                               VerticalAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </Grid>
+                                                    </Border>
+                                                </Grid>
 
-                                                                    <!-- The badge and the button share
-                                                                         the column: exactly one of the
-                                                                         two is ever on a row, and the
-                                                                         names line up either way. -->
-                                                                    <TextBlock Grid.Column="1"
-                                                                               Visibility="{Binding BuiltInBadgeVisibility}"
-                                                                               Text="{DynamicResource S.Settings.PromptReadOnly}"
-                                                                               FontFamily="{DynamicResource AppFont}"
-                                                                               FontSize="11"
-                                                                               Foreground="{DynamicResource AppTextSecondary}"
-                                                                               VerticalAlignment="Center"
-                                                                               Margin="8,0,6,0"/>
+                                                <Rectangle Grid.Column="1"
+                                                           Width="1"
+                                                           Fill="{DynamicResource AppBorder}"/>
 
-                                                                    <Button Grid.Column="1"
-                                                                            Visibility="{Binding ActionsVisibility}"
-                                                                            Style="{StaticResource IconButton}"
-                                                                            Width="30" Height="30"
-                                                                            Margin="8,0,0,0"
-                                                                            Tag="{Binding Id}"
-                                                                            ToolTip="{DynamicResource S.Settings.PromptEditTitle}"
-                                                                            Click="PromptEditPreset_Click">
-                                                                        <TextBlock Text="&#xE70F;"
-                                                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                                                   FontSize="13"
-                                                                                   Foreground="{DynamicResource AppTextSecondary}"/>
-                                                                    </Button>
-                                                                </Grid>
-                                                            </RadioButton>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
+                                                <!-- ── What the picked row says ─────────────── -->
+                                                <!-- Unfilled, and read-only for the same reason the
+                                                     built-in row has no pencil on it: the list is
+                                                     names, and a name is not a prompt. -->
+                                                <Grid Grid.Column="2" Margin="14,12,14,12">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="*"/>
+                                                    </Grid.RowDefinitions>
 
-                                                <Button x:Name="PromptAddButton"
-                                                        Style="{StaticResource PromptAddRow}"
-                                                        Click="PromptAddButton_Click">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#xE710;"
-                                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                                   FontSize="12"
-                                                                   VerticalAlignment="Center"
-                                                                   Margin="0,0,10,0"/>
-                                                        <TextBlock x:Name="PromptAddText"
-                                                                   VerticalAlignment="Center"/>
-                                                    </StackPanel>
-                                                </Button>
-                                            </StackPanel>
-                                        </Border>
+                                                    <TextBlock Grid.Row="0"
+                                                               Text="{DynamicResource S.Settings.PromptInUse}"
+                                                               Style="{StaticResource SectionHeader}"
+                                                               Margin="2,0,0,8"/>
 
-                                        <!-- What the picked row actually says, unfilled. The list
-                                             above is names, and a name is not a prompt: this is the
-                                             only place the wording that will be sent is visible,
-                                             and it is read-only for the same reason the built-in
-                                             row has no pencil on it. -->
-                                        <TextBlock Text="{DynamicResource S.Settings.PromptInUse}"
-                                                   Style="{StaticResource SectionHeader}"
-                                                   Margin="2,16,0,6"/>
-                                        <Border Background="{DynamicResource AppInputBg}"
-                                                BorderBrush="{DynamicResource AppBorder}"
-                                                BorderThickness="1"
-                                                CornerRadius="6"
-                                                Padding="14,11">
-                                            <TextBlock x:Name="PromptPreviewText"
-                                                       FontFamily="{DynamicResource AppFont}"
-                                                       FontSize="{StaticResource AppFontSize}"
-                                                       Foreground="{DynamicResource AppTextSecondary}"
-                                                       LineHeight="21"
-                                                       TextWrapping="Wrap"/>
+                                                    <Border Grid.Row="1"
+                                                            Background="{DynamicResource AppInputBg}"
+                                                            BorderBrush="{DynamicResource AppBorder}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Padding="14,11">
+                                                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                                      HorizontalScrollBarVisibility="Disabled">
+                                                            <TextBlock x:Name="PromptPreviewText"
+                                                                       FontFamily="{DynamicResource AppFont}"
+                                                                       FontSize="{StaticResource AppFontSize}"
+                                                                       Foreground="{DynamicResource AppTextSecondary}"
+                                                                       LineHeight="21"
+                                                                       TextWrapping="Wrap"/>
+                                                        </ScrollViewer>
+                                                    </Border>
+                                                </Grid>
+                                            </Grid>
                                         </Border>
                                     </StackPanel>
                                 </StackPanel>

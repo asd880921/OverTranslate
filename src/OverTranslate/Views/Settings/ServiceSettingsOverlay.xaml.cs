@@ -196,8 +196,10 @@ public partial class ServiceSettingsOverlay : UserControl
             DeepLPanel.Visibility = deepL ? Visibility.Visible : Visibility.Collapsed;
             OpenAiPanel.Visibility = deepL ? Visibility.Collapsed : Visibility.Visible;
 
-            // The card is sized for the wider of the two panels, and DeepL is one field.
-            Card.Width = deepL ? 460 : 620;
+            // The card is sized for the wider of the two panels, and DeepL is one field. OpenAI's
+            // width is set by the prompt library rather than by the fields above it: the list and
+            // the prompt it resolves to sit side by side, and the prompt is a paragraph.
+            Card.Width = deepL ? 460 : 760;
 
             ApiKeyBox.Secret = s.ApiKey;
 

@@ -390,8 +390,13 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.OllamaGuide">Local LLM (Ollama) setup guide</sys:String>
     <sys:String x:Key="S.Settings.PromptAuto">Auto-detect prompt</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">Chosen-language prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoHint">These prompts are used only when the source language is set to auto-detect.</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitHint">These prompts are used only when a source language is chosen.</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">This prompt applies only when the source language is set to Automatic.</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">This prompt applies only when a source language is chosen, such as English.</sys:String>
+    <sys:String x:Key="S.Settings.PromptListTitle">Prompts</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoScope">Prompts here apply only when the source language is set to Automatic.</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitScope">Prompts here apply only when a source language is chosen, such as English.</sys:String>
+    <sys:String x:Key="S.Settings.PromptDeleteTitle">Delete prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptDeleteConfirm">Delete “{0}”? This cannot be undone.</sys:String>
     <sys:String x:Key="S.Settings.PromptDefaultName">Built-in prompt</sys:String>
     <sys:String x:Key="S.Settings.PromptReadOnly">Read-only</sys:String>
     <sys:String x:Key="S.Settings.PromptAdd">Add prompt ({0}/{1})</sys:String>
@@ -406,7 +411,7 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.PromptLoadDefault">Load the built-in prompt</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">Reset to default</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">Available parameters</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamsTip">Write these into the prompt; each is replaced with the language actually in use before the request is sent, so one prompt serves every language pair.</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamsTip">Replaced with the languages actually in use before the request is sent.</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol1">Parameter</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol2">Description</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol3">Example</sys:String>

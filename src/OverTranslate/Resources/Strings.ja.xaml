@@ -391,8 +391,13 @@
     <sys:String x:Key="S.Settings.OllamaGuide">ローカル LLM (Ollama) の導入ガイド</sys:String>
     <sys:String x:Key="S.Settings.PromptAuto">自動判別用プロンプト</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">言語指定時のプロンプト</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoHint">ここのプロンプトは、翻訳元の言語が自動判別のときだけ使われます。</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitHint">ここのプロンプトは、翻訳元の言語を指定したときだけ使われます。</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">このプロンプトは、翻訳元の言語が「自動（Automatic）」のときだけ適用されます。</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">このプロンプトは、翻訳元の言語を指定したときだけ適用されます（例：「英語（English）」）。</sys:String>
+    <sys:String x:Key="S.Settings.PromptListTitle">プロンプト一覧</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoScope">ここのプロンプトは、翻訳元の言語が「自動（Automatic）」のときだけ適用されます。</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitScope">ここのプロンプトは、翻訳元の言語を指定したときだけ適用されます（例：「英語（English）」）。</sys:String>
+    <sys:String x:Key="S.Settings.PromptDeleteTitle">プロンプトの削除</sys:String>
+    <sys:String x:Key="S.Settings.PromptDeleteConfirm">「{0}」を削除しますか？元に戻すことはできません。</sys:String>
     <sys:String x:Key="S.Settings.PromptDefaultName">既定のプロンプト</sys:String>
     <sys:String x:Key="S.Settings.PromptReadOnly">読み取り専用</sys:String>
     <sys:String x:Key="S.Settings.PromptAdd">プロンプトを追加（{0}/{1}）</sys:String>
@@ -407,7 +412,7 @@
     <sys:String x:Key="S.Settings.PromptLoadDefault">既定のプロンプトを読み込む</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">既定に戻す</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">使用できるパラメーター</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamsTip">プロンプトにこれらを書いておくと、送信前にその回に使う言語へ置き換わるため、1 つのプロンプトですべての言語の組み合わせに対応できます。</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamsTip">送信前に、その回に使う言語の情報へ置き換わります。</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol1">パラメーター</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol2">説明</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol3">例</sys:String>

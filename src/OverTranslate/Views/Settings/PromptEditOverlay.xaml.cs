@@ -83,7 +83,7 @@ public partial class PromptEditOverlay : UserControl
             TitleText.Text = LocalizationService.Get(
                 preset is null ? "S.Settings.PromptAddTitle" : "S.Settings.PromptEditTitle");
             ScopeHint.Text = LocalizationService.Get(
-                automatic ? "S.Settings.PromptAutoHint" : "S.Settings.PromptExplicitHint");
+                automatic ? "S.Settings.PromptAutoScope" : "S.Settings.PromptExplicitScope");
 
             NameBox.Text = preset?.Name ?? suggestedName;
 
@@ -101,6 +101,9 @@ public partial class PromptEditOverlay : UserControl
 
             // Nothing to delete while the prompt does not exist yet.
             DeleteButton.Visibility = preset is null ? Visibility.Collapsed : Visibility.Visible;
+
+            // Left open by a card that was closed from inside the confirmation, otherwise.
+            ConfirmLayer.Visibility = Visibility.Collapsed;
         }
         finally
         {
@@ -172,7 +175,11 @@ public partial class PromptEditOverlay : UserControl
         TitleText.Text = LocalizationService.Get(
             _editingId.Length == 0 ? "S.Settings.PromptAddTitle" : "S.Settings.PromptEditTitle");
         ScopeHint.Text = LocalizationService.Get(
-            _automatic ? "S.Settings.PromptAutoHint" : "S.Settings.PromptExplicitHint");
+            _automatic ? "S.Settings.PromptAutoScope" : "S.Settings.PromptExplicitScope");
+
+        // Only while the question is on screen; it names the prompt, so it is composed rather than
+        // bound and has to be written again in the new language.
+        if (ConfirmLayer.Visibility == Visibility.Visible) WriteConfirmMessage();
     }
 
     /// <summary>
@@ -186,7 +193,11 @@ public partial class PromptEditOverlay : UserControl
         // Handled, or the panel behind this one would take the same Escape and close as well.
         if (e.Key == Key.Escape)
         {
-            Close();
+            // The question first: Escape answers the thing on top, and dismissing the card out from
+            // under an unanswered confirmation would look like the delete had happened.
+            if (ConfirmLayer.Visibility == Visibility.Visible) CloseConfirm();
+            else Close();
+
             e.Handled = true;
         }
         base.OnKeyDown(e);
@@ -326,8 +337,45 @@ public partial class PromptEditOverlay : UserControl
         Commit();
     }
 
+    /// <summary>
+    /// Asks before deleting — the one confirmation in the application.
+    /// </summary>
+    /// <remarks>
+    /// Every other destructive gesture here is undoable (Ctrl+Z in a box) or costs a setting that is
+    /// one click to restore. This one throws away prose someone wrote, with nothing to get it back,
+    /// from a button that shares a row with 取消 and 儲存.
+    /// </remarks>
     private void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
+        WriteConfirmMessage();
+        ConfirmLayer.Visibility = Visibility.Visible;
+
+        // The safe half takes focus, so Enter or Space arriving from the click that opened this
+        // lands on 取消 rather than on the button that deletes.
+        ConfirmCancelButton.Focus();
+    }
+
+    /// <summary>Names the prompt in the question, so the reader is not asked about "the prompt".</summary>
+    private void WriteConfirmMessage()
+    {
+        // The box rather than the stored preset: a rename typed but not yet saved is still what the
+        // user is looking at, and asking about the old name would be asking about something else.
+        ConfirmMessage.Text = LocalizationService.Format(
+            "S.Settings.PromptDeleteConfirm", NameBox.Text.Trim());
+    }
+
+    private void CloseConfirm() => ConfirmLayer.Visibility = Visibility.Collapsed;
+
+    private void ConfirmCancelButton_Click(object sender, RoutedEventArgs e) => CloseConfirm();
+
+    /// <summary>Swallows the click. Dismissing on it would answer the question by accident.</summary>
+    private void ConfirmScrim_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) =>
+        e.Handled = true;
+
+    private void ConfirmDeleteButton_Click(object sender, RoutedEventArgs e)
+    {
+        CloseConfirm();
+
         var openAi = SettingsService.Instance.Current.OpenAi;
         openAi.PresetsFor(_automatic).RemoveAll(p => p.Id == _editingId);
 

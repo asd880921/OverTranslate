@@ -391,8 +391,13 @@
     <sys:String x:Key="S.Settings.OllamaGuide">로컬 LLM (Ollama) 설치 안내</sys:String>
     <sys:String x:Key="S.Settings.PromptAuto">자동 감지용 프롬프트</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicit">언어 지정 프롬프트</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoHint">여기의 프롬프트는 원본 언어가 자동 감지일 때만 사용됩니다.</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitHint">여기의 프롬프트는 원본 언어를 지정했을 때만 사용됩니다.</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoHint">이 프롬프트는 원본 언어가 ‘자동(Automatic)’일 때만 적용됩니다.</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitHint">이 프롬프트는 원본 언어를 지정했을 때만 적용됩니다. 예: ‘영어(English)’.</sys:String>
+    <sys:String x:Key="S.Settings.PromptListTitle">프롬프트 목록</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoScope">여기의 프롬프트는 원본 언어가 ‘자동(Automatic)’일 때만 적용됩니다.</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitScope">여기의 프롬프트는 원본 언어를 지정했을 때만 적용됩니다. 예: ‘영어(English)’.</sys:String>
+    <sys:String x:Key="S.Settings.PromptDeleteTitle">프롬프트 삭제</sys:String>
+    <sys:String x:Key="S.Settings.PromptDeleteConfirm">‘{0}’을(를) 삭제할까요? 되돌릴 수 없습니다.</sys:String>
     <sys:String x:Key="S.Settings.PromptDefaultName">기본 프롬프트</sys:String>
     <sys:String x:Key="S.Settings.PromptReadOnly">읽기 전용</sys:String>
     <sys:String x:Key="S.Settings.PromptAdd">프롬프트 추가({0}/{1})</sys:String>
@@ -407,7 +412,7 @@
     <sys:String x:Key="S.Settings.PromptLoadDefault">기본 프롬프트 불러오기</sys:String>
     <sys:String x:Key="S.Settings.ResetDefault">기본값으로</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">사용할 수 있는 매개변수</sys:String>
-    <sys:String x:Key="S.Settings.PromptParamsTip">프롬프트에 이 매개변수를 넣어 두면 보내기 전에 그때 사용하는 언어로 바뀌므로, 하나의 프롬프트로 모든 언어 조합에 대응할 수 있습니다.</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamsTip">보내기 전에 실제로 사용하는 언어 정보로 바뀝니다.</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol1">매개변수</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol2">설명</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol3">예</sys:String>
