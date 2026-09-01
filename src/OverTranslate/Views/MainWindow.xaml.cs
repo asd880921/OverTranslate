@@ -31,6 +31,15 @@ public partial class MainWindow : Window
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
     private AnnotationPanelWindow? _annotationPanel; // only while 標記 is on
+
+    // Which pen 標記 has in hand. Reset by every new capture and kept nowhere else: what it is for
+    // is closing the panel and reopening it inside one capture without losing the colour just
+    // chosen, and that is the whole of it. Across captures the defaults are the point — a fresh
+    // capture is a fresh piece of work, and starting it on whatever was left over from the last one
+    // is a state the user has to notice and undo before drawing.
+    private Models.AnnotationTool _annotationTool = AnnotationPanelWindow.DefaultTool;
+    private System.Windows.Media.Color _annotationColor = AnnotationPanelWindow.DefaultColor;
+    private double _annotationThickness = AnnotationPanelWindow.DefaultThickness;
     private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
     private CancellationTokenSource? _sessionCts; // cancelled on teardown so abandoned work stops
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
@@ -675,6 +684,10 @@ public partial class MainWindow : Window
         _lastSelPhysWidth  = selection.Width;
         _lastSelPhysHeight = selection.Height;
         _lastVerticalText  = false;
+
+        _annotationTool      = AnnotationPanelWindow.DefaultTool;
+        _annotationColor     = AnnotationPanelWindow.DefaultColor;
+        _annotationThickness = AnnotationPanelWindow.DefaultThickness;
 
         var settings = SettingsService.Instance.Current;
         ShowOverlay(
@@ -1336,9 +1349,8 @@ public partial class MainWindow : Window
         CloseWindow(_annotationPanel, w => w.Close(), nameof(AnnotationPanelWindow));
         _annotationPanel = null;
 
-        var capture = SettingsService.Instance.Current.Capture;
         var panel = new AnnotationPanelWindow(
-            capture.AnnotationTool, capture.AnnotationColor, capture.AnnotationThickness);
+            _annotationTool, _annotationColor, _annotationThickness);
         if (_captureWindow != null) panel.Owner = _captureWindow;
         panel.SettingsChanged += (_, _) => ApplyAnnotationSettings();
         panel.UndoRequested   += (_, _) => _overlayWindow?.UndoAnnotation();
@@ -1354,28 +1366,26 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Pushes what the panel now says onto the pen, and remembers it for the next capture.
+    /// Pushes what the panel now says onto the pen, and holds it for the rest of this capture.
     /// </summary>
     private void ApplyAnnotationSettings()
     {
         if (_annotationPanel is null) return;
 
+        _annotationTool      = _annotationPanel.Tool;
+        _annotationColor     = _annotationPanel.InkColor;
+        _annotationThickness = _annotationPanel.ThicknessFraction;
+
         _overlayWindow?.SetAnnotationTool(_annotationPanel.Tool);
         _overlayWindow?.SetAnnotationColor(_annotationPanel.InkColor);
         _overlayWindow?.SetAnnotationThickness(_annotationPanel.Thickness);
-
-        var settings = SettingsService.Instance.Current;
-        settings.Capture.AnnotationTool      = _annotationPanel.Tool;
-        settings.Capture.AnnotationColor     = _annotationPanel.InkColorText;
-        settings.Capture.AnnotationThickness = _annotationPanel.ThicknessFraction;
-        SettingsService.Instance.Save();
     }
 
     private void PlaceAnnotationPanel()
     {
         if (_annotationPanel is null || _toolbarWindow is null) return;
-        var (centreX, bottom, scale) = _toolbarWindow.AnnotateAnchor();
-        _annotationPanel.PlaceUnder(centreX, bottom, scale);
+        var (visible, scale) = _toolbarWindow.VisiblePhysicalBounds();
+        _annotationPanel.PlaceNear(visible, scale);
     }
 
     /// <summary>

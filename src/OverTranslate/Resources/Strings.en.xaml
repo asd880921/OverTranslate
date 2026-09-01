@@ -170,6 +170,8 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Annotate.Undo">Undo</sys:String>
     <sys:String x:Key="S.Annotate.Redo">Redo</sys:String>
     <sys:String x:Key="S.Annotate.Thickness">Size</sys:String>
+    <sys:String x:Key="S.Annotate.Thin">Thin</sys:String>
+    <sys:String x:Key="S.Annotate.Thick">Thick</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">Screenshot</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">Window</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">Open this translation in a window</sys:String>

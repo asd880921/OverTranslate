@@ -40,7 +40,8 @@
             <!-- ClearTypeHint on top of an opaque background: the window itself is layered
                  (AllowsTransparency), which is the other thing that turns ClearType off. The hint is
                  how WPF is told this particular surface really is opaque. -->
-            <Border Background="{DynamicResource ToolbarBg}"
+            <Border x:Name="BarSurface"
+                    Background="{DynamicResource ToolbarBg}"
                     BorderBrush="{DynamicResource ToolbarBorder}"
                     BorderThickness="1"
                     CornerRadius="16"

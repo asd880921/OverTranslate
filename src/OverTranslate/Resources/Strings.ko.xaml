@@ -171,6 +171,8 @@
     <sys:String x:Key="S.Annotate.Undo">실행 취소</sys:String>
     <sys:String x:Key="S.Annotate.Redo">다시 실행</sys:String>
     <sys:String x:Key="S.Annotate.Thickness">굵기</sys:String>
+    <sys:String x:Key="S.Annotate.Thin">가늘게</sys:String>
+    <sys:String x:Key="S.Annotate.Thick">굵게</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">스크린샷</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">창으로 열기</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">이번 번역 결과를 창에서 열기</sys:String>

@@ -12,33 +12,10 @@
 
     <!-- The same margin the capture toolbar leaves, and for the same reason: a blur still carrying
          opacity at the window's edge is cut off by a straight line, which reads as a stray border
-         around the bar. The extra 8 on top is the caret's height. -->
-    <Border Margin="12,18,12,14">
+         around the bar. -->
+    <Border Margin="12,10,12,14">
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="8"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <!-- Points at the 標記 button that opened this. A panel that simply appears under a bar
-                 belongs to the bar; one with a caret belongs to the button, and which button opened
-                 it is the only thing about this panel that is not self-evident. Placed from code —
-                 see PointCaretAt. -->
-            <Canvas Grid.Row="0" ClipToBounds="False">
-                <!-- Open at the base, and its base a pixel inside the bar. A closed triangle is
-                     stroked all the way round, and the fourth stroke lands exactly where the
-                     caret meets the bar — a line ruled across the join, which is the one place
-                     there must not be one. Left open, the outline runs up one side and down the
-                     other and stops, and the fill carries on under the bar's own edge. -->
-                <Path x:Name="Caret"
-                      Data="M0,9 L9,0.5 L18,9"
-                      Fill="{DynamicResource ToolbarBg}"
-                      Stroke="{DynamicResource ToolbarBorder}"
-                      StrokeThickness="1"
-                      StrokeLineJoin="Round"/>
-            </Canvas>
-
-            <Grid Grid.Row="1">
+            <Grid>
                 <!-- Shadow on an empty twin rather than on the bar: an Effect rasterises the element
                      it is set on, and ClearType cannot run over a surface that may be transparent —
                      which at 11px CJK is the difference between a label that reads and one that
@@ -52,7 +29,11 @@
                     </Border.Effect>
                 </Border>
 
-                <Border Background="{DynamicResource ToolbarBg}"
+                <!-- Named because the window is bigger than the bar: the margin above holds the
+                     shadow, so where this panel sits relative to the toolbar has to be measured from
+                     the surface the user can see, not from the window's edge. See PlaceNear. -->
+                <Border x:Name="PanelSurface"
+                        Background="{DynamicResource ToolbarBg}"
                         BorderBrush="{DynamicResource ToolbarBorder}"
                         BorderThickness="1"
                         CornerRadius="16"
@@ -196,15 +177,21 @@
                                    Margin="12,9,12,9"
                                    Fill="{DynamicResource ToolbarDivider}"/>
 
-                        <TextBlock Text="{DynamicResource S.Annotate.Thickness}"
+                        <!-- The two ends named rather than the control. "粗細" in front of a slider
+                             says what is being adjusted but not which way, so the user has to move
+                             it to find out — and on a control whose whole answer is a position,
+                             that is the one thing worth spending two characters on. The label the
+                             control itself carries lives on the slider now, for assistive
+                             technology, which needs the name and not the ends. -->
+                        <TextBlock Text="{DynamicResource S.Annotate.Thin}"
                                    Foreground="{DynamicResource AppTextSecondary}"
                                    FontFamily="{DynamicResource AppFont}"
                                    FontSize="11.5"
                                    VerticalAlignment="Center"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,8,0"/>
 
                         <!-- One slider for all three tools, mapped onto each one's own range — see
-                             ThicknessFor. A slider per tool would be three controls the user has to
+                             RangeFor. A slider per tool would be three controls the user has to
                              discover are three, on a panel whose whole point is that it is small. -->
                         <Slider x:Name="ThicknessSlider"
                                 Style="{StaticResource AppSlider}"
@@ -212,8 +199,15 @@
                                 Minimum="0" Maximum="1"
                                 SmallChange="0.1" LargeChange="0.25"
                                 VerticalAlignment="Center"
-                                Margin="0,0,4,0"
+                                AutomationProperties.Name="{DynamicResource S.Annotate.Thickness}"
                                 ValueChanged="ThicknessSlider_ValueChanged"/>
+
+                        <TextBlock Text="{DynamicResource S.Annotate.Thick}"
+                                   Foreground="{DynamicResource AppTextSecondary}"
+                                   FontFamily="{DynamicResource AppFont}"
+                                   FontSize="11.5"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,4,0"/>
 
                     </StackPanel>
                 </Border>

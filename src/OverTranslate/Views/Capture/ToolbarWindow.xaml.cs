@@ -337,23 +337,27 @@ public partial class ToolbarWindow : Window
     }
 
     /// <summary>
-    /// Where the 標記 button sits on screen, in physical pixels, for the panel to hang from.
+    /// The bar as it appears on screen, in physical pixels, for the 標記 panel to sit against.
     /// </summary>
     /// <remarks>
-    /// Read from the live visual rather than computed from the bar's width. The bar sizes itself to
-    /// labels whose length depends on the interface language and on whether the translation has run
-    /// yet, so every arithmetic version of this is a guess that is wrong in some language.
+    /// The visible bar, not the window: the window is larger on every side by the margin the shadow
+    /// fades out in, and anything placed against its edge would end up that margin away from the bar
+    /// the user is actually looking at. Read from the live visual rather than by subtracting the
+    /// numbers in the markup, so it cannot drift when those change.
     /// </remarks>
-    public (double CentreX, double Bottom, double Scale) AnnotateAnchor()
+    public (Rect Visible, double Scale) VisiblePhysicalBounds()
     {
         double scale = ScreenGeometry.ScaleAt(
             (int)(_selPhysLeft + _selPhysWidth / 2), (int)(_selPhysTop + _selPhysHeight / 2));
 
-        var topLeft = AnnotateBtn.TranslatePoint(new System.Windows.Point(0, 0), this);
+        var topLeft = BarSurface.TranslatePoint(new System.Windows.Point(0, 0), this);
         var bounds  = ScreenGeometry.PhysicalBounds(this);
 
-        return (bounds.Left + (topLeft.X + AnnotateBtn.ActualWidth / 2) * scale,
-                bounds.Bottom,
+        return (new Rect(
+                    bounds.Left + topLeft.X * scale,
+                    bounds.Top  + topLeft.Y * scale,
+                    BarSurface.ActualWidth  * scale,
+                    BarSurface.ActualHeight * scale),
                 scale);
     }
 

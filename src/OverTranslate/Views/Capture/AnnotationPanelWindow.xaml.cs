@@ -6,7 +6,7 @@ using OverTranslate.Models;
 using OverTranslate.Services;
 // UseWindowsForms puts System.Drawing and System.Windows.Forms in the implicit usings
 using Color = System.Windows.Media.Color;
-using ColorConverter = System.Windows.Media.ColorConverter;
+using Point = System.Windows.Point;
 using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
 using MouseButtonState = System.Windows.Input.MouseButtonState;
 
@@ -36,6 +36,7 @@ public partial class AnnotationPanelWindow : Window
     /// </remarks>
     private static readonly Color[] PaletteColors =
     [
+        Color.FromRgb(0x00, 0x00, 0x00), // 黑
         Color.FromRgb(0xFF, 0xFF, 0xFF), // 白
         Color.FromRgb(0xFA, 0xCC, 0x15), // 黃
         Color.FromRgb(0x22, 0xC5, 0x5E), // 綠
@@ -43,8 +44,20 @@ public partial class AnnotationPanelWindow : Window
         Color.FromRgb(0xEC, 0x48, 0x99), // 粉
         Color.FromRgb(0xF9, 0x73, 0x16), // 橘
         Color.FromRgb(0x7C, 0x3A, 0xED), // 紫
-        Color.FromRgb(0x00, 0x00, 0x00), // 黑
     ];
+
+    /// <summary>What every capture starts with, before the user has touched anything.</summary>
+    /// <remarks>
+    /// Fixed rather than remembered. Nothing about 標記 outlives the capture it was used in — see
+    /// CaptureSettings — so these are the only starting values there are, and they are named here
+    /// rather than at the caller because this is the file that knows what the palette contains.
+    /// </remarks>
+    public static AnnotationTool DefaultTool => AnnotationTool.Pen;
+
+    public static Color DefaultColor => PaletteColors[0];
+
+    /// <summary>Halfway along the slider: no tool's range has a better place to start.</summary>
+    public const double DefaultThickness = 0.5;
 
     /// <summary>
     /// What the one slider means for each tool, as (thinnest, thickest).
@@ -74,27 +87,6 @@ public partial class AnnotationPanelWindow : Window
     public AnnotationTool Tool { get; private set; }
     public Color InkColor { get; private set; }
 
-    /// <summary>The chosen colour as it is written to the settings file.</summary>
-    public string InkColorText => $"#{InkColor.R:X2}{InkColor.G:X2}{InkColor.B:X2}";
-
-    /// <summary>
-    /// Reads a colour back out of the settings file, falling back to the palette's default.
-    /// </summary>
-    /// <remarks>
-    /// That file is editable by hand and survives upgrades, so this is handed arbitrary text often
-    /// enough to be worth catching rather than checking: ColorConverter throws on anything it cannot
-    /// read, and a capture session is the wrong place to find out.
-    /// </remarks>
-    private static Color ParseColor(string text)
-    {
-        try
-        {
-            if (ColorConverter.ConvertFromString(text) is Color color) return color;
-        }
-        catch (FormatException) { }
-        return PaletteColors[5];
-    }
-
     /// <summary>Where the slider sits, 0 to 1. The width itself depends on the tool — see <see cref="Thickness"/>.</summary>
     public double ThicknessFraction { get; private set; }
 
@@ -107,12 +99,12 @@ public partial class AnnotationPanelWindow : Window
         }
     }
 
-    public AnnotationPanelWindow(AnnotationTool tool, string colorText, double thicknessFraction)
+    public AnnotationPanelWindow(AnnotationTool tool, Color color, double thicknessFraction)
     {
         InitializeComponent();
 
         Tool              = tool;
-        InkColor          = ParseColor(colorText);
+        InkColor          = color;
         ThicknessFraction = Math.Clamp(thicknessFraction, 0, 1);
 
         BuildPalette();
@@ -138,33 +130,59 @@ public partial class AnnotationPanelWindow : Window
         RedoBtn.IsEnabled = canRedo;
     }
 
+    /// <summary>The gap left between the capture toolbar and this panel, in DIP.</summary>
+    /// <remarks>
+    /// Small on purpose. The two bars are one control opened in two pieces, and the distance between
+    /// them is what says so: far enough apart to read as two surfaces rather than one tall one,
+    /// close enough that the eye does not have to decide whether they belong together.
+    /// </remarks>
+    private const double GapFromToolbar = 6;
+
     /// <summary>
-    /// Places the panel under <paramref name="anchorPhysCentreX"/> with the caret pointing at it.
+    /// Puts the panel under the capture toolbar, centred on it — or above it where there is no room.
     /// </summary>
     /// <remarks>
-    /// The panel is centred on the button where there is room and slides along the monitor's edge
-    /// where there is not — but the caret stays on the button either way, because the caret is the
-    /// only thing saying which button this belongs to. It is clamped to the panel's own corners so a
-    /// heavily offset panel does not end up with an arrow hanging off its end.
+    /// <para>Measured against the toolbar's visible surface and this panel's own, not against either
+    /// window's edges: both windows are larger than the bars they show, because each leaves a margin
+    /// for its shadow to fade out in. Placing window to window would leave a gap of both margins
+    /// added together, which is most of a centimetre of nothing.</para>
+    ///
+    /// <para>Below first because that is where a thing opened from a bar is looked for, and the
+    /// toolbar itself has already been placed with the same preference. Above is the fallback, not a
+    /// second option: it is used only when the panel would otherwise hang off the bottom of the
+    /// monitor.</para>
     /// </remarks>
-    public void PlaceUnder(double anchorPhysCentreX, double barPhysBottom, double scale)
+    public void PlaceNear(Rect toolbarVisiblePhys, double scale)
     {
         UpdateLayout();
 
-        double panelPhysW = (ActualWidth  > 0 ? ActualWidth  : 700) * scale;
-        var wa = System.Windows.Forms.Screen
-            .FromPoint(new System.Drawing.Point((int)anchorPhysCentreX, (int)barPhysBottom)).WorkingArea;
+        // Where the visible panel starts inside its own window, and how big it is, in pixels.
+        var inset = PanelSurface.TranslatePoint(new Point(0, 0), this);
+        double visW = PanelSurface.ActualWidth  * scale;
+        double visH = PanelSurface.ActualHeight * scale;
+        double gap  = GapFromToolbar * scale;
+
+        var wa = System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point(
+            (int)(toolbarVisiblePhys.Left + toolbarVisiblePhys.Width / 2),
+            (int)(toolbarVisiblePhys.Top  + toolbarVisiblePhys.Height / 2))).WorkingArea;
 
         double margin  = 4 * scale;
         double minLeft = wa.Left + margin;
-        double maxLeft = Math.Max(minLeft, wa.Right - panelPhysW - margin);
-        double left    = Math.Clamp(anchorPhysCentreX - panelPhysW / 2, minLeft, maxLeft);
+        double maxLeft = Math.Max(minLeft, wa.Right - visW - margin);
+        double visLeft = Math.Clamp(
+            toolbarVisiblePhys.Left + (toolbarVisiblePhys.Width - visW) / 2, minLeft, maxLeft);
 
-        // The caret lives inside the window's own margin, so its coordinates are window-relative DIP.
-        double caretDip = (anchorPhysCentreX - left) / scale - Caret.Data.Bounds.Width / 2;
-        Canvas.SetLeft(Caret, Math.Clamp(caretDip - 12, 6, Math.Max(6, ActualWidth - 42)));
+        double visTop = toolbarVisiblePhys.Bottom + gap;
+        if (visTop + visH > wa.Bottom) visTop = toolbarVisiblePhys.Top - gap - visH;
 
-        ScreenGeometry.MoveToPhysical(this, (int)Math.Round(left), (int)Math.Round(barPhysBottom));
+        // On a monitor with room for neither, the panel goes wherever it fits rather than off the
+        // top. It is the only way to change tools, so it can never be the thing that ends up out of
+        // reach — losing the gap to the toolbar is the cheaper failure.
+        visTop = Math.Clamp(visTop, wa.Top + margin, Math.Max(wa.Top + margin, wa.Bottom - visH - margin));
+
+        ScreenGeometry.MoveToPhysical(this,
+            (int)Math.Round(visLeft - inset.X * scale),
+            (int)Math.Round(visTop  - inset.Y * scale));
     }
 
     private void BuildPalette()
@@ -184,10 +202,10 @@ public partial class AnnotationPanelWindow : Window
             Palette.Children.Add(swatch);
         }
 
-        // A settings file from before this panel existed, or one hand-edited, can name a colour that
-        // is not on the palette. Rather than show eight unchecked swatches — a palette with no
-        // current colour, which is a state the user cannot get out of by looking at it — fall back to
-        // the first one and let the ring say what is in hand.
+        // A palette showing eight unchecked swatches is a state the user cannot get out of by
+        // looking at it. Nothing should reach here — the caller only ever hands back a colour this
+        // list gave it — but the ring is the only thing saying what is in hand, and it has to be on
+        // something.
         if (!_swatches.Any(s => s.IsChecked == true))
         {
             InkColor = PaletteColors[0];

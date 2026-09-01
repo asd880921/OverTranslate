@@ -170,6 +170,8 @@
     <sys:String x:Key="S.Annotate.Undo">撤销</sys:String>
     <sys:String x:Key="S.Annotate.Redo">重做</sys:String>
     <sys:String x:Key="S.Annotate.Thickness">粗细</sys:String>
+    <sys:String x:Key="S.Annotate.Thin">细</sys:String>
+    <sys:String x:Key="S.Annotate.Thick">粗</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">截图</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">翻译窗口</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">在窗口中打开这次的翻译结果</sys:String>
