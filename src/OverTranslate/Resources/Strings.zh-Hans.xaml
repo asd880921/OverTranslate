@@ -162,6 +162,8 @@
     <sys:String x:Key="S.Toolbar.ShowTranslation">显示译文</sys:String>
     <sys:String x:Key="S.Toolbar.CopyText">复制文字</sys:String>
     <sys:String x:Key="S.Toolbar.CopyTranslation">复制译文</sys:String>
+    <sys:String x:Key="S.Toolbar.Annotate">标记</sys:String>
+    <sys:String x:Key="S.Toolbar.AnnotateHint">在选取范围上涂画标记</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">截图</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">翻译窗口</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">在窗口中打开这次的翻译结果</sys:String>

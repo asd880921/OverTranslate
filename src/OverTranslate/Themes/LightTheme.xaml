@@ -69,6 +69,11 @@
     <!-- Toolbar specific -->
     <SolidColorBrush x:Key="ToolbarBg"         Color="#FAFAFA"/>
     <SolidColorBrush x:Key="ToolbarBorder"     Color="#D0D0D0"/>
+    <!-- The rule between the bar's settings and its actions. Dimmer than the bar's own edge on
+         purpose: an edge separates the bar from the desktop, this only separates one half of
+         the bar from the other, and drawn at the same weight it reads as the bar being cut in
+         two. -->
+    <SolidColorBrush x:Key="ToolbarDivider"    Color="#DFDFDF"/>
 
     <!-- The primary action on a floating toolbar. Its own blue rather than AppAccent, for the one
          place the accent cannot serve: this bar is dark in the dark theme, and there AppAccent is a

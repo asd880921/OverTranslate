@@ -1502,15 +1502,45 @@
          stays because none of these icons is standard enough to be read cold — and a toolbar the
          user meets mid-task, over their own screen, is the wrong place to make them hover to find
          out. The icon carries the accent and the label stays plain text, so a row of them reads as
-         one rhythm instead of four coloured words. -->
-    <!-- The icon in front of an action's name on the capture toolbar. A style rather than four
-         copies of the same three properties, so the row cannot end up with one icon a point off. -->
+         one rhythm instead of five coloured words.
+
+         Stacked rather than side by side because the row grew to five: laid out in a line each
+         action was as wide as its own name, and a bar that already carries three pickers and a
+         segmented switch could not absorb another one of those. Over the name the icon costs no
+         width at all, the actions come out near enough the same size as each other to scan as a
+         set, and the bar gets back roughly what the fifth action took. -->
+
+    <!-- The slot an action's icon is drawn into, above its name. Fixed on both axes and identical on
+         every button, which is the entire reason it exists: a typed glyph's line box and a drawn
+         14×14 icon are different heights, and dropped straight into the stack each would put the
+         label under it at its own height — five actions, five baselines, a row that will not sit
+         still. One slot size makes the five labels one line. -->
+    <Style x:Key="ToolbarActionIcon" TargetType="Grid">
+        <Setter Property="Width"               Value="20"/>
+        <Setter Property="Height"              Value="20"/>
+        <Setter Property="Margin"              Value="0,0,0,2"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- A typed icon inside that slot. Centred both ways rather than laid out from the top, because
+         what the slot is holding is the glyph's ink, not its line box. -->
     <Style x:Key="ToolbarActionGlyph" TargetType="TextBlock">
-        <Setter Property="FontFamily"         Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
-        <Setter Property="FontSize"           Value="14"/>
-        <Setter Property="Margin"             Value="0,0,5,0"/>
-        <Setter Property="VerticalAlignment"  Value="Center"/>
-        <Setter Property="Foreground"         Value="{DynamicResource AppAccent}"/>
+        <Setter Property="FontFamily"          Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize"            Value="16"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment"   Value="Center"/>
+        <Setter Property="Foreground"          Value="{DynamicResource AppAccent}"/>
+    </Style>
+
+    <!-- A drawn icon inside that slot: its own 14×14 canvas, centred in the 20. The paths are
+         written against that canvas in absolute coordinates and left at Path's default Stretch of
+         None — scaling a 1.25px stroke is what turns a crisp icon soft — so they need a box of
+         exactly the size they were drawn for. -->
+    <Style x:Key="ToolbarActionDrawing" TargetType="Grid">
+        <Setter Property="Width"               Value="14"/>
+        <Setter Property="Height"              Value="14"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment"   Value="Center"/>
     </Style>
 
     <Style x:Key="ToolbarStackButton" TargetType="Button">
@@ -1520,9 +1550,13 @@
         <Setter Property="Background"      Value="Transparent"/>
         <Setter Property="BorderBrush"     Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="MinWidth"        Value="0"/>
-        <Setter Property="Height"          Value="32"/>
-        <Setter Property="Padding"         Value="9,0"/>
+        <!-- Wide enough that a two-character name still leaves the icon above it room to breathe.
+             The height is the stack's 37 — a 20 icon slot, 2 of gap and one 11px line — plus a
+             margin of its own, so the surface that appears on hover reads as a button around the
+             two lines rather than as a box drawn tight against them. -->
+        <Setter Property="MinWidth"        Value="50"/>
+        <Setter Property="Height"          Value="46"/>
+        <Setter Property="Padding"         Value="8,0"/>
         <Setter Property="Cursor"          Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -1531,7 +1565,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="10"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"/>
@@ -1554,14 +1588,19 @@
         </Setter>
     </Style>
 
-    <!-- The same shape on a raised surface, for the one secondary action that ends the capture
-         session rather than acting inside it. Given an edge of its own so that leaving is not one
-         more thing in the row of things that stay. -->
-    <Style x:Key="ToolbarStackRaisedButton" TargetType="Button" BasedOn="{StaticResource ToolbarStackButton}">
+    <!-- A square raised tile for the one control on the bar that carries no name: the speaker at
+         the head of it. Everything else in the action row says what it is in a word underneath, so a
+         bare glyph sitting among them would read as a name that failed to load. Given a surface and
+         an edge instead, it reads as its own thing — which is what it is: it belongs to the source
+         picker beside it, not to the row of actions at the far end. -->
+    <Style x:Key="ToolbarTileButton" TargetType="Button" BasedOn="{StaticResource ToolbarStackButton}">
         <Setter Property="Background"      Value="{DynamicResource ToolbarGroupBg}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource ToolbarBorder}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding"         Value="12,0"/>
+        <Setter Property="MinWidth"        Value="0"/>
+        <Setter Property="Width"           Value="38"/>
+        <Setter Property="Height"          Value="38"/>
+        <Setter Property="Padding"         Value="0"/>
         <!-- Its own template, for the same reason ToastIconButton has one: BasedOn cannot reach the
              hover and pressed brushes named inside the inherited one, and the bar's steps are
              measured against the bar — against this raised surface the light theme's would be a
@@ -1573,7 +1612,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="10"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"/>

@@ -71,16 +71,17 @@
                          spells all of it out, and so does the name assistive technology reads —
                          see RenderSpeakButton. -->
                     <Button x:Name="TtsBtn"
-                            Style="{StaticResource ToolbarStackButton}"
+                            Style="{StaticResource ToolbarTileButton}"
                             IsEnabled="False"
-                            Margin="0,0,4,0"
+                            Margin="0,0,6,0"
                             Click="TtsBtn_Click">
-                        <!-- Margin cleared: the style's own is the gap to a label that is no longer
-                             there, and left alone it pushes the glyph off the button's centre. -->
+                        <!-- Two points larger than the glyphs in the action row, because this one has
+                             no name under it to carry half the weight: at the row's size it read as a
+                             small mark rattling around inside its tile. -->
                         <TextBlock x:Name="TtsGlyph"
                                    Text="&#xE767;"
                                    Style="{StaticResource ToolbarActionGlyph}"
-                                   Margin="0"/>
+                                   FontSize="18"/>
                     </Button>
 
                     <!-- Source language. Width comes from SizeSelectorsToClosedLabels, not from here:
@@ -213,13 +214,10 @@
                         </Grid>
                     </Border>
 
-                    <!-- No rule between the settings and the actions: the gap says it, and a bar this
-                         wide floating over the user's own screen does not need more lines drawn on it. -->
-
                     <!-- Translate -->
                     <Button x:Name="TranslateBtn"
                             Style="{StaticResource ToolbarPrimaryButton}"
-                            Margin="10,0,6,0"
+                            Margin="10,0,0,0"
                             Click="TranslateBtn_Click">
                         <StackPanel Orientation="Horizontal">
                             <!-- Drawn rather than typed: there is no sparkle in Segoe MDL2, which is all
@@ -237,17 +235,29 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- The bar is two halves and this is where they meet: everything left of the
+                         rule is what the translation will be run with, everything right of it is
+                         something to do once it has been. The gap alone used to say that, and it
+                         stopped saying it once the right-hand half grew to five stacked actions -
+                         against a run of five evenly spaced things, one wider gap is not a boundary,
+                         it is a wider gap. Inset top and bottom so it reads as a mark on the bar
+                         rather than as the bar being cut in two. -->
+                    <Rectangle Width="1"
+                               Margin="14,9,10,9"
+                               Fill="{DynamicResource ToolbarDivider}"/>
+
                     <!-- Toggle original / translated bubbles -->
                     <Button x:Name="ToggleBtn"
                             Style="{StaticResource ToolbarStackButton}"
                             IsEnabled="False"
                             Click="ToggleBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="ToggleGlyph"
-                                       Text="&#xE890;"
-                                       Style="{StaticResource ToolbarActionGlyph}"/>
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                                <TextBlock x:Name="ToggleGlyph"
+                                           Text="&#xE890;"
+                                           Style="{StaticResource ToolbarActionGlyph}"/>
+                            </Grid>
                             <TextBlock x:Name="ToggleLabel"
-                                       VerticalAlignment="Center"
                                        Text="{DynamicResource S.Toolbar.ShowSource}"/>
                         </StackPanel>
                     </Button>
@@ -258,10 +268,9 @@
                     <Button x:Name="CopyTextBtn"
                             Style="{StaticResource ToolbarStackButton}"
                             Click="CopyTextBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <Grid Width="14" Height="14"
-                                  Margin="0,0,5,0"
-                                  VerticalAlignment="Center">
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
                                 <!-- The double-page outline stays fixed so both states still read
                                      as copy actions; only the meaning of the copied content changes. -->
                                 <Path Stroke="{DynamicResource AppAccent}"
@@ -282,10 +291,42 @@
                                       StrokeEndLineCap="Round"
                                       StrokeLineJoin="Round"
                                       Data="M5.25,11.25 L8,5.5 L10.75,11.25 M6.45,8.8 H9.55"/>
+                              </Grid>
                             </Grid>
                             <TextBlock x:Name="CopyTextLabel"
-                                       VerticalAlignment="Center"
                                        Text="{DynamicResource S.Toolbar.CopyText}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Draw on the selection. Between the two copies because that is the order
+                         these are reached for: read the result, take the words, mark up what is left,
+                         take the picture. Marking before the picture is also the only order that
+                         makes sense of the picture - a screenshot taken after the marks has the
+                         marks in it. -->
+                    <Button x:Name="AnnotateBtn"
+                            Style="{StaticResource ToolbarStackButton}"
+                            ToolTip="{DynamicResource S.Toolbar.AnnotateHint}"
+                            Click="AnnotateBtn_Click">
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                <!-- A pen held the way a pen is held, nib down to the left. Drawn
+                                     rather than typed: Segoe's own pencil is a filled shape, and the
+                                     icons it stands beside here are all outlines. -->
+                                <Path Stroke="{DynamicResource AppAccent}"
+                                      StrokeThickness="1.25"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Data="M1.7,12.3 L2.3,9.5 L9.3,2.5 L11.5,4.7 L4.5,11.7 Z"/>
+                                <Path Stroke="{DynamicResource AppAccent}"
+                                      StrokeThickness="1.25"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Data="M7.9,3.9 L10.1,6.1"/>
+                              </Grid>
+                            </Grid>
+                            <TextBlock Text="{DynamicResource S.Toolbar.Annotate}"/>
                         </StackPanel>
                     </Button>
 
@@ -293,11 +334,24 @@
                     <Button x:Name="CopyShotBtn"
                             Style="{StaticResource ToolbarStackButton}"
                             Click="CopyShotBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE8FF;"
-                                       Style="{StaticResource ToolbarActionGlyph}"/>
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{DynamicResource S.Toolbar.Screenshot}"/>
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                <!-- Crop marks, not the copy glyph this used to wear. E8FF is two
+                                     stacked pages, which is the same thing the copy button draws two
+                                     places away - one row, two actions, one picture, and the only way
+                                     to tell them apart was to read the words. A cropped frame says
+                                     the one thing this action does that the other does not: it takes
+                                     the rectangle, not the words inside it. -->
+                                <Path Stroke="{DynamicResource AppAccent}"
+                                      StrokeThickness="1.25"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Data="M4.5,1 V9.5 H13 M1,4.5 H9.5 V13"/>
+                              </Grid>
+                            </Grid>
+                            <TextBlock Text="{DynamicResource S.Toolbar.Screenshot}"/>
                         </StackPanel>
                     </Button>
 
@@ -306,15 +360,15 @@
                          on the one thing the user already knows, and it cost the bar the width of two
                          characters. The tooltip still says the whole sentence for anyone who wants it. -->
                     <Button x:Name="OpenWindowBtn"
-                            Style="{StaticResource ToolbarStackRaisedButton}"
-                            Margin="6,0,0,0"
+                            Style="{StaticResource ToolbarStackButton}"
                             ToolTip="{DynamicResource S.Toolbar.OpenWindowHint}"
                             Click="OpenWindowBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE8A7;"
-                                       Style="{StaticResource ToolbarActionGlyph}"/>
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{DynamicResource S.Toolbar.OpenWindow}"/>
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                                <TextBlock Text="&#xE8A7;"
+                                           Style="{StaticResource ToolbarActionGlyph}"/>
+                            </Grid>
+                            <TextBlock Text="{DynamicResource S.Toolbar.OpenWindow}"/>
                         </StackPanel>
                     </Button>
 
@@ -322,7 +376,7 @@
                     <Button Content="&#x2715;"
                             Style="{StaticResource ToolbarIconButton}"
                             Width="30" Height="30"
-                            Margin="8,0,0,0"
+                            Margin="10,0,0,0"
                             ToolTip="{DynamicResource S.Toolbar.Close}"
                             AutomationProperties.Name="{DynamicResource S.Toolbar.Close}"
                             Click="CloseBtn_Click"/>

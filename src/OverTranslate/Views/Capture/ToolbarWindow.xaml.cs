@@ -148,8 +148,8 @@ public partial class ToolbarWindow : Window
         double scale = ScreenGeometry.ScaleAt(centreX, centreY);
 
         // WPF lays out in DIP regardless of DPI, so the DIP size scales straight to target pixels.
-        double tbW = (ActualWidth  > 0 ? ActualWidth  : 490) * scale;
-        double tbH = (ActualHeight > 0 ? ActualHeight : 38)  * scale;
+        double tbW = (ActualWidth  > 0 ? ActualWidth  : 1090) * scale;
+        double tbH = (ActualHeight > 0 ? ActualHeight : 88)   * scale;
 
         var wa = System.Windows.Forms.Screen
             .FromPoint(new System.Drawing.Point(centreX, centreY)).WorkingArea;
@@ -319,6 +319,17 @@ public partial class ToolbarWindow : Window
 
     private void CopyShotBtn_Click(object sender, RoutedEventArgs e)
         => CopyScreenshotRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>The mark-up button. Present on the bar, does nothing yet.</summary>
+    /// <remarks>
+    /// The drawing surface it will open is the next piece of work; the button ships ahead of it so
+    /// the bar it sits on is laid out and measured once rather than twice. Pressing it is a no-op
+    /// on purpose — deliberately not disabled, because a greyed-out button says the action is
+    /// unavailable for a reason the user could fix, and there is no such reason here.
+    /// </remarks>
+    private void AnnotateBtn_Click(object sender, RoutedEventArgs e)
+    {
+    }
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e)
         => CloseAllRequested?.Invoke(this, EventArgs.Empty);
