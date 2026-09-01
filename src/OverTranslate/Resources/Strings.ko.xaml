@@ -222,7 +222,7 @@
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">클립보드에 복사했지만 저장하지 못했습니다: {0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">복사 실패</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">스크린샷을 복사하지 못했습니다: {0}</sys:String>
-    <sys:String x:Key="S.Main.CopyTextFailedBody">텍스트를 복사하지 못했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Main.CopyTextFailedBody">클립보드를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedTitle">읽어 주지 못했습니다</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedBody">이 텍스트는 읽어 줄 수 없습니다: {0}</sys:String>
 

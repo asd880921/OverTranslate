@@ -228,7 +228,7 @@
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">已複製到剪貼簿，但無法儲存到本機：{0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">複製失敗</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">無法複製截圖：{0}</sys:String>
-    <sys:String x:Key="S.Main.CopyTextFailedBody">無法複製文字：{0}</sys:String>
+    <sys:String x:Key="S.Main.CopyTextFailedBody">剪貼簿目前無法使用，請稍後再試。</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedTitle">朗讀失敗</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedBody">無法朗讀這段文字：{0}</sys:String>
 

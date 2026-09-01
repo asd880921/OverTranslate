@@ -221,7 +221,7 @@ Details: {0}</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">Copied to the clipboard, but could not be saved: {0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">Copy failed</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">Could not copy the screenshot: {0}</sys:String>
-    <sys:String x:Key="S.Main.CopyTextFailedBody">Could not copy the text: {0}</sys:String>
+    <sys:String x:Key="S.Main.CopyTextFailedBody">The clipboard is unavailable right now. Try again in a moment.</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedTitle">Could not read aloud</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedBody">This text could not be read aloud: {0}</sys:String>
 

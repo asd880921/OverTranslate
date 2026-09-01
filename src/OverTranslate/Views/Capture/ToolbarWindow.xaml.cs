@@ -348,7 +348,7 @@ public partial class ToolbarWindow : Window
         OpenWindowBtn.IsEnabled = !_isBusy;
     }
 
-    /// <summary>Whether recognition has produced any text for the speak button to read.</summary>
+    /// <summary>Whether there is text from a translated selection for the speak button to read.</summary>
     public void SetSpeakableText(bool hasText)
     {
         _hasSpeakableText = hasText;
@@ -373,8 +373,9 @@ public partial class ToolbarWindow : Window
     /// controls away was the cause. Recognition can run on 自動 because it is choosing between
     /// three scripts it can see; a voice has nothing to look at.</para>
     ///
-    /// <para>Also off until recognition has produced something, because until then it is a button
-    /// whose whole action is to do nothing.</para>
+    /// <para>Also off until a translation is on screen. Recognition alone is not enough: 複製文字
+    /// recognises too and hands the box back afterwards, so the text it produced can already be
+    /// describing a region the user has since redrawn.</para>
     ///
     /// <para>Not switched off while a translation is in flight, unlike everything else on this bar:
     /// the text being read is the one already recognised, the new batch does not touch it, and the

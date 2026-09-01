@@ -238,14 +238,16 @@ public partial class ScreenCaptureWindow : Window
         _selectionTcs.TrySetResult(true);
     }
 
-    public bool PrepareForTranslation()
-        => PrepareForProcessing();
-
-    public bool PrepareForRecognition()
-        => PrepareForProcessing();
-
-    private bool PrepareForProcessing()
+    /// <summary>
+    /// Crops the selection and locks the frame so the caller can work on a fixed region.
+    /// </summary>
+    /// <param name="lockedByThisCall">
+    /// True when this call is what locked the frame, so only that caller may hand editing back —
+    /// a frame already locked by an earlier run belongs to whoever locked it
+    /// </param>
+    public bool PrepareForProcessing(out bool lockedByThisCall)
     {
+        lockedByThisCall = false;
         if (!_hasSelection) return false;
 
         if (_processingStarted)
@@ -255,12 +257,14 @@ public partial class ScreenCaptureWindow : Window
             return false;
 
         _processingStarted = true;
+        lockedByThisCall = true;
         SwitchToBackgroundMode();
         return true;
     }
 
     /// <summary>
-    /// Restores the selection frame after a recognition-only action temporarily locked it.
+    /// Hands the frame back to the user after an action that locked it has nothing to show for it —
+    /// a copy that only needed the text, or a pass that found none and leaves the box to be redrawn.
     /// </summary>
     public void RestoreSelectionEditing()
     {

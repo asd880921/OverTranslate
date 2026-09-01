@@ -222,7 +222,7 @@
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">クリップボードにコピーしましたが、保存できませんでした：{0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">コピーに失敗しました</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">スクリーンショットをコピーできませんでした：{0}</sys:String>
-    <sys:String x:Key="S.Main.CopyTextFailedBody">テキストをコピーできませんでした：{0}</sys:String>
+    <sys:String x:Key="S.Main.CopyTextFailedBody">クリップボードを使用できません。しばらくしてからお試しください。</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedTitle">読み上げに失敗しました</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedBody">このテキストは読み上げられませんでした：{0}</sys:String>
 
