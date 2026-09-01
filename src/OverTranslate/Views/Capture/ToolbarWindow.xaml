@@ -281,7 +281,7 @@
                                       StrokeStartLineCap="Round"
                                       StrokeEndLineCap="Round"
                                       StrokeLineJoin="Round"
-                                      Data="M5.5,7 H10.5 M9,5.5 L10.5,7 L9,8.5 M10.5,10 H5.5 M7,8.5 L5.5,10 L7,11.5"/>
+                                      Data="M5.25,11.25 L8,5.5 L10.75,11.25 M6.45,8.8 H9.55"/>
                             </Grid>
                             <TextBlock x:Name="CopyTextLabel"
                                        VerticalAlignment="Center"
