@@ -43,9 +43,9 @@ public partial class UpdateWindow : Window
         InitializeComponent();
         _updateInfo = info;
 
-        var icon = AppIconService.CreateWindowIcon();
-        Icon = icon;
-        TitleIcon.Source = icon;
+        var compactIcon = AppIconService.CreateCompactIcon();
+        Icon = compactIcon;
+        TitleIcon.Source = compactIcon;
 
         // "v" on both, matching the rail's version line and its update chip — the number is the
         // same number, and dropping the prefix here would make it look like a different notation.

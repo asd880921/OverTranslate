@@ -27,7 +27,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>icons\icon_256.ico</ApplicationIcon>
+    <ApplicationIcon>icons\app.ico</ApplicationIcon>
     <StartupObject>OverTranslate.App</StartupObject>
     <Version>2.2.0</Version>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -50,9 +50,9 @@
     <None Update="NLog.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <EmbeddedResource Include="icons\icon_32.ico" />
-    <EmbeddedResource Include="icons\icon_256.ico" />
-    <Resource Include="icons\capture_crosshair.cur" />
+    <EmbeddedResource Include="icons\app.ico" />
+    <EmbeddedResource Include="icons\app-compact.ico" />
+    <Resource Include="Resources\Cursors\capture_crosshair.cur" />
   </ItemGroup>
 
   <ItemGroup>

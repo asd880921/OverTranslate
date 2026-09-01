@@ -75,13 +75,6 @@
     <SolidColorBrush x:Key="AppDeepLMark"      Color="#FFFFFF"/>
     <SolidColorBrush x:Key="AppOpenAiMark"     Color="#FFFFFF"/>
 
-    <!-- The app's own mark, straight from icons/icon-glyph.svg — on this ground the plate is what
-         the file intends and the brand cyan carries. See LightTheme.xaml for why that theme
-         does not take these values as they are. -->
-    <SolidColorBrush x:Key="AppGlyphPlate"     Color="#0D1117"/>
-    <SolidColorBrush x:Key="AppGlyphField"     Color="#081018"/>
-    <SolidColorBrush x:Key="AppGlyphInk"       Color="#60EFFF"/>
-    <SolidColorBrush x:Key="AppGlyphPlateEdge" Color="#33434E"/>
     <SolidColorBrush x:Key="AppSectionHeader"  Color="#BBBBBB"/>
 
     <!-- Toolbar specific -->

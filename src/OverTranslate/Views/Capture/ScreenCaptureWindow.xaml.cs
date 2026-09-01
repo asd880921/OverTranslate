@@ -17,7 +17,7 @@ public partial class ScreenCaptureWindow : Window
 {
     private const int WM_NCHITTEST  = 0x0084;
     private const int HTTRANSPARENT = -1;
-    private static readonly Uri CrosshairCursorUri = new("pack://application:,,,/icons/capture_crosshair.cur", UriKind.Absolute);
+    private static readonly Uri CrosshairCursorUri = new("pack://application:,,,/Resources/Cursors/capture_crosshair.cur", UriKind.Absolute);
 
     /// <summary>Corner radius of the frame, and of the hole cut for it in the dim layer.</summary>
     private const double FrameCorner = 3;

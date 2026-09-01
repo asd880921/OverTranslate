@@ -10,14 +10,20 @@ public static class AppIconService
 {
     public static System.Drawing.Icon CreateTrayIcon()
     {
-        using var stream = GetStream("icons.icon_32.ico");
-        return new System.Drawing.Icon(stream);
+        using var stream = GetStream("icons.app-compact.ico");
+        return new System.Drawing.Icon(stream, 32, 32);
     }
 
-    public static ImageSource CreateWindowIcon()
+    public static ImageSource CreateMainIcon()
+        => CreateImageSource("icons.app.ico", 256);
+
+    public static ImageSource CreateCompactIcon()
+        => CreateImageSource("icons.app-compact.ico", 64);
+
+    private static ImageSource CreateImageSource(string relativeName, int size)
     {
-        using var stream = GetStream("icons.icon_256.ico");
-        using var icon   = new System.Drawing.Icon(stream);
+        using var stream = GetStream(relativeName);
+        using var icon   = new System.Drawing.Icon(stream, size, size);
         var src = Imaging.CreateBitmapSourceFromHIcon(
             icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
         src.Freeze();

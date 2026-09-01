@@ -251,15 +251,6 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- The reduced mark, not the full app icon: at this size the full one turns
-                             to mush, and nothing here needs the app identified — the user opened this
-                             window on purpose. Sized by the style rather than here, so the one place
-                             that decides how big the mark is stays with the mark. -->
-                        <ContentControl x:Name="BrandIcon"
-                                        Style="{StaticResource AppGlyphMark}"
-                                        Margin="2,0,4,0"
-                                        VerticalAlignment="Center"/>
-
                         <!-- Always present because this changes how the result is presented, not
                              whether the feature is enabled. It sits beside the input whose result
                              it controls; the glyph shows the available action. -->

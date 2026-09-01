@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="16 16 480 480" role="img" aria-labelledby="title desc">
   <title id="title">OverTranslate</title>
-  <desc id="desc">The OT monogram on an OCR translation panel with a scan beam and translated text lines.</desc>
+  <desc id="desc">A compact OverTranslate icon with an enlarged OT monogram, scan beam, and translated text lines.</desc>
   <defs>
     <filter id="edge-feather" x="16" y="16" width="480" height="480" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
       <feGaussianBlur stdDeviation="0.8"/>
@@ -71,17 +71,7 @@
     <circle cx="410" cy="78" r="204" fill="url(#ambient)"/>
   </g>
   <rect x="23" y="23" width="466" height="466" rx="109" fill="none" stroke="#31506F" stroke-width="3" stroke-opacity="0.92"/>
-  <g aria-hidden="true" transform="matrix(1, 0, 0, 1, -17.012491, -32.129486)">
-    <rect x="68" y="98" width="286" height="306" rx="52" fill="#12243A" stroke="#2A4563" stroke-width="4"/>
-    <path d="M70 158H352" stroke="#2A4563" stroke-width="4"/>
-    <circle cx="102" cy="128" r="8" fill="#4A6483"/>
-    <circle cx="128" cy="128" r="8" fill="#4A6483"/>
-    <circle cx="154" cy="128" r="8" fill="#4A6483"/>
-    <rect x="98" y="190" width="132" height="14" rx="7" fill="#536A86"/>
-    <rect x="98" y="220" width="184" height="14" rx="7" fill="#405570"/>
-    <rect x="98" y="250" width="152" height="14" rx="7" fill="#344861"/>
-  </g>
-  <g style="" transform="matrix(1.043643, 0, 0, 1.043643, -27.720106, -20.15337)">
+  <g transform="matrix(1.18, 0, 0, 1.18, -99.18, -85.02)">
     <g filter="url(#panel-shadow)">
       <rect x="138" y="120" width="326" height="338" rx="62" fill="url(#panel)" stroke="url(#accent)" stroke-width="8"/>
     </g>
