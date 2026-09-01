@@ -20,10 +20,21 @@
         <!-- What a drag inside the selection is drawn onto. A rectangle rather than the canvas
              itself, sized and placed onto the selection, because that is what confines the gesture
              to the box: an empty Canvas is not hit-testable at all, and one given a background would
-             be hit-testable across the whole desktop. Shown only while 標記 is on. -->
+             be hit-testable across the whole desktop. Shown only while 標記 is on.
+
+             #01000000 and not Transparent, the same near-invisible fill RealtimeEditWindow's canvas
+             uses and for the same reason: this window is layered, and Windows hit-tests a layered
+             window against its composited alpha before any message is delivered. A fully
+             transparent brush paints alpha 0, so the click falls straight through to whatever is
+             underneath and the surface never hears about it. One step off zero is enough, and
+             nothing on screen can tell the difference.
+
+             Worth knowing when reading this: WPF's own hit test says the surface was hit either
+             way — VisualTreeHelper.HitTest returns it with a fully transparent fill — so this
+             cannot be found by asking WPF. It is decided a layer below. -->
         <Canvas x:Name="AnnotationInputCanvas">
             <Rectangle x:Name="AnnotationSurface"
-                       Fill="Transparent"
+                       Fill="#01000000"
                        Visibility="Collapsed"
                        MouseLeftButtonDown="AnnotationSurface_MouseLeftButtonDown"
                        MouseMove="AnnotationSurface_MouseMove"

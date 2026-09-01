@@ -124,12 +124,10 @@ public partial class OverlayWindow
     /// lets the user carry on with whatever is underneath while a translation sits on top of it.
     /// Taking that away is what makes drawing possible at all.</para>
     ///
-    /// <para>It also means the window stops passing clicks through anywhere, not only over the
-    /// selection — its background is transparent to look at but is still a surface. That is the
-    /// intended behaviour and not a side effect worth working around: 標記 is a mode, the mode owns
-    /// the screen while it is on, and a stray click landing in the application being annotated is
-    /// precisely the accident this prevents. Nothing is trapped by it — the bar above stays live, and
-    /// so do 標記 itself, ✕ and Esc.</para>
+    /// <para>Only over the selection, though. Everything else in this window is either
+    /// un-hittable or painted with a fully transparent brush, and a layered window is hit-tested
+    /// against its composited alpha — so a click anywhere outside the box still finds nothing here
+    /// and lands where it would have landed before. The box is the only thing 標記 takes.</para>
     /// </remarks>
     public void BeginAnnotating(AnnotationTool tool, Color color, double thickness)
     {
