@@ -327,12 +327,12 @@
                                      behind. The mark matters as much as the pen does: a pen on its
                                      own is what every 編輯 button in the app already draws, and this
                                      one does not edit anything - it draws on top of what is there. -->
-                                <!-- Cut flat at both ends, not sharpened to a point: the cross line
-                                     is where the nib begins, and a nib is the short end. Put at
-                                     the other end it stops being a nib and becomes the cap of a
-                                     pencil, which is a different tool doing a different job. -->
+                                <!-- Sharpened to a point, and the cross line is where that point
+                                     begins. The short end is the nib: put the line at the other
+                                     end instead and it reads as a cap, which is the wrong end of
+                                     the tool to be drawing attention to. -->
                                 <Path Style="{StaticResource ToolbarActionStroke}"
-                                      Data="M2.9,9.7 L11.1,1.5 L14.5,4.9 L6.3,13.1 Z"/>
+                                      Data="M4.6,11.4 L5.16,7.44 L11.1,1.5 L14.5,4.9 L8.56,10.84 Z"/>
                                 <Path Style="{StaticResource ToolbarActionStroke}"
                                       Data="M5.16,7.44 L8.56,10.84"/>
                                 <!-- Level, and clear of the pen above it. Drawn on the same
