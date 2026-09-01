@@ -17,6 +17,7 @@ public class AnnotationStrokeTests
             Tool      = AnnotationTool.Pen,
             Color     = Colors.Orange,
             Thickness = thickness,
+            Opacity   = 1,
             Points    = [.. points.Select(p => new Point(p.X, p.Y))],
         };
 
@@ -82,19 +83,5 @@ public class AnnotationStrokeTests
         var stroke = Stroke(2, (10, 10), (10, 10), (10, 10));
         Assert.True(stroke.IsWithin(new Point(10, 10), radius: 1));
         Assert.False(stroke.IsWithin(new Point(40, 10), radius: 1));
-    }
-
-    /// <summary>The highlighter is see-through and the pen is not; nothing else about them differs.</summary>
-    [Fact]
-    public void HighlighterIsTheOnlyTranslucentTool()
-    {
-        Assert.Equal(1.0, Stroke(4, (0, 0)).Opacity);
-        Assert.True(new AnnotationStroke
-        {
-            Tool      = AnnotationTool.Highlighter,
-            Color     = Colors.Yellow,
-            Thickness = 20,
-            Points    = [new Point(0, 0)],
-        }.Opacity < 1.0);
     }
 }

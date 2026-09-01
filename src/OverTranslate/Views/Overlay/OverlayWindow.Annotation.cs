@@ -56,6 +56,7 @@ public partial class OverlayWindow
     private AnnotationTool _annotationTool = AnnotationTool.Pen;
     private Color _annotationColor = Colors.Orange;
     private double _annotationThickness = 4;
+    private double _annotationOpacity = 0.45;
 
     private List<Point>? _wetPoints;
     private Polyline? _wetLine;
@@ -129,11 +130,12 @@ public partial class OverlayWindow
     /// against its composited alpha — so a click anywhere outside the box still finds nothing here
     /// and lands where it would have landed before. The box is the only thing 標記 takes.</para>
     /// </remarks>
-    public void BeginAnnotating(AnnotationTool tool, Color color, double thickness)
+    public void BeginAnnotating(AnnotationTool tool, Color color, double thickness, double opacity)
     {
         _annotationTool      = tool;
         _annotationColor     = color;
         _annotationThickness = thickness;
+        _annotationOpacity   = opacity;
 
         if (_isAnnotating) return;
         _isAnnotating = true;
@@ -165,6 +167,17 @@ public partial class OverlayWindow
     public void SetAnnotationColor(Color color) => _annotationColor = color;
 
     public void SetAnnotationThickness(double thickness) => _annotationThickness = thickness;
+
+    /// <summary>How see-through the next highlight will be. Ignored by the other two tools.</summary>
+    public void SetAnnotationOpacity(double opacity) => _annotationOpacity = opacity;
+
+    /// <summary>The opacity a stroke made right now would carry.</summary>
+    /// <remarks>
+    /// Only the highlighter is ever see-through. A pen the user had made translucent would be a pen
+    /// that no longer covers what it is drawn over, which is the one thing separating the two tools.
+    /// </remarks>
+    private double CurrentStrokeOpacity =>
+        _annotationTool == AnnotationTool.Highlighter ? _annotationOpacity : 1.0;
 
     public void UndoAnnotation()
     {
@@ -208,6 +221,7 @@ public partial class OverlayWindow
             Tool      = _annotationTool,
             Color     = _annotationColor,
             Thickness = _annotationThickness,
+            Opacity   = CurrentStrokeOpacity,
             Points    = _wetPoints,
         });
         AnnotationCanvas.Children.Add(_wetLine);
@@ -257,6 +271,7 @@ public partial class OverlayWindow
             Tool      = _annotationTool,
             Color     = _annotationColor,
             Thickness = _annotationThickness,
+            Opacity   = CurrentStrokeOpacity,
             Points    = points,
         }]);
     }

@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private Models.AnnotationTool _annotationTool = AnnotationPanelWindow.DefaultTool;
     private System.Windows.Media.Color _annotationColor = AnnotationPanelWindow.DefaultColor;
     private double _annotationThickness = AnnotationPanelWindow.DefaultThickness;
+    private double _annotationOpacity = AnnotationPanelWindow.DefaultOpacity;
     private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
     private CancellationTokenSource? _sessionCts; // cancelled on teardown so abandoned work stops
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
@@ -688,6 +689,7 @@ public partial class MainWindow : Window
         _annotationTool      = AnnotationPanelWindow.DefaultTool;
         _annotationColor     = AnnotationPanelWindow.DefaultColor;
         _annotationThickness = AnnotationPanelWindow.DefaultThickness;
+        _annotationOpacity   = AnnotationPanelWindow.DefaultOpacity;
 
         var settings = SettingsService.Instance.Current;
         ShowOverlay(
@@ -1350,7 +1352,7 @@ public partial class MainWindow : Window
         _annotationPanel = null;
 
         var panel = new AnnotationPanelWindow(
-            _annotationTool, _annotationColor, _annotationThickness);
+            _annotationTool, _annotationColor, _annotationThickness, _annotationOpacity);
         if (_captureWindow != null) panel.Owner = _captureWindow;
         panel.SettingsChanged += (_, _) => ApplyAnnotationSettings();
         panel.UndoRequested   += (_, _) => _overlayWindow?.UndoAnnotation();
@@ -1358,7 +1360,7 @@ public partial class MainWindow : Window
         _annotationPanel = panel;
 
         _captureWindow?.SetAnnotationHold(true);
-        _overlayWindow.BeginAnnotating(panel.Tool, panel.InkColor, panel.Thickness);
+        _overlayWindow.BeginAnnotating(panel.Tool, panel.InkColor, panel.Thickness, panel.Opacity);
 
         panel.Show();
         PlaceAnnotationPanel();
@@ -1375,10 +1377,18 @@ public partial class MainWindow : Window
         _annotationTool      = _annotationPanel.Tool;
         _annotationColor     = _annotationPanel.InkColor;
         _annotationThickness = _annotationPanel.ThicknessFraction;
+        _annotationOpacity   = _annotationPanel.OpacityFraction;
 
         _overlayWindow?.SetAnnotationTool(_annotationPanel.Tool);
         _overlayWindow?.SetAnnotationColor(_annotationPanel.InkColor);
         _overlayWindow?.SetAnnotationThickness(_annotationPanel.Thickness);
+        _overlayWindow?.SetAnnotationOpacity(_annotationPanel.Opacity);
+
+        // 螢光筆 brings a control the other two do not have, so the panel is a different width in
+        // that mode and has to be re-centred. Placed again rather than pinned by one edge because
+        // the panel's home is "centred under the toolbar", and a panel that grew out of centre would
+        // stay wrong for the rest of the session.
+        PlaceAnnotationPanel();
     }
 
     private void PlaceAnnotationPanel()

@@ -173,6 +173,9 @@
     <sys:String x:Key="S.Annotate.Thickness">太さ</sys:String>
     <sys:String x:Key="S.Annotate.Thin">細</sys:String>
     <sys:String x:Key="S.Annotate.Thick">太</sys:String>
+    <sys:String x:Key="S.Annotate.Opacity">濃さ</sys:String>
+    <sys:String x:Key="S.Annotate.Faint">淡</sys:String>
+    <sys:String x:Key="S.Annotate.Strong">濃</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">スクリーンショット</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">ウィンドウ</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">この翻訳結果をウィンドウで開く</sys:String>

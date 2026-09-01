@@ -176,6 +176,9 @@
     <sys:String x:Key="S.Annotate.Thickness">粗細</sys:String>
     <sys:String x:Key="S.Annotate.Thin">細</sys:String>
     <sys:String x:Key="S.Annotate.Thick">粗</sys:String>
+    <sys:String x:Key="S.Annotate.Opacity">透明度</sys:String>
+    <sys:String x:Key="S.Annotate.Faint">淡</sys:String>
+    <sys:String x:Key="S.Annotate.Strong">濃</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">截圖</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">翻譯視窗</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">在視窗中開啟這次的翻譯結果</sys:String>

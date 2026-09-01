@@ -44,15 +44,19 @@ public sealed class AnnotationStroke
     public required IReadOnlyList<Point> Points { get; init; }
 
     /// <summary>
-    /// How much of the background still shows through. The highlighter's whole job.
+    /// How much of what is underneath still shows through. 1 for anything but a highlight.
     /// </summary>
     /// <remarks>
+    /// Stored rather than worked out from the tool, because it is the user's to set: a highlighter
+    /// laid over pale text and one laid over a screenshot of a dark game want different answers, and
+    /// there is no value that is right for both.
+    ///
     /// Applied to the rendered polyline as a whole rather than to its brush. A translucent brush
     /// darkens wherever a stroke crosses itself — which for a hand-drawn highlight is everywhere it
     /// changes direction — and the result is a band with dark knots in it. Opacity on the element
     /// makes WPF compose the stroke once and then fade the result, so the band is even.
     /// </remarks>
-    public double Opacity => Tool == AnnotationTool.Highlighter ? 0.4 : 1.0;
+    public required double Opacity { get; init; }
 
     /// <summary>
     /// Whether the stroke passes within <paramref name="radius"/> of <paramref name="point"/>.

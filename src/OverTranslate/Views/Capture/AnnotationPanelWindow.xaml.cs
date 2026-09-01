@@ -59,6 +59,20 @@ public partial class AnnotationPanelWindow : Window
     /// <summary>Halfway along the slider: no tool's range has a better place to start.</summary>
     public const double DefaultThickness = 0.5;
 
+    /// <summary>Likewise halfway, which lands on a highlight you can still read through.</summary>
+    public const double DefaultOpacity = 0.5;
+
+    /// <summary>
+    /// What the 透明度 slider means, as (faintest, strongest).
+    /// </summary>
+    /// <remarks>
+    /// Neither end is allowed to be useless. At 0 the highlight would not exist, and at 1 it would
+    /// cover the words it was drawn to pick out — so the range stops short of both, and every
+    /// position on the slider is one somebody might actually want.
+    /// </remarks>
+    private const double MinOpacity = 0.15;
+    private const double MaxOpacity = 0.75;
+
     /// <summary>
     /// What the one slider means for each tool, as (thinnest, thickest).
     /// </summary>
@@ -87,6 +101,12 @@ public partial class AnnotationPanelWindow : Window
     public AnnotationTool Tool { get; private set; }
     public Color InkColor { get; private set; }
 
+    /// <summary>Where the 透明度 slider sits, 0 to 1.</summary>
+    public double OpacityFraction { get; private set; }
+
+    /// <summary>How see-through a highlight drawn now would be.</summary>
+    public double Opacity => MinOpacity + (MaxOpacity - MinOpacity) * OpacityFraction;
+
     /// <summary>Where the slider sits, 0 to 1. The width itself depends on the tool — see <see cref="Thickness"/>.</summary>
     public double ThicknessFraction { get; private set; }
 
@@ -99,17 +119,20 @@ public partial class AnnotationPanelWindow : Window
         }
     }
 
-    public AnnotationPanelWindow(AnnotationTool tool, Color color, double thicknessFraction)
+    public AnnotationPanelWindow(
+        AnnotationTool tool, Color color, double thicknessFraction, double opacityFraction)
     {
         InitializeComponent();
 
         Tool              = tool;
         InkColor          = color;
         ThicknessFraction = Math.Clamp(thicknessFraction, 0, 1);
+        OpacityFraction   = Math.Clamp(opacityFraction, 0, 1);
 
         BuildPalette();
         RenderToolSelection();
         ThicknessSlider.Value = ThicknessFraction;
+        OpacitySlider.Value   = OpacityFraction;
         _initializing = false;
     }
 
@@ -247,12 +270,29 @@ public partial class AnnotationPanelWindow : Window
         // eight buttons that quietly do not apply to what is in hand.
         Palette.IsEnabled = Tool != AnnotationTool.Eraser;
         Palette.Opacity   = Tool == AnnotationTool.Eraser ? 0.35 : 1.0;
+
+        // Taken away rather than greyed out, unlike the palette. A dimmed control says "not right
+        // now", which is true of the swatches — put the pen back in hand and they apply again to the
+        // very same marks. 透明度 is not that: for a pen there is no faded answer to be had, so the
+        // control is not unavailable, it is inapplicable, and the panel is simply shorter without it.
+        var opacityVisibility = Tool == AnnotationTool.Highlighter
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        OpacityBlock.Visibility   = opacityVisibility;
+        OpacityDivider.Visibility = opacityVisibility;
     }
 
     private void ThicknessSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing) return;
         ThicknessFraction = e.NewValue;
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_initializing) return;
+        OpacityFraction = e.NewValue;
         SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
 

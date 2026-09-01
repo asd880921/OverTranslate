@@ -2772,4 +2772,32 @@
         </Setter>
     </Style>
 
+    <!-- A slider on the 標記 panel, with its name over it and its two ends named underneath. Three
+         styles rather than three copies of the same properties, because the panel now carries two of
+         these side by side and they have to be the same object twice, not two similar ones. -->
+    <Style x:Key="AnnotationSliderTitle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
+        <Setter Property="FontSize"   Value="11.5"/>
+        <Setter Property="Margin"     Value="1,0,0,2"/>
+    </Style>
+
+    <Style x:Key="AnnotationSlider" TargetType="Slider" BasedOn="{StaticResource AppSlider}">
+        <Setter Property="Width"      Value="118"/>
+        <Setter Property="Minimum"    Value="0"/>
+        <Setter Property="Maximum"    Value="1"/>
+        <Setter Property="SmallChange" Value="0.1"/>
+        <Setter Property="LargeChange" Value="0.25"/>
+    </Style>
+
+    <!-- Dimmer and a size down from the name above: these two are read once, to learn which way the
+         slider runs, and never again. At the same weight as the name they would compete with it for
+         a control that only has one thing to say. -->
+    <Style x:Key="AnnotationSliderEnd" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
+        <Setter Property="FontSize"   Value="10.5"/>
+        <Setter Property="Margin"     Value="1,1,1,0"/>
+    </Style>
+
 </ResourceDictionary>

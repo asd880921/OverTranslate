@@ -177,37 +177,59 @@
                                    Margin="12,9,12,9"
                                    Fill="{DynamicResource ToolbarDivider}"/>
 
-                        <!-- The two ends named rather than the control. "粗細" in front of a slider
-                             says what is being adjusted but not which way, so the user has to move
-                             it to find out — and on a control whose whole answer is a position,
-                             that is the one thing worth spending two characters on. The label the
-                             control itself carries lives on the slider now, for assistive
-                             technology, which needs the name and not the ends. -->
-                        <TextBlock Text="{DynamicResource S.Annotate.Thin}"
-                                   Foreground="{DynamicResource AppTextSecondary}"
-                                   FontFamily="{DynamicResource AppFont}"
-                                   FontSize="11.5"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,8,0"/>
+                        <!-- Named above, and its two ends named underneath. The name alone says what
+                             is being adjusted but not which way, so the user has to move the thing
+                             to find out — and on a control whose entire answer is a position, that
+                             is worth two characters. No number beside it, deliberately: what the
+                             user is choosing is how the mark looks against what is underneath it,
+                             and there is no number that answers that. They can see the stroke.
 
-                        <!-- One slider for all three tools, mapped onto each one's own range — see
+                             One slider for all three tools, mapped onto each one's own range — see
                              RangeFor. A slider per tool would be three controls the user has to
                              discover are three, on a panel whose whole point is that it is small. -->
-                        <Slider x:Name="ThicknessSlider"
-                                Style="{StaticResource AppSlider}"
-                                Width="110"
-                                Minimum="0" Maximum="1"
-                                SmallChange="0.1" LargeChange="0.25"
-                                VerticalAlignment="Center"
-                                AutomationProperties.Name="{DynamicResource S.Annotate.Thickness}"
-                                ValueChanged="ThicknessSlider_ValueChanged"/>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,4,0">
+                            <TextBlock Text="{DynamicResource S.Annotate.Thickness}"
+                                       Style="{StaticResource AnnotationSliderTitle}"/>
+                            <Slider x:Name="ThicknessSlider"
+                                    Style="{StaticResource AnnotationSlider}"
+                                    AutomationProperties.Name="{DynamicResource S.Annotate.Thickness}"
+                                    ValueChanged="ThicknessSlider_ValueChanged"/>
+                            <Grid>
+                                <TextBlock Text="{DynamicResource S.Annotate.Thin}"
+                                           HorizontalAlignment="Left"
+                                           Style="{StaticResource AnnotationSliderEnd}"/>
+                                <TextBlock Text="{DynamicResource S.Annotate.Thick}"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource AnnotationSliderEnd}"/>
+                            </Grid>
+                        </StackPanel>
 
-                        <TextBlock Text="{DynamicResource S.Annotate.Thick}"
-                                   Foreground="{DynamicResource AppTextSecondary}"
-                                   FontFamily="{DynamicResource AppFont}"
-                                   FontSize="11.5"
-                                   VerticalAlignment="Center"
-                                   Margin="8,0,4,0"/>
+                        <!-- How much of the page still shows through, for the one tool the question
+                             applies to. Shown only in 螢光筆 mode rather than greyed out beside the
+                             pen: a highlighter's whole character is that it is see-through, so this
+                             is not an extra setting the tool happens to have — it is half of what
+                             the tool is, and it belongs on screen exactly when the tool is. -->
+                        <Rectangle x:Name="OpacityDivider"
+                                   Width="1"
+                                   Margin="12,6,12,6"
+                                   Fill="{DynamicResource ToolbarDivider}"/>
+
+                        <StackPanel x:Name="OpacityBlock" VerticalAlignment="Center" Margin="0,0,4,0">
+                            <TextBlock Text="{DynamicResource S.Annotate.Opacity}"
+                                       Style="{StaticResource AnnotationSliderTitle}"/>
+                            <Slider x:Name="OpacitySlider"
+                                    Style="{StaticResource AnnotationSlider}"
+                                    AutomationProperties.Name="{DynamicResource S.Annotate.Opacity}"
+                                    ValueChanged="OpacitySlider_ValueChanged"/>
+                            <Grid>
+                                <TextBlock Text="{DynamicResource S.Annotate.Faint}"
+                                           HorizontalAlignment="Left"
+                                           Style="{StaticResource AnnotationSliderEnd}"/>
+                                <TextBlock Text="{DynamicResource S.Annotate.Strong}"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource AnnotationSliderEnd}"/>
+                            </Grid>
+                        </StackPanel>
 
                     </StackPanel>
                 </Border>
