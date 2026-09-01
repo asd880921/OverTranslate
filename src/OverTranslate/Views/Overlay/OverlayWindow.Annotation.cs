@@ -61,14 +61,11 @@ public partial class OverlayWindow
     private List<Point>? _wetPoints;
     private Polyline? _wetLine;
 
-    // The strokes as they stood when an erase drag began, the path the eraser has taken since, and
-    // what that leaves. The first is kept so the drag can be recomputed from scratch on every step:
-    // subtracting the whole sweep so far from the untouched strokes gives the same answer however
-    // the pointer got there, where subtracting each new circle from the previous result would pile
-    // one geometry operation on another for the length of the drag.
-    private List<AnnotationStroke>? _eraseBase;
-    private List<Point>? _erasePoints;
+    // An erase drag in progress: the strokes as they stand right now, where the eraser was last
+    // seen, and whether it has taken anything yet.
     private List<AnnotationStroke>? _eraseWorkingSet;
+    private Point _eraseLast;
+    private bool _eraseTookSomething;
 
     private Rect _annotationBounds;
     private Rect _annotationBoundsPhys;
@@ -259,9 +256,14 @@ public partial class OverlayWindow
 
         if (_annotationTool == AnnotationTool.Eraser)
         {
-            _eraseBase   = [.. CurrentStrokes];
-            _erasePoints = [point];
-            EraseAlongPath();
+            _eraseWorkingSet = [.. CurrentStrokes];
+            _eraseLast = point;
+            _eraseTookSomething = false;
+
+            // Redrawn once here so the canvas holds one visual per stroke in the same order, which
+            // is what lets each step below replace just the visuals it changed.
+            RenderStrokes(_eraseWorkingSet);
+            EraseStep(point, point);
             return;
         }
 
@@ -290,12 +292,12 @@ public partial class OverlayWindow
 
         if (e.LeftButton != MouseButtonState.Pressed) return;
 
-        if (_erasePoints is not null)
+        if (_eraseWorkingSet is not null)
         {
-            if (FarEnough(_erasePoints[^1], point))
+            if (FarEnough(_eraseLast, point))
             {
-                _erasePoints.Add(point);
-                EraseAlongPath();
+                EraseStep(_eraseLast, point);
+                _eraseLast = point;
             }
             return;
         }
@@ -328,24 +330,24 @@ public partial class OverlayWindow
         if (!_isAnnotating) return;
         AnnotationSurface.ReleaseMouseCapture();
 
-        if (_erasePoints is not null)
+        if (_eraseWorkingSet is not null)
         {
-            var erased = _eraseWorkingSet ?? CurrentStrokes;
+            var erased = _eraseWorkingSet;
+            bool took = _eraseTookSomething;
+            _eraseWorkingSet = null;
+            _eraseTookSomething = false;
+
+            // Nothing changed if the drag never met a mark — and a history entry for that would be a
+            // press of 復原 that visibly does nothing.
+            if (!took)
+            {
+                RedrawAnnotations();
+                return;
+            }
 
             // Anything the eraser took the last of goes now rather than staying as an empty shape
-            // nothing can see and every later erase still has to work through.
-            erased = [.. erased.Where(stroke => !stroke.IsErasedAway)];
-
-            _eraseBase = null;
-            _erasePoints = null;
-            _eraseWorkingSet = null;
-
-            // Nothing changed if the drag never touched a mark — and a history entry for that would
-            // be a press of 復原 that visibly does nothing.
-            if (!ReferenceEquals(erased, CurrentStrokes) && !SameStrokes(erased, CurrentStrokes))
-                CommitStrokes(erased);
-            else
-                RedrawAnnotations();
+            // nothing can see and every later step still has to work through.
+            CommitStrokes([.. erased.Where(stroke => !stroke.IsErasedAway)]);
             return;
         }
 
@@ -378,50 +380,73 @@ public partial class OverlayWindow
         if (_wetLine is not null) AnnotationCanvas.Children.Remove(_wetLine);
         _wetLine = null;
         _wetPoints = null;
-        _eraseBase = null;
-        _erasePoints = null;
         _eraseWorkingSet = null;
+        _eraseTookSomething = false;
         if (AnnotationSurface.IsMouseCaptured) AnnotationSurface.ReleaseMouseCapture();
     }
 
     /// <summary>
-    /// Takes everything the eraser has swept so far out of the strokes it began the drag with.
+    /// Rubs out one step of the drag: the capsule the circle covered going from one point to the next.
     /// </summary>
     /// <remarks>
-    /// Recomputed from the drag's starting point every time rather than chipping away at the last
-    /// result. Both give the same picture, but this one keeps each stroke's erased area a single
-    /// union of one sweep instead of a stack of hundreds, so the geometry stays as simple at the end
-    /// of a long rub as it was at the start.
+    /// <para>One step at a time, cutting into what the last step left. Rebuilding the whole swept
+    /// path on every move and taking it out of the untouched strokes gives the same picture and gets
+    /// steadily slower as the drag goes on, because both the shape being subtracted and the shape it
+    /// is subtracted from keep growing — 25ms a step by the end of a long rub, which is what a lag
+    /// while erasing is made of. Cutting into the survivor keeps the work per step roughly constant
+    /// and in fact falling, since the shape being cut is smaller every time.</para>
     ///
-    /// Painted as it goes, not at the end: an eraser that only shows what it took once the button
-    /// comes up is an eraser nobody can aim.
+    /// <para>Painted as it goes, not at the end: an eraser that only shows what it took once the
+    /// button comes up is an eraser nobody can aim.</para>
     /// </remarks>
-    private void EraseAlongPath()
+    private void EraseStep(Point from, Point to)
     {
-        if (_eraseBase is null || _erasePoints is null) return;
+        if (_eraseWorkingSet is null) return;
 
         double radius = EraserRadius;
-        var sweep = AnnotationStroke.SweptCircle(_erasePoints, radius);
-        var reach = sweep.Bounds;
+        var capsule = AnnotationStroke.SweptCircle(from == to ? [from] : [from, to], radius);
+        var reach = capsule.Bounds;
 
-        _eraseWorkingSet = [.. _eraseBase.Select(stroke =>
-            reach.IntersectsWith(stroke.Outline.Bounds) && TouchesPath(stroke, radius)
-                ? stroke.WithErased(sweep)
-                : stroke)];
+        for (int i = 0; i < _eraseWorkingSet.Count; i++)
+        {
+            var stroke = _eraseWorkingSet[i];
+            if (!reach.IntersectsWith(stroke.Painted.Bounds)) continue;
+            if (!Touches(stroke, from, to, radius)) continue;
 
-        RenderStrokes(_eraseWorkingSet);
+            _eraseWorkingSet[i] = stroke.WithErased(capsule);
+            _eraseTookSomething = true;
+
+            // Only the visual that changed. The canvas holds one child per stroke in order — see the
+            // redraw where the drag starts — so rebuilding all of them would mean copying every
+            // other stroke's points into a fresh line on every step of the rub.
+            if (i < AnnotationCanvas.Children.Count)
+                AnnotationCanvas.Children[i] = BuildStrokeVisual(_eraseWorkingSet[i]);
+        }
     }
 
-    /// <summary>Whether the eraser has passed close enough to this stroke to be worth the geometry.</summary>
-    private bool TouchesPath(AnnotationStroke stroke, double radius) =>
-        _erasePoints is not null && _erasePoints.Any(point => stroke.IsWithin(point, radius));
-
-    private static bool SameStrokes(IReadOnlyList<AnnotationStroke> a, IReadOnlyList<AnnotationStroke> b)
+    /// <summary>
+    /// Whether the circle, dragged from one point to the other, came near enough to this stroke's
+    /// ink to be worth the geometry.
+    /// </summary>
+    /// <remarks>
+    /// Sampled along the step rather than tested at its two ends. A flick of the mouse can put a
+    /// hundred pixels between two pointer events, and a stroke crossed in the middle of that jump is
+    /// near neither end — it would be stepped over, and the rub would leave a mark standing in the
+    /// middle of the channel it had just cut.
+    /// </remarks>
+    private static bool Touches(AnnotationStroke stroke, Point from, Point to, double radius)
     {
-        if (a.Count != b.Count) return false;
-        for (int i = 0; i < a.Count; i++)
-            if (!ReferenceEquals(a[i], b[i])) return false;
-        return true;
+        double dx = to.X - from.X, dy = to.Y - from.Y;
+        double length = Math.Sqrt(dx * dx + dy * dy);
+        int samples = (int)Math.Ceiling(length / radius);
+
+        for (int i = 0; i <= samples; i++)
+        {
+            double t = samples == 0 ? 0 : (double)i / samples;
+            if (stroke.IsWithin(new Point(from.X + dx * t, from.Y + dy * t), radius)) return true;
+        }
+
+        return false;
     }
 
     private void CommitStrokes(List<AnnotationStroke> next)
@@ -460,7 +485,7 @@ public partial class OverlayWindow
     /// </remarks>
     private static UIElement BuildStrokeVisual(AnnotationStroke stroke)
     {
-        if (stroke.Erased is null) return BuildStrokeLine(stroke);
+        if (stroke.Carved is null) return BuildStrokeLine(stroke);
 
         return new Path
         {

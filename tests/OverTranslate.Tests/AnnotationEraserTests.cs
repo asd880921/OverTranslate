@@ -116,7 +116,7 @@ public class AnnotationEraserTests
         Assert.Equal(stroke.Points, rubbed.Points);
 
         // And the original is untouched, which is what makes an erase drag undoable in one press.
-        Assert.Null(stroke.Erased);
+        Assert.Null(stroke.Carved);
         Assert.True(stroke.Painted.FillContains(new Point(50, 0)));
     }
 }

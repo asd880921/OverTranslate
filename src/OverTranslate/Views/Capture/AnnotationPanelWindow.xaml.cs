@@ -109,7 +109,12 @@ public partial class AnnotationPanelWindow : Window
     public double OpacityFraction { get; private set; }
 
     /// <summary>How see-through a highlight drawn now would be.</summary>
-    public double Opacity => MinOpacity + (MaxOpacity - MinOpacity) * OpacityFraction;
+    /// <remarks>
+    /// Named for the ink and not just "Opacity" because a Window already has one of those, and it
+    /// means the transparency of this panel. Two properties one letter apart, on the same object,
+    /// one of which would make the toolbar itself fade — see also <see cref="InkColor"/>.
+    /// </remarks>
+    public double InkOpacity => MinOpacity + (MaxOpacity - MinOpacity) * OpacityFraction;
 
     /// <summary>Where the slider sits, 0 to 1. The width itself depends on the tool — see <see cref="Thickness"/>.</summary>
     public double ThicknessFraction { get; private set; }
