@@ -1560,6 +1560,20 @@
         <Setter Property="StrokeEndLineCap"    Value="Round"/>
     </Style>
 
+    <!-- The same pen again, for an icon that stands for a tool rather than for an action: it takes
+         the colour of the button it is drawn on, which means neutral while the tool is on the shelf
+         and accent while it is the one in hand.
+
+         Why the two differ. On the capture bar every icon is something to do, all six are equally
+         available, and painting them all accent makes the row read as one set of actions. In the
+         標記 panel one of the three is being held — that is the panel's whole state — and a row of
+         identically accented tools would leave the outlined plate to say it on its own. Colour is
+         the stronger signal of the two, so it goes to the tool that is in hand. -->
+    <Style x:Key="ToolbarToolStroke" TargetType="Path" BasedOn="{StaticResource ToolbarActionStroke}">
+        <Setter Property="Stroke"
+                Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ButtonBase}}"/>
+    </Style>
+
     <Style x:Key="ToolbarStackButton" TargetType="Button">
         <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"        Value="11"/>

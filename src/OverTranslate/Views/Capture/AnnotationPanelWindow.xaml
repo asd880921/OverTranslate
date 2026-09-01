@@ -72,11 +72,11 @@
                                     <!-- The same pen the 標記 button on the bar above wears, to the
                                          point. The panel is that button opened up, and the tool it
                                          defaults to had better be the thing the button showed. -->
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
                                           Data="M2.5,16.3 L3,11.85 L10.9,1.35 L14.55,4.1 L6.65,14.55 Z"/>
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
                                           Data="M3,11.85 L6.65,14.55"/>
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
                                           Data="M2.5,16.3 H15.5"/>
                                   </Grid>
                                 </Grid>
@@ -90,17 +90,36 @@
                             <StackPanel>
                                 <Grid Style="{StaticResource ToolbarActionIcon}">
                                   <Grid Style="{StaticResource ToolbarActionDrawing}">
-                                    <!-- The pen's drawing told twice over: a fatter barrel, a nib cut
-                                         square instead of sharpened, and a band under it instead of a
-                                         line. Three differences saying one thing — this is the same
-                                         gesture, laying down something broad and see-through. -->
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
-                                          Data="M2.8,10.6 L9.42,1.82 L14.22,5.43 L7.6,14.21 Z"/>
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
-                                          Data="M4.73,8.04 L9.53,11.65"/>
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
-                                          StrokeThickness="3"
-                                          Data="M2.6,16 H15.4"/>
+                                    <!-- Head-on and standing upright, not the pen tilted and fattened.
+                                         A highlighter is held square to the page and its whole
+                                         character is the chisel across the bottom, which is a shape
+                                         you can only see from the front — turned to the same angle as
+                                         the pen it becomes the pen with a thick line under it, and
+                                         the two tools stop being distinguishable at 18px.
+
+                                         Barrel, then the shoulders tapering to the felt, then a
+                                         window across the taper. -->
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M4.4,0.8 H13.6 A1.3,1.3 0 0 1 14.9,2.1 V7 L11.3,12.6
+                                                H6.7 L3.1,7 V2.1 A1.3,1.3 0 0 1 4.4,0.8 Z"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M7.2,9 H10.8"/>
+
+                                    <!-- The felt and the band it has just laid down, in the one colour
+                                         that names this tool without a label. Fixed rather than the
+                                         colour currently in hand: the icon says which tool this is,
+                                         and a tool whose picture changed with the palette would be a
+                                         different picture every time the user looked for it. -->
+                                    <Path Fill="{DynamicResource ToolbarHighlighterInk}"
+                                          Stroke="{DynamicResource ToolbarHighlighterInk}"
+                                          StrokeThickness="1.4"
+                                          StrokeLineJoin="Round"
+                                          Data="M6.7,12.6 L7.5,14.6 H10.5 L11.3,12.6 Z"/>
+                                    <Path Stroke="{DynamicResource ToolbarHighlighterInk}"
+                                          StrokeThickness="2.2"
+                                          StrokeStartLineCap="Flat"
+                                          StrokeEndLineCap="Flat"
+                                          Data="M1.7,16.5 H16.3"/>
                                   </Grid>
                                 </Grid>
                                 <TextBlock Text="{DynamicResource S.Annotate.Highlighter}"/>
@@ -113,14 +132,19 @@
                             <StackPanel>
                                 <Grid Style="{StaticResource ToolbarActionIcon}">
                                   <Grid Style="{StaticResource ToolbarActionDrawing}">
-                                    <!-- A block with a crease across it, resting flat on its own
-                                         bottom edge — the one thing in the row that is not held at an
-                                         angle, because it is the one that is pushed rather than
-                                         drawn with. -->
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
-                                          Data="M5.6,15.6 L1.4,11.4 L9.2,3.6 L16.4,10.8 L11.6,15.6 Z"/>
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
-                                          Data="M5.3,7.5 L12.5,14.7"/>
+                                    <!-- A block tipped onto its corner and cut off flat where it meets
+                                         the surface, with the crease between the rubber and its sleeve
+                                         running across it. The flat cut and the line it rests on are
+                                         the whole idea: an eraser is the one tool here that is pushed
+                                         against something, and a block floating free is just a
+                                         rhombus. -->
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M1.15,11.35 L10.05,2.4 A1.5,1.5 0 0 1 12.15,2.4
+                                                L15.85,6.05 A1.5,1.5 0 0 1 15.85,8.15 L7.6,16.4 H6.15 Z"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M4.25,8.9 L9.3,14"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M6.15,16.4 H16.6"/>
                                   </Grid>
                                 </Grid>
                                 <TextBlock Text="{DynamicResource S.Annotate.Eraser}"/>
@@ -133,8 +157,8 @@
                             <StackPanel>
                                 <Grid Style="{StaticResource ToolbarActionIcon}">
                                   <Grid Style="{StaticResource ToolbarActionDrawing}">
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
-                                          Data="M7,2.6 L2.6,7 L7,11.4 M2.6,7 H11 A4.4,4.4 0 0 1 11,15.8 H6.6"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M7,2.6 L2.6,7 L7,11.4 M2.6,7 H11 A4.4,4.4 0 0 1 11,15.8 H4.3"/>
                                   </Grid>
                                 </Grid>
                                 <TextBlock Text="{DynamicResource S.Annotate.Undo}"/>
@@ -150,8 +174,8 @@
                                     <!-- 復原 mirrored about the middle of the canvas, arc sweep and
                                          all. Two arrows that are not each other's reflection is the
                                          sort of thing nobody can name and everybody sees. -->
-                                    <Path Style="{StaticResource ToolbarActionStroke}"
-                                          Data="M11,2.6 L15.4,7 L11,11.4 M15.4,7 H7 A4.4,4.4 0 0 0 7,15.8 H11.4"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M11,2.6 L15.4,7 L11,11.4 M15.4,7 H7 A4.4,4.4 0 0 0 7,15.8 H13.7"/>
                                   </Grid>
                                 </Grid>
                                 <TextBlock Text="{DynamicResource S.Annotate.Redo}"/>
