@@ -145,7 +145,7 @@
     <!--  TRANSLATION SERVICE MARKS                  -->
     <!--                                             -->
     <!--  Transcribed from the vendors' own SVGs in  -->
-    <!--  icons/openai and icons/deepl — WPF has no  -->
+    <!--  docs/assets/service-icons — WPF has no     -->
     <!--  SVG loader, and the path data is the whole -->
     <!--  of these files. Re-transcribe rather than  -->
     <!--  redraw if a vendor ships a new mark.       -->
@@ -175,89 +175,6 @@
     <!-- ═══════════════════════════════════════════ -->
     <Geometry x:Key="DeepLMarkGeometry">F0 M11.563 0c.24 0 .475.065.682.187l8.197 4.756a1.383 1.383 0 01.683 1.197v9.528c0 .495-.26.949-.683 1.196l-4.79 2.78.01-.002-.155.087-.23.133a.69.69 0 00-.3.563v.386l-.16-.683-2.572 1.493a1.35 1.35 0 01-1.366 0l-8.195-4.757A1.384 1.384 0 012 15.668V6.14c0-.482.26-.936.684-1.183l8.195-4.77c.207-.122.443-.187.684-.187zm-1.27 14.023a1.405 1.405 0 00-2.038-.073 1.43 1.43 0 00.984 2.464c.368 0 .722-.144.985-.401a1.428 1.428 0 00.396-1.384l3.674-2.137-.683-.386-3.317 1.917zM9.24 6.164c-.368 0-.72.145-.983.402a1.43 1.43 0 00-.326 1.592c.075.177.187.338.326.47a1.405 1.405 0 002.021-.055l3.745 2.173.013-.009a1.427 1.427 0 00.368 1.48 1.403 1.403 0 001.967 0 1.428 1.428 0 000-2.063 1.403 1.403 0 00-1.986.02l-3.77-2.201a1.427 1.427 0 00-.39-1.407 1.405 1.405 0 00-.985-.402z M14.978 24v-3.959l-4.781 1.182</Geometry>
     <Geometry x:Key="OpenAiMarkGeometry">F1 M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399ZM470.899 244.776C486.892 260.77 493.488 282.601 490.687 303.412L415.577 260.046C412.411 258.218 408.509 258.218 405.345 260.046L317.401 310.82V277.526C317.401 275.191 318.652 273.005 320.676 271.837L387.644 233.174C414.178 218.353 448.346 222.223 470.901 244.776H470.899ZM357.837 311.144L398.275 334.491V381.185L357.837 404.532L317.398 381.185V334.491L357.837 311.144ZM264.776 269.693C265.207 239.305 285.644 211.649 316.453 203.393C338.3 197.54 360.505 202.744 377.127 215.573L302.014 258.937C298.848 260.764 296.898 264.144 296.898 267.798V369.346L268.065 352.699C266.043 351.531 264.776 349.353 264.776 347.017V269.691V269.693ZM203.391 316.454C209.244 294.608 224.854 277.978 244.276 269.999V356.73C244.276 360.384 246.226 363.763 249.392 365.591L337.337 416.365L308.503 433.013C306.481 434.181 303.961 434.188 301.939 433.02L234.971 394.357C208.868 378.789 195.138 347.261 203.391 316.454ZM244.775 470.9C228.781 454.906 222.186 433.075 224.986 412.264L300.096 455.63C303.263 457.457 307.164 457.457 310.328 455.63L398.273 404.856V438.149C398.273 440.485 397.022 442.671 394.997 443.839L328.029 482.502C301.495 497.322 267.327 493.452 244.772 470.9H244.775ZM450.897 445.982C450.466 476.371 430.029 504.027 399.22 512.283C377.373 518.136 355.168 512.932 338.547 500.102L413.659 456.738C416.826 454.911 418.775 451.532 418.775 447.877V346.329L447.609 362.977C449.631 364.145 450.897 366.323 450.897 368.659V445.985V445.982ZM512.282 399.221C506.429 421.068 490.819 437.697 471.397 445.676V358.946C471.397 355.292 469.448 351.912 466.281 350.085L378.336 299.311L407.17 282.663C409.192 281.495 411.712 281.487 413.734 282.655L480.702 321.318C506.805 336.887 520.536 368.415 512.282 399.221Z</Geometry>
-
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  APP GLYPH MARK                             -->
-    <!--                                             -->
-    <!--  The product mark reduced to what holds up  -->
-    <!--  at 28px, which is the size 取詞翻譯 shows  -->
-    <!--  it at. The full icon carries more than     -->
-    <!--  that size can. Window and taskbar icons    -->
-    <!--  keep the full icon: that is where the app  -->
-    <!--  is picked out from among other apps, and   -->
-    <!--  it has the room for it there.              -->
-    <!--                                             -->
-    <!--  From icons/icon-glyph.svg. Its sibling     -->
-    <!--  icon-glyph2.svg is the same drawing minus  -->
-    <!--  the backing plate and shifted 33, so the   -->
-    <!--  frame and the 譯 are declared once here    -->
-    <!--  and the plate supplies the offset.         -->
-    <!--                                             -->
-    <!--  Vector rather than a rasterised ico: this  -->
-    <!--  sits inline beside text, so it has to stay -->
-    <!--  clean at whatever the caller's DPI turns   -->
-    <!--  28 into.                                   -->
-    <!--                                             -->
-    <!--  Unlike the two marks above, the colours    -->
-    <!--  come from the theme. Those are other       -->
-    <!--  companies' marks and are fixed; this one   -->
-    <!--  is ours, and the dark plate the file ships -->
-    <!--  is the heaviest thing in a light-theme row -->
-    <!--  built otherwise from thin glyphs and text. -->
-    <!--  See AppGlyphInk in the theme files.        -->
-    <!-- ═══════════════════════════════════════════ -->
-
-    <!-- Bare bounds run 0–190 rather than 5–185, because the pen straddles the frame's edge. -->
-    <Geometry x:Key="AppGlyphFrameGeometry">F1 M41,5 l108,0 c19.944,0 36,16.056 36,36 l0,108 c0,19.944 -16.056,36 -36,36 l-108,0 c-19.944,0 -36,-16.056 -36,-36 l0,-108 c0,-19.944 16.056,-36 36,-36 z</Geometry>
-    <Geometry x:Key="AppGlyphYiGeometry">F1 M50.8,73.424l0,9.36l29.536,0l0,-9.36l-29.536,0zm0,14.04l0,9.464l29.536,0l0,-9.464l-29.536,0zm73.632,-33.488l5.72,0l0,8.216l-5.72,0l0,-8.216zm-14.56,0l5.616,0l0,8.216l-5.616,0l0,-8.216zm-14.352,0l5.616,0l0,8.216l-5.616,0l0,-8.216zm-40.144,-8.216c2.392,3.952 5.096,9.256 6.76,13.104l-15.912,0l0,9.88l36.192,0l0,-9.88l-16.536,0l6.864,-3.744c-1.664,-3.848 -4.784,-9.568 -7.696,-13.936l-9.672,4.576zm-4.888,56.16l0,35.984l10.608,0l0,-4.368l19.24,0l0,-31.616l-29.848,0zm10.608,9.88l8.528,0l0,11.752l-8.528,0l0,-11.752zm24.44,-66.664l0,26l20.8,0l0,4.056l-19.24,0l0,8.84l19.24,0l0,4.472l-23.608,0l0,9.568l17.472,0l-6.864,1.768c0.832,1.768 1.768,3.848 2.392,5.72l-9.776,0l0,9.152l20.384,0l0,4.576l-23.4,0l0,9.048l23.4,0l0,11.024l11.856,0l0,-11.024l24.752,0l0,-9.048l-24.752,0l0,-4.576l21.84,0l0,-9.152l-11.856,0l3.848,-5.408l-8.528,-2.08l19.448,0l0,-9.568l-24.752,0l0,-4.472l20.592,0l0,-8.84l-20.592,0l0,-4.056l22.464,0l0,-26l-55.12,0zm31.512,60.424l-10.816,0l0.312,-0.104c-0.52,-2.08 -1.768,-5.096 -3.12,-7.384l17.264,0c-0.936,2.288 -2.288,5.096 -3.64,7.488z</Geometry>
-    <Geometry x:Key="AppGlyphPlateGeometry">F1 M48,0 l160,0 c26.592,0 48,21.408 48,48 l0,160 c0,26.592 -21.408,48 -48,48 l-160,0 c-26.592,0 -48,-21.408 -48,-48 l0,-160 c0,-26.592 21.408,-48 48,-48 z</Geometry>
-
-    <!-- Drawn as Paths in the visual tree rather than as a DrawingImage, which is what this
-         started as. A DrawingImage is a resource with no element behind it, and a DynamicResource
-         inside one resolves when the resource is first built and never again — measured: swap the
-         theme dictionary under a live tree and the surrounding UI repaints while the mark keeps the
-         colours it was born with. Worse, the resource instance is cached application-wide, so even
-         a freshly built window gets the stale one back. Paths are elements, so they follow the
-         theme the same way everything else here does.
-
-         Viewbox over a 256 Canvas so the caller sets Width/Height and nothing inside is retuned;
-         the stroke scales with it, which is wanted here — this is a mark being reproduced, not an
-         icon being drawn to a weight. The inner group carries the offset that turns the bare mark
-         into the plated one, so dropping the plate and the offset is all a bare variant needs. -->
-    <Style x:Key="AppGlyphMark" TargetType="ContentControl">
-        <Setter Property="Width"      Value="28"/>
-        <Setter Property="Height"     Value="28"/>
-        <Setter Property="Focusable"  Value="False"/>
-        <Setter Property="IsTabStop"  Value="False"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ContentControl">
-                    <Viewbox Stretch="Uniform">
-                        <Canvas Width="256" Height="256">
-                            <!-- The plate is a flat block of colour against the popup surface,
-                                 and on its own the edge just stops — the same reason the rail
-                                 tiles in 側邊欄 carry a border over their tinted fill. Thickness
-                                 9 lands on roughly one pixel at the size this is used, and the
-                                 edge colour stays close enough to the plate to define it rather
-                                 than ring it. -->
-                            <Path Data="{StaticResource AppGlyphPlateGeometry}"
-                                  Fill="{DynamicResource AppGlyphPlate}"
-                                  Stroke="{DynamicResource AppGlyphPlateEdge}"
-                                  StrokeThickness="9"/>
-                            <Canvas Canvas.Left="33" Canvas.Top="33">
-                                <Path Data="{StaticResource AppGlyphFrameGeometry}"
-                                      Fill="{DynamicResource AppGlyphField}"
-                                      Stroke="{DynamicResource AppGlyphInk}"
-                                      StrokeThickness="10"/>
-                                <Path Data="{StaticResource AppGlyphYiGeometry}"
-                                      Fill="{DynamicResource AppGlyphInk}"/>
-                            </Canvas>
-                        </Canvas>
-                    </Viewbox>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
 
     <!-- ═══════════════════════════════════════════ -->
     <!--  DRAWN MARKS                                -->

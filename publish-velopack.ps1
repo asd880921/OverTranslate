@@ -8,7 +8,7 @@ param(
     [string]$PackTitle = "OverTranslate",
     [string]$PackAuthors = "Hon.Lu",
     [string]$MainExe = "OverTranslate.exe",
-    [string]$IconPath = ".\src\OverTranslate\icons\icon_256.ico",
+    [string]$IconPath = ".\src\OverTranslate\icons\app.ico",
     [string]$Channel = "win",
     [string]$PublishProfile = "FolderProfile",
     [string]$Configuration = "Release",

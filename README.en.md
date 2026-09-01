@@ -7,7 +7,7 @@
   </p>
 
   <h1>
-    <img src="src/OverTranslate/icons/icon.svg" width="180" alt="OverTranslate Icon"/>
+    <img src="src/OverTranslate/icons/app.svg" width="180" alt="OverTranslate Icon"/>
     <br/>
     OverTranslate
   </h1>

@@ -64,16 +64,6 @@
     <SolidColorBrush x:Key="AppDeepLMark"      Color="#000000"/>
     <SolidColorBrush x:Key="AppOpenAiMark"     Color="#000000"/>
 
-    <!-- The app's own mark, in 取詞翻譯's header. Unlike the two above this is ours, so the light
-         theme gets a light-on-light reading of it rather than the dark plate the icon file ships:
-         that plate is the heaviest thing in a row otherwise made of thin glyphs and text, and it
-         reads as a sticker dropped onto the window. The cyan hue is kept and darkened far enough to
-         hold its own against white — recoloured to the accent it would stop being the mark and
-         start being a button. Dark theme keeps the file's own colours; see DarkTheme.xaml. -->
-    <SolidColorBrush x:Key="AppGlyphPlate"     Color="#E6F6FA"/>
-    <SolidColorBrush x:Key="AppGlyphField"     Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="AppGlyphInk"       Color="#0E7C93"/>
-    <SolidColorBrush x:Key="AppGlyphPlateEdge" Color="#A9D5E2"/>
     <SolidColorBrush x:Key="AppSectionHeader"  Color="#444444"/>
 
     <!-- Toolbar specific -->

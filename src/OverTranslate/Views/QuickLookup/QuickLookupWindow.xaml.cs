@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -292,6 +292,7 @@ public partial class QuickLookupWindow : Window
     private QuickLookupWindow()
     {
         InitializeComponent();
+        BrandIcon.Source = AppIconService.CreateCompactIcon();
         _resultsCollapsed = SettingsService.Instance.Current.QuickLookup.ResultsCollapsed;
 
         _debounce = new DispatcherTimer { Interval = DebounceDelay };
