@@ -8,11 +8,35 @@
         ShowInTaskbar="False"
         IsHitTestVisible="False">
     <Grid>
+        <!-- Every layer here says it cannot be hit, and the window itself says so too. Only the
+             drawing surface below ever takes it back, and only while 標記 is on: without these the
+             bubbles — which do have backgrounds — would swallow the pointer the moment the window
+             became hit-testable, and the one place the user most wants to draw on is over a bubble. -->
+
         <!-- Translation backgrounds and text are separated so no later bubble background can cover prior text. -->
-        <Canvas x:Name="BubbleBackgroundCanvas"/>
-        <Canvas x:Name="BubbleTextCanvas"/>
+        <Canvas x:Name="BubbleBackgroundCanvas" IsHitTestVisible="False"/>
+        <Canvas x:Name="BubbleTextCanvas" IsHitTestVisible="False"/>
+
+        <!-- What a drag inside the selection is drawn onto. A rectangle rather than the canvas
+             itself, sized and placed onto the selection, because that is what confines the gesture
+             to the box: an empty Canvas is not hit-testable at all, and one given a background would
+             be hit-testable across the whole desktop. Shown only while 標記 is on. -->
+        <Canvas x:Name="AnnotationInputCanvas">
+            <Rectangle x:Name="AnnotationSurface"
+                       Fill="Transparent"
+                       Visibility="Collapsed"
+                       MouseLeftButtonDown="AnnotationSurface_MouseLeftButtonDown"
+                       MouseMove="AnnotationSurface_MouseMove"
+                       MouseLeftButtonUp="AnnotationSurface_MouseLeftButtonUp"/>
+        </Canvas>
+
+        <!-- The marks themselves, above the translation: someone annotating after a translation is
+             marking up what they can see, and half of what they can see is the bubbles. Clipped to
+             the selection — see SetAnnotationBounds. -->
+        <Canvas x:Name="AnnotationCanvas" IsHitTestVisible="False"/>
+
         <!-- Processing indicator — separate layer so it's always above bubbles -->
-        <Canvas x:Name="IndicatorCanvas">
+        <Canvas x:Name="IndicatorCanvas" IsHitTestVisible="False">
             <Border x:Name="ProcessingBorder"
                     Background="{DynamicResource AppCardBg}"
                     BorderBrush="{DynamicResource AppBorder}"
