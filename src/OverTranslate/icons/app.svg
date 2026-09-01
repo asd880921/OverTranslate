@@ -14,14 +14,44 @@
       <stop offset="0.46" stop-color="#0C1A2B"/>
       <stop offset="1" stop-color="#050B13"/>
     </linearGradient>
+    <linearGradient id="tile-rim" x1="20" y1="20" x2="492" y2="492" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#75C4D5"/>
+      <stop offset="0.18" stop-color="#477B91"/>
+      <stop offset="0.38" stop-color="#23485D"/>
+      <stop offset="0.48" stop-color="#0E202D"/>
+      <stop offset="0.52" stop-color="#091720"/>
+      <stop offset="0.64" stop-color="#1C4655"/>
+      <stop offset="0.82" stop-color="#3D8798"/>
+      <stop offset="1" stop-color="#5EBBC5"/>
+    </linearGradient>
+    <radialGradient id="tile-crown" cx="0" cy="0" r="1" gradientTransform="translate(256 24) rotate(90) scale(190 330)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9DECF2" stop-opacity="0.1"/>
+      <stop offset="0.42" stop-color="#4CA4B8" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#1D5C72" stop-opacity="0"/>
+    </radialGradient>
     <linearGradient id="panel" x1="152" y1="124" x2="446" y2="454" gradientUnits="userSpaceOnUse">
       <stop stop-color="#10243A"/>
       <stop offset="1" stop-color="#050C15"/>
     </linearGradient>
-    <linearGradient id="accent" x1="152" y1="128" x2="448" y2="446" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#8AFAFF"/>
-      <stop offset="0.5" stop-color="#49E7F2"/>
-      <stop offset="1" stop-color="#20C6DE"/>
+    <linearGradient id="panel-rim" x1="138" y1="120" x2="464" y2="458" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A6FCFF"/>
+      <stop offset="0.16" stop-color="#62EFF6"/>
+      <stop offset="0.34" stop-color="#29AABD"/>
+      <stop offset="0.47" stop-color="#176278"/>
+      <stop offset="0.53" stop-color="#104A60"/>
+      <stop offset="0.66" stop-color="#2296A9"/>
+      <stop offset="0.84" stop-color="#4CE0E8"/>
+      <stop offset="1" stop-color="#91F9FC"/>
+    </linearGradient>
+    <linearGradient id="rear-panel-rim" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#2A4563"/>
+      <stop offset="0.16" stop-color="#2A4563"/>
+      <stop offset="0.34" stop-color="#20374D"/>
+      <stop offset="0.47" stop-color="#152A3C"/>
+      <stop offset="0.53" stop-color="#102333"/>
+      <stop offset="0.66" stop-color="#1D3448"/>
+      <stop offset="0.84" stop-color="#29445E"/>
+      <stop offset="1" stop-color="#2A4563"/>
     </linearGradient>
     <linearGradient id="mark-o" x1="192" y1="168" x2="310" y2="334" gradientUnits="userSpaceOnUse">
       <stop stop-color="#82F7FC"/>
@@ -68,11 +98,12 @@
   </defs>
   <g mask="url(#tile-mask)">
     <rect width="512" height="512" fill="url(#tile)"/>
+    <rect width="512" height="260" fill="url(#tile-crown)"/>
     <circle cx="410" cy="78" r="204" fill="url(#ambient)"/>
+    <rect x="20.5" y="20.5" width="471" height="471" rx="111.5" fill="none" stroke="url(#tile-rim)" stroke-width="10" aria-hidden="true"/>
   </g>
-  <rect x="23" y="23" width="466" height="466" rx="109" fill="none" stroke="#31506F" stroke-width="3" stroke-opacity="0.92"/>
-  <g aria-hidden="true" transform="matrix(1, 0, 0, 1, -17.012491, -32.129486)">
-    <rect x="68" y="98" width="286" height="306" rx="52" fill="#12243A" stroke="#2A4563" stroke-width="4"/>
+  <g aria-hidden="true" transform="matrix(1, 0, 0, 1, -16.012491, -32.129486)">
+    <rect x="68" y="98" width="286" height="306" rx="52" fill="#12243A" stroke="url(#rear-panel-rim)" stroke-width="4"/>
     <path d="M70 158H352" stroke="#2A4563" stroke-width="4"/>
     <circle cx="102" cy="128" r="8" fill="#4A6483"/>
     <circle cx="128" cy="128" r="8" fill="#4A6483"/>
@@ -81,9 +112,9 @@
     <rect x="98" y="220" width="184" height="14" rx="7" fill="#405570"/>
     <rect x="98" y="250" width="152" height="14" rx="7" fill="#344861"/>
   </g>
-  <g style="" transform="matrix(1.043643, 0, 0, 1.043643, -27.720106, -20.15337)">
+  <g style="" transform="matrix(1.020553, 0, 0, 1.020553, -23.533693, -16.382576)">
     <g filter="url(#panel-shadow)">
-      <rect x="138" y="120" width="326" height="338" rx="62" fill="url(#panel)" stroke="url(#accent)" stroke-width="8"/>
+      <rect x="138" y="120" width="326" height="338" rx="62" fill="url(#panel)" stroke="url(#panel-rim)" stroke-width="8"/>
     </g>
     <rect x="149" y="131" width="304" height="316" rx="51" fill="none" stroke="#2C7890" stroke-width="2" opacity="0.5"/>
     <g id="ot-mark" filter="url(#mark-shadow)" aria-hidden="true">
