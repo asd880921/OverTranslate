@@ -28,6 +28,7 @@ public partial class ToolbarWindow : Window
 
     public event EventHandler<TranslateRequest>? TranslateRequested;
     public event EventHandler? OpenWindowRequested;
+    public event EventHandler<CopyTextRequest>? CopyTextRequested;
     public event EventHandler? CopyScreenshotRequested;
     public event EventHandler? CloseAllRequested;
     public event EventHandler<bool>? BubblesVisibilityChanged;
@@ -307,7 +308,14 @@ public partial class ToolbarWindow : Window
         ToggleGlyph.Text = _bubblesVisible ? RevealGlyph : HideGlyph;
         ToggleLabel.Text = LocalizationService.Get(
             _bubblesVisible ? "S.Toolbar.ShowSource" : "S.Toolbar.ShowTranslation");
+        RenderCopyTextButton();
     }
+
+    private void CopyTextBtn_Click(object sender, RoutedEventArgs e)
+        => CopyTextRequested?.Invoke(this, new CopyTextRequest(
+            ResolveCopyTextKind(_hasTranslated, _bubblesVisible),
+            CurrentSourceLang,
+            IsVerticalText));
 
     private void CopyShotBtn_Click(object sender, RoutedEventArgs e)
         => CopyScreenshotRequested?.Invoke(this, EventArgs.Empty);
@@ -322,18 +330,25 @@ public partial class ToolbarWindow : Window
     }
 
     public void SetBusy(bool busy)
+        => SetBusy(busy, "S.Toolbar.Translating");
+
+    public void SetRecognitionBusy(bool busy)
+        => SetBusy(busy, "S.Toolbar.Recognising");
+
+    private void SetBusy(bool busy, string busyLabelKey)
     {
         _isBusy = busy;
         if (busy) HideEngineBadge(); // stale badge shouldn't linger while the next batch runs
         TranslateBtn.IsEnabled = !busy;
         TranslateLabel.Text = LocalizationService.Get(
-            busy ? "S.Toolbar.Translating"
+            busy ? busyLabelKey
                  : _hasTranslated ? "S.Toolbar.Retranslate" : "S.Toolbar.Translate");
         ToggleBtn.IsEnabled = !_isBusy && _toggleEnabled;
+        CopyTextBtn.IsEnabled = !busy;
         OpenWindowBtn.IsEnabled = !_isBusy;
     }
 
-    /// <summary>Whether recognition has produced any text for the speak button to read.</summary>
+    /// <summary>Whether there is text from a translated selection for the speak button to read.</summary>
     public void SetSpeakableText(bool hasText)
     {
         _hasSpeakableText = hasText;
@@ -358,8 +373,9 @@ public partial class ToolbarWindow : Window
     /// controls away was the cause. Recognition can run on 自動 because it is choosing between
     /// three scripts it can see; a voice has nothing to look at.</para>
     ///
-    /// <para>Also off until recognition has produced something, because until then it is a button
-    /// whose whole action is to do nothing.</para>
+    /// <para>Also off until a translation is on screen. Recognition alone is not enough: 複製文字
+    /// recognises too and hands the box back afterwards, so the text it produced can already be
+    /// describing a region the user has since redrawn.</para>
     ///
     /// <para>Not switched off while a translation is in flight, unlike everything else on this bar:
     /// the text being read is the one already recognised, the new batch does not touch it, and the
@@ -395,10 +411,29 @@ public partial class ToolbarWindow : Window
     public void SetTranslationState(bool hasTranslated)
     {
         _hasTranslated = hasTranslated;
+        RenderCopyTextButton();
         if (!_isBusy)
             TranslateLabel.Text = LocalizationService.Get(
                 hasTranslated ? "S.Toolbar.Retranslate" : "S.Toolbar.Translate");
     }
+
+    private void RenderCopyTextButton()
+    {
+        bool copiesTranslation =
+            ResolveCopyTextKind(_hasTranslated, _bubblesVisible) == CopyTextKind.Translation;
+
+        CopyTextLabel.Text = LocalizationService.Get(
+            copiesTranslation
+                ? "S.Toolbar.CopyTranslation"
+                : "S.Toolbar.CopyText");
+        CopySourceMark.Visibility = copiesTranslation ? Visibility.Collapsed : Visibility.Visible;
+        CopyTranslationMark.Visibility = copiesTranslation ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    internal static CopyTextKind ResolveCopyTextKind(bool hasTranslated, bool bubblesVisible) =>
+        !hasTranslated
+            ? CopyTextKind.RecognizeSource
+            : bubblesVisible ? CopyTextKind.Translation : CopyTextKind.Source;
 
     /// <summary>
     /// Shows a subtle amber badge naming the engine that actually served the batch — but only when a
@@ -522,3 +557,12 @@ public partial class ToolbarWindow : Window
 }
 
 public record TranslateRequest(string SourceLang, string TargetLang, bool IsVerticalText);
+
+public record CopyTextRequest(CopyTextKind Kind, string SourceLang, bool IsVerticalText);
+
+public enum CopyTextKind
+{
+    RecognizeSource,
+    Source,
+    Translation,
+}

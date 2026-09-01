@@ -156,9 +156,12 @@ Translation failed: {1}</sys:String>
     <!-- ── Capture toolbar ── -->
     <sys:String x:Key="S.Toolbar.Translate">Translate</sys:String>
     <sys:String x:Key="S.Toolbar.Translating">Translating...</sys:String>
+    <sys:String x:Key="S.Toolbar.Recognising">Reading...</sys:String>
     <sys:String x:Key="S.Toolbar.Retranslate">Translate again</sys:String>
     <sys:String x:Key="S.Toolbar.ShowSource">Show source</sys:String>
     <sys:String x:Key="S.Toolbar.ShowTranslation">Show translation</sys:String>
+    <sys:String x:Key="S.Toolbar.CopyText">Copy text</sys:String>
+    <sys:String x:Key="S.Toolbar.CopyTranslation">Copy translation</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">Screenshot</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">Window</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">Open this translation in a window</sys:String>
@@ -210,12 +213,15 @@ Switch to a different source and try again.
 Details: {0}</sys:String>
     <sys:String x:Key="S.Main.CopiedTitle">Copied</sys:String>
     <sys:String x:Key="S.Main.CopiedBody">The selected area was copied to the clipboard.</sys:String>
+    <sys:String x:Key="S.Main.TextCopiedBody">The recognized text was copied to the clipboard.</sys:String>
+    <sys:String x:Key="S.Main.TranslationCopiedBody">The translation was copied to the clipboard.</sys:String>
     <sys:String x:Key="S.Main.CopiedAndSavedBody">Copied to the clipboard and saved to:
 {0}</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedTitle">Copied (not saved)</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">Copied to the clipboard, but could not be saved: {0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">Copy failed</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">Could not copy the screenshot: {0}</sys:String>
+    <sys:String x:Key="S.Main.CopyTextFailedBody">The clipboard is unavailable right now. Try again in a moment.</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedTitle">Could not read aloud</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedBody">This text could not be read aloud: {0}</sys:String>
 

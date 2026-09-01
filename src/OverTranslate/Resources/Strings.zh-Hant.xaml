@@ -160,9 +160,12 @@
     <!-- ── Capture toolbar ── -->
     <sys:String x:Key="S.Toolbar.Translate">翻譯</sys:String>
     <sys:String x:Key="S.Toolbar.Translating">翻譯中...</sys:String>
+    <sys:String x:Key="S.Toolbar.Recognising">辨識中...</sys:String>
     <sys:String x:Key="S.Toolbar.Retranslate">重新翻譯</sys:String>
     <sys:String x:Key="S.Toolbar.ShowSource">顯示原文</sys:String>
     <sys:String x:Key="S.Toolbar.ShowTranslation">顯示譯文</sys:String>
+    <sys:String x:Key="S.Toolbar.CopyText">複製文字</sys:String>
+    <sys:String x:Key="S.Toolbar.CopyTranslation">複製譯文</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">截圖</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">翻譯視窗</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">在視窗中開啟這次的翻譯結果</sys:String>
@@ -217,12 +220,15 @@
 詳細資訊：{0}</sys:String>
     <sys:String x:Key="S.Main.CopiedTitle">已複製</sys:String>
     <sys:String x:Key="S.Main.CopiedBody">已將框選截圖複製到剪貼簿。</sys:String>
+    <sys:String x:Key="S.Main.TextCopiedBody">已將辨識文字複製到剪貼簿。</sys:String>
+    <sys:String x:Key="S.Main.TranslationCopiedBody">已將譯文複製到剪貼簿。</sys:String>
     <sys:String x:Key="S.Main.CopiedAndSavedBody">已複製到剪貼簿，並儲存至：
 {0}</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedTitle">已複製（儲存失敗）</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">已複製到剪貼簿，但無法儲存到本機：{0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">複製失敗</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">無法複製截圖：{0}</sys:String>
+    <sys:String x:Key="S.Main.CopyTextFailedBody">剪貼簿目前無法使用，請稍後再試。</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedTitle">朗讀失敗</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedBody">無法朗讀這段文字：{0}</sys:String>
 

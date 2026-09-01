@@ -682,6 +682,7 @@ public partial class MainWindow : Window
         toolbar.Owner = captureWindow;
         toolbar.TranslateRequested      += OnTranslateRequested;
         toolbar.OpenWindowRequested     += OnOpenWindowRequested;
+        toolbar.CopyTextRequested       += OnCopyTextRequested;
         toolbar.CopyScreenshotRequested += OnCopyScreenshotRequested;
         toolbar.CloseAllRequested       += (_, _) => CloseAll();
         toolbar.BubblesVisibilityChanged += (_, visible) => _overlayWindow?.SetBubblesVisible(visible);
@@ -774,9 +775,15 @@ public partial class MainWindow : Window
 
         requestToolbar?.SetBusy(true);
 
+        // Whether the frame may still be handed back: this run is what locked it, and recognition —
+        // the one stage a redrawn box would fix — has not got past finding text yet. Cleared the
+        // moment there is text to translate, because from there the box is settled for good: the
+        // bubbles are laid out against it, so it must not move under them even if the engine fails.
+        bool frameStillRestorable = false;
+
         try
         {
-            if (requestCaptureWindow == null || !requestCaptureWindow.PrepareForTranslation())
+            if (requestCaptureWindow == null || !requestCaptureWindow.PrepareForProcessing(out frameStillRestorable))
             {
                 ShowBalloon(
                     LocalizationService.Get("S.Main.RecogniseFailedTitle"),
@@ -817,11 +824,14 @@ public partial class MainWindow : Window
             if (_lastOcrBlocks.Count == 0)
             {
                 requestToolbar?.SetTranslationState(false);
+                if (frameStillRestorable) requestCaptureWindow.RestoreSelectionEditing();
                 ShowBalloon(
                     LocalizationService.Get("S.Main.NoTextTitle"),
                     LocalizationService.Get("S.Main.NoTextBody"), selRect, ToastKind.Info);
                 return;
             }
+
+            frameStillRestorable = false;
 
             _overlayWindow?.ShowProcessing(
                 _lastSelPhysLeft,
@@ -904,6 +914,7 @@ public partial class MainWindow : Window
                 return;
 
             requestToolbar?.SetTranslationState(false);
+            if (frameStillRestorable) requestCaptureWindow?.RestoreSelectionEditing();
             ShowBalloon(
                 LocalizationService.Get("S.Main.NoTextTitle"),
                 LocalizationService.Get("S.Main.NoTextBody"), selRect, ToastKind.Info);
@@ -937,10 +948,12 @@ public partial class MainWindow : Window
             {
                 _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
 
-                // Here rather than on the success path: recognition is what produces the text to
-                // read, and it has run by the time translation fails or finds nothing to translate.
-                // A run that failed at the engine still leaves the original on screen and readable.
-                requestToolbar?.SetSpeakableText(SourceTextForSpeech().Length > 0);
+                // Tied to a translation being on screen, not merely to recognition having run: the
+                // 複製文字 button also recognises, and the box stays editable after it, so text on
+                // its own is no promise that what would be read still matches the selection. A
+                // re-translate that fails keeps the button, because its bubbles are still up.
+                requestToolbar?.SetSpeakableText(
+                    _lastColoredBlocks.Count > 0 && SourceTextForSpeech().Length > 0);
                 requestToolbar?.SetBusy(false);
             }
         }
@@ -950,6 +963,143 @@ public partial class MainWindow : Window
     // fresh GDI+ bitmap and copies the pixels, so the copy stays valid after the source is disposed.
     private static Bitmap ClonePixels(Bitmap source) =>
         source.Clone(new Rectangle(0, 0, source.Width, source.Height), source.PixelFormat);
+
+    private async void OnCopyTextRequested(object? sender, CopyTextRequest req)
+    {
+        var requestToolbar = sender as ToolbarWindow;
+        var requestCaptureWindow = _captureWindow;
+        var requestSessionId = _selectionSessionId;
+        var cancellationToken = _sessionCts?.Token ?? CancellationToken.None;
+        var selRect = CurrentSelectionRect();
+
+        if (req.Kind != CopyTextKind.RecognizeSource)
+        {
+            try
+            {
+                var cachedText = req.Kind == CopyTextKind.Translation
+                    ? JoinWithoutLineBreaks(_lastColoredBlocks.Select(block => block.TranslatedText))
+                    : JoinWithoutLineBreaks(_lastOcrBlocks.Select(block => block.Text));
+                CopyCaptureText(cachedText, req.Kind, selRect);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Copy cached capture text failed (kind={Kind})", req.Kind);
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.CopyFailedTitle"),
+                    LocalizationService.Get("S.Main.CopyTextFailedBody"), selRect);
+            }
+            return;
+        }
+
+        requestToolbar?.SetRecognitionBusy(true);
+
+        // Copying text needs the region held still while it is read, nothing more, so the frame goes
+        // back to the user afterwards — but only if this is what locked it. A frame already locked
+        // by a translation belongs to that translation and stays put.
+        bool frameLockedByThisCopy = false;
+
+        try
+        {
+            if (requestCaptureWindow == null || !requestCaptureWindow.PrepareForProcessing(out frameLockedByThisCopy))
+            {
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.RecogniseFailedTitle"),
+                    LocalizationService.Get("S.Main.NoImageBody"), selRect);
+                return;
+            }
+
+            _lastSelPhysLeft   = requestCaptureWindow.Selection.Left;
+            _lastSelPhysTop    = requestCaptureWindow.Selection.Top;
+            _lastSelPhysWidth  = requestCaptureWindow.Selection.Width;
+            _lastSelPhysHeight = requestCaptureWindow.Selection.Height;
+            selRect = requestCaptureWindow.Selection;
+
+            using var workBitmap = ClonePixels(requestCaptureWindow.CroppedBitmap!);
+            _overlayWindow?.ShowProcessing(
+                _lastSelPhysLeft,
+                _lastSelPhysTop,
+                _lastSelPhysWidth,
+                _lastSelPhysHeight,
+                LocalizationService.Get("S.Main.Recognising"));
+
+            var recognizedBlocks = await AppServices.Ocr.RecognizeAsync(
+                workBitmap,
+                req.SourceLang,
+                cancellationToken,
+                req.IsVerticalText);
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
+
+            _lastOcrBlocks = recognizedBlocks;
+            if (_lastOcrBlocks.Count == 0)
+            {
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.NoTextTitle"),
+                    LocalizationService.Get("S.Main.NoTextBody"), selRect, ToastKind.Info);
+                return;
+            }
+
+            CopyCaptureText(
+                JoinWithoutLineBreaks(_lastOcrBlocks.Select(block => block.Text)),
+                CopyTextKind.Source,
+                selRect);
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Debug("Copy text request abandoned — capture session ended");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Copy text request failed (src={Src}, selection={Sel})", req.SourceLang, selRect);
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
+
+            ShowBalloon(
+                LocalizationService.Get("S.Main.CopyFailedTitle"),
+                LocalizationService.Get("S.Main.CopyTextFailedBody"), selRect);
+        }
+        finally
+        {
+            if (IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+            {
+                _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
+                if (frameLockedByThisCopy) requestCaptureWindow?.RestoreSelectionEditing();
+                requestToolbar?.SetRecognitionBusy(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Puts one side of the capture on the clipboard and says which side it was.
+    /// </summary>
+    /// <param name="text">The recognised original or the translation, already joined into one line</param>
+    /// <param name="kind">Which of the two was copied, so the confirmation names the right one</param>
+    /// <param name="selRect">Selection the confirmation is positioned against</param>
+    private static void CopyCaptureText(string text, CopyTextKind kind, System.Windows.Rect selRect)
+    {
+        var payload = text.Trim();
+
+        // Blocks made only of whitespace get this far: they count as recognised text but leave
+        // nothing to paste, and a "已複製" over an untouched clipboard is the one thing the user
+        // cannot check without switching away.
+        if (payload.Length == 0)
+        {
+            ShowBalloon(
+                LocalizationService.Get("S.Main.NoTextTitle"),
+                LocalizationService.Get("S.Main.NoTextBody"), selRect, ToastKind.Info);
+            return;
+        }
+
+        System.Windows.Clipboard.SetText(payload);
+        ShowBalloon(
+            LocalizationService.Get("S.Main.CopiedTitle"),
+            LocalizationService.Get(
+                kind == CopyTextKind.Translation
+                    ? "S.Main.TranslationCopiedBody"
+                    : "S.Main.TextCopiedBody"),
+            selRect,
+            ToastKind.Success);
+    }
 
     // Builds the "copy screenshot" image by compositing what the user actually sees in the
     // selection — WITHOUT OverTranslate's own editing chrome. The background is the clean original
