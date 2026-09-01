@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
     private AnnotationPanelWindow? _annotationPanel; // only while 標記 is on
+    private AnnotationShortcutHook? _annotationKeys;  // likewise
 
     // Which pen 標記 has in hand. Reset by every new capture and kept nowhere else: what it is for
     // is closing the panel and reopening it inside one capture without losing the colour just
@@ -1362,6 +1363,13 @@ public partial class MainWindow : Window
         _captureWindow?.SetAnnotationHold(true);
         _overlayWindow.BeginAnnotating(panel.Tool, panel.InkColor, panel.Thickness, panel.Opacity);
 
+        // Ctrl+Z and Ctrl+Y, for as long as the panel is up. Nothing in this session takes the
+        // keyboard focus, so the two buttons on the panel are otherwise the only way to reach these.
+        _annotationKeys?.Dispose();
+        _annotationKeys = AnnotationShortcutHook.Install(
+            () => _overlayWindow?.UndoAnnotation(),
+            () => _overlayWindow?.RedoAnnotation());
+
         panel.Show();
         PlaceAnnotationPanel();
         panel.SetHistoryState(_overlayWindow.CanUndoAnnotation, _overlayWindow.CanRedoAnnotation);
@@ -1413,6 +1421,11 @@ public partial class MainWindow : Window
     /// </remarks>
     private void CloseAnnotationPanel()
     {
+        // First: this one is process-wide and swallows Ctrl+Z, so it must never outlive the mode
+        // that justifies taking it.
+        _annotationKeys?.Dispose();
+        _annotationKeys = null;
+
         _overlayWindow?.EndAnnotating();
         _captureWindow?.SetAnnotationHold(false);
 
