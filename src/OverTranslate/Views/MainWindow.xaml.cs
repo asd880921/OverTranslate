@@ -682,6 +682,7 @@ public partial class MainWindow : Window
         toolbar.Owner = captureWindow;
         toolbar.TranslateRequested      += OnTranslateRequested;
         toolbar.OpenWindowRequested     += OnOpenWindowRequested;
+        toolbar.CopyTextRequested       += OnCopyTextRequested;
         toolbar.CopyScreenshotRequested += OnCopyScreenshotRequested;
         toolbar.CloseAllRequested       += (_, _) => CloseAll();
         toolbar.BubblesVisibilityChanged += (_, visible) => _overlayWindow?.SetBubblesVisible(visible);
@@ -950,6 +951,119 @@ public partial class MainWindow : Window
     // fresh GDI+ bitmap and copies the pixels, so the copy stays valid after the source is disposed.
     private static Bitmap ClonePixels(Bitmap source) =>
         source.Clone(new Rectangle(0, 0, source.Width, source.Height), source.PixelFormat);
+
+    private async void OnCopyTextRequested(object? sender, CopyTextRequest req)
+    {
+        var requestToolbar = sender as ToolbarWindow;
+        var requestCaptureWindow = _captureWindow;
+        var requestSessionId = _selectionSessionId;
+        var cancellationToken = _sessionCts?.Token ?? CancellationToken.None;
+        var selRect = CurrentSelectionRect();
+
+        if (req.Kind != CopyTextKind.RecognizeSource)
+        {
+            try
+            {
+                var cachedText = req.Kind == CopyTextKind.Translation
+                    ? JoinWithoutLineBreaks(_lastColoredBlocks.Select(block => block.TranslatedText))
+                    : JoinWithoutLineBreaks(_lastOcrBlocks.Select(block => block.Text));
+                CopyCaptureText(cachedText, req.Kind, selRect);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Copy cached capture text failed (kind={Kind})", req.Kind);
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.CopyFailedTitle"),
+                    LocalizationService.Format("S.Main.CopyTextFailedBody", ex.Message), selRect);
+            }
+            return;
+        }
+
+        requestToolbar?.SetRecognitionBusy(true);
+        try
+        {
+            if (requestCaptureWindow == null || !requestCaptureWindow.PrepareForRecognition())
+            {
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.RecogniseFailedTitle"),
+                    LocalizationService.Get("S.Main.NoImageBody"), selRect);
+                return;
+            }
+
+            _lastSelPhysLeft   = requestCaptureWindow.Selection.Left;
+            _lastSelPhysTop    = requestCaptureWindow.Selection.Top;
+            _lastSelPhysWidth  = requestCaptureWindow.Selection.Width;
+            _lastSelPhysHeight = requestCaptureWindow.Selection.Height;
+            selRect = requestCaptureWindow.Selection;
+
+            using var workBitmap = ClonePixels(requestCaptureWindow.CroppedBitmap!);
+            _overlayWindow?.ShowProcessing(
+                _lastSelPhysLeft,
+                _lastSelPhysTop,
+                _lastSelPhysWidth,
+                _lastSelPhysHeight,
+                LocalizationService.Get("S.Main.Recognising"));
+
+            var recognizedBlocks = await AppServices.Ocr.RecognizeAsync(
+                workBitmap,
+                req.SourceLang,
+                cancellationToken,
+                req.IsVerticalText);
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
+
+            _lastOcrBlocks = recognizedBlocks;
+            if (_lastOcrBlocks.Count == 0)
+            {
+                ShowBalloon(
+                    LocalizationService.Get("S.Main.NoTextTitle"),
+                    LocalizationService.Get("S.Main.NoTextBody"), selRect, ToastKind.Info);
+                return;
+            }
+
+            CopyCaptureText(
+                JoinWithoutLineBreaks(_lastOcrBlocks.Select(block => block.Text)),
+                CopyTextKind.Source,
+                selRect);
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Debug("Copy text request abandoned — capture session ended");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Copy text request failed (src={Src}, selection={Sel})", req.SourceLang, selRect);
+            if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+                return;
+
+            ShowBalloon(
+                LocalizationService.Get("S.Main.CopyFailedTitle"),
+                LocalizationService.Format("S.Main.CopyTextFailedBody", ex.Message), selRect);
+        }
+        finally
+        {
+            if (IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
+            {
+                _overlayWindow?.RestoreIdle(_lastColoredBlocks.Count > 0);
+                requestCaptureWindow?.RestoreSelectionEditing();
+                requestToolbar?.SetSpeakableText(SourceTextForSpeech().Length > 0);
+                requestToolbar?.SetRecognitionBusy(false);
+            }
+        }
+    }
+
+    private static void CopyCaptureText(string text, CopyTextKind kind, System.Windows.Rect selRect)
+    {
+        System.Windows.Clipboard.SetText(text.Trim());
+        ShowBalloon(
+            LocalizationService.Get("S.Main.CopiedTitle"),
+            LocalizationService.Get(
+                kind == CopyTextKind.Translation
+                    ? "S.Main.TranslationCopiedBody"
+                    : "S.Main.TextCopiedBody"),
+            selRect,
+            ToastKind.Success);
+    }
 
     // Builds the "copy screenshot" image by compositing what the user actually sees in the
     // selection — WITHOUT OverTranslate's own editing chrome. The background is the clean original

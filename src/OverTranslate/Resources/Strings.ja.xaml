@@ -157,9 +157,12 @@
     <!-- ── Capture toolbar ── -->
     <sys:String x:Key="S.Toolbar.Translate">翻訳</sys:String>
     <sys:String x:Key="S.Toolbar.Translating">翻訳中...</sys:String>
+    <sys:String x:Key="S.Toolbar.Recognising">認識中...</sys:String>
     <sys:String x:Key="S.Toolbar.Retranslate">もう一度翻訳</sys:String>
     <sys:String x:Key="S.Toolbar.ShowSource">原文を表示</sys:String>
     <sys:String x:Key="S.Toolbar.ShowTranslation">訳文を表示</sys:String>
+    <sys:String x:Key="S.Toolbar.CopyText">テキストをコピー</sys:String>
+    <sys:String x:Key="S.Toolbar.CopyTranslation">訳文をコピー</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">スクリーンショット</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">ウィンドウ</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">この翻訳結果をウィンドウで開く</sys:String>
@@ -211,12 +214,15 @@
 詳細：{0}</sys:String>
     <sys:String x:Key="S.Main.CopiedTitle">コピーしました</sys:String>
     <sys:String x:Key="S.Main.CopiedBody">選択範囲のスクリーンショットをクリップボードにコピーしました。</sys:String>
+    <sys:String x:Key="S.Main.TextCopiedBody">認識したテキストをクリップボードにコピーしました。</sys:String>
+    <sys:String x:Key="S.Main.TranslationCopiedBody">訳文をクリップボードにコピーしました。</sys:String>
     <sys:String x:Key="S.Main.CopiedAndSavedBody">クリップボードにコピーし、次の場所に保存しました：
 {0}</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedTitle">コピーしました（保存は失敗）</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">クリップボードにコピーしましたが、保存できませんでした：{0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">コピーに失敗しました</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">スクリーンショットをコピーできませんでした：{0}</sys:String>
+    <sys:String x:Key="S.Main.CopyTextFailedBody">テキストをコピーできませんでした：{0}</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedTitle">読み上げに失敗しました</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedBody">このテキストは読み上げられませんでした：{0}</sys:String>
 

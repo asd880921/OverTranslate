@@ -252,6 +252,21 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- Copy the text currently represented by the selection. Before translation
+                         this recognises the selection; afterwards it follows the source/translation
+                         toggle and uses the result already held by the session. -->
+                    <Button x:Name="CopyTextBtn"
+                            Style="{StaticResource ToolbarStackButton}"
+                            Click="CopyTextBtn_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8C8;"
+                                       Style="{StaticResource ToolbarActionGlyph}"/>
+                            <TextBlock x:Name="CopyTextLabel"
+                                       VerticalAlignment="Center"
+                                       Text="{DynamicResource S.Toolbar.CopyText}"/>
+                        </StackPanel>
+                    </Button>
+
                     <!-- Copy current selection screenshot to clipboard -->
                     <Button x:Name="CopyShotBtn"
                             Style="{StaticResource ToolbarStackButton}"

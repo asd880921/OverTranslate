@@ -239,6 +239,12 @@ public partial class ScreenCaptureWindow : Window
     }
 
     public bool PrepareForTranslation()
+        => PrepareForProcessing();
+
+    public bool PrepareForRecognition()
+        => PrepareForProcessing();
+
+    private bool PrepareForProcessing()
     {
         if (!_hasSelection) return false;
 
@@ -251,6 +257,20 @@ public partial class ScreenCaptureWindow : Window
         _processingStarted = true;
         SwitchToBackgroundMode();
         return true;
+    }
+
+    /// <summary>
+    /// Restores the selection frame after a recognition-only action temporarily locked it.
+    /// </summary>
+    public void RestoreSelectionEditing()
+    {
+        if (!_processingStarted) return;
+
+        _processingStarted = false;
+        _inBackgroundMode = false;
+        _hwndSource?.RemoveHook(WndProc);
+        Cursor = LoadCrosshairCursor();
+        UpdateSelectionVisuals();
     }
 
     // Returns a clean crop of the ORIGINAL capture for the current selection, as a frozen

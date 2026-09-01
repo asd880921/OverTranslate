@@ -157,9 +157,12 @@
     <!-- ── Capture toolbar ── -->
     <sys:String x:Key="S.Toolbar.Translate">번역</sys:String>
     <sys:String x:Key="S.Toolbar.Translating">번역 중...</sys:String>
+    <sys:String x:Key="S.Toolbar.Recognising">인식 중...</sys:String>
     <sys:String x:Key="S.Toolbar.Retranslate">다시 번역</sys:String>
     <sys:String x:Key="S.Toolbar.ShowSource">원문 보기</sys:String>
     <sys:String x:Key="S.Toolbar.ShowTranslation">번역문 보기</sys:String>
+    <sys:String x:Key="S.Toolbar.CopyText">텍스트 복사</sys:String>
+    <sys:String x:Key="S.Toolbar.CopyTranslation">번역문 복사</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">스크린샷</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">창으로 열기</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">이번 번역 결과를 창에서 열기</sys:String>
@@ -211,12 +214,15 @@
 자세히: {0}</sys:String>
     <sys:String x:Key="S.Main.CopiedTitle">복사됨</sys:String>
     <sys:String x:Key="S.Main.CopiedBody">선택한 영역의 스크린샷을 클립보드에 복사했습니다.</sys:String>
+    <sys:String x:Key="S.Main.TextCopiedBody">인식한 텍스트를 클립보드에 복사했습니다.</sys:String>
+    <sys:String x:Key="S.Main.TranslationCopiedBody">번역문을 클립보드에 복사했습니다.</sys:String>
     <sys:String x:Key="S.Main.CopiedAndSavedBody">클립보드에 복사하고 다음 위치에 저장했습니다:
 {0}</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedTitle">복사됨(저장 실패)</sys:String>
     <sys:String x:Key="S.Main.CopiedSaveFailedBody">클립보드에 복사했지만 저장하지 못했습니다: {0}</sys:String>
     <sys:String x:Key="S.Main.CopyFailedTitle">복사 실패</sys:String>
     <sys:String x:Key="S.Main.CopyFailedBody">스크린샷을 복사하지 못했습니다: {0}</sys:String>
+    <sys:String x:Key="S.Main.CopyTextFailedBody">텍스트를 복사하지 못했습니다: {0}</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedTitle">읽어 주지 못했습니다</sys:String>
     <sys:String x:Key="S.Main.SpeakFailedBody">이 텍스트는 읽어 줄 수 없습니다: {0}</sys:String>
 
