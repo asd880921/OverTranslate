@@ -292,7 +292,6 @@ public partial class QuickLookupWindow : Window
     private QuickLookupWindow()
     {
         InitializeComponent();
-        BrandIcon.Source = AppIconService.CreateCompactIcon();
         _resultsCollapsed = SettingsService.Instance.Current.QuickLookup.ResultsCollapsed;
 
         _debounce = new DispatcherTimer { Interval = DebounceDelay };

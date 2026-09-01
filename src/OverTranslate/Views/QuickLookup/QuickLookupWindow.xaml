@@ -251,14 +251,6 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- The compact icon keeps the OT mark legible here without carrying the
-                             secondary window that belongs to the full application icon. -->
-                        <Image x:Name="BrandIcon"
-                               Width="28" Height="28"
-                               Margin="2,0,4,0"
-                               VerticalAlignment="Center"
-                               RenderOptions.BitmapScalingMode="HighQuality"/>
-
                         <!-- Always present because this changes how the result is presented, not
                              whether the feature is enabled. It sits beside the input whose result
                              it controls; the glyph shows the available action. -->

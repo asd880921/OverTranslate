@@ -69,20 +69,6 @@ public class QuickLookupWindowMarkupTests
         Assert.Equal("0", (string?)toggle.Parent?.Attribute("Grid.Column"));
     }
 
-    /// <summary>The compact product mark stays legible in the popup's small header.</summary>
-    [Fact]
-    public void The_header_uses_a_compact_high_quality_product_icon()
-    {
-        var icon = Window()
-            .Descendants()
-            .Single(e => (string?)e.Attribute(X + "Name") == "BrandIcon");
-
-        Assert.Equal("Image", icon.Name.LocalName);
-        Assert.Equal("28", (string?)icon.Attribute("Width"));
-        Assert.Equal("28", (string?)icon.Attribute("Height"));
-        Assert.Equal("HighQuality", (string?)icon.Attribute("RenderOptions.BitmapScalingMode"));
-    }
-
     /// <summary>The compact preview wraps long translations while keeping the speech action beside them.</summary>
     [Fact]
     public void The_compact_translation_wraps_before_the_tts_action()
