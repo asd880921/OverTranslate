@@ -418,10 +418,15 @@ public partial class ToolbarWindow : Window
 
     private void RenderCopyTextButton()
     {
+        bool copiesTranslation =
+            ResolveCopyTextKind(_hasTranslated, _bubblesVisible) == CopyTextKind.Translation;
+
         CopyTextLabel.Text = LocalizationService.Get(
-            ResolveCopyTextKind(_hasTranslated, _bubblesVisible) == CopyTextKind.Translation
+            copiesTranslation
                 ? "S.Toolbar.CopyTranslation"
                 : "S.Toolbar.CopyText");
+        CopySourceMark.Visibility = copiesTranslation ? Visibility.Collapsed : Visibility.Visible;
+        CopyTranslationMark.Visibility = copiesTranslation ? Visibility.Visible : Visibility.Collapsed;
     }
 
     internal static CopyTextKind ResolveCopyTextKind(bool hasTranslated, bool bubblesVisible) =>
