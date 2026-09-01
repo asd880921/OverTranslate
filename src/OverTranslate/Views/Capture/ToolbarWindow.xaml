@@ -327,22 +327,24 @@
                                      behind. The mark matters as much as the pen does: a pen on its
                                      own is what every 編輯 button in the app already draws, and this
                                      one does not edit anything - it draws on top of what is there. -->
-                                <!-- Sharpened to a point, and the cross line is where that point
-                                     begins. The short end is the nib: put the line at the other
-                                     end instead and it reads as a cap, which is the wrong end of
-                                     the tool to be drawing attention to. -->
+                                <!-- One barrel about three and a half times as long as it is wide,
+                                     sharpened to a point at the lower left, with the cross line
+                                     where that point begins. The short end is the nib: put the
+                                     line at the other end instead and it reads as a cap, which is
+                                     the wrong end of the tool to be drawing attention to. -->
                                 <Path Style="{StaticResource ToolbarActionStroke}"
-                                      Data="M4.6,11.4 L5.16,7.44 L11.1,1.5 L14.5,4.9 L8.56,10.84 Z"/>
+                                      Data="M1.8,15.9 L3,11.15 L12.7,1.45 L16.2,4.95 L6.5,14.65 Z"/>
                                 <Path Style="{StaticResource ToolbarActionStroke}"
-                                      Data="M5.16,7.44 L8.56,10.84"/>
-                                <!-- Level, and clear of the pen above it. Drawn on the same
-                                     diagonal it was a second pen; level, it is the one thing in
-                                     the picture that is not the tool, which is what makes it read
-                                     as what the tool leaves behind. Heavier than the outlines
-                                     around it, too, because it is ink and they are edges. -->
+                                      Data="M3,11.15 L6.5,14.65"/>
+                                <!-- Level, and starting at the point itself rather than floating
+                                     below it. Drawn on the pen's own diagonal it was a second pen;
+                                     set down clear of it, it was an underline the pen happened to
+                                     be above. Leaving the nib is the only placement that says the
+                                     pen made it. Same weight as the barrel, too — at this size a
+                                     heavier line does not read as more ink, it reads as a
+                                     different drawing. -->
                                 <Path Style="{StaticResource ToolbarActionStroke}"
-                                      StrokeThickness="1.7"
-                                      Data="M3.2,15.6 H15.4"/>
+                                      Data="M1.8,15.9 H16.2"/>
                               </Grid>
                             </Grid>
                             <TextBlock Text="{DynamicResource S.Toolbar.Annotate}"/>
