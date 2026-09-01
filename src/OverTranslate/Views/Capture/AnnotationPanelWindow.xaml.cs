@@ -84,9 +84,9 @@ public partial class AnnotationPanelWindow : Window
     /// </remarks>
     private static (double Min, double Max) RangeFor(AnnotationTool tool) => tool switch
     {
-        AnnotationTool.Highlighter => (10, 34),
+        AnnotationTool.Highlighter => (9, 31),
         AnnotationTool.Eraser      => (6, 26),
-        _                          => (2, 14),
+        _                          => (2, 13),
     };
 
     private readonly List<ToggleButton> _swatches = [];
@@ -165,6 +165,11 @@ public partial class AnnotationPanelWindow : Window
     /// Puts the panel under the capture toolbar, centred on it — or above it where there is no room.
     /// </summary>
     /// <remarks>
+    /// <para>Run once, when the panel opens, and never again while it is up. Switching to 螢光筆
+    /// makes the panel wider; left alone the window keeps its left edge and sizes to its content,
+    /// so it grows rightwards, away from the tool buttons the user is pressing. Centring it again
+    /// on every change would drag that row out from under the pointer.</para>
+    ///
     /// <para>Measured against the toolbar's visible surface and this panel's own, not against either
     /// window's edges: both windows are larger than the bars they show, because each leaves a margin
     /// for its shadow to fade out in. Placing window to window would leave a gap of both margins

@@ -1384,11 +1384,16 @@ public partial class MainWindow : Window
         _overlayWindow?.SetAnnotationThickness(_annotationPanel.Thickness);
         _overlayWindow?.SetAnnotationOpacity(_annotationPanel.Opacity);
 
-        // 螢光筆 brings a control the other two do not have, so the panel is a different width in
-        // that mode and has to be re-centred. Placed again rather than pinned by one edge because
-        // the panel's home is "centred under the toolbar", and a panel that grew out of centre would
-        // stay wrong for the rest of the session.
-        PlaceAnnotationPanel();
+        // Deliberately not placed again. 螢光筆 carries a control the other two do not, so the panel
+        // is wider in that mode — and left alone it simply grows to the right, because the window
+        // keeps its left edge and sizes to its content. Re-centring it would be the tidier result on
+        // paper and much the worse one in use: the tool buttons are on the left, the user has just
+        // pressed one, and re-centring pulls the whole row out from under the pointer. The row they
+        // are working in stays put; the panel gets longer beside it.
+        //
+        // Off the right of the monitor is allowed rather than nudged back on, for the same reason:
+        // a panel that shifted left only when it was near an edge would move for reasons the user
+        // cannot see. Centred again on the next open — see OnAnnotateModeChanged.
     }
 
     private void PlaceAnnotationPanel()
