@@ -10,11 +10,11 @@ public static class AppIconService
 {
     public static System.Drawing.Icon CreateTrayIcon()
     {
-        using var stream = GetStream("icons.app.ico");
+        using var stream = GetStream("icons.app-compact.ico");
         return new System.Drawing.Icon(stream, 32, 32);
     }
 
-    public static ImageSource CreateWindowIcon()
+    public static ImageSource CreateMainIcon()
         => CreateImageSource("icons.app.ico", 256);
 
     public static ImageSource CreateCompactIcon()
