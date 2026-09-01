@@ -14,18 +14,6 @@ public partial class ToolbarWindow : Window
     private const string SpeakGlyph = Controls.TtsGlyphs.Speak;
     private const string StopGlyph = Controls.TtsGlyphs.Stop;
 
-    /// <summary>
-    /// The eye the toggle shows while the translation is on screen, and the struck-through one it
-    /// shows while the original is.
-    /// </summary>
-    /// <remarks>
-    /// Both are the action, like the label beside them: pressing the first reveals the original,
-    /// pressing the second puts it away again. A fixed eye under a label that changed was the icon
-    /// disagreeing with the word next to it every second press.
-    /// </remarks>
-    private const string RevealGlyph = "\uE890";
-    private const string HideGlyph = "\uED1A";
-
     public event EventHandler<TranslateRequest>? TranslateRequested;
     public event EventHandler? OpenWindowRequested;
     public event EventHandler<CopyTextRequest>? CopyTextRequested;
@@ -303,9 +291,15 @@ public partial class ToolbarWindow : Window
         => SpeakToggleRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Puts the toggle's icon and label on the same side of what pressing it would do.</summary>
+    /// <remarks>
+    /// The eye is the action, like the label beside it: plain while the translation is on
+    /// screen, because pressing reveals the original; struck through while the original is,
+    /// because pressing puts it away again. A fixed eye under a label that changed was the
+    /// icon disagreeing with the word next to it every second press.
+    /// </remarks>
     private void RenderToggleButton()
     {
-        ToggleGlyph.Text = _bubblesVisible ? RevealGlyph : HideGlyph;
+        ToggleHideSlash.Visibility = _bubblesVisible ? Visibility.Collapsed : Visibility.Visible;
         ToggleLabel.Text = LocalizationService.Get(
             _bubblesVisible ? "S.Toolbar.ShowSource" : "S.Toolbar.ShowTranslation");
         RenderCopyTextButton();

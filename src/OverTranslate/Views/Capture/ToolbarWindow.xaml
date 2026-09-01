@@ -148,10 +148,16 @@
                          The tray is the realtime bar's tray, for the same reason it has one: two
                          things the user chooses between are one control, not two more objects on a
                          crowded bar. -->
+                    <!-- Centred rather than stretched. A child of a horizontal StackPanel defaults
+                         to filling the panel's height, and the panel is now as tall as the stacked
+                         actions at the far end - so this tray, which holds one 26px row, was being
+                         pulled to 46 and reading as the tallest object on a bar where nothing beside
+                         it is tall. -->
                     <Border Background="{DynamicResource ToolbarGroupBg}"
                             CornerRadius="10"
                             Padding="3"
                             Margin="10,0,0,0"
+                            VerticalAlignment="Center"
                             Grid.IsSharedSizeScope="True"
                             AutomationProperties.Name="{DynamicResource S.Toolbar.Direction}">
                         <Grid>
@@ -253,9 +259,22 @@
                             Click="ToggleBtn_Click">
                         <StackPanel>
                             <Grid Style="{StaticResource ToolbarActionIcon}">
-                                <TextBlock x:Name="ToggleGlyph"
-                                           Text="&#xE890;"
-                                           Style="{StaticResource ToolbarActionGlyph}"/>
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                <!-- A whole eye, both lids. Segoe's E890 draws the upper lid and the
+                                     pupil and nothing under them, which at 16px reads as an eyebrow
+                                     over a dot rather than as an eye. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M0.9,9 C3.3,5.1 5.9,3.2 9,3.2 C12.1,3.2 14.7,5.1 17.1,9
+                                            C14.7,12.9 12.1,14.8 9,14.8 C5.9,14.8 3.3,12.9 0.9,9 Z"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M11.5,9 A2.5,2.5 0 1 1 6.5,9 A2.5,2.5 0 1 1 11.5,9 Z"/>
+                                <!-- The stroke through it, for while the original is the thing on
+                                     screen: pressing then puts it away again. -->
+                                <Path x:Name="ToggleHideSlash"
+                                      Visibility="Collapsed"
+                                      Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M2.4,15.6 L15.6,2.4"/>
+                              </Grid>
                             </Grid>
                             <TextBlock x:Name="ToggleLabel"
                                        Text="{DynamicResource S.Toolbar.ShowSource}"/>
@@ -273,24 +292,18 @@
                               <Grid Style="{StaticResource ToolbarActionDrawing}">
                                 <!-- The double-page outline stays fixed so both states still read
                                      as copy actions; only the meaning of the copied content changes. -->
-                                <Path Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.25"
-                                      StrokeLineJoin="Round"
-                                      Data="M4.5,3.5 H11.5 A1,1 0 0 1 12.5,4.5 V12.5 A1,1 0 0 1 11.5,13.5 H4.5 A1,1 0 0 1 3.5,12.5 V4.5 A1,1 0 0 1 4.5,3.5 Z M3.5,10.5 H2.5 A1,1 0 0 1 1.5,9.5 V2.5 A1,1 0 0 1 2.5,1.5 H9.5 A1,1 0 0 1 10.5,2.5 V3.5"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M6,4.7 H14.5 A1.5,1.5 0 0 1 16,6.2 V14.6 A1.5,1.5 0 0 1 14.5,16.1
+                                            H6 A1.5,1.5 0 0 1 4.5,14.6 V6.2 A1.5,1.5 0 0 1 6,4.7 Z
+                                            M4.5,13.3 H3.5 A1.5,1.5 0 0 1 2,11.8 V3.4 A1.5,1.5 0 0 1 3.5,1.9
+                                            H12 A1.5,1.5 0 0 1 13.5,3.4 V4.7"/>
                                 <Path x:Name="CopySourceMark"
-                                      Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.15"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Data="M5.75,6.25 H10.25 M5.75,8.5 H10.25 M5.75,10.75 H8.75"/>
+                                      Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M7,8.2 H13.5 M7,10.6 H13.5 M7,13 H11.4"/>
                                 <Path x:Name="CopyTranslationMark"
                                       Visibility="Collapsed"
-                                      Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.15"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round"
-                                      Data="M5.25,11.25 L8,5.5 L10.75,11.25 M6.45,8.8 H9.55"/>
+                                      Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M6.9,14 L10.25,7 L13.6,14 M8.35,11 H12.15"/>
                               </Grid>
                             </Grid>
                             <TextBlock x:Name="CopyTextLabel"
@@ -310,20 +323,26 @@
                         <StackPanel>
                             <Grid Style="{StaticResource ToolbarActionIcon}">
                               <Grid Style="{StaticResource ToolbarActionDrawing}">
-                                <!-- A pen held the way a pen is held, nib down to the left. Drawn
-                                     rather than typed: Segoe's own pencil is a filled shape, and the
-                                     icons it stands beside here are all outlines. -->
-                                <Path Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.25"
-                                      StrokeLineJoin="Round"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Data="M1.7,12.3 L2.3,9.5 L9.3,2.5 L11.5,4.7 L4.5,11.7 Z"/>
-                                <Path Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.25"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Data="M7.9,3.9 L10.1,6.1"/>
+                                <!-- A pen, nib down to the left, over the stroke it has just left
+                                     behind. The mark matters as much as the pen does: a pen on its
+                                     own is what every 編輯 button in the app already draws, and this
+                                     one does not edit anything - it draws on top of what is there. -->
+                                <!-- Cut flat at both ends, not sharpened to a point: the cross line
+                                     is where the nib begins, and a nib is the short end. Put at
+                                     the other end it stops being a nib and becomes the cap of a
+                                     pencil, which is a different tool doing a different job. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M2.9,9.7 L11.1,1.5 L14.5,4.9 L6.3,13.1 Z"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M5.16,7.44 L8.56,10.84"/>
+                                <!-- Level, and clear of the pen above it. Drawn on the same
+                                     diagonal it was a second pen; level, it is the one thing in
+                                     the picture that is not the tool, which is what makes it read
+                                     as what the tool leaves behind. Heavier than the outlines
+                                     around it, too, because it is ink and they are edges. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      StrokeThickness="1.7"
+                                      Data="M3.2,15.6 H15.4"/>
                               </Grid>
                             </Grid>
                             <TextBlock Text="{DynamicResource S.Toolbar.Annotate}"/>
@@ -343,12 +362,8 @@
                                      to tell them apart was to read the words. A cropped frame says
                                      the one thing this action does that the other does not: it takes
                                      the rectangle, not the words inside it. -->
-                                <Path Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.25"
-                                      StrokeLineJoin="Round"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Data="M4.5,1 V9.5 H13 M1,4.5 H9.5 V13"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M5.2,1.2 V12.8 H16.8 M1.2,5.2 H12.8 V16.8"/>
                               </Grid>
                             </Grid>
                             <TextBlock Text="{DynamicResource S.Toolbar.Screenshot}"/>
@@ -365,8 +380,18 @@
                             Click="OpenWindowBtn_Click">
                         <StackPanel>
                             <Grid Style="{StaticResource ToolbarActionIcon}">
-                                <TextBlock Text="&#xE8A7;"
-                                           Style="{StaticResource ToolbarActionGlyph}"/>
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                <!-- Drawn like the other four rather than typed as E8A7, so the row
+                                     is one set of strokes at one weight and one size. The glyph was
+                                     the largest mark in the row and the drawn ones the smallest,
+                                     which is the sort of difference nobody can name and everybody
+                                     sees. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M16,9.6 V14.4 A1.6,1.6 0 0 1 14.4,16 H3.6 A1.6,1.6 0 0 1 2,14.4
+                                            V3.6 A1.6,1.6 0 0 1 3.6,2 H8.4"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M9.4,8.6 L15.7,2.3 M11,2.2 H15.8 V7"/>
+                              </Grid>
                             </Grid>
                             <TextBlock Text="{DynamicResource S.Toolbar.OpenWindow}"/>
                         </StackPanel>

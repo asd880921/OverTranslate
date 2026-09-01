@@ -1532,15 +1532,32 @@
         <Setter Property="Foreground"          Value="{DynamicResource AppAccent}"/>
     </Style>
 
-    <!-- A drawn icon inside that slot: its own 14×14 canvas, centred in the 20. The paths are
-         written against that canvas in absolute coordinates and left at Path's default Stretch of
-         None — scaling a 1.25px stroke is what turns a crisp icon soft — so they need a box of
-         exactly the size they were drawn for. -->
+    <!-- The canvas every action icon is drawn on: 18×18, centred in the 20 slot. The paths are
+         written against it in absolute coordinates and left at Path's default Stretch of None —
+         scaling a 1.4px stroke is what turns a crisp icon soft — so they need a box of exactly the
+         size they were drawn for.
+
+         One canvas for all five, which is the point of it: an icon set is read as a set, and a set
+         is what a row stops being the moment one mark is a third larger than its neighbour. The
+         four typed glyphs this row used to carry could not be held to that — a font's ink fills its
+         em box by its own rules, and a shared FontSize only makes the boxes equal, not the marks
+         inside them. -->
     <Style x:Key="ToolbarActionDrawing" TargetType="Grid">
-        <Setter Property="Width"               Value="14"/>
-        <Setter Property="Height"              Value="14"/>
+        <Setter Property="Width"               Value="18"/>
+        <Setter Property="Height"              Value="18"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
         <Setter Property="VerticalAlignment"   Value="Center"/>
+    </Style>
+
+    <!-- The one pen every one of those icons is drawn with. Outlines rather than solids, and one
+         weight across the row: five marks at one thickness read as one family, and the accent is
+         carried by the strokes alone so the labels under them can stay plain text. -->
+    <Style x:Key="ToolbarActionStroke" TargetType="Path">
+        <Setter Property="Stroke"              Value="{DynamicResource AppAccent}"/>
+        <Setter Property="StrokeThickness"     Value="1.4"/>
+        <Setter Property="StrokeLineJoin"      Value="Round"/>
+        <Setter Property="StrokeStartLineCap"  Value="Round"/>
+        <Setter Property="StrokeEndLineCap"    Value="Round"/>
     </Style>
 
     <Style x:Key="ToolbarStackButton" TargetType="Button">
