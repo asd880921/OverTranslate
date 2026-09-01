@@ -24,6 +24,9 @@ public partial class ToolbarWindow : Window
     /// <summary>The speak button was pressed: start reading, or stop if already reading.</summary>
     public event EventHandler? SpeakToggleRequested;
 
+    /// <summary>標記 was switched on or off.</summary>
+    public event EventHandler<bool>? AnnotateModeChanged;
+
     /// <summary>
     /// Raised when the button that stops playback is about to stop being usable, so whoever owns the
     /// voice can stop it. Without this, switching the source language to 自動 mid-sentence would
@@ -314,15 +317,44 @@ public partial class ToolbarWindow : Window
     private void CopyShotBtn_Click(object sender, RoutedEventArgs e)
         => CopyScreenshotRequested?.Invoke(this, EventArgs.Empty);
 
-    /// <summary>The mark-up button. Present on the bar, does nothing yet.</summary>
-    /// <remarks>
-    /// The drawing surface it will open is the next piece of work; the button ships ahead of it so
-    /// the bar it sits on is laid out and measured once rather than twice. Pressing it is a no-op
-    /// on purpose — deliberately not disabled, because a greyed-out button says the action is
-    /// unavailable for a reason the user could fix, and there is no such reason here.
-    /// </remarks>
     private void AnnotateBtn_Click(object sender, RoutedEventArgs e)
+        => AnnotateModeChanged?.Invoke(this, IsAnnotating);
+
+    /// <summary>Whether 標記 is on, so a drag inside the box draws rather than moves it.</summary>
+    public bool IsAnnotating => AnnotateBtn.IsChecked == true;
+
+    /// <summary>
+    /// Switches 標記 off from outside — the session ending, or another action taking the box back.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately silent: every caller is already doing the thing the event would have told it to
+    /// do, and raising it here would have them undo their own work.
+    /// </remarks>
+    public void ExitAnnotateMode()
     {
+        if (!IsAnnotating) return;
+        AnnotateBtn.IsChecked = false;
+    }
+
+    /// <summary>
+    /// Where the 標記 button sits on screen, in physical pixels, for the panel to hang from.
+    /// </summary>
+    /// <remarks>
+    /// Read from the live visual rather than computed from the bar's width. The bar sizes itself to
+    /// labels whose length depends on the interface language and on whether the translation has run
+    /// yet, so every arithmetic version of this is a guess that is wrong in some language.
+    /// </remarks>
+    public (double CentreX, double Bottom, double Scale) AnnotateAnchor()
+    {
+        double scale = ScreenGeometry.ScaleAt(
+            (int)(_selPhysLeft + _selPhysWidth / 2), (int)(_selPhysTop + _selPhysHeight / 2));
+
+        var topLeft = AnnotateBtn.TranslatePoint(new System.Windows.Point(0, 0), this);
+        var bounds  = ScreenGeometry.PhysicalBounds(this);
+
+        return (bounds.Left + (topLeft.X + AnnotateBtn.ActualWidth / 2) * scale,
+                bounds.Bottom,
+                scale);
     }
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e)

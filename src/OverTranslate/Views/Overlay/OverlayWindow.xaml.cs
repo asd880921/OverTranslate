@@ -74,6 +74,7 @@ public partial class OverlayWindow : Window
                 _dpiY = src.CompositionTarget.TransformToDevice.M22;
             }
             _isLoaded = true;
+            ApplyAnnotationBounds();
             BuildOverlay(
                 _currentBlocks,
                 _currentSelectionScreenX,
@@ -167,27 +168,36 @@ public partial class OverlayWindow : Window
 
     public void SetBubblesVisible(bool visible) => SetTranslationLayersVisible(visible);
 
-    // Renders the translation bubble layers cropped to the given selection region (physical pixels)
-    // as a transparent overlay image, for the "copy screenshot" feature. The loading indicator is
-    // never included: while processing the bubble canvases are cleared, so the guard below returns
-    // null and only the clean original is copied. Returns null when nothing is currently shown
-    // (pre-translation, processing, or toggled to original).
-    public System.Windows.Media.Imaging.BitmapSource? RenderBubblesForSelection(
+    // Renders everything this window has laid over the capture — the translation bubbles and the
+    // marks drawn on top of them — cropped to the given selection region (physical pixels), for the
+    // "copy screenshot" feature. Returns null when there is nothing laid over it at all.
+    //
+    // The three layers are rendered one at a time rather than by rendering the window's content in
+    // one go, so that what ends up in the picture is stated here rather than inferred from what
+    // happens to be visible. The processing indicator is the reason it matters: it is a piece of
+    // chrome saying work is in progress, it is emphatically not part of the capture, and it used to
+    // be kept out only as a side effect of the bubble canvases being empty while it showed — which
+    // stopped being true the moment a mark could exist before any translation had run.
+    public System.Windows.Media.Imaging.BitmapSource? RenderOverlayForSelection(
         double selPhysLeft, double selPhysTop, int selPhysWidth, int selPhysHeight)
     {
         if (!_isLoaded) return null;
-        if (BubbleBackgroundCanvas.Visibility != Visibility.Visible) return null;
-        if (BubbleBackgroundCanvas.Children.Count == 0 && BubbleTextCanvas.Children.Count == 0)
-            return null;
+
+        bool hasBubbles = BubbleBackgroundCanvas.Visibility == Visibility.Visible
+            && (BubbleBackgroundCanvas.Children.Count > 0 || BubbleTextCanvas.Children.Count > 0);
+        bool hasMarks = AnnotationCanvas.Children.Count > 0;
+        if (!hasBubbles && !hasMarks) return null;
 
         int fullW = Math.Max(1, _physBounds.Width);
         int fullH = Math.Max(1, _physBounds.Height);
 
-        // Render the whole overlay content (both bubble layers) at physical resolution. The
-        // processing indicator is Collapsed whenever bubbles exist, so it does not appear.
+        // Every canvas fills the window from its top-left corner, so each one renders into the same
+        // bitmap at the same origin, and the calls compose in the order the layers are stacked.
         var full = new System.Windows.Media.Imaging.RenderTargetBitmap(
             fullW, fullH, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
-        full.Render((Visual)Content);
+        full.Render(BubbleBackgroundCanvas);
+        full.Render(BubbleTextCanvas);
+        full.Render(AnnotationCanvas);
 
         // The overlay window spans the whole virtual screen; the selection sits at this physical
         // offset within it.

@@ -316,8 +316,8 @@
                          take the picture. Marking before the picture is also the only order that
                          makes sense of the picture - a screenshot taken after the marks has the
                          marks in it. -->
-                    <Button x:Name="AnnotateBtn"
-                            Style="{StaticResource ToolbarStackButton}"
+                    <ToggleButton x:Name="AnnotateBtn"
+                            Style="{StaticResource ToolbarStackToggleButton}"
                             ToolTip="{DynamicResource S.Toolbar.AnnotateHint}"
                             Click="AnnotateBtn_Click">
                         <StackPanel>
@@ -353,7 +353,7 @@
                             </Grid>
                             <TextBlock Text="{DynamicResource S.Toolbar.Annotate}"/>
                         </StackPanel>
-                    </Button>
+                    </ToggleButton>
 
                     <!-- Copy current selection screenshot to clipboard -->
                     <Button x:Name="CopyShotBtn"

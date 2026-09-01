@@ -62,6 +62,7 @@ public partial class OverlayWindow
     private List<AnnotationStroke>? _eraseWorkingSet;
 
     private Rect _annotationBounds;
+    private Rect _annotationBoundsPhys;
 
     /// <summary>Raised whenever the marks, or what can be undone, changed.</summary>
     public event EventHandler? AnnotationsChanged;
@@ -82,6 +83,27 @@ public partial class OverlayWindow
     /// </remarks>
     public void SetAnnotationBounds(double selPhysLeft, double selPhysTop, double selPhysWidth, double selPhysHeight)
     {
+        _annotationBoundsPhys = new Rect(selPhysLeft, selPhysTop, selPhysWidth, selPhysHeight);
+        ApplyAnnotationBounds();
+    }
+
+    /// <summary>
+    /// Converts the remembered box into this window's own coordinates and places the clip on it.
+    /// </summary>
+    /// <remarks>
+    /// Split from the setter and run again from Loaded because the conversion needs the window's DPI,
+    /// and that is only read once the window has a presentation source. The selection is known before
+    /// then — the capture window has it the instant the drag ends — so the first call would otherwise
+    /// divide by a placeholder scale of 1 and put the box somewhere else entirely on any monitor that
+    /// is not at 100%.
+    /// </remarks>
+    private void ApplyAnnotationBounds()
+    {
+        var (selPhysLeft, selPhysTop, selPhysWidth, selPhysHeight) =
+            (_annotationBoundsPhys.X, _annotationBoundsPhys.Y,
+             _annotationBoundsPhys.Width, _annotationBoundsPhys.Height);
+        if (selPhysWidth <= 0 || selPhysHeight <= 0) return;
+
         _annotationBounds = new Rect(
             (selPhysLeft - _physBounds.Left) / _dpiX,
             (selPhysTop  - _physBounds.Top)  / _dpiY,
@@ -98,11 +120,16 @@ public partial class OverlayWindow
 
     /// <summary>Hands the pointer to the pen and shows the drawing surface.</summary>
     /// <remarks>
-    /// The window is click-through at the Win32 level for the rest of its life, which is what lets
-    /// the user work with whatever is underneath while a translation sits on top of it. Taking that
-    /// away is what makes drawing possible at all; every layer other than the surface stays
-    /// un-hittable, so a click anywhere outside the selection still finds no target and passes
-    /// through exactly as it did before.
+    /// <para>The window is click-through at the Win32 level for the rest of its life, which is what
+    /// lets the user carry on with whatever is underneath while a translation sits on top of it.
+    /// Taking that away is what makes drawing possible at all.</para>
+    ///
+    /// <para>It also means the window stops passing clicks through anywhere, not only over the
+    /// selection — its background is transparent to look at but is still a surface. That is the
+    /// intended behaviour and not a side effect worth working around: 標記 is a mode, the mode owns
+    /// the screen while it is on, and a stray click landing in the application being annotated is
+    /// precisely the accident this prevents. Nothing is trapped by it — the bar above stays live, and
+    /// so do 標記 itself, ✕ and Esc.</para>
     /// </remarks>
     public void BeginAnnotating(AnnotationTool tool, Color color, double thickness)
     {

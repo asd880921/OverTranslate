@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private OverlayWindow? _overlayWindow;
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
+    private AnnotationPanelWindow? _annotationPanel; // only while 標記 is on
     private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
     private CancellationTokenSource? _sessionCts; // cancelled on teardown so abandoned work stops
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
@@ -594,6 +595,16 @@ public partial class MainWindow : Window
                 _lastSelPhysWidth  = selection.Width;
                 _lastSelPhysHeight = selection.Height;
                 _toolbarWindow?.FollowSelection(selection);
+
+                // The marks stay where they were drawn; what moves is the window onto them. See
+                // OverlayWindow.SetAnnotationBounds for why that is the way round it is.
+                _overlayWindow?.SetAnnotationBounds(
+                    selection.Left, selection.Top, selection.Width, selection.Height);
+
+                // 標記 cannot be on while the box is being dragged — it takes the box away for
+                // exactly that reason — but the toolbar this hangs from moves with the box, and a
+                // panel that stayed put would be pointing at nothing.
+                PlaceAnnotationPanel();
             };
 
             captureWindow.Show();
@@ -676,6 +687,9 @@ public partial class MainWindow : Window
             settings.TargetLanguage,
             verticalText: false);
 
+        _overlayWindow?.SetAnnotationBounds(
+            selection.Left, selection.Top, selection.Width, selection.Height);
+
         var toolbar  = new ToolbarWindow(
             selection.Left, selection.Top, selection.Width, selection.Height,
             srcLang, settings.TargetLanguage);
@@ -688,6 +702,7 @@ public partial class MainWindow : Window
         toolbar.BubblesVisibilityChanged += (_, visible) => _overlayWindow?.SetBubblesVisible(visible);
         toolbar.SpeakToggleRequested    += OnSpeakToggleRequested;
         toolbar.SpeakStopRequested      += (_, _) => _tts.Stop();
+        toolbar.AnnotateModeChanged     += OnAnnotateModeChanged;
         _toolbarWindow = toolbar;
         toolbar.SetTranslationState(hasTranslated);
         toolbar.SetToggleEnabled(blocks.Count > 0);
@@ -742,6 +757,7 @@ public partial class MainWindow : Window
             DisposeEscapeHook();
             CancelSession();
             ToastWindow.Dismiss();
+            CloseAnnotationPanel();
             CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
             _toolbarWindow = null;
             CloseWindow(_captureWindow, w => w.Close(), nameof(ScreenCaptureWindow));
@@ -750,6 +766,9 @@ public partial class MainWindow : Window
             RestoreShellAfterCapture();
         };
         _overlayWindow.Closed += _overlayClosedHandler;
+        _overlayWindow.AnnotationsChanged += (_, _) =>
+            _annotationPanel?.SetHistoryState(
+                _overlayWindow?.CanUndoAnnotation == true, _overlayWindow?.CanRedoAnnotation == true);
         _overlayWindow.Show();
     }
 
@@ -1124,7 +1143,7 @@ public partial class MainWindow : Window
             int w = background.PixelWidth;
             int h = background.PixelHeight;
 
-            var bubbles = _overlayWindow?.RenderBubblesForSelection(
+            var bubbles = _overlayWindow?.RenderOverlayForSelection(
                 _lastSelPhysLeft, _lastSelPhysTop, w, h);
 
             System.Windows.Media.Imaging.BitmapSource result = background;
@@ -1273,6 +1292,11 @@ public partial class MainWindow : Window
         // that is click-through once processing starts, so if an earlier Close() threw we must still
         // reach it. Clearing the field first also guarantees the state never claims a window that is
         // actually gone, which would make the next hotkey press a no-op teardown.
+        // Before the overlay: closing the panel gives the pen back and takes the overlay out of
+        // click-through mode, and doing that to a window that has already gone is a needless throw
+        // on the one teardown path that must never leave a window behind.
+        CloseAnnotationPanel();
+
         CloseWindow(_overlayWindow, w => w.CloseOverlay(), nameof(OverlayWindow));
         _overlayWindow = null;
 
@@ -1285,6 +1309,92 @@ public partial class MainWindow : Window
         // Last, so a shell hidden for this capture comes back only once the screen is clear of the
         // dim layer and overlay it would otherwise be raised behind.
         RestoreShellAfterCapture();
+    }
+
+    /// <summary>
+    /// 標記 was switched on or off on the capture toolbar.
+    /// </summary>
+    /// <remarks>
+    /// Three things move together and none of them makes sense without the others: the panel of
+    /// tools appears, the overlay takes the pointer so a drag inside the box becomes a stroke, and
+    /// the box stops being draggable because that same drag used to move it. Switching off puts all
+    /// three back. The marks are not part of it — they stay on screen either way, which is what
+    /// makes this a mode for editing them rather than a mode for having them.
+    /// </remarks>
+    private void OnAnnotateModeChanged(object? sender, bool annotating)
+    {
+        if (!annotating || _overlayWindow is null || _toolbarWindow is null)
+        {
+            CloseAnnotationPanel();
+            return;
+        }
+
+        // Never two panels. Nothing reaches here twice today — the button is a toggle and the mode
+        // is switched off before anything reopens it — but a second one would be an orphan window
+        // with no way back to it. Only the window is closed, deliberately: CloseAnnotationPanel also
+        // unchecks the button, and the button is the thing that has just been pressed.
+        CloseWindow(_annotationPanel, w => w.Close(), nameof(AnnotationPanelWindow));
+        _annotationPanel = null;
+
+        var capture = SettingsService.Instance.Current.Capture;
+        var panel = new AnnotationPanelWindow(
+            capture.AnnotationTool, capture.AnnotationColor, capture.AnnotationThickness);
+        if (_captureWindow != null) panel.Owner = _captureWindow;
+        panel.SettingsChanged += (_, _) => ApplyAnnotationSettings();
+        panel.UndoRequested   += (_, _) => _overlayWindow?.UndoAnnotation();
+        panel.RedoRequested   += (_, _) => _overlayWindow?.RedoAnnotation();
+        _annotationPanel = panel;
+
+        _captureWindow?.SetAnnotationHold(true);
+        _overlayWindow.BeginAnnotating(panel.Tool, panel.InkColor, panel.Thickness);
+
+        panel.Show();
+        PlaceAnnotationPanel();
+        panel.SetHistoryState(_overlayWindow.CanUndoAnnotation, _overlayWindow.CanRedoAnnotation);
+    }
+
+    /// <summary>
+    /// Pushes what the panel now says onto the pen, and remembers it for the next capture.
+    /// </summary>
+    private void ApplyAnnotationSettings()
+    {
+        if (_annotationPanel is null) return;
+
+        _overlayWindow?.SetAnnotationTool(_annotationPanel.Tool);
+        _overlayWindow?.SetAnnotationColor(_annotationPanel.InkColor);
+        _overlayWindow?.SetAnnotationThickness(_annotationPanel.Thickness);
+
+        var settings = SettingsService.Instance.Current;
+        settings.Capture.AnnotationTool      = _annotationPanel.Tool;
+        settings.Capture.AnnotationColor     = _annotationPanel.InkColorText;
+        settings.Capture.AnnotationThickness = _annotationPanel.ThicknessFraction;
+        SettingsService.Instance.Save();
+    }
+
+    private void PlaceAnnotationPanel()
+    {
+        if (_annotationPanel is null || _toolbarWindow is null) return;
+        var (centreX, bottom, scale) = _toolbarWindow.AnnotateAnchor();
+        _annotationPanel.PlaceUnder(centreX, bottom, scale);
+    }
+
+    /// <summary>
+    /// Puts the panel away and hands the box and the pointer back.
+    /// </summary>
+    /// <remarks>
+    /// Safe to call when 標記 was never on, and called from every teardown path for that reason. The
+    /// toolbar is told last and told silently — see ToolbarWindow.ExitAnnotateMode — so that a
+    /// session ending does not come back round through this method a second time.
+    /// </remarks>
+    private void CloseAnnotationPanel()
+    {
+        _overlayWindow?.EndAnnotating();
+        _captureWindow?.SetAnnotationHold(false);
+
+        CloseWindow(_annotationPanel, w => w.Close(), nameof(AnnotationPanelWindow));
+        _annotationPanel = null;
+
+        _toolbarWindow?.ExitAnnotateMode();
     }
 
     // The hook is process-wide and swallows Esc, so it must never outlive the session that owns it.

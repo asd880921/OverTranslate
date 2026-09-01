@@ -86,6 +86,11 @@
          two. -->
     <SolidColorBrush x:Key="ToolbarDivider"    Color="#3D3D3D"/>
 
+    <!-- The hairline around a colour swatch in the 標記 palette. One neutral edge for all
+         eight, so the two that would otherwise vanish into the bar — white here, black in the
+         other theme — are the same object as the six that would not. -->
+    <SolidColorBrush x:Key="ToolbarSwatchEdge" Color="#5A5A5A"/>
+
     <!-- The primary action on a floating toolbar. Its own blue rather than AppAccent, for the one
          place the accent cannot serve: this bar is dark in the dark theme, and there AppAccent is a
          pale cyan that takes black text — correct Fluent for a filled button on a page, a bright

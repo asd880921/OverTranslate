@@ -42,6 +42,17 @@ public partial class ScreenCaptureWindow : Window
     private bool _processingStarted;
     private bool _hasSelection;
 
+    /// <summary>
+    /// Whether 標記 has the box, so its handles and its move area are out of the way.
+    /// </summary>
+    /// <remarks>
+    /// The same withdrawal a running translation causes, for the same reason and by a separate flag:
+    /// both mean the box is not the user's to rearrange right now, but they start and end
+    /// independently — a translation can finish while the pen is still in hand, and the handles must
+    /// not come back underneath it.
+    /// </remarks>
+    private bool _annotationHoldsSelection;
+
     public Rect Selection { get; private set; }
     public Bitmap? CroppedBitmap { get; private set; }
     public bool HasSelection => _hasSelection;
@@ -239,6 +250,23 @@ public partial class ScreenCaptureWindow : Window
     }
 
     /// <summary>
+    /// Hands the box to 標記, or takes it back.
+    /// </summary>
+    /// <remarks>
+    /// While the pen is in hand a drag inside the box is a stroke, so the thumb that would otherwise
+    /// read that drag as "move the whole selection" has to go — one gesture cannot mean two things.
+    /// The corner handles go with it rather than staying live: they sit on the edge, which is exactly
+    /// where someone drawing to the boundary of the box puts the pointer, and a resize triggered by
+    /// an over-run stroke is a worse outcome than having to leave the mode to resize.
+    /// </remarks>
+    public void SetAnnotationHold(bool held)
+    {
+        if (_annotationHoldsSelection == held) return;
+        _annotationHoldsSelection = held;
+        if (!_processingStarted) UpdateSelectionVisuals();
+    }
+
+    /// <summary>
     /// Crops the selection and locks the frame so the caller can work on a fixed region.
     /// </summary>
     /// <param name="lockedByThisCall">
@@ -433,7 +461,7 @@ public partial class ScreenCaptureWindow : Window
         System.Windows.Controls.Canvas.SetLeft(BottomRightHandle, _selectionWpfRect.Right - halfHandle);
         System.Windows.Controls.Canvas.SetTop(BottomRightHandle, _selectionWpfRect.Bottom - halfHandle);
 
-        SetHandlesVisibility(_hasSelection && !_processingStarted);
+        SetHandlesVisibility(_hasSelection && !_processingStarted && !_annotationHoldsSelection);
         UpdateDimLayer();
     }
 
@@ -455,7 +483,7 @@ public partial class ScreenCaptureWindow : Window
     /// </summary>
     private void SelectionBody_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        if (_processingStarted || !_hasSelection) return;
+        if (_processingStarted || _annotationHoldsSelection || !_hasSelection) return;
 
         double x = Math.Clamp(
             _selectionWpfRect.X + e.HorizontalChange, 0, Math.Max(0, ActualWidth - _selectionWpfRect.Width));
@@ -490,7 +518,7 @@ public partial class ScreenCaptureWindow : Window
 
     private void ResizeSelectionCorner(WPoint fixedPoint, WPoint movingPoint)
     {
-        if (_processingStarted || !_hasSelection) return;
+        if (_processingStarted || _annotationHoldsSelection || !_hasSelection) return;
 
         movingPoint.X = Math.Clamp(movingPoint.X, 0, ActualWidth);
         movingPoint.Y = Math.Clamp(movingPoint.Y, 0, ActualHeight);

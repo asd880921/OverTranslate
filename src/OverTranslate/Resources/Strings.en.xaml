@@ -164,6 +164,12 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Toolbar.CopyTranslation">Copy translation</sys:String>
     <sys:String x:Key="S.Toolbar.Annotate">Annotate</sys:String>
     <sys:String x:Key="S.Toolbar.AnnotateHint">Draw marks over the selection</sys:String>
+    <sys:String x:Key="S.Annotate.Pen">Pen</sys:String>
+    <sys:String x:Key="S.Annotate.Highlighter">Highlighter</sys:String>
+    <sys:String x:Key="S.Annotate.Eraser">Eraser</sys:String>
+    <sys:String x:Key="S.Annotate.Undo">Undo</sys:String>
+    <sys:String x:Key="S.Annotate.Redo">Redo</sys:String>
+    <sys:String x:Key="S.Annotate.Thickness">Size</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">Screenshot</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">Window</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">Open this translation in a window</sys:String>

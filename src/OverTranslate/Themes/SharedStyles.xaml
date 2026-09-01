@@ -1566,7 +1566,10 @@
         <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"      Value="Transparent"/>
         <Setter Property="BorderBrush"     Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
+        <!-- An edge that is there but invisible, so the one action in this row that can be
+             switched on — 標記, which shows its state as an outline — is not a hair wider than
+             the four beside it that cannot. -->
+        <Setter Property="BorderThickness" Value="1"/>
         <!-- Wide enough that a two-character name still leaves the icon above it room to breathe.
              The height is the stack's 37 — a 20 icon slot, 2 of gap and one 11px line — plus a
              margin of its own, so the surface that appears on hover reads as a button around the
@@ -1598,6 +1601,107 @@
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The same shape again for an action that is either on or off — 標記 on the capture bar, and
+         the three tools inside its panel. Checked it takes an outlined, tinted plate: the row it
+         sits in is otherwise flat, so an outline is the one thing in it that cannot be mistaken for
+         a hover. The label goes accent along with the icon, which is the only place on these bars
+         where that happens and is exactly why it reads as a state rather than as emphasis. -->
+    <Style x:Key="ToolbarStackToggleButton" TargetType="ToggleButton">
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
+        <Setter Property="FontSize"        Value="11"/>
+        <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="Transparent"/>
+        <Setter Property="MinWidth"        Value="50"/>
+        <Setter Property="Height"          Value="46"/>
+        <Setter Property="Padding"         Value="8,0"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- Hover is for the unchecked state only: over the checked plate it would be
+                             a second surface laid on the one already there. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked"   Value="False"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonPressedBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentSubtle}"/>
+                            <Setter TargetName="Root" Property="BorderBrush"
+                                    Value="{DynamicResource AppAccent}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Cursor"  Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- One colour in the 標記 palette. The mark of the chosen one is a ring drawn outside the disc,
+         not a tick laid over it: a tick has to be a colour, and any colour it could be is one of the
+         eight underneath it — white on white, black on black. A ring set off the edge stays legible
+         against every swatch because it never touches one. -->
+    <Style x:Key="AnnotationSwatchButton" TargetType="ToggleButton">
+        <Setter Property="Width"   Value="30"/>
+        <Setter Property="Height"  Value="30"/>
+        <Setter Property="Margin"  Value="3,0"/>
+        <Setter Property="Cursor"  Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid Background="Transparent">
+                        <Ellipse x:Name="Ring"
+                                 Stroke="{DynamicResource AppAccent}"
+                                 StrokeThickness="2"
+                                 Visibility="Collapsed"/>
+                        <!-- The hairline is what keeps the white swatch on a light bar and the black
+                             one on a dark bar from disappearing into it. -->
+                        <Ellipse x:Name="Disc"
+                                 Margin="5"
+                                 Fill="{TemplateBinding Background}"
+                                 Stroke="{DynamicResource ToolbarSwatchEdge}"
+                                 StrokeThickness="1"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked"   Value="False"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Disc" Property="Margin" Value="3.5"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Ring" Property="Visibility" Value="Visible"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

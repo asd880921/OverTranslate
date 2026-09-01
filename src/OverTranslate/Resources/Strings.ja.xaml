@@ -165,6 +165,12 @@
     <sys:String x:Key="S.Toolbar.CopyTranslation">訳文をコピー</sys:String>
     <sys:String x:Key="S.Toolbar.Annotate">マークアップ</sys:String>
     <sys:String x:Key="S.Toolbar.AnnotateHint">選択範囲に書き込む</sys:String>
+    <sys:String x:Key="S.Annotate.Pen">ペン</sys:String>
+    <sys:String x:Key="S.Annotate.Highlighter">蛍光ペン</sys:String>
+    <sys:String x:Key="S.Annotate.Eraser">消しゴム</sys:String>
+    <sys:String x:Key="S.Annotate.Undo">元に戻す</sys:String>
+    <sys:String x:Key="S.Annotate.Redo">やり直す</sys:String>
+    <sys:String x:Key="S.Annotate.Thickness">太さ</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">スクリーンショット</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">ウィンドウ</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">この翻訳結果をウィンドウで開く</sys:String>
