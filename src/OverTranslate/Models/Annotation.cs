@@ -3,6 +3,8 @@ using System.Windows.Media;
 // UseWindowsForms puts System.Drawing in the implicit usings, so these names collide
 using Color = System.Windows.Media.Color;
 using Point = System.Windows.Point;
+using Pen = System.Windows.Media.Pen;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace OverTranslate.Models;
 
@@ -15,7 +17,7 @@ public enum AnnotationTool
     /// <summary>A wide translucent band, so the content under it still reads.</summary>
     Highlighter,
 
-    /// <summary>Removes whole strokes the pointer passes over.</summary>
+    /// <summary>Rubs out whatever its circle passes over.</summary>
     Eraser,
 }
 
@@ -34,7 +36,8 @@ public enum AnnotationTool
 ///
 /// <para>Immutable once committed, which is what lets the undo history be a list of snapshots: a
 /// snapshot is a copy of the stroke list, and copying the list is enough because nothing can edit a
-/// stroke afterwards.</para>
+/// stroke afterwards. The eraser does not break that — it produces a new stroke rather than altering
+/// one, which is also what makes a whole erase drag undo in a single press.</para>
 /// </remarks>
 public sealed class AnnotationStroke
 {
@@ -51,25 +54,73 @@ public sealed class AnnotationStroke
     /// laid over pale text and one laid over a screenshot of a dark game want different answers, and
     /// there is no value that is right for both.
     ///
-    /// Applied to the rendered polyline as a whole rather than to its brush. A translucent brush
-    /// darkens wherever a stroke crosses itself — which for a hand-drawn highlight is everywhere it
-    /// changes direction — and the result is a band with dark knots in it. Opacity on the element
-    /// makes WPF compose the stroke once and then fade the result, so the band is even.
+    /// Applied to the rendered shape as a whole rather than to its brush. A translucent brush darkens
+    /// wherever a stroke crosses itself — which for a hand-drawn highlight is everywhere it changes
+    /// direction — and the result is a band with dark knots in it. Opacity on the element makes WPF
+    /// compose the stroke once and then fade the result, so the band is even.
     /// </remarks>
     public required double Opacity { get; init; }
+
+    /// <summary>
+    /// What the eraser has taken out of this stroke, or null while nothing has.
+    /// </summary>
+    /// <remarks>
+    /// The area the circle swept, not a set of places to cut the centre line at. Cutting the centre
+    /// line is the cheap way to do this and it is wrong in exactly the case that matters most: a
+    /// 30px highlight rubbed with a 12px eraser would lose either its whole width or nothing at all,
+    /// because the centre line is a single thread down the middle of a band. Taking the swept circle
+    /// out of the painted area instead makes what disappears exactly what the circle covered — which
+    /// is what the ring under the pointer has been promising all along.
+    /// </remarks>
+    public Geometry? Erased { get; init; }
+
+    // Both are pure functions of the fields above and cost real work to produce, so each is worked
+    // out once and kept. Safe on an immutable object, and the reason WithErased hands its outline to
+    // the stroke it makes: the outline does not depend on what has been erased, so re-widening a
+    // 400-point line on every step of an erase drag would be work with an answer already known.
+    private Geometry? _outline;
+    private Geometry? _painted;
+
+    /// <summary>The shape this stroke would paint if nothing had been erased from it.</summary>
+    public Geometry Outline => _outline ??= BuildOutline();
+
+    /// <summary>The shape it paints now.</summary>
+    public Geometry Painted => _painted ??= BuildPainted();
+
+    /// <summary>Whether the eraser has taken all of it.</summary>
+    public bool IsErasedAway => Painted.IsEmpty();
+
+    /// <summary>The same stroke with <paramref name="sweep"/> rubbed out of it as well.</summary>
+    public AnnotationStroke WithErased(Geometry sweep)
+    {
+        var next = new AnnotationStroke
+        {
+            Tool      = Tool,
+            Color     = Color,
+            Thickness = Thickness,
+            Opacity   = Opacity,
+            Points    = Points,
+            Erased    = Erased is null
+                ? sweep
+                : Freeze(Geometry.Combine(Erased, sweep, GeometryCombineMode.Union, null)),
+        };
+
+        next._outline = Outline;
+        return next;
+    }
 
     /// <summary>
     /// Whether the stroke passes within <paramref name="radius"/> of <paramref name="point"/>.
     /// </summary>
     /// <remarks>
-    /// The eraser works on whole strokes rather than on pixels: a pixel eraser has to keep a raster
-    /// of its own, cannot be undone one action at a time, and leaves frayed ends the user then has to
-    /// tidy. Taking the whole mark away is what the user meant in nearly every case, and it costs one
-    /// press of 復原 when it is not.
+    /// A cheap first question, asked before any geometry is built: most strokes are nowhere near the
+    /// eraser, and widening and subtracting for all of them on every step of a drag would be work
+    /// thrown away. It only has to be right in one direction — whatever it says yes to is then given
+    /// the exact treatment.
     ///
     /// Measured against the segments, not just the recorded points: those are sampled from pointer
-    /// moves, so a fast stroke is a handful of points with long gaps between them, and hit-testing
-    /// the points alone would leave most of a quick line un-erasable.
+    /// moves, so a fast stroke is a handful of points with long gaps between them, and testing the
+    /// points alone would miss most of a quick line.
     /// </remarks>
     public bool IsWithin(Point point, double radius)
     {
@@ -84,6 +135,71 @@ public sealed class AnnotationStroke
                 return true;
 
         return false;
+    }
+
+    private Geometry BuildOutline()
+    {
+        // A tap is one point, and a line through one point has no length to widen along. The dot the
+        // user expects is the shape of the nib itself.
+        if (Points.Count < 2)
+            return Freeze(new EllipseGeometry(Points[0], Thickness / 2, Thickness / 2));
+
+        // Flat ends for the highlighter, round for the pen: a chisel tip is what makes a highlight
+        // look laid down over a line of text rather than piped onto it.
+        var cap = Tool == AnnotationTool.Highlighter ? PenLineCap.Flat : PenLineCap.Round;
+        var pen = new Pen(Brushes.Black, Thickness)
+        {
+            StartLineCap = cap,
+            EndLineCap   = cap,
+            LineJoin     = PenLineJoin.Round,
+        };
+
+        return Freeze(CentreLine(Points).GetWidenedPathGeometry(pen));
+    }
+
+    private Geometry BuildPainted() => Erased is null
+        ? Outline
+        : Freeze(Geometry.Combine(Outline, Erased, GeometryCombineMode.Exclude, null));
+
+    /// <summary>The bare line through a run of points, with nothing widened onto it yet.</summary>
+    public static PathGeometry CentreLine(IReadOnlyList<Point> points)
+    {
+        var figure = new PathFigure { StartPoint = points[0], IsClosed = false, IsFilled = false };
+        figure.Segments.Add(new PolyLineSegment([.. points.Skip(1)], true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
+    /// <summary>
+    /// Everything a circle of <paramref name="radius"/> covered on its way along <paramref name="path"/>.
+    /// </summary>
+    /// <remarks>
+    /// One shape for a whole drag rather than a circle per pointer event. The pointer is sampled, so
+    /// a string of separate circles would leave gaps at any speed above a crawl. It is the same
+    /// widening the strokes themselves use, which is why the swept area has round ends and rounded
+    /// turns — it is a circle being dragged.
+    /// </remarks>
+    public static Geometry SweptCircle(IReadOnlyList<Point> path, double radius)
+    {
+        if (path.Count < 2)
+            return Freeze(new EllipseGeometry(path[0], radius, radius));
+
+        var pen = new Pen(Brushes.Black, radius * 2)
+        {
+            StartLineCap = PenLineCap.Round,
+            EndLineCap   = PenLineCap.Round,
+            LineJoin     = PenLineJoin.Round,
+        };
+
+        return Freeze(CentreLine(path).GetWidenedPathGeometry(pen));
+    }
+
+    private static T Freeze<T>(T geometry) where T : Geometry
+    {
+        if (geometry.CanFreeze) geometry.Freeze();
+        return geometry;
     }
 
     private static double DistanceSquared(Point a, Point b)

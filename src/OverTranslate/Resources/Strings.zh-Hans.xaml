@@ -175,6 +175,9 @@
     <sys:String x:Key="S.Annotate.Opacity">透明度</sys:String>
     <sys:String x:Key="S.Annotate.Faint">淡</sys:String>
     <sys:String x:Key="S.Annotate.Strong">浓</sys:String>
+    <sys:String x:Key="S.Annotate.Size">大小</sys:String>
+    <sys:String x:Key="S.Annotate.Small">小</sys:String>
+    <sys:String x:Key="S.Annotate.Large">大</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">截图</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">翻译窗口</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">在窗口中打开这次的翻译结果</sys:String>

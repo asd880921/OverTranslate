@@ -176,6 +176,9 @@
     <sys:String x:Key="S.Annotate.Opacity">불투명도</sys:String>
     <sys:String x:Key="S.Annotate.Faint">연하게</sys:String>
     <sys:String x:Key="S.Annotate.Strong">진하게</sys:String>
+    <sys:String x:Key="S.Annotate.Size">크기</sys:String>
+    <sys:String x:Key="S.Annotate.Small">작게</sys:String>
+    <sys:String x:Key="S.Annotate.Large">크게</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">스크린샷</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">창으로 열기</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">이번 번역 결과를 창에서 열기</sys:String>

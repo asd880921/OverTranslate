@@ -175,6 +175,9 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Annotate.Opacity">Opacity</sys:String>
     <sys:String x:Key="S.Annotate.Faint">Light</sys:String>
     <sys:String x:Key="S.Annotate.Strong">Strong</sys:String>
+    <sys:String x:Key="S.Annotate.Size">Size</sys:String>
+    <sys:String x:Key="S.Annotate.Small">Small</sys:String>
+    <sys:String x:Key="S.Annotate.Large">Large</sys:String>
     <sys:String x:Key="S.Toolbar.Screenshot">Screenshot</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindow">Window</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">Open this translation in a window</sys:String>

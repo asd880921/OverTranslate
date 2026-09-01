@@ -38,13 +38,26 @@
                        Visibility="Collapsed"
                        MouseLeftButtonDown="AnnotationSurface_MouseLeftButtonDown"
                        MouseMove="AnnotationSurface_MouseMove"
-                       MouseLeftButtonUp="AnnotationSurface_MouseLeftButtonUp"/>
+                       MouseLeftButtonUp="AnnotationSurface_MouseLeftButtonUp"
+                       MouseLeave="AnnotationSurface_MouseLeave"/>
         </Canvas>
 
         <!-- The marks themselves, above the translation: someone annotating after a translation is
              marking up what they can see, and half of what they can see is the bubbles. Clipped to
              the selection — see SetAnnotationBounds. -->
         <Canvas x:Name="AnnotationCanvas" IsHitTestVisible="False"/>
+
+        <!-- The eraser's own pointer: a ring the size of the circle it will rub out, so what is
+             about to go is visible before it goes. Its own layer above the ink, and deliberately not
+             one of the layers 截圖 renders — see RenderOverlayForSelection — because it is a pointer,
+             not a mark. -->
+        <Canvas x:Name="AnnotationCursorCanvas" IsHitTestVisible="False">
+            <Ellipse x:Name="EraserRing"
+                     Visibility="Collapsed"
+                     Stroke="#FFFFFFFF"
+                     StrokeThickness="1.5"
+                     Fill="#1FFFFFFF"/>
+        </Canvas>
 
         <!-- Processing indicator — separate layer so it's always above bubbles -->
         <Canvas x:Name="IndicatorCanvas" IsHitTestVisible="False">

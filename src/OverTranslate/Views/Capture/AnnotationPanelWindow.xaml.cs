@@ -85,7 +85,11 @@ public partial class AnnotationPanelWindow : Window
     private static (double Min, double Max) RangeFor(AnnotationTool tool) => tool switch
     {
         AnnotationTool.Highlighter => (9, 31),
-        AnnotationTool.Eraser      => (6, 26),
+
+        // A diameter, where the other two are stroke widths — it is the size of the circle the user
+        // can see under the pointer, and a radius would be half of the thing they are looking at.
+        AnnotationTool.Eraser      => (14, 64),
+
         _                          => (2, 13),
     };
 
@@ -285,6 +289,15 @@ public partial class AnnotationPanelWindow : Window
             : Visibility.Collapsed;
         OpacityBlock.Visibility   = opacityVisibility;
         OpacityDivider.Visibility = opacityVisibility;
+
+        // 粗細 is how wide a mark is. The eraser makes no mark: what its slider sets is how much of
+        // the picture the circle covers, and calling that 粗細 would be asking the user to translate
+        // it every time they pick the tool up.
+        bool erasing = Tool == AnnotationTool.Eraser;
+        ThicknessTitle.Text    = LocalizationService.Get(erasing ? "S.Annotate.Size"  : "S.Annotate.Thickness");
+        ThicknessMinLabel.Text = LocalizationService.Get(erasing ? "S.Annotate.Small" : "S.Annotate.Thin");
+        ThicknessMaxLabel.Text = LocalizationService.Get(erasing ? "S.Annotate.Large" : "S.Annotate.Thick");
+        System.Windows.Automation.AutomationProperties.SetName(ThicknessSlider, ThicknessTitle.Text);
     }
 
     private void ThicknessSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

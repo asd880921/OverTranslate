@@ -187,18 +187,22 @@
                              One slider for all three tools, mapped onto each one's own range — see
                              RangeFor. A slider per tool would be three controls the user has to
                              discover are three, on a panel whose whole point is that it is small. -->
+                        <!-- The three labels are filled from code rather than bound, because the
+                             eraser renames them: what it has is not a stroke width but a reach, so
+                             it reads 大小 / 小 / 大 while the two pens read 粗細 / 細 / 粗. Same
+                             control, same position, same value — a second slider that appeared in
+                             its place would be a different control in the same spot. -->
                         <StackPanel VerticalAlignment="Center" Margin="0,0,4,0">
-                            <TextBlock Text="{DynamicResource S.Annotate.Thickness}"
+                            <TextBlock x:Name="ThicknessTitle"
                                        Style="{StaticResource AnnotationSliderTitle}"/>
                             <Slider x:Name="ThicknessSlider"
                                     Style="{StaticResource AnnotationSlider}"
-                                    AutomationProperties.Name="{DynamicResource S.Annotate.Thickness}"
                                     ValueChanged="ThicknessSlider_ValueChanged"/>
                             <Grid>
-                                <TextBlock Text="{DynamicResource S.Annotate.Thin}"
+                                <TextBlock x:Name="ThicknessMinLabel"
                                            HorizontalAlignment="Left"
                                            Style="{StaticResource AnnotationSliderEnd}"/>
-                                <TextBlock Text="{DynamicResource S.Annotate.Thick}"
+                                <TextBlock x:Name="ThicknessMaxLabel"
                                            HorizontalAlignment="Right"
                                            Style="{StaticResource AnnotationSliderEnd}"/>
                             </Grid>
