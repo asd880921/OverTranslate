@@ -132,10 +132,10 @@ public partial class ShellWindow : Window
     {
         InitializeComponent();
 
-        Icon = AppIconService.CreateWindowIcon();
-        var compactIcon = AppIconService.CreateCompactIcon();
-        BrandIcon.Source = compactIcon;
-        TitleIcon.Source = compactIcon;
+        var icon = AppIconService.CreateWindowIcon();
+        Icon = icon;
+        BrandIcon.Source = icon;
+        TitleIcon.Source = icon;
         VersionText.Text = $"v{Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0"}";
 
         _instance = this;
