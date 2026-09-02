@@ -30,11 +30,9 @@ internal static class OcrTextBlockGrouper
         var groups = new List<List<OcrTextBlock>>();
         foreach (var block in sorted)
         {
-            var previousGroup = groups.LastOrDefault();
-            if (previousGroup is not null && CanJoinNextLine(previousGroup[^1], block, trace))
-                previousGroup.Add(block);
-            else
-                groups.Add([block]);
+            var continued = GroupThisContinues(groups, block, sorted, trace);
+            if (continued is not null) continued.Add(block);
+            else groups.Add([block]);
         }
 
         return groups.Select(BuildGroup).ToList();
@@ -304,6 +302,134 @@ internal static class OcrTextBlockGrouper
 
         var needsSpace = char.IsAsciiLetterOrDigit(left[^1]) && char.IsAsciiLetterOrDigit(right[0]);
         return needsSpace ? $"{left} {right}" : $"{left}{right}";
+    }
+
+    /// <summary>
+    /// Which of the groups opened so far <paramref name="block"/> is the next line of, or null when
+    /// it starts one of its own.
+    /// </summary>
+    /// <remarks>
+    /// <para>Every open group is a candidate, not only the one opened last. Blocks arrive sorted top
+    /// to bottom, which on a single column puts a line's continuation immediately after it — but on
+    /// a page of columns the columns interleave, and the line before a continuation in that order
+    /// belongs to the column beside it. Two cards side by side arrive as left first line, right
+    /// first line, left second line, right second line, so a rule that only looks back one place
+    /// never once compares a line with the line it wrapped from. The reported symptom is exactly
+    /// that shape: a card whose description merges when it is alone on screen stops merging when
+    /// the page holds several, and which ones survive looks arbitrary because it depends on how the
+    /// columns happen to line up vertically.</para>
+    ///
+    /// <para>This is the same answer <see cref="BuildVisualRows"/> already gives horizontally, where
+    /// a box is routed to the best of the open rows rather than to the most recent one. The reason
+    /// is the same too: reading order interleaves whenever the layout has more than one column in
+    /// it, so "the previous one" is not the same thing as "the one this belongs to".</para>
+    ///
+    /// <para>Where several groups would take the line, the best-aligned wins. Columns close enough
+    /// together for more than one to qualify are exactly the case where the nearest edge is the
+    /// evidence, and taking the most recent instead would hand the line to whichever column happened
+    /// to be further right.</para>
+    ///
+    /// <para>Measured over nine pages captured at 1600x1000 — MDN, Wikipedia, Hacker News, Yahoo!
+    /// JAPAN and Naver, in English, Japanese and Korean — this makes 49 joins that were not being
+    /// made at all. On the card grids and article pages every one of them is a wrapped sentence:
+    /// MDN's home page went from 2 joins to 9, English Wikipedia from 0 to 16, Japanese Wikipedia
+    /// from 4 to 12. Eleven of the 49 are stacked labels rather than sentences, nine of them one
+    /// site's sidebar menu, and they are the known cost: a menu entry and a line of a subtitle are
+    /// the same two boxes at the same spacing, and no geometry here separates them. The leading does
+    /// not — that capture's own wrapped lines run 0.10 to 0.20 of a line and its menu 0.26 to 0.41,
+    /// but another capture's genuine paragraphs run 0.32 to 0.43, and within a capture the two
+    /// populations are a continuum with no gap to cut at. This is the trade the rest of this file
+    /// already states: a label pair costs two words crowded into one bubble, while a sentence left
+    /// in halves costs the translator the sentence.</para>
+    /// </remarks>
+    private static List<OcrTextBlock>? GroupThisContinues(
+        List<List<OcrTextBlock>> groups,
+        OcrTextBlock block,
+        IReadOnlyList<OcrTextBlock> lines,
+        GroupTrace? trace)
+    {
+        List<OcrTextBlock>? best = null;
+        var bestAlignment = double.PositiveInfinity;
+        var nearest = true;
+
+        for (var i = groups.Count - 1; i >= 0; i--)
+        {
+            var last = groups[i][^1];
+
+            if (!NothingLiesBetween(lines, last, block)) continue;
+
+            // The nearest group above is judged whatever its geometry, because its verdict and the
+            // numbers behind it are what --group-explain reads: a pair refused at 0.83 of a line is
+            // a different problem from one refused at 3.0, and only the near misses say which. The
+            // ones further up are judged only when a continuation could reach them at all —
+            // otherwise the trace would fill with the distance from every line to every other line
+            // on the page, which is the noise that hides the near misses.
+            if (!nearest && !IsWithinContinuationReach(last, block)) continue;
+            nearest = false;
+
+            if (!CanJoinNextLine(last, block, trace)) continue;
+
+            var alignment = AlignmentDelta(last, block);
+            if (alignment >= bestAlignment) continue;
+
+            bestAlignment = alignment;
+            best = groups[i];
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// Whether the space between two lines is empty, or whether a third line stands in it.
+    /// </summary>
+    /// <remarks>
+    /// <para>A line continues the line directly above it and no other. Judging the most recent group
+    /// alone used to enforce that by accident — the group before a block in reading order is the one
+    /// directly above it, as long as the page has one column — and taking that accident away without
+    /// replacing it was expensive. Measured on a Hacker News front page, 1600x1000: every entry has
+    /// a byline set under it in smaller type, so entry titles are two rows apart, and the scan
+    /// reached over each byline to hand title 2 to title 1's group. Twenty-two consecutive titles
+    /// were chained into one "sentence" before this went in; with it, none of them are.</para>
+    ///
+    /// <para>Only the width the two lines share is examined. A line elsewhere on the page is at the
+    /// same height as almost everything, and asking whether anything at all sits between two rows
+    /// would refuse every capture with two columns in it — which is the shape this whole path exists
+    /// to serve.</para>
+    /// </remarks>
+    private static bool NothingLiesBetween(
+        IReadOnlyList<OcrTextBlock> lines, OcrTextBlock previous, OcrTextBlock current)
+    {
+        var top = previous.Bounds.Bottom;
+        var bottom = current.Bounds.Top;
+        var left = Math.Max(previous.Bounds.Left, current.Bounds.Left);
+        var right = Math.Min(previous.Bounds.Right, current.Bounds.Right);
+
+        foreach (var line in lines)
+        {
+            if (ReferenceEquals(line, previous) || ReferenceEquals(line, current)) continue;
+            if (line.Bounds.Bottom <= top || line.Bounds.Top >= bottom) continue;
+            if (line.Bounds.Right <= left || line.Bounds.Left >= right) continue;
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Whether two lines are close enough vertically that one could be the next line of the other.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately the vertical-gap test of <see cref="JudgeNextLine"/> and not a second threshold
+    /// beside it: this only decides which pairs are worth asking about, so a pair it lets through is
+    /// still judged in full, and a pair it stops would have been refused on this very rule anyway.
+    /// </remarks>
+    private static bool IsWithinContinuationReach(OcrTextBlock previous, OcrTextBlock current)
+    {
+        var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
+        var verticalGap = current.Bounds.Y - previous.Bounds.Bottom;
+
+        return verticalGap >= -avgHeight * 0.5 && verticalGap <= Math.Max(avgHeight * 0.8, 10);
     }
 
     private static bool CanJoinNextLine(

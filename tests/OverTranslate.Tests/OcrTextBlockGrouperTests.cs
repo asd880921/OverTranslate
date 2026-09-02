@@ -593,11 +593,25 @@ public class OcrTextBlockGrouperTests
     }
 
     /// <summary>
-    /// Two columns of a stat panel: each cell is near its neighbour in one axis or the other, and
-    /// none of the four may be read as continuing any of the others.
+    /// Two columns of a stat panel, and what must never happen to them: no cell may be read as
+    /// continuing the cell <em>beside</em> it. That is the failure this shape was written for —
+    /// "Attack" reaching across to "Defense", or "120" to "98" — and neither column can see the
+    /// other whatever order the blocks arrive in.
     /// </summary>
+    /// <remarks>
+    /// A label and the value under it are a different question, and this no longer asserts that they
+    /// stay apart, because they no longer do: "Defense" over "98" is 0.43 of a line apart and
+    /// aligned, which is the shape of wrapped text and is admitted as such. It used to be refused,
+    /// but not by any rule here — the two columns interleave when sorted top to bottom, so "98" was
+    /// only ever compared against "120" beside it and never against the label above it. Once a line
+    /// is compared with the line genuinely above it (which is the whole of the multi-column fix),
+    /// nothing in the geometry tells this pair from a two-line caption. Measured on nine real pages
+    /// in three languages that is the cheaper error by a wide margin: the change makes 49 joins that
+    /// were not being made, 38 of them wrapped sentences and 11 of them stacked labels like this
+    /// one. It is the trade <see cref="OcrTextBlockGrouper"/> already states for stacked labels.
+    /// </remarks>
     [Fact]
-    public void KeepsTwoColumnStatsOutOfOneAnother()
+    public void KeepsTwoColumnStatsOutOfTheColumnBesideThem()
     {
         var blocks = new List<OcrTextBlock>
         {
@@ -609,7 +623,53 @@ public class OcrTextBlockGrouperTests
 
         var grouped = OcrTextBlockGrouper.Group(blocks);
 
-        Assert.Equal(4, grouped.Count);
+        Assert.All(grouped, group => Assert.DoesNotContain("Attack Defense", group.Text));
+        Assert.All(grouped, group => Assert.DoesNotContain("120 98", group.Text));
+        Assert.All(grouped, group => Assert.DoesNotContain("Attack 98", group.Text));
+    }
+
+    /// <summary>
+    /// A list whose entries carry a byline set under them in smaller type, which is the shape of a
+    /// news or forum front page. Entry titles are two rows apart, so a scan that looks past the
+    /// group opened most recently can reach over the byline and read title 2 as the continuation of
+    /// title 1 — measured on a Hacker News front page at 1600x1000, where twenty-two consecutive
+    /// titles were chained into one "sentence" that way. A line continues the line directly above
+    /// it, and a line standing in the space between two others says they are not that pair.
+    /// </summary>
+    [Fact]
+    public void DoesNotReachOverALineToContinueTheOneAboveIt()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Fine, I'll build my own text editor", new Rect(10, 100, 400, 24)),
+            new("55 points by gurjeet 3 hours ago", new Rect(10, 124, 200, 8)),
+            new("Forgotten History of Small Nuclear", new Rect(10, 132, 380, 24)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(3, grouped.Count);
+    }
+
+    /// <summary>
+    /// And what that must not cost: the byline is only in the way of the lines it actually stands
+    /// between. A second column beside a wrapped line is at the same height as it without being
+    /// between anything, so only the width the two lines share is examined.
+    /// </summary>
+    [Fact]
+    public void StillJoinsAWrappedLineWithABlockBesideItAtTheSameHeight()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("そんなことを言われても本当に", new Rect(10, 100, 280, 24)),
+            new("困るんだけどまあ仕方ないか", new Rect(10, 128, 260, 24)),
+            new("ログイン", new Rect(600, 114, 90, 24)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
+        Assert.Contains(grouped, group => group.Lines.Count == 2);
     }
 
     /// <summary>
@@ -645,5 +705,69 @@ public class OcrTextBlockGrouperTests
         var grouped = OcrTextBlockGrouper.Group(blocks);
 
         Assert.Equal(2, grouped.Count);
+    }
+
+    /// <summary>
+    /// One card's wrapped description, with nothing else on the screen. The control for the two
+    /// tests below: the same card, the same geometry, and on its own it joins.
+    /// </summary>
+    [Fact]
+    public void GroupsAWrappedCardDescriptionOnAPageOfOneColumn()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Google 翻譯是一個方便的工具，讓文", new Rect(10, 100, 300, 24)),
+            new("字翻譯變得簡單。多語言支援", new Rect(10, 128, 280, 24)),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    /// <summary>
+    /// The same card with a second one beside it, which is the whole of the difference. Sorted top
+    /// to bottom, two columns interleave — left first line, right first line, left second line,
+    /// right second line — so the line above a continuation is never the one immediately before it
+    /// in that order. Reported from a page of cards: descriptions that merge when the page holds
+    /// one card stop merging once it holds several.
+    /// </summary>
+    [Fact]
+    public void GroupsTheSameDescriptionWhenAnotherColumnSitsBesideIt()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Google 翻譯是一個方便的工具，讓文", new Rect(10, 100, 300, 24)),
+            new("現在地區：阿富汗、阿爾巴尼亞、阿爾", new Rect(400, 100, 300, 24)),
+            new("字翻譯變得簡單。多語言支援", new Rect(10, 128, 280, 24)),
+            new("及利亞、屬薩摩亞、安道爾", new Rect(400, 128, 280, 24)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
+        Assert.All(grouped, group => Assert.Equal(2, group.Lines.Count));
+    }
+
+    /// <summary>
+    /// Three columns, so the line a continuation belongs to is two places back rather than one.
+    /// Nothing about the fix may depend on how many columns the page happens to have.
+    /// </summary>
+    [Fact]
+    public void GroupsWrappedDescriptionsAcrossThreeColumns()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("そんなことを言われても困る", new Rect(10, 100, 260, 24)),
+            new("翻譯是一項免費服務，能快速", new Rect(300, 100, 260, 24)),
+            new("現在地區：阿富汗、阿爾巴尼", new Rect(590, 100, 260, 24)),
+            new("んだけどまあ仕方ない", new Rect(10, 128, 200, 24)),
+            new("將日文的單字和片語翻譯", new Rect(300, 128, 220, 24)),
+            new("亞、阿爾及利亞、安道爾", new Rect(590, 128, 220, 24)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(3, grouped.Count);
+        Assert.All(grouped, group => Assert.Equal(2, group.Lines.Count));
     }
 }
