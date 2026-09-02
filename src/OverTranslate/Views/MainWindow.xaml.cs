@@ -845,6 +845,10 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 LocalizationService.Get("S.Main.Translating"));
 
+            // The reading is known now, and the debug boxes describe the reading — so they go up
+            // here rather than with the translation, and stay up if the translation never arrives.
+            _overlayWindow?.ShowOcrDebug(_lastOcrBlocks, _lastSelPhysLeft, _lastSelPhysTop);
+
             var (translated, _) = await AppServices.Translation.TranslateAsync(
                 _lastOcrBlocks, req.SourceLang, req.TargetLang, settings.ApiKey,
                 cancellationToken: cancellationToken);

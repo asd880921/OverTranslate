@@ -193,19 +193,6 @@ public class AppSettings
     public bool VerboseLogging { get; set; } = false;
 
     /// <summary>
-    /// Draws the OCR geometry over a screenshot translation, so it can be seen why a capture was
-    /// read and grouped the way it was.
-    /// </summary>
-    /// <remarks>
-    /// The two boxes below are what gets drawn, and both are on because someone who has just turned
-    /// this on wants to see the relationship between them — a line and the group that took it. They
-    /// are remembered, unlike the card that holds them, which opens closed every time: this is not
-    /// something to leave running, and the settings page should not look as though it is.
-    /// </remarks>
-    public bool ShowOcrDebugOverlay { get; set; } = false;
-    public bool ShowOcrLineBoxes { get; set; } = true;
-    public bool ShowTextGroupBoxes { get; set; } = true;
-    /// <summary>
     /// The newest version the user has told us to stop interrupting them about, or empty for none.
     /// </summary>
     /// <remarks>
@@ -229,6 +216,9 @@ public class AppSettings
 
     /// <summary>What 即時翻譯 keeps between sittings, grouped.</summary>
     public RealtimeSettings Realtime { get; set; } = new();
+
+    /// <summary>What the OCR debug overlay draws, grouped.</summary>
+    public OcrDebugSettings OcrDebug { get; set; } = new();
 
     /// <summary>The OpenAI-compatible provider's prompt library, grouped.</summary>
     /// <remarks>
