@@ -11,6 +11,12 @@ using OverTranslate.Services.Realtime;
 // Usage: OcrHarness <imagePath> [imagePath...]   (PNG/JPG screenshots)
 // Prints the grouped blocks that would be sent to translation, then the EN->ZH-HANT result.
 
+// Everything this prints is the text off a capture, which is Japanese, Korean or Chinese as often
+// as not. Left alone, a redirected run encodes it in the console's code page and every CJK
+// character lands in the file as "?" — so a run kept for comparison holds the geometry and none of
+// the text it belongs to, which is the half that says whether a verdict was right.
+Console.OutputEncoding = System.Text.Encoding.UTF8;
+
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: OcrHarness <image.png> [more.png ...]");
