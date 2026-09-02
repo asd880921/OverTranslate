@@ -677,6 +677,124 @@ public class OcrTextBlockGrouperTests
     }
 
     /// <summary>
+    /// A heading over the box it labels, with the geometry of a wrapped sentence: the heading fills
+    /// its column, the line under it is shorter, and they are aligned. The real bounds and colours
+    /// of "High Performance Serving" over "by just 1 command" on a product architecture diagram —
+    /// blue on grey over black on white. Three more cells in the same row kept their heading and
+    /// content apart, and this one merged, because its heading's words happened to be 1.42 times
+    /// the width of its content and the rule that admits a shorter following line asks nothing else.
+    /// </summary>
+    [Fact]
+    public void KeepsAHeadingOffTheContentBelowItWhenTheCaptureSaysTheyAreDifferentComponents()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("High Performance Serving", new Rect(1060, 630, 330, 30)),
+            new("by just 1 command", new Rect(1090, 675, 232, 30)),
+        };
+
+        var appearance = new StubAppearance
+        {
+            [new Rect(1060, 630, 330, 30)] = (Background: Rgb(240, 240, 240), Foreground: Rgb(41, 50, 225)),
+            [new Rect(1090, 675, 232, 30)] = (Background: Rgb(255, 255, 255), Foreground: Rgb(0, 0, 0)),
+        };
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks, null, appearance).Count);
+    }
+
+    /// <summary>
+    /// The case a leading threshold would have cost, and the reason colour was used instead. Real
+    /// bounds of a Korean subtitle that wraps: its normalised leading is 0.71, because Hangul boxes
+    /// sit tight on glyphs with no ascenders or descenders, so the same wrap measures looser than it
+    /// would in Latin. One surface, one ink, so nothing visual argues against it and it stays whole.
+    /// </summary>
+    [Fact]
+    public void StillGroupsAWrappedSubtitleWhoseLeadingIsLooseButWhoseInkIsUnchanged()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("그랑 사이퍼의 갑판에 있는 연습용 더미를 조사하면", new Rect(354, 427, 564, 30)),
+            new("플레이할 수 있습니다", new Rect(355, 478, 248, 29)),
+        };
+
+        var appearance = new StubAppearance
+        {
+            [new Rect(354, 427, 564, 30)] = (Background: Rgb(18, 18, 20), Foreground: Rgb(255, 255, 255)),
+            [new Rect(355, 478, 248, 29)] = (Background: Rgb(18, 18, 20), Foreground: Rgb(255, 255, 255)),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks, null, appearance));
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    /// <summary>
+    /// Wikipedia prose whose first line ends in a link, so the two lines' dominant ink differs by 68
+    /// in CIELAB while they are one sentence over one white page. Colour is negative evidence about
+    /// components, not about ink: without the background having changed too, a different ink means
+    /// a link, a bold word or a highlighted term, and none of those ends a paragraph.
+    /// </summary>
+    [Fact]
+    public void StillGroupsAParagraphWhoseLineEndsInALink()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("... that composer Marta Canales donated", new Rect(700, 500, 400, 22)),
+            new("her pieces to a Carmelite monastery?", new Rect(700, 523, 230, 22)),
+        };
+
+        var appearance = new StubAppearance
+        {
+            [new Rect(700, 500, 400, 22)] = (Background: Rgb(255, 255, 255), Foreground: Rgb(51, 102, 204)),
+            [new Rect(700, 523, 230, 22)] = (Background: Rgb(255, 255, 255), Foreground: Rgb(32, 33, 34)),
+        };
+
+        Assert.Single(OcrTextBlockGrouper.Group(blocks, null, appearance));
+    }
+
+    /// <summary>
+    /// And the mirror of it: a poster's two lines over a photograph, where the surface behind each
+    /// line is a different part of the picture — 99.7 apart — while both are set in the same white.
+    /// The surface alone would have refused this one.
+    /// </summary>
+    [Fact]
+    public void StillGroupsTwoLinesSetOverAPhotograph()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("誰かのために", new Rect(1082, 263, 123, 27)),
+            new("あなたができること", new Rect(1083, 290, 162, 27)),
+        };
+
+        var appearance = new StubAppearance
+        {
+            [new Rect(1082, 263, 123, 27)] = (Background: Rgb(214, 186, 160), Foreground: Rgb(20, 20, 20)),
+            [new Rect(1083, 290, 162, 27)] = (Background: Rgb(96, 74, 58), Foreground: Rgb(20, 20, 20)),
+        };
+
+        Assert.Single(OcrTextBlockGrouper.Group(blocks, null, appearance));
+    }
+
+    private static System.Windows.Media.Color Rgb(byte r, byte g, byte b) =>
+        System.Windows.Media.Color.FromRgb(r, g, b);
+
+    /// <summary>
+    /// The colours of a capture, given directly. The grouper asks an interface rather than a bitmap
+    /// so that a test about what two lines look like can say what they look like, instead of
+    /// rendering a picture and hoping it samples back the way it was drawn.
+    /// </summary>
+    private sealed class StubAppearance : IBlockAppearanceSource
+    {
+        private readonly Dictionary<Rect, BlockAppearance> _colors = [];
+
+        public (System.Windows.Media.Color Background, System.Windows.Media.Color Foreground) this[Rect bounds]
+        {
+            set => _colors[bounds] = new BlockAppearance(value.Background, value.Foreground);
+        }
+
+        public BlockAppearance For(Rect bounds) => _colors[bounds];
+    }
+
+    /// <summary>
     /// And what that must not cost: the byline is only in the way of the lines it actually stands
     /// between. A second column beside a wrapped line is at the same height as it without being
     /// between anything, so only the width the two lines share is examined.

@@ -1063,7 +1063,12 @@ if (args[0] == "--group-explain")
         if (raw is null || raw.Count == 0) { Console.WriteLine("  (nothing read)"); continue; }
 
         var trace = new OcrTextBlockGrouper.GroupTrace();
-        var grouped = OcrTextBlockGrouper.Group(raw, trace);
+
+        // The same colours the app samples, so a verdict read here is the verdict the app reached.
+        // Without this the harness would judge on geometry alone and quietly disagree with the
+        // application on exactly the captures worth looking at.
+        var appearance = BitmapBlockAppearance.Sample(image, raw);
+        var grouped = OcrTextBlockGrouper.Group(raw, trace, appearance);
 
         Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
         for (var i = 0; i < grouped.Count; i++)
@@ -1089,10 +1094,17 @@ if (args[0] == "--group-explain")
         Console.WriteLine("  --- merge verdicts (gap/fit in line heights) ---");
         foreach (var decision in trace.Decisions.OrderByDescending(decision => decision.Kind))
         {
+            // Colour only for the next-line verdicts: a row verdict never consults it, and a
+            // column of "bg=-1" beside every one of them is noise.
+            var colour = decision.Kind == "line" && decision.BackgroundDistance >= 0
+                ? $" bg={decision.BackgroundDistance,5:0.0} fg={decision.ForegroundDistance,5:0.0}"
+                : string.Empty;
+
             Console.WriteLine(
                 $"  {decision.Kind,-4} {(decision.Joined ? "JOIN  " : "SPLIT ")} " +
                 $"gap={decision.Gap,6:0.00} fit={decision.Fit,6:0.00} " +
-                $"size={decision.TextSizeRatio:0.00} width={decision.WidthRatio:0.00}  [{decision.Rule}]");
+                $"size={decision.TextSizeRatio:0.00} width={decision.WidthRatio:0.00}" +
+                $"{colour}  [{decision.Rule}]");
             Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
         }
     }

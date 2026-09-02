@@ -66,7 +66,8 @@ public class OcrService : IDisposable
         // 136px line "Arisa's a big meanie.", and the merged box — 220px in a 206px block — was
         // then thrown out as a collapse, taking the subtitle with it. Filtered afterwards the
         // subtitle is already tied to the noise and cannot be recovered.
-        return OcrTextBlockGrouper.Group(RejectUnconvincingBlocks(blocks));
+        var kept = RejectUnconvincingBlocks(blocks);
+        return OcrTextBlockGrouper.Group(kept, null, BitmapBlockAppearance.Sample(bitmap, kept));
     }
 
     // Scenery the recogniser was not sure about. Only on this path: it is the realtime one, where
@@ -145,7 +146,7 @@ public class OcrService : IDisposable
         CancellationToken cancellationToken)
     {
         var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage, cancellationToken);
-        return OcrTextBlockGrouper.Group(blocks);
+        return OcrTextBlockGrouper.Group(blocks, null, BitmapBlockAppearance.Sample(bitmap, blocks));
     }
 
     /// <summary>

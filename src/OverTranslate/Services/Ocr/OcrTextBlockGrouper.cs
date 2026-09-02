@@ -4,14 +4,22 @@ namespace OverTranslate.Services.Ocr;
 
 internal static class OcrTextBlockGrouper
 {
-    public static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> blocks) => Group(blocks, null);
+    public static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> blocks) =>
+        Group(blocks, null, null);
 
     /// <param name="trace">
     /// Collects every verdict and the gap measurement behind them. Null in the app; OcrHarness
     /// passes one, because these thresholds cannot be tuned from the grouped output alone — it
     /// shows what was joined, never how close the rest came to being.
     /// </param>
-    internal static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> blocks, GroupTrace? trace)
+    /// <param name="appearance">
+    /// What the lines look like on the capture, or null to decide on geometry alone. Optional
+    /// because the answer has to be the same shape without it: a caller with no picture to hand,
+    /// and a capture whose pixels could not be read, both get the geometry-only result rather than
+    /// an error. See <see cref="VisualSplitEvidence"/> for what it is allowed to decide.
+    /// </param>
+    internal static List<OcrTextBlock> Group(
+        IReadOnlyList<OcrTextBlock> blocks, GroupTrace? trace, IBlockAppearanceSource? appearance)
     {
         if (blocks.Count <= 1)
         {
@@ -30,7 +38,7 @@ internal static class OcrTextBlockGrouper
         var groups = new List<List<OcrTextBlock>>();
         foreach (var block in sorted)
         {
-            var continued = GroupThisContinues(groups, block, sorted, trace);
+            var continued = GroupThisContinues(groups, block, sorted, appearance, trace);
             if (continued is not null) continued.Add(block);
             else groups.Add([block]);
         }
@@ -63,6 +71,12 @@ internal static class OcrTextBlockGrouper
     /// <param name="Gap">Horizontal for a row, vertical for a line.</param>
     /// <param name="Fit">Vertical overlap for a row, alignment delta for a line.</param>
     /// <param name="Rule">Which test decided, whether it joined or refused.</param>
+    /// <param name="BackgroundDistance">
+    /// How far apart the two lines' surfaces look, in CIELAB, or -1 when no capture was available
+    /// to sample. Traced for every next-line verdict and not only the ones colour decided, because
+    /// what has to be checked is that the pairs it does not refuse are the ones that look alike.
+    /// </param>
+    /// <param name="ForegroundDistance"><inheritdoc cref="BackgroundDistance"/></param>
     internal readonly record struct GroupDecision(
         string Kind,
         string Previous,
@@ -72,7 +86,9 @@ internal static class OcrTextBlockGrouper
         double TextSizeRatio,
         double WidthRatio,
         bool Joined,
-        string Rule);
+        string Rule,
+        double BackgroundDistance = -1,
+        double ForegroundDistance = -1);
 
     /// <summary>
     /// Rebuilds the lines the detector split, then decides which of them are one line of text.
@@ -343,9 +359,11 @@ internal static class OcrTextBlockGrouper
     /// in halves costs the translator the sentence.</para>
     ///
     /// <para>A grid of labels is where that trade is least favourable, and a product architecture
-    /// diagram measured 3 joins right against 4 wrong — the wrapped captions in the top row joined,
-    /// and so did two pairs of list items and two headings with the box under them. The page is a
-    /// grid, so before this it made no joins at all, right or wrong. Two more captions that should
+    /// diagram measured 3 joins right against 3 wrong: the wrapped captions in the top row joined,
+    /// and so did two pairs of list items and one heading whose ink the capture could not tell from
+    /// its content's. The page is a grid, so before this it made no joins at all, right or wrong. A
+    /// fourth wrong one — a blue heading on grey over black content on white — is refused by
+    /// <see cref="VisualSplitEvidence"/> rather than by anything here. Two more captions that should
     /// have joined were refused on text size at 0.87 and 0.88 against a bar of 0.88, which is the
     /// glyph-height noise <see cref="TextSizeRatio"/> describes and is not this scan's doing.</para>
     /// </remarks>
@@ -353,6 +371,7 @@ internal static class OcrTextBlockGrouper
         List<List<OcrTextBlock>> groups,
         OcrTextBlock block,
         IReadOnlyList<OcrTextBlock> lines,
+        IBlockAppearanceSource? appearance,
         GroupTrace? trace)
     {
         List<OcrTextBlock>? best = null;
@@ -374,7 +393,7 @@ internal static class OcrTextBlockGrouper
             if (!nearest && !IsWithinContinuationReach(last, block)) continue;
             nearest = false;
 
-            if (!CanJoinNextLine(last, block, trace)) continue;
+            if (!CanJoinNextLine(last, block, appearance, trace)) continue;
 
             var alignment = AlignmentDelta(last, block);
             if (alignment >= bestAlignment) continue;
@@ -450,13 +469,19 @@ internal static class OcrTextBlockGrouper
     }
 
     private static bool CanJoinNextLine(
-        OcrTextBlock previous, OcrTextBlock current, GroupTrace? trace)
+        OcrTextBlock previous,
+        OcrTextBlock current,
+        IBlockAppearanceSource? appearance,
+        GroupTrace? trace)
     {
-        var (joined, rule) = JudgeNextLine(previous, current);
+        var (joined, rule) = JudgeNextLine(previous, current, appearance);
         if (trace is null)
             return joined;
 
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
+        var before = appearance?.For(previous.Bounds);
+        var after = appearance?.For(current.Bounds);
+
         trace.Decisions.Add(new GroupDecision(
             "line",
             previous.Text,
@@ -466,12 +491,19 @@ internal static class OcrTextBlockGrouper
             TextSizeRatio(previous, current),
             previous.Bounds.Width / Math.Max(1, current.Bounds.Width),
             joined,
-            rule));
+            rule,
+            before is null || after is null
+                ? -1
+                : PerceptualColor.Distance(before.Value.Background, after.Value.Background),
+            before is null || after is null
+                ? -1
+                : PerceptualColor.Distance(before.Value.Foreground, after.Value.Foreground)));
 
         return joined;
     }
 
-    private static (bool Joined, string Rule) JudgeNextLine(OcrTextBlock previous, OcrTextBlock current)
+    private static (bool Joined, string Rule) JudgeNextLine(
+        OcrTextBlock previous, OcrTextBlock current, IBlockAppearanceSource? appearance)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
         if (TextSizeRatio(previous, current) < 0.88)
@@ -509,7 +541,8 @@ internal static class OcrTextBlockGrouper
         if (!isAlignedContinuation)
             return (false, "not aligned enough to continue");
 
-        return SentenceContinuationEvidence(previous, current, verticalGap, alignmentDelta, avgHeight);
+        return SentenceContinuationEvidence(
+            previous, current, verticalGap, alignmentDelta, avgHeight, appearance);
     }
 
     /// <summary>
@@ -574,7 +607,8 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock current,
         double verticalGap,
         double alignmentDelta,
-        double avgHeight)
+        double avgHeight,
+        IBlockAppearanceSource? appearance)
     {
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
@@ -597,14 +631,39 @@ internal static class OcrTextBlockGrouper
         // menu entries looks like — a longer label above a shorter one, aligned, evenly spaced. It
         // read 「アビリティ」over「召喚石」and 「캐릭터강화」over「소지품」as wrapped sentences, glued
         // each pair into one string for the translator, and squeezed both into one bubble. See #75.
+        // The one rule here with no leading test: it asks only that the line above filled its
+        // column and the line below did not, which a heading over the box it labels satisfies just
+        // as well as a paragraph's last line does. Half a line of leading and a heading 1.42 times
+        // the width of its content was enough to join "High Performance Serving" to "by just 1
+        // command" on a product diagram — while the three cells beside it, whose headings happened
+        // to be narrower than their content, stayed apart. The outcome turned on how long the
+        // heading's words were, which is not a thing about the layout.
+        //
+        // A leading bar of its own was the obvious repair and is the wrong one: it would have to
+        // sit under 0.5 to catch that pair, and a measured Korean subtitle wraps at 0.71 because
+        // Hangul boxes sit tight on glyphs with no ascenders. So the question this cannot answer
+        // geometrically is put to the picture instead — see VisualSplitEvidence.
         if (IsLongEnoughToHaveWrapped(previous) &&
             previous.Bounds.Width >= current.Bounds.Width * 1.35)
-            return (true, "shorter final line");
+        {
+            return LooksLikeADifferentComponent(previous, current, appearance)
+                ? (false, "different component")
+                : (true, "shorter final line");
+        }
 
         return IsSetSolidUnder(previous, verticalGap, alignmentDelta, avgHeight)
             ? (true, "set solid")
             : (false, "no continuation evidence");
     }
+
+    /// <summary>
+    /// Whether the capture says these two lines belong to different components. False whenever
+    /// there is no capture to ask, which is every caller that passes no appearance.
+    /// </summary>
+    private static bool LooksLikeADifferentComponent(
+        OcrTextBlock previous, OcrTextBlock current, IBlockAppearanceSource? appearance) =>
+        appearance is not null &&
+        VisualSplitEvidence.IsStrong(appearance.For(previous.Bounds), appearance.For(current.Bounds));
 
     /// <summary>
     /// Whether the second line is set as part of the same block of text as the first — close
