@@ -41,9 +41,29 @@ internal readonly record struct TranslationRequestChunk(
 /// particular sentence. Split, it fits, Microsoft serves it, and it comes back right.</para>
 ///
 /// <para>What this does NOT fix: Google loops on that sentence at any length — sent alone, 270
-/// characters, it fails identically. Whatever triggers it is in the text and not in its size, so a
-/// user whose chosen engine is Google can still receive a translation that came back a success and
-/// is wrong. Nothing here would notice; detecting it would be a separate piece of work.</para>
+/// characters, it fails identically. Bisecting it clause by clause found what actually triggers it,
+/// and it is not something this could act on:</para>
+///
+/// <code>
+/// In terms of speed, PP-OCRv6_medium achieves 5.2× speedup over PP-OCRv5_server on Intel Xeon CPU
+/// with OpenVINO (1.40s vs 7.30s), the tiny tier reaches 6.1× speedup on Apple M4 (0.96s vs 5.82s),
+/// and only 0.13s on A100 GPU.
+/// </code>
+///
+/// <para>Three parallel clauses in one sentence, 221 characters. Clauses one and two together are
+/// fine, two and three together are fine, all three loop. Ending the sentence before the third
+/// clause fixes it, as does removing the bracketed timings. The same shape with hotel prices
+/// instead of benchmarks does not loop at all, so it is not structural either. Both Google
+/// endpoints return the same broken answer byte for byte on repeated attempts, while Bing and
+/// Microsoft translate it correctly.</para>
+///
+/// <para>So it is a property of somebody else's model, with no rule this side could apply in
+/// advance. Catching it on the way back instead — measuring the answer for repetition and handing
+/// the block to another engine — was built and measured and then deliberately not kept: the fault
+/// is Google's, the check would run on every translation the application ever makes, and paying for
+/// that everywhere to cover one endpoint's behaviour was not judged worth it. The record is here so
+/// the next person to meet it knows what it is rather than diagnosing it again; the reproduction is
+/// the sentence above, through <c>OcrHarness --xlate-line</c>.</para>
 ///
 /// <para>The limit became reachable when a wrapped paragraph started going up as one request
 /// instead of seven, which is the point of grouping and worth keeping. So it is answered where it
