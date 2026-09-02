@@ -1028,17 +1028,32 @@ if (args[0] == "--group-explain")
         var raw = await explainEngine.TryRecognizeAsync(image, harnessLanguage, size);
         if (raw is null || raw.Count == 0) { Console.WriteLine("  (nothing read)"); continue; }
 
-        var decisions = new List<OcrTextBlockGrouper.GroupDecision>();
-        var grouped = OcrTextBlockGrouper.Group(raw, decisions);
+        var trace = new OcrTextBlockGrouper.GroupTrace();
+        var grouped = OcrTextBlockGrouper.Group(raw, trace);
 
         Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
         for (var i = 0; i < grouped.Count; i++)
             Console.WriteLine($"  [{i}] lines={grouped[i].Lines.Count}  {grouped[i].Text}");
 
+        // What the same-row threshold came out as, before the verdicts it decided. Reading the
+        // verdicts without it means reading "SPLIT at 0.52" with no way to tell whether 0.52 was
+        // close to the line or nowhere near it.
+        var threshold = trace.SameLineThreshold;
+        Console.WriteLine(
+            $"  --- same-row gap threshold: {threshold.Value:0.000} " +
+            $"({(threshold.Adaptive ? "adaptive" : "fallback")}: {threshold.Reason}) ---");
+        // Only the gaps the estimate actually looks at. The rest are the distances across a
+        // layout rather than between neighbours, and printing forty of them buries the ten that
+        // decided the threshold.
+        var sampled = trace.SameLineGaps.Where(gap => gap is >= -1.0 and <= 2.0).OrderBy(gap => gap).ToList();
+        Console.WriteLine(
+            $"      {sampled.Count} of {trace.SameLineGaps.Count} gaps in range: " +
+            (sampled.Count == 0 ? "(none)" : string.Join(" ", sampled.Select(gap => $"{gap:0.00}"))));
+
         // Rows first, then lines, because that is the order they ran in: boxes are gathered into
         // lines before any line is asked whether it continues another.
         Console.WriteLine("  --- merge verdicts (gap/fit in line heights) ---");
-        foreach (var decision in decisions.OrderByDescending(decision => decision.Kind))
+        foreach (var decision in trace.Decisions.OrderByDescending(decision => decision.Kind))
         {
             Console.WriteLine(
                 $"  {decision.Kind,-4} {(decision.Joined ? "JOIN  " : "SPLIT ")} " +

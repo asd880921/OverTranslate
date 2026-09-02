@@ -162,6 +162,102 @@ public class OcrTextBlockGrouperTests
         Assert.Equal(2, grouped.Count);
     }
 
+    /// <summary>
+    /// The real bounds of a documentation site's navigation bar. The detector returned all eleven
+    /// entries correctly and separately; joining them handed the translator one string reading
+    /// "Home Installation Quick Start PP-OCRv6 …" and drew it as a single bubble.
+    /// </summary>
+    [Fact]
+    public void KeepsNavigationEntriesSeparate()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Home", new Rect(3, 18, 56, 25)),
+            new("Installation", new Rect(75, 20, 87, 21)),
+            new("Quick Start", new Rect(178, 20, 87, 24)),
+            new("PP-OCRv6", new Rect(280, 20, 79, 21)),
+            new("PP-StructureV3", new Rect(375, 20, 115, 21)),
+            new("PP-ChatOCRv4", new Rect(506, 20, 113, 23)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(6, grouped.Count);
+    }
+
+    /// <summary>
+    /// A row of toolbar buttons, which is the same shape at a smaller size — measured at 0.73 of a
+    /// line apart, against the 0.38 the widest real word gap reaches.
+    /// </summary>
+    [Fact]
+    public void KeepsToolbarButtonsSeparate()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("重新翻譯", new Rect(10, 100, 88, 22)),
+            new("顯示原文", new Rect(114, 100, 88, 22)),
+            new("截圖", new Rect(218, 100, 44, 22)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(3, grouped.Count);
+    }
+
+    /// <summary>
+    /// Two cards side by side, sharing a row exactly because they are laid out to. Their headings
+    /// are the same size and sit on the same baseline; only the space between them says they are
+    /// two things.
+    /// </summary>
+    [Fact]
+    public void KeepsCardsThatShareARowSeparate()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Intelligent document", new Rect(786, 137, 173, 28)),
+            new("Certificate information", new Rect(989, 137, 188, 26)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
+    }
+
+    /// <summary>
+    /// What none of that may cost: a row holding one line the detector split, where every gap is a
+    /// word gap. Same geometry as the per-word test above, read as a whole row.
+    /// </summary>
+    [Fact]
+    public void StillRebuildsALineTheDetectorSplitIntoWords()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("This is", new Rect(100, 40, 96, 30)),
+            new("a very", new Rect(206, 40, 88, 30)),
+            new("long sentence", new Rect(304, 41, 184, 29)),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        Assert.Equal("This is a very long sentence", merged.Text);
+    }
+
+    /// <summary>
+    /// Two boxes cannot say which kind of space sits between them, so the fixed threshold decides —
+    /// and at 0.13 of a line this is a word gap by any reading of it.
+    /// </summary>
+    [Fact]
+    public void JoinsTwoBoxesAWordApartWithNothingElseToGoOn()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Hello", new Rect(10, 10, 70, 30)),
+            new("World", new Rect(84, 10, 70, 30)),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        Assert.Equal("Hello World", merged.Text);
+    }
+
     [Fact]
     public void KeepsSeparatePhrasesOnTheSameLineWhenGapIsLarge()
     {
