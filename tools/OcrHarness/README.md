@@ -108,10 +108,21 @@ OcrHarness.exe --group-explain 圖.png [更多.png ...]
 - `row` —— 同一列（左右）的 `JudgeSameLine`，決定兩個框是不是同一行文字。
   規則：`same row` / `box height` / `vertical overlap` / `horizontal gap` / `overlaps too far`。
 - `line` —— 上下的 `JudgeNextLine`，決定一行是不是前一行的續行。
-  規則：`vertical gap` / `alignment` / `text size` / `sentence terminator` /
-  `shorter final line` / `set solid` / `no continuation evidence`。
+  規則：`vertical gap` / `alignment` / `text size` / `sentence terminator` / `list marker` /
+  `label` / `leading` / `shorter final line` / `set solid` / `no continuation evidence`。
 
 每列帶 `gap`（row 是水平、line 是垂直）、`fit`（row 是垂直交疊、line 是對齊差）、字級比、寬度比。
+
+`line` 那些列還多一個 `lead=` —— **同一段距離，但除以偵測器原本回傳的框高，不是除以
+`Bounds`**。引擎會把 CJK 的框裁到字身上、Latin 的框原封不動，所以同樣的排版行距在兩種
+文字上會印出完全不同的 `gap`：日文維基的段落是 0.37，英文維基同樣的段落是 0.09。`lead`
+把 CJK 的裁切還原回去，兩邊就對得上了 —— 全語料的段落落在 0.67～1.24，成排的選單項目從
+1.33 起跳。**要調 `set solid` 或 `shorter final line` 的行距門檻，看 `lead` 不要看 `gap`**，
+`gap` 上這兩群是重疊的、根本切不開。
+
+還原用的比例是引擎的 `OnnxOcrEngine.CjkGlyphBoxScale`，而它只是近似：裁切取的是「固定比例」
+與「由字距推出來的上限」兩者的較小值，後者生效時還原會偏小。同一句韓文字幕在相鄰兩幀量到
+1.36 與 1.42，所以 `shorter final line` 的行距門檻只對 Latin 生效，CJK 那邊靠寬度證據。
 
 `row` 的判定前面會先印出**這張截圖自己的同列間距門檻**：
 
