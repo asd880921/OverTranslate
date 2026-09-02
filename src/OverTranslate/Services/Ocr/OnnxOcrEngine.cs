@@ -911,12 +911,23 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     private static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool isCjk)
         => blocks.Select(block => NormalizeBlock(block, isCjk)).ToList();
 
+    /// <summary>
+    /// How much of a detection box the glyphs inside it actually occupy, vertically.
+    /// </summary>
+    /// <remarks>
+    /// The detector's unclip expansion grows every box past its ink by about this much. A CJK
+    /// block's Bounds are trimmed by it below, so anything downstream that wants the box the
+    /// detector returned — rather than the ink it was narrowed to — has to undo it. See
+    /// <c>OcrTextBlockGrouper.LineAdvanceRatio</c>, which compares leading across scripts and so
+    /// needs both to be measured against the same thing.
+    /// </remarks>
+    internal const double CjkGlyphBoxScale = 0.82;
+
     private static OcrTextBlock NormalizeBlock(
         OcrTextBlock block,
         bool isCjk,
         double? glyphHeightFromPitchOverride = null)
     {
-        const double verticalScale = 0.82;
 
         // Convert the average source-glyph pitch (width / glyphCount) into the line height that
         // drives the overlay font size, clamping the unclipped (loose) detection box so text is
@@ -928,7 +939,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (isCjk ? 1.18 : 1.3);
 
         var bounds = block.Bounds;
-        var glyphHeight = bounds.Height * verticalScale;
+        var glyphHeight = bounds.Height * CjkGlyphBoxScale;
         var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
 
         // ONNX/unclip can return vertically loose boxes on wide single lines.

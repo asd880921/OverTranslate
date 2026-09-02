@@ -88,7 +88,8 @@ internal static class OcrTextBlockGrouper
         bool Joined,
         string Rule,
         double BackgroundDistance = -1,
-        double ForegroundDistance = -1);
+        double ForegroundDistance = -1,
+        double Leading = -1);
 
     /// <summary>
     /// Rebuilds the lines the detector split, then decides which of them are one line of text.
@@ -497,7 +498,8 @@ internal static class OcrTextBlockGrouper
                 : PerceptualColor.Distance(before.Value.Background, after.Value.Background),
             before is null || after is null
                 ? -1
-                : PerceptualColor.Distance(before.Value.Foreground, after.Value.Foreground)));
+                : PerceptualColor.Distance(before.Value.Foreground, after.Value.Foreground),
+            LineAdvanceRatio(previous, current)));
 
         return joined;
     }
@@ -602,6 +604,56 @@ internal static class OcrTextBlockGrouper
                Math.Max(previous.Bounds.Height, current.Bounds.Height);
     }
 
+    /// <summary>
+    /// The leading: how far the second line sits below the first, in detection-box heights. One
+    /// line advance is 1.0, so a paragraph reads a little under it and anything laid out on
+    /// purpose reads well over.
+    /// </summary>
+    /// <remarks>
+    /// <para>The distance itself is nothing new — <see cref="JudgeNextLine"/> has always measured
+    /// the space between the boxes. What this changes is what it is divided by. The engine trims a
+    /// CJK block's Bounds down onto its glyphs and leaves a Latin block's box as the detector drew
+    /// it, so the same typographic leading comes back as two different fractions of a box: a
+    /// Japanese Wikipedia paragraph reads 0.37 of a box between its lines while an English one
+    /// reads 0.09. Restoring the trim puts both on the detector's box, and then they agree — every
+    /// wrapped paragraph in the corpus, in all four scripts, lands between 0.67 and 1.24.</para>
+    ///
+    /// <para>That is what makes a leading test possible at all. Measured on box fractions the two
+    /// populations overlap and there is no threshold: a checkbox list measured 0.33–0.45, which is
+    /// the same band the CJK paragraphs sit in, and it was read as fifteen wrapped lines of one
+    /// sentence. Measured this way the list sits at 1.33–1.45 and the paragraphs stop at 1.24,
+    /// with nothing in between.</para>
+    /// </remarks>
+    private static double LineAdvanceRatio(OcrTextBlock previous, OcrTextBlock current)
+    {
+        var box = (DetectionBoxHeight(previous) + DetectionBoxHeight(current)) / 2.0;
+
+        return box > 0 ? (current.Bounds.Y - previous.Bounds.Y) / box : -1;
+    }
+
+    /// <summary>
+    /// The height of the box the detector returned, undoing the trim the engine applies to CJK.
+    /// </summary>
+    /// <remarks>
+    /// A Latin block carries its glyph height separately and keeps the untrimmed box, so having
+    /// <see cref="OcrTextBlock.SourceGlyphHeight"/> is exactly the same question as not having
+    /// been trimmed. See <see cref="OnnxOcrEngine.CjkGlyphBoxScale"/>.
+    /// </remarks>
+    private static double DetectionBoxHeight(OcrTextBlock block) =>
+        block.SourceGlyphHeight is null
+            ? block.Bounds.Height / OnnxOcrEngine.CjkGlyphBoxScale
+            : block.Bounds.Height;
+
+    /// <summary>
+    /// The most leading two lines can have and still be one paragraph.
+    /// </summary>
+    /// <remarks>
+    /// Measured over the corpus: every correctly joined pair, Latin and CJK, sits at or under
+    /// 1.24, and the next thing above it — a portal page's stack of separate headlines — starts at
+    /// 1.27, with the checkbox list this mainly has to keep apart at 1.33 and up.
+    /// </remarks>
+    private const double SolidLineAdvance = 1.26;
+
     private static (bool Joined, string Rule) SentenceContinuationEvidence(
         OcrTextBlock previous,
         OcrTextBlock current,
@@ -614,6 +666,13 @@ internal static class OcrTextBlockGrouper
         var currentText = current.Text.Trim();
         if (previousText.Length == 0 || currentText.Length == 0)
             return (false, "empty text");
+
+        // A line that opens with a bullet is the start of an item, whatever the line above it was
+        // doing. Asked first because it outranks every kind of evidence below: a portal page's news
+        // list sets its headlines at the leading of a paragraph — 1.22 and 1.23 line advances,
+        // inside every tolerance here — and nothing but the marker says they are separate.
+        if (StartsWithListMarker(currentText))
+            return (false, "list marker");
 
         if (HasUnclosedDelimiter(previousText) ||
             EndsWithContinuationPunctuation(previousText) ||
@@ -651,7 +710,7 @@ internal static class OcrTextBlockGrouper
                 : (true, "shorter final line");
         }
 
-        return IsSetSolidUnder(previous, verticalGap, alignmentDelta, avgHeight)
+        return IsSetSolidUnder(previous, current, alignmentDelta, avgHeight)
             ? (true, "set solid")
             : (false, "no continuation evidence");
     }
@@ -704,11 +763,11 @@ internal static class OcrTextBlockGrouper
     /// </remarks>
     private static bool IsSetSolidUnder(
         OcrTextBlock previous,
-        double verticalGap,
+        OcrTextBlock current,
         double alignmentDelta,
         double avgHeight) =>
         IsLongEnoughToHaveBeenSetSolid(previous) &&
-        verticalGap <= avgHeight * 0.45 &&
+        LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
         alignmentDelta <= Math.Max(avgHeight * 0.35, 6);
 
     /// <summary>
@@ -761,6 +820,9 @@ internal static class OcrTextBlockGrouper
 
     private static bool EndsWithContinuationPunctuation(string text) =>
         text[^1] is '、' or '，' or ',' or '：' or ':' or '；' or ';' or '「' or '『' or '（' or '(' or '【' or '《' or '〈';
+
+    private static bool StartsWithListMarker(string text) =>
+        text[0] is '·' or '・' or '•' or '‧' or '●' or '○' or '▪' or '◆' or '※';
 
     private static bool StartsWithContinuationPunctuation(string text) =>
         text[0] is '」' or '』' or '）' or ')' or '】' or '》' or '〉' or '、' or '，' or ',' or '。' or '！' or '？' or '!' or '?';

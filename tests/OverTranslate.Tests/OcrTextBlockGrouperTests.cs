@@ -581,10 +581,37 @@ public class OcrTextBlockGrouperTests
         var blocks = new List<OcrTextBlock>
         {
             // Spaced tightly enough to clear the general gap tolerance, so it is the leading rule
-            // and not that one being asked the question.
+            // and not that one being asked the question. The pitch is the one measured on real
+            // menus — 1.42 detection boxes between entries, against the 1.1 to 1.2 a paragraph
+            // sets — because a number picked to sit just outside the threshold would stop
+            // testing the shape and start testing the constant.
             new("New Game", new Rect(10, 100, 140, 30)),
-            new("Settings", new Rect(10, 145, 130, 30)),
-            new("Exit", new Rect(10, 190, 70, 30)),
+            new("Settings", new Rect(10, 152, 130, 30)),
+            new("Exit", new Rect(10, 204, 70, 30)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(3, grouped.Count);
+    }
+
+    /// <summary>
+    /// The same menu read as Latin, where the detection box is left untrimmed and so the same
+    /// entries sit a smaller fraction of a box apart.
+    /// </summary>
+    /// <remarks>
+    /// Worth its own case because the leading rule divides by a box whose height depends on the
+    /// script: a fraction that reads as a paragraph in one reads as a menu in the other, and
+    /// getting that backwards is invisible in a corpus of one language.
+    /// </remarks>
+    [Fact]
+    public void KeepsLatinMenuEntriesSeparate()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("New Game", new Rect(10, 100, 140, 30), null, SourceGlyphHeight: 20),
+            new("Settings", new Rect(10, 145, 130, 30), null, SourceGlyphHeight: 20),
+            new("Exit", new Rect(10, 190, 70, 30), null, SourceGlyphHeight: 20),
         };
 
         var grouped = OcrTextBlockGrouper.Group(blocks);
