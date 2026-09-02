@@ -220,9 +220,15 @@ public partial class SettingsPage : UserControl
 
             VerboseLoggingCheckBox.IsChecked = s.VerboseLogging;
 
+            OcrDebugOverlayCheckBox.IsChecked = s.ShowOcrDebugOverlay;
+            OcrLineBoxesCheckBox.IsChecked = s.ShowOcrLineBoxes;
+            TextGroupBoxesCheckBox.IsChecked = s.ShowTextGroupBoxes;
+
             RefreshServiceTiles();
             UpdateScreenshotPathVisibility();
             UpdateVerboseLoggingAvailability();
+            CollapseDebugTools();
+            UpdateOcrDebugBoxAvailability();
         }
         finally
         {
@@ -407,6 +413,51 @@ public partial class SettingsPage : UserControl
         LogLevelService.Apply(verbose);
         Persist(s => s.VerboseLogging = verbose);
     }
+
+    /// <summary>
+    /// Shuts the 偵錯工具 card, which is how every visit to this page starts.
+    /// </summary>
+    /// <remarks>
+    /// Called from the load rather than left to the markup's initial state, because the page is
+    /// built once and shown again: without this, a card opened in one visit is still open in the
+    /// next. The fold is the one thing on this page that is not remembered — see AppSettings.
+    /// </remarks>
+    private void CollapseDebugTools() => SetDebugToolsExpanded(false);
+
+    private void DebugToolsHeader_Click(object sender, MouseButtonEventArgs e) =>
+        SetDebugToolsExpanded(DebugToolsBody.Visibility != Visibility.Visible);
+
+    private void SetDebugToolsExpanded(bool expanded)
+    {
+        DebugToolsBody.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        DebugToolsChevron.Text = expanded ? "" : "";
+    }
+
+    private void OcrDebugOverlay_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+
+        bool show = OcrDebugOverlayCheckBox.IsChecked == true;
+        Persist(s => s.ShowOcrDebugOverlay = show);
+        UpdateOcrDebugBoxAvailability();
+    }
+
+    private void OcrDebugBoxes_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+
+        bool lines = OcrLineBoxesCheckBox.IsChecked == true;
+        bool groups = TextGroupBoxesCheckBox.IsChecked == true;
+        Persist(s =>
+        {
+            s.ShowOcrLineBoxes = lines;
+            s.ShowTextGroupBoxes = groups;
+        });
+    }
+
+    // Which boxes to draw only means something once there are boxes to draw.
+    private void UpdateOcrDebugBoxAvailability() =>
+        OcrDebugBoxOptions.IsEnabled = OcrDebugOverlayCheckBox.IsChecked == true;
 
     /// <summary>
     /// An environment variable outranks this setting, so when one is set the checkbox says so rather

@@ -465,6 +465,14 @@
     <sys:String x:Key="S.Settings.Logging">앱 로그</sys:String>
     <sys:String x:Key="S.Settings.LoggingCheck">자세한 정보 기록</sys:String>
     <sys:String x:Key="S.Settings.LoggingHint">앱의 정보를 더 많이 기록합니다. 문제를 확인할 때만 켜는 것을 권장합니다.</sys:String>
+    <sys:String x:Key="S.Settings.DebugTools">디버그 도구</sys:String>
+    <sys:String x:Key="S.Settings.DebugToolsHint">OCR 인식과 텍스트 블록 분석 정보를 표시합니다</sys:String>
+    <sys:String x:Key="S.Settings.OcrDebug">OCR 디버그 정보 표시</sys:String>
+    <sys:String x:Key="S.Settings.OcrDebugHint">스크린샷 번역 시 OCR 인식 상자와 텍스트 그룹 상자를 표시합니다.</sys:String>
+    <sys:String x:Key="S.Settings.OcrLineBoxes">OCR 인식 상자</sys:String>
+    <sys:String x:Key="S.Settings.OcrLineBoxesHint">OCR 인식 결과의 경계 상자를 표시합니다.</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxes">텍스트 그룹 상자</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxesHint">텍스트 그룹 블록의 경계 상자를 표시합니다.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">내보내면 로그 파일, 시스템 정보, 현재 설정을 하나의 진단 파일로 모아 문제 신고에 첨부할 수 있습니다. API 키 같은 민감한 정보는 포함되지 않으며, 어떤 데이터도 자동으로 업로드되지 않습니다.</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">진단 정보 내보내기</sys:String>
     <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">폴더 열기</sys:String>

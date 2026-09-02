@@ -700,6 +700,7 @@ public partial class MainWindow : Window
         var settings = SettingsService.Instance.Current;
         ShowOverlay(
             blocks,
+            ocrBlocks,
             selection.Left,
             selection.Top,
             selection.Width,
@@ -738,6 +739,7 @@ public partial class MainWindow : Window
     // On first call: create a new overlay and wire its Closed handler.
     private void ShowOverlay(
         List<TranslatedBlock> blocks,
+        IReadOnlyList<OcrTextBlock> ocrBlocks,
         double selPhysLeft,
         double selPhysTop,
         double selPhysWidth,
@@ -750,6 +752,7 @@ public partial class MainWindow : Window
         {
             _overlayWindow.UpdateBlocks(
                 blocks,
+                ocrBlocks,
                 selPhysLeft,
                 selPhysTop,
                 selPhysWidth,
@@ -762,6 +765,7 @@ public partial class MainWindow : Window
 
         _overlayWindow = new OverlayWindow(
             blocks,
+            ocrBlocks,
             selPhysLeft,
             selPhysTop,
             selPhysWidth,
@@ -941,6 +945,7 @@ public partial class MainWindow : Window
             _lastVerticalText = req.IsVerticalText;
             ShowOverlay(
                 coloredTranslated,
+                _lastOcrBlocks,
                 _lastSelPhysLeft,
                 _lastSelPhysTop,
                 _lastSelPhysWidth,
@@ -980,6 +985,7 @@ public partial class MainWindow : Window
             // On failure, restore old bubbles so the overlay isn't left blank
             _overlayWindow?.UpdateBlocks(
                 _lastColoredBlocks,
+                _lastOcrBlocks,
                 _lastSelPhysLeft,
                 _lastSelPhysTop,
                 _lastSelPhysWidth,
