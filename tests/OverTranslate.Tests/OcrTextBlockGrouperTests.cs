@@ -511,6 +511,32 @@ public class OcrTextBlockGrouperTests
     /// them first, so this reaches the next-line test the way the real ones did.
     /// </summary>
     /// <summary>
+    /// A stat panel's rows, which every geometric test reads as a paragraph: one left edge, an
+    /// even 39px cadence, one text size, no sentence boundary in the words. Real bounds from the
+    /// skill list of a game panel, where they reached the translator as "Stun Power V+ Stun Power
+    /// V+ Health V+" in a single bubble.
+    /// </summary>
+    /// <remarks>
+    /// The level beside each entry is what makes them rows — see
+    /// <see cref="RepeatedRowLayout"/> — so it is in the fixture even though nothing asserts about
+    /// it. Removing it does not weaken this test; it removes what the test is about.
+    /// </remarks>
+    [Fact]
+    public void KeepsRepeatedTwoColumnRowsSeparate()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Stun Power V+", new Rect(725, 481, 184, 34)), new("Lvl 15", new Rect(1108, 480, 75, 37)),
+            new("Stun Power V+", new Rect(722, 520, 189, 38)), new("Lvl 15", new Rect(1110, 521, 71, 36)),
+            new("Health V+", new Rect(721, 558, 147, 41)), new("Lvl 15", new Rect(1111, 562, 71, 35)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(6, grouped.Count);
+    }
+
+    /// <summary>
     /// The shape this whole path exists for: a dialogue line wrapped across three rows, none of
     /// which is much shorter than the one above it. Split, the translator sees three fragments and
     /// none of them carries the sentence the others needed.

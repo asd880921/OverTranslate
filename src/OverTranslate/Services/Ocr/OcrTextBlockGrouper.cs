@@ -30,6 +30,12 @@ internal static class OcrTextBlockGrouper
         }
 
         var sameLineMerged = MergeSameLineFragments(blocks, trace);
+
+        // Asked of the whole capture before any pair is judged, for the reason MergeSameLineFragments
+        // gives about its own measuring pass: what a row is depends on the rows around it, and a
+        // question about the layout cannot be answered from the two lines in front of it.
+        var repeatedRows = RepeatedRowLayout.Detect(sameLineMerged);
+
         var sorted = sameLineMerged
             .OrderBy(block => block.Bounds.Y)
             .ThenBy(block => block.Bounds.X)
@@ -38,7 +44,8 @@ internal static class OcrTextBlockGrouper
         var groups = new List<List<OcrTextBlock>>();
         foreach (var block in sorted)
         {
-            var continued = GroupThisContinues(groups, block, sorted, appearance, trace);
+            var continued = GroupThisContinues(
+                groups, block, sorted, appearance, repeatedRows, trace);
             if (continued is not null) continued.Add(block);
             else groups.Add([block]);
         }
@@ -373,6 +380,7 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock block,
         IReadOnlyList<OcrTextBlock> lines,
         IBlockAppearanceSource? appearance,
+        RepeatedRowLayout repeatedRows,
         GroupTrace? trace)
     {
         List<OcrTextBlock>? best = null;
@@ -394,7 +402,7 @@ internal static class OcrTextBlockGrouper
             if (!nearest && !IsWithinContinuationReach(last, block)) continue;
             nearest = false;
 
-            if (!CanJoinNextLine(last, block, appearance, trace)) continue;
+            if (!CanJoinNextLine(last, block, appearance, repeatedRows, trace)) continue;
 
             var alignment = AlignmentDelta(last, block);
             if (alignment >= bestAlignment) continue;
@@ -473,9 +481,10 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock previous,
         OcrTextBlock current,
         IBlockAppearanceSource? appearance,
+        RepeatedRowLayout repeatedRows,
         GroupTrace? trace)
     {
-        var (joined, rule) = JudgeNextLine(previous, current, appearance);
+        var (joined, rule) = JudgeNextLine(previous, current, appearance, repeatedRows);
         if (trace is null)
             return joined;
 
@@ -505,7 +514,10 @@ internal static class OcrTextBlockGrouper
     }
 
     private static (bool Joined, string Rule) JudgeNextLine(
-        OcrTextBlock previous, OcrTextBlock current, IBlockAppearanceSource? appearance)
+        OcrTextBlock previous,
+        OcrTextBlock current,
+        IBlockAppearanceSource? appearance,
+        RepeatedRowLayout repeatedRows)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
 
@@ -547,6 +559,12 @@ internal static class OcrTextBlockGrouper
             overlapRate >= 0.35 || alignmentDelta <= Math.Max(avgHeight * 0.7, 12);
         if (!isAlignedContinuation)
             return (false, "not aligned enough to continue");
+
+        // Layout before geometry: two entries of one list are not a wrapped sentence whatever
+        // their spacing says, and their spacing routinely says they are. Asked here rather than
+        // first so that the trace still reports how a pair failed when it was never a candidate.
+        if (repeatedRows.AreEntriesOfOneList(previous, current))
+            return (false, "repeated rows");
 
         return SentenceContinuationEvidence(
             previous, current, verticalGap, alignmentDelta, avgHeight, appearance);
