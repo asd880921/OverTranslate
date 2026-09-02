@@ -802,7 +802,8 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock current,
         double alignmentDelta,
         double avgHeight) =>
-        IsLongEnoughToHaveBeenSetSolid(previous) &&
+        (IsLongEnoughToHaveBeenSetSolid(previous) ||
+            (IsLongEnoughToHaveBeenSetSolid(current) && IsInsetWithin(previous, current, avgHeight))) &&
         LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
         alignmentDelta <= Math.Max(avgHeight * 0.35, 6);
 
@@ -818,6 +819,28 @@ internal static class OcrTextBlockGrouper
     /// shape tight leading genuinely shares with wrapped text: single words stacked in a column,
     /// which stop well short of four characters' worth of line.
     /// </remarks>
+    /// <summary>
+    /// Whether the first line sits inset from both ends of the second — the shape of a centred
+    /// balloon's opening line, and the one thing a heading over a body of text never is.
+    /// </summary>
+    /// <remarks>
+    /// The length test above asks the first line to have plainly filled its column, which the
+    /// opening line of a centred speech balloon does not: "WHY ARE" over "YOU PICKING ON AN
+    /// INNOCENT" is three words on a line the artist chose to break there, and eight comic pages
+    /// reached the translator as loose fragments because of it. What that test is really keeping
+    /// out is a label over the thing it labels, and a label shares an edge with what it labels —
+    /// "Web APIs" over "Navigation API", "Game Options" over "Link Cygames ID", both flush left.
+    /// So a short line is admitted only when the line below runs past it at <em>both</em> ends,
+    /// which is what centring does and what flush-left stacking cannot.
+    /// </remarks>
+    private static bool IsInsetWithin(OcrTextBlock line, OcrTextBlock outer, double avgHeight)
+    {
+        var inset = Math.Max(avgHeight * 0.2, 4);
+
+        return line.Bounds.Left - outer.Bounds.Left >= inset &&
+               outer.Bounds.Right - line.Bounds.Right >= inset;
+    }
+
     private static bool IsLongEnoughToHaveBeenSetSolid(OcrTextBlock line) =>
         line.Bounds.Height > 0 &&
         line.Bounds.Width / line.Bounds.Height >= WrappedLineMinAspect / 2;
