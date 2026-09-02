@@ -448,6 +448,14 @@
     <sys:String x:Key="S.Settings.Logging">应用日志</sys:String>
     <sys:String x:Key="S.Settings.LoggingCheck">记录详细信息</sys:String>
     <sys:String x:Key="S.Settings.LoggingHint">启用后会记录更多应用程序信息，仅建议在排查问题时开启。</sys:String>
+    <sys:String x:Key="S.Settings.DebugTools">调试工具</sys:String>
+    <sys:String x:Key="S.Settings.DebugToolsHint">显示 OCR 识别与文字区块分析信息</sys:String>
+    <sys:String x:Key="S.Settings.OcrDebug">显示 OCR 调试信息</sys:String>
+    <sys:String x:Key="S.Settings.OcrDebugHint">截图翻译时显示 OCR 识别框与文字分组框。</sys:String>
+    <sys:String x:Key="S.Settings.OcrLineBoxes">OCR 识别框</sys:String>
+    <sys:String x:Key="S.Settings.OcrLineBoxesHint">显示 OCR 识别结果的边界框。</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxes">文字分组框</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxesHint">显示 OCR 文字分组区块的边界框。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">导出时会将日志文件、系统信息与当前设置整理成诊断文件，方便附在问题反馈中。API 密钥等敏感信息不会包含在内，也不会自动上传任何数据。</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">导出诊断信息</sys:String>
     <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">打开文件夹</sys:String>

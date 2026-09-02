@@ -1196,6 +1196,107 @@
                             </Border>
                         </StackPanel>
                     </Border>
+
+                    <!-- ══════════ 偵錯工具 ══════════
+                         Last on the page and shut, because it is for working out why a capture was
+                         read the way it was and for nothing else. The header opens it; the fold is
+                         deliberately not remembered, so nobody returns to this page and finds the
+                         app looking like a debugger because of a click weeks ago. What is inside
+                         the fold is remembered — that part is a preference. -->
+                    <Border Grid.Column="1" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <Border x:Name="DebugToolsHeader"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    MouseLeftButtonUp="DebugToolsHeader_Click">
+                                <StackPanel>
+                                    <StackPanel Style="{StaticResource CardHeaderRow}" Margin="0">
+                                        <TextBlock Text="&#xEBE8;" Style="{StaticResource CardHeaderIcon}"/>
+                                        <TextBlock Text="{DynamicResource S.Settings.DebugTools}"
+                                                   Style="{StaticResource CardTitle}"/>
+                                        <!-- Right-aligned in a card whose every other row is
+                                             left-packed, because it is the affordance and not a
+                                             label: it has to be findable without reading. -->
+                                        <TextBlock x:Name="DebugToolsChevron"
+                                                   Text="&#xE70D;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Right"
+                                                   Margin="10,1,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{DynamicResource S.Settings.DebugToolsHint}"
+                                               Style="{StaticResource OptionDescription}"
+                                               Margin="27,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="DebugToolsBody"
+                                    Style="{StaticResource ToggleRowBorder}"
+                                    Margin="0,12,0,0"
+                                    Visibility="Collapsed">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox  Grid.Column="0" x:Name="OcrDebugOverlayCheckBox"
+                                                   Style="{StaticResource ModernCheckBox}"
+                                                   VerticalAlignment="Top"
+                                                   Checked="OcrDebugOverlay_Toggled"
+                                                   Unchecked="OcrDebugOverlay_Toggled"/>
+                                        <TextBlock Grid.Column="1" Text="&#xE890;" Style="{StaticResource OptionGlyph}"/>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{DynamicResource S.Settings.OcrDebug}"
+                                                       Style="{StaticResource OptionTitle}"/>
+                                            <TextBlock Text="{DynamicResource S.Settings.OcrDebugHint}"
+                                                       Style="{StaticResource OptionDescription}"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Indented under the switch that turns them on, and greyed
+                                         with it: on their own they say nothing, and a tick that
+                                         changes nothing on screen is worse than one that is
+                                         plainly unavailable. -->
+                                    <Grid x:Name="OcrDebugBoxOptions" Margin="34,14,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <CheckBox  Grid.Row="0" Grid.Column="0" x:Name="OcrLineBoxesCheckBox"
+                                                   Style="{StaticResource ModernCheckBox}"
+                                                   VerticalAlignment="Top"
+                                                   Checked="OcrDebugBoxes_Toggled"
+                                                   Unchecked="OcrDebugBoxes_Toggled"/>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,12">
+                                            <TextBlock Text="{DynamicResource S.Settings.OcrLineBoxes}"
+                                                       Style="{StaticResource OptionTitle}"/>
+                                            <TextBlock Text="{DynamicResource S.Settings.OcrLineBoxesHint}"
+                                                       Style="{StaticResource OptionDescription}"/>
+                                        </StackPanel>
+                                        <CheckBox  Grid.Row="1" Grid.Column="0" x:Name="TextGroupBoxesCheckBox"
+                                                   Style="{StaticResource ModernCheckBox}"
+                                                   VerticalAlignment="Top"
+                                                   Checked="OcrDebugBoxes_Toggled"
+                                                   Unchecked="OcrDebugBoxes_Toggled"/>
+                                        <StackPanel Grid.Row="1" Grid.Column="1">
+                                            <TextBlock Text="{DynamicResource S.Settings.TextGroupBoxes}"
+                                                       Style="{StaticResource OptionTitle}"/>
+                                            <TextBlock Text="{DynamicResource S.Settings.TextGroupBoxesHint}"
+                                                       Style="{StaticResource OptionDescription}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Grid>
         </ScrollViewer>

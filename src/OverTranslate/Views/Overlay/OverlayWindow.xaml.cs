@@ -29,8 +29,17 @@ public partial class OverlayWindow : Window
     // (physical pixels) are measured in.
     private readonly System.Drawing.Rectangle _physBounds = ScreenGeometry.VirtualDesktopBounds();
 
+    // Debug geometry, drawn only when the setting asks for it. The two layers nest, so they are
+    // given different weights as well as different colours: the recogniser's lines are a thin solid
+    // box, and the group that owns them a dashed one just outside. Alpha low enough that the
+    // capture underneath still reads, which is the whole point of looking at it.
+    private const byte DebugFillAlpha = 0x26;
+    private static readonly System.Windows.Media.Color OcrLineBoxColor = System.Windows.Media.Color.FromRgb(0x4D, 0xA3, 0xFF);
+    private static readonly System.Windows.Media.Color TextGroupBoxColor = System.Windows.Media.Color.FromRgb(0xFF, 0xB4, 0x54);
+
     private bool _isLoaded;
     private List<TranslatedBlock> _currentBlocks;
+    private IReadOnlyList<OcrTextBlock> _currentOcrBlocks;
     private double _currentSelectionScreenX;
     private double _currentSelectionScreenY;
     private double _currentSelectionScreenWidth;
@@ -41,6 +50,7 @@ public partial class OverlayWindow : Window
 
     public OverlayWindow(
         List<TranslatedBlock> blocks,
+        IReadOnlyList<OcrTextBlock> ocrBlocks,
         double selectionScreenX,
         double selectionScreenY,
         double selectionScreenWidth,
@@ -51,6 +61,7 @@ public partial class OverlayWindow : Window
     {
         InitializeComponent();
         _currentBlocks = blocks;
+        _currentOcrBlocks = ocrBlocks;
         _currentSelectionScreenX = selectionScreenX;
         _currentSelectionScreenY = selectionScreenY;
         _currentSelectionScreenWidth = selectionScreenWidth;
@@ -98,6 +109,7 @@ public partial class OverlayWindow : Window
     {
         BubbleBackgroundCanvas.Children.Clear();
         BubbleTextCanvas.Children.Clear();
+        DebugCanvas.Children.Clear();
 
         double winPhysLeft = _physBounds.Left;
         double winPhysTop  = _physBounds.Top;
@@ -125,6 +137,7 @@ public partial class OverlayWindow : Window
 
     public void UpdateBlocks(
         List<TranslatedBlock> blocks,
+        IReadOnlyList<OcrTextBlock> ocrBlocks,
         double selScreenX,
         double selScreenY,
         double selScreenWidth,
@@ -134,6 +147,7 @@ public partial class OverlayWindow : Window
         bool verticalText)
     {
         _currentBlocks = blocks;
+        _currentOcrBlocks = ocrBlocks;
         _currentSelectionScreenX = selScreenX;
         _currentSelectionScreenY = selScreenY;
         _currentSelectionScreenWidth = selScreenWidth;
@@ -187,7 +201,20 @@ public partial class OverlayWindow : Window
         // processing indicator is Collapsed whenever bubbles exist, so it does not appear.
         var full = new System.Windows.Media.Imaging.RenderTargetBitmap(
             fullW, fullH, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
-        full.Render((Visual)Content);
+
+        // The debug boxes are for looking at this screen, not for what gets pasted somewhere else.
+        // Hidden across the render and put back: a copied image should be the translation, whatever
+        // the person who copied it happens to have switched on.
+        var debugVisibility = DebugCanvas.Visibility;
+        DebugCanvas.Visibility = Visibility.Collapsed;
+        try
+        {
+            full.Render((Visual)Content);
+        }
+        finally
+        {
+            DebugCanvas.Visibility = debugVisibility;
+        }
 
         // The overlay window spans the whole virtual screen; the selection sits at this physical
         // offset within it.
@@ -211,6 +238,7 @@ public partial class OverlayWindow : Window
     {
         BubbleBackgroundCanvas.Children.Clear();
         BubbleTextCanvas.Children.Clear();
+        BuildDebugBoxes(selScreenX, selScreenY);
 
         if (_currentVerticalText)
         {
@@ -679,7 +707,60 @@ public partial class OverlayWindow : Window
     {
         var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         BubbleBackgroundCanvas.Visibility = visibility;
+        // With the bubbles, not on its own switch: 顯示原文 is for looking at the capture, and boxes
+        // over a picture the user asked to see unobstructed would be the same obstruction again.
+        DebugCanvas.Visibility = visibility;
         BubbleTextCanvas.Visibility = visibility;
+    }
+
+    /// <summary>
+    /// Draws the OCR geometry the debug setting asks for, in the selection's own coordinates.
+    /// </summary>
+    /// <remarks>
+    /// Groups first so the lines land on top of them: where the two coincide the finer box is the
+    /// one worth reading, and it is the one that says what the recogniser actually returned.
+    /// </remarks>
+    private void BuildDebugBoxes(double selScreenX, double selScreenY)
+    {
+        DebugCanvas.Children.Clear();
+
+        var settings = SettingsService.Instance.Current;
+        if (!settings.ShowOcrDebugOverlay || _currentOcrBlocks.Count == 0) return;
+
+        if (settings.ShowTextGroupBoxes)
+            foreach (var box in OcrDebugBoxes.GroupBoxes(_currentOcrBlocks))
+                DebugCanvas.Children.Add(
+                    CreateDebugBox(box, selScreenX, selScreenY, TextGroupBoxColor, dashed: true));
+
+        if (settings.ShowOcrLineBoxes)
+            foreach (var box in OcrDebugBoxes.LineBoxes(_currentOcrBlocks))
+                DebugCanvas.Children.Add(
+                    CreateDebugBox(box, selScreenX, selScreenY, OcrLineBoxColor, dashed: false));
+    }
+
+    private System.Windows.Shapes.Rectangle CreateDebugBox(
+        Rect box, double selScreenX, double selScreenY, System.Windows.Media.Color color, bool dashed)
+    {
+        var fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(DebugFillAlpha, color.R, color.G, color.B));
+        var stroke = new SolidColorBrush(color);
+        fill.Freeze();
+        stroke.Freeze();
+
+        var shape = new System.Windows.Shapes.Rectangle
+        {
+            Width = Math.Max(1, box.Width / _dpiX),
+            Height = Math.Max(1, box.Height / _dpiY),
+            Fill = fill,
+            Stroke = stroke,
+            StrokeThickness = dashed ? 1.5 : 1,
+            StrokeDashArray = dashed ? new DoubleCollection([4, 3]) : null,
+            RadiusX = 3,
+            RadiusY = 3,
+        };
+
+        Canvas.SetLeft(shape, (selScreenX + box.X - _physBounds.Left) / _dpiX);
+        Canvas.SetTop(shape, (selScreenY + box.Y - _physBounds.Top) / _dpiY);
+        return shape;
     }
 
     private static bool HasLineBreak(string text) => text.Contains('\n') || text.Contains('\r');
