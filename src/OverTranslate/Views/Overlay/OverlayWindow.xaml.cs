@@ -167,6 +167,22 @@ public partial class OverlayWindow : Window
         ProcessingBorder.Visibility = Visibility.Visible;
     }
 
+    /// <summary>
+    /// Takes the reading of a capture, before any translation of it exists.
+    /// </summary>
+    /// <remarks>
+    /// The debug boxes describe the source, not the answer, so they are shown from the moment the
+    /// recogniser has finished — through the translating indicator, and on a capture whose
+    /// translation failed or was never asked for.
+    /// </remarks>
+    public void ShowOcrDebug(
+        IReadOnlyList<OcrTextBlock> ocrBlocks, double selScreenX, double selScreenY)
+    {
+        _currentOcrBlocks = ocrBlocks;
+        if (_isLoaded)
+            BuildDebugBoxes(selScreenX, selScreenY);
+    }
+
     public void UpdateBlocks(
         List<TranslatedBlock> blocks,
         IReadOnlyList<OcrTextBlock> ocrBlocks,
@@ -753,10 +769,10 @@ public partial class OverlayWindow : Window
     {
         var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         BubbleBackgroundCanvas.Visibility = visibility;
-        // With the bubbles, not on its own switch: 顯示原文 is for looking at the capture, and boxes
-        // over a picture the user asked to see unobstructed would be the same obstruction again.
-        DebugCanvas.Visibility = visibility;
         BubbleTextCanvas.Visibility = visibility;
+        // DebugCanvas is deliberately not switched with them. These boxes are drawn around the
+        // source text, so 顯示原文 is the moment they are most worth seeing — the boxes and the words
+        // they were measured from, together.
     }
 
     /// <summary>
@@ -770,15 +786,15 @@ public partial class OverlayWindow : Window
     {
         DebugCanvas.Children.Clear();
 
-        var settings = SettingsService.Instance.Current;
-        if (!settings.ShowOcrDebugOverlay || _currentOcrBlocks.Count == 0) return;
+        var debug = SettingsService.Instance.Current.OcrDebug;
+        if (_currentOcrBlocks.Count == 0) return;
 
-        if (settings.ShowTextGroupBoxes)
+        if (debug.ShowGroupBoxes)
             foreach (var box in OcrDebugBoxes.GroupBoxes(_currentOcrBlocks))
                 DebugCanvas.Children.Add(
                     CreateDebugBox(box, selScreenX, selScreenY, TextGroupBoxColor, dashed: true));
 
-        if (settings.ShowOcrLineBoxes)
+        if (debug.ShowLineBoxes)
             foreach (var box in OcrDebugBoxes.LineBoxes(_currentOcrBlocks))
                 DebugCanvas.Children.Add(
                     CreateDebugBox(box, selScreenX, selScreenY, OcrLineBoxColor, dashed: false));

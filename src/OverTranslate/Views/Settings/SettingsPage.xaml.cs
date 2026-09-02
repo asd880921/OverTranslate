@@ -220,15 +220,13 @@ public partial class SettingsPage : UserControl
 
             VerboseLoggingCheckBox.IsChecked = s.VerboseLogging;
 
-            OcrDebugOverlayCheckBox.IsChecked = s.ShowOcrDebugOverlay;
-            OcrLineBoxesCheckBox.IsChecked = s.ShowOcrLineBoxes;
-            TextGroupBoxesCheckBox.IsChecked = s.ShowTextGroupBoxes;
+            OcrLineBoxesCheckBox.IsChecked = s.OcrDebug.ShowLineBoxes;
+            TextGroupBoxesCheckBox.IsChecked = s.OcrDebug.ShowGroupBoxes;
 
             RefreshServiceTiles();
             UpdateScreenshotPathVisibility();
             UpdateVerboseLoggingAvailability();
             CollapseDebugTools();
-            UpdateOcrDebugBoxAvailability();
         }
         finally
         {
@@ -433,15 +431,6 @@ public partial class SettingsPage : UserControl
         DebugToolsChevron.Text = expanded ? "" : "";
     }
 
-    private void OcrDebugOverlay_Toggled(object sender, RoutedEventArgs e)
-    {
-        if (_loading) return;
-
-        bool show = OcrDebugOverlayCheckBox.IsChecked == true;
-        Persist(s => s.ShowOcrDebugOverlay = show);
-        UpdateOcrDebugBoxAvailability();
-    }
-
     private void OcrDebugBoxes_Toggled(object sender, RoutedEventArgs e)
     {
         if (_loading) return;
@@ -450,14 +439,10 @@ public partial class SettingsPage : UserControl
         bool groups = TextGroupBoxesCheckBox.IsChecked == true;
         Persist(s =>
         {
-            s.ShowOcrLineBoxes = lines;
-            s.ShowTextGroupBoxes = groups;
+            s.OcrDebug.ShowLineBoxes = lines;
+            s.OcrDebug.ShowGroupBoxes = groups;
         });
     }
-
-    // Which boxes to draw only means something once there are boxes to draw.
-    private void UpdateOcrDebugBoxAvailability() =>
-        OcrDebugBoxOptions.IsEnabled = OcrDebugOverlayCheckBox.IsChecked == true;
 
     /// <summary>
     /// An environment variable outranks this setting, so when one is set the checkbox says so rather

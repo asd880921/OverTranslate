@@ -100,6 +100,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- ══════════ 快捷鍵 ══════════
@@ -1197,59 +1198,62 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- ══════════ 偵錯工具 ══════════
-                         Last on the page and shut, because it is for working out why a capture was
-                         read the way it was and for nothing else. The header opens it; the fold is
-                         deliberately not remembered, so nobody returns to this page and finds the
-                         app looking like a debugger because of a click weeks ago. What is inside
-                         the fold is remembered — that part is a preference. -->
-                    <Border Grid.Column="1" Style="{StaticResource CardBorder}">
-                        <StackPanel>
-                            <Border x:Name="DebugToolsHeader"
-                                    Background="Transparent"
-                                    Cursor="Hand"
-                                    MouseLeftButtonUp="DebugToolsHeader_Click">
-                                <StackPanel>
-                                    <StackPanel Style="{StaticResource CardHeaderRow}" Margin="0">
-                                        <TextBlock Text="&#xEBE8;" Style="{StaticResource CardHeaderIcon}"/>
-                                        <TextBlock Text="{DynamicResource S.Settings.DebugTools}"
-                                                   Style="{StaticResource CardTitle}"/>
-                                        <!-- Right-aligned in a card whose every other row is
-                                             left-packed, because it is the affordance and not a
-                                             label: it has to be findable without reading. -->
-                                        <TextBlock x:Name="DebugToolsChevron"
-                                                   Text="&#xE70D;"
-                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   FontSize="12"
-                                                   Foreground="{DynamicResource AppTextSecondary}"
-                                                   VerticalAlignment="Center"
-                                                   HorizontalAlignment="Right"
-                                                   Margin="10,1,0,0"/>
-                                    </StackPanel>
-                                    <TextBlock Text="{DynamicResource S.Settings.DebugToolsHint}"
-                                               Style="{StaticResource OptionDescription}"
-                                               Margin="27,4,0,0"/>
-                                </StackPanel>
-                            </Border>
+                </Grid>
+                <!-- ══════════ 偵錯工具 ══════════
+                     Its own full-width row under 進階設定, and last on the page, because it is for
+                     working out why a capture was read the way it was and for nothing else. Full
+                     width because shut it is one line, while open it is three settings whose
+                     sentences would wrap twice in a half-width column.
 
-                            <Border x:Name="DebugToolsBody"
-                                    Style="{StaticResource ToggleRowBorder}"
-                                    Margin="0,12,0,0"
-                                    Visibility="Collapsed">
+                     The header opens it. The fold is deliberately not remembered, so nobody returns
+                     to this page and finds the app looking like a debugger because of a click weeks
+                     ago; what is inside the fold is remembered, because that part is a preference. -->
+                <Border Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2"
+                        Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <Border x:Name="DebugToolsHeader"
+                                Background="Transparent"
+                                Cursor="Hand"
+                                MouseLeftButtonUp="DebugToolsHeader_Click">
+                            <StackPanel Style="{StaticResource CardHeaderRow}" Margin="0">
+                                <TextBlock Text="&#xEBE8;" Style="{StaticResource CardHeaderIcon}"/>
+                                <TextBlock Text="{DynamicResource S.Settings.DebugTools}"
+                                           Style="{StaticResource CardTitle}"/>
+                                <!-- Beside the title rather than pushed to the far edge of a
+                                     full-width card, where it would read as belonging to nothing. -->
+                                <TextBlock x:Name="DebugToolsChevron"
+                                           Text="&#xE70D;"
+                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           VerticalAlignment="Center"
+                                           Margin="10,1,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- The description is inside the fold with everything else: shut, this card
+                             is its own title and nothing more, which is what a card nobody needs
+                             should cost the page. -->
+                        <StackPanel x:Name="DebugToolsBody" Visibility="Collapsed">
+                            <TextBlock Text="{DynamicResource S.Settings.DebugToolsHint}"
+                                       Style="{StaticResource OptionDescription}"
+                                       Margin="27,8,0,0"/>
+
+                            <Border Style="{StaticResource ToggleRowBorder}" Margin="0,12,0,0">
                                 <StackPanel>
+                                    <!-- No switch of its own: the two boxes below are the feature,
+                                         and neither ticked draws nothing. A master here would only
+                                         be a way to have this on and see nothing. -->
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <CheckBox  Grid.Column="0" x:Name="OcrDebugOverlayCheckBox"
-                                                   Style="{StaticResource ModernCheckBox}"
-                                                   VerticalAlignment="Top"
-                                                   Checked="OcrDebugOverlay_Toggled"
-                                                   Unchecked="OcrDebugOverlay_Toggled"/>
-                                        <TextBlock Grid.Column="1" Text="&#xE890;" Style="{StaticResource OptionGlyph}"/>
-                                        <StackPanel Grid.Column="2">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="&#xE890;"
+                                                   Style="{StaticResource OptionGlyph}"
+                                                   Margin="0,1,10,0"/>
+                                        <StackPanel Grid.Column="1">
                                             <TextBlock Text="{DynamicResource S.Settings.OcrDebug}"
                                                        Style="{StaticResource OptionTitle}"/>
                                             <TextBlock Text="{DynamicResource S.Settings.OcrDebugHint}"
@@ -1257,11 +1261,7 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <!-- Indented under the switch that turns them on, and greyed
-                                         with it: on their own they say nothing, and a tick that
-                                         changes nothing on screen is worse than one that is
-                                         plainly unavailable. -->
-                                    <Grid x:Name="OcrDebugBoxOptions" Margin="34,14,0,0">
+                                    <Grid Margin="25,14,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
@@ -1296,8 +1296,8 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
-                    </Border>
-                </Grid>
+                    </StackPanel>
+                </Border>
             </Grid>
         </ScrollViewer>
 
