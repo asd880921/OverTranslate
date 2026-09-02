@@ -488,6 +488,7 @@ public partial class SettingsPage : UserControl
         // Off Auto before animating, at the height it is showing right now.
         var target = expanded ? MeasuredDebugFoldHeight() : 0;
         DebugToolsFold.Height = DebugToolsFold.ActualHeight;
+        if (expanded) ScrollDebugToolsIntoView(target);
 
         var height = DebugFoldAnimation(target);
         height.Completed += (_, _) =>
@@ -517,6 +518,33 @@ public partial class SettingsPage : UserControl
         DebugToolsBody.BeginAnimation(OpacityProperty, null);
         DebugToolsBodyRise.BeginAnimation(TranslateTransform.YProperty, null);
         DebugToolsChevronAngle.BeginAnimation(RotateTransform.AngleProperty, null);
+    }
+
+    /// <summary>
+    /// Scrolls so the whole card is in view once it has finished opening, rather than leaving the
+    /// user to find the rest of what they just opened.
+    /// </summary>
+    /// <remarks>
+    /// <para>Aimed at where the card's bottom edge <em>will</em> be — its height now plus the fold
+    /// it is about to grow — because scrolling to where it is today would stop short by exactly the
+    /// part that is being revealed. The viewer clamps whatever it cannot reach yet and catches up
+    /// frame by frame as the fold opens, so the two movements finish together.</para>
+    ///
+    /// <para>Does nothing when the card already fits, which is the common case on a tall window.
+    /// Scrolling a page that did not need scrolling is worse than not scrolling one that did.</para>
+    /// </remarks>
+    private void ScrollDebugToolsIntoView(double foldHeight)
+    {
+        if (PresentationSource.FromVisual(DebugToolsCard) is null) return;
+
+        var content = (Visual)CardsScroll.Content;
+        var top = DebugToolsCard.TransformToAncestor(content).Transform(new System.Windows.Point(0, 0)).Y;
+        var bottom = top + DebugToolsCard.ActualHeight + foldHeight;
+
+        var offset = Math.Max(0, bottom - CardsScroll.ViewportHeight);
+        if (offset <= CardsScroll.VerticalOffset) return;
+
+        SmoothScroll.To(CardsScroll, offset, DebugFoldDuration, DebugFoldEasing);
     }
 
     /// <summary>How tall the fold's content wants to be at the width the card gives it.</summary>
