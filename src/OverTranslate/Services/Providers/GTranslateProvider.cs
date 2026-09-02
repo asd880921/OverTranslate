@@ -101,10 +101,34 @@ public class GTranslateProvider : ITranslationProvider
         var toCode   = MapToGTranslate(targetLang);
         var fromCode = MapSourceToGTranslate(sourceLang);
 
-        var r       = await _translator.TranslateAsync(text, toCode, fromCode);
-        var detLang = r.SourceLanguage?.ISO6391 ?? "";
-        var mapped  = string.IsNullOrEmpty(detLang) ? "" : MapDetectedToDeepL(detLang);
-        return (r.Translation, mapped);
+        // A text past the endpoints' limit is sent as consecutive sentences rather than as one
+        // request. Two of the three engines refuse it outright and the third answers with a
+        // repetition loop, which nothing above here could tell from a translation — see
+        // TranslationRequestChunks.
+        var chunks = TranslationRequestChunks.Split(text);
+        if (chunks.Count == 1)
+        {
+            var single  = await _translator.TranslateAsync(text, toCode, fromCode);
+            var oneLang = single.SourceLanguage?.ISO6391 ?? "";
+            return (single.Translation, string.IsNullOrEmpty(oneLang) ? "" : MapDetectedToDeepL(oneLang));
+        }
+
+        var translations = new List<string>(chunks.Count);
+        var detected = "";
+
+        foreach (var chunk in chunks)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var part = await _translator.TranslateAsync(chunk, toCode, fromCode);
+            translations.Add(part.Translation);
+            // The first chunk that names a language speaks for the block; the rest are the same
+            // text and a later disagreement is a shorter piece being read with less to go on.
+            if (detected.Length == 0) detected = part.SourceLanguage?.ISO6391 ?? "";
+        }
+
+        var mapped = string.IsNullOrEmpty(detected) ? "" : MapDetectedToDeepL(detected);
+        return (TranslationRequestChunks.Join(translations), mapped);
     }
 
     public async Task<DictionaryLookupData?> LookupDictionaryAsync(
