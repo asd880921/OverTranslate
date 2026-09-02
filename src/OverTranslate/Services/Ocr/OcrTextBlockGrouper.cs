@@ -844,7 +844,20 @@ internal static class OcrTextBlockGrouper
         if (HasUnclosedDelimiter(previousText) ||
             EndsWithContinuationPunctuation(previousText) ||
             StartsWithContinuationPunctuation(currentText))
-            return (true, "punctuation");
+            // The same leading bar the width rule carries, for the same reason and with the same
+            // Latin-only guard. A mark that leaves a clause open is strong evidence and this was
+            // the one rule that took it as sufficient on its own, at any distance — so a search
+            // result whose snippet the recogniser read as ending in a comma (the "..." after it
+            // was dropped) reached down 1.71 line advances and pulled in the first of the link
+            // chips below it, translating "2.1.BanG Dream!" as the end of the sentence. Which chip
+            // it took turned on which one happened to line up with the paragraph's left edge,
+            // which is not a thing about the layout. Looser than the set-solid bar because the
+            // mark is real evidence and a paragraph may be spaced a little more freely than the
+            // lines inside it; still far under the 1.71 that reaches the next component.
+            return HasMeasurableLeading(previous, current) &&
+                   lineAdvance > WrappedFinalLineAdvance
+                ? (false, "leading")
+                : (true, "punctuation");
 
         if (EndsWithSentenceTerminator(previousText))
             return (false, "sentence terminator");

@@ -112,6 +112,11 @@ OcrHarness.exe --group-explain 圖.png [更多.png ...]
   `label` / `repeated rows` / `leading` / `shorter final line` / `set solid` /
   `no continuation evidence`。
 
+`leading` 是三條規則共用的否決理由：冒號標籤、`shorter final line`、以及標點續行。最後這條
+是後來才補上的——逗號、頓號、開括號原本一命中就直接合併，距離多遠都收，所以 Google 搜尋
+結果的 snippet（辨識時把結尾的 `...` 吃掉只剩逗號）會往下伸 1.71 個行距，把底下那排連結
+標籤的第一顆吃進段落裡；吃到哪一顆取決於哪顆碰巧對齊段落左緣，跟版面無關。
+
 `repeated rows` 跟其他規則不同：**它不是看這兩行，是看整張截圖的版面**（見
 `RepeatedRowLayout`）。遊戲的技能欄／道具欄，行距、對齊、字級、標點四個訊號全都說「這是同一段」
 —— 因為它們的行距真的就是段落行距（實測 1.01～1.25，段落是 0.67～1.24）。分辨的依據不在那兩行

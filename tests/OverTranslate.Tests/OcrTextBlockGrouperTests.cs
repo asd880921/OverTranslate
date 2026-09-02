@@ -1006,4 +1006,42 @@ public class OcrTextBlockGrouperTests
 
         Assert.Equal(2, OcrTextBlockGrouper.Group(blocks).Count);
     }
+
+    /// <summary>
+    /// A search result whose snippet the recogniser read as ending in a comma, because the "..."
+    /// after it was dropped, over the row of link chips beneath it. The mark says a clause is open
+    /// and the chip is 1.71 line advances away, which is the distance to the next component rather
+    /// than to the next line — and which chip it reached for turned on which one happened to share
+    /// the paragraph's left edge.
+    /// </summary>
+    [Fact]
+    public void KeepsAClauseEndingInACommaFromReachingTheComponentBelowIt()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Dream! has released music CD's, anime music videos,", new Rect(66, 157, 430, 26), SourceGlyphHeight: 16),
+            new("2.1.BanG Dream!", new Rect(83, 198, 128, 22), SourceGlyphHeight: 15),
+        };
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks).Count);
+    }
+
+    /// <summary>
+    /// The same mark at the leading of a paragraph, which is what the rule is for: a comma at the
+    /// end of a line is the strongest evidence this file has that a sentence runs on, and the bar
+    /// above only has to keep it from crossing into the next component.
+    /// </summary>
+    [Fact]
+    public void StillGroupsAClauseEndingInACommaOntoTheLineBelowIt()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Dream! has released music CD's, anime music videos,", new Rect(66, 157, 430, 26), SourceGlyphHeight: 16),
+            new("and a stage musical adapted from the series", new Rect(66, 184, 380, 26), SourceGlyphHeight: 16),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+
+        Assert.Equal(2, merged.Lines.Count);
+    }
 }
