@@ -1028,20 +1028,22 @@ if (args[0] == "--group-explain")
         var raw = await explainEngine.TryRecognizeAsync(image, harnessLanguage, size);
         if (raw is null || raw.Count == 0) { Console.WriteLine("  (nothing read)"); continue; }
 
-        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        var decisions = new List<OcrTextBlockGrouper.GroupDecision>();
         var grouped = OcrTextBlockGrouper.Group(raw, decisions);
 
         Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
         for (var i = 0; i < grouped.Count; i++)
             Console.WriteLine($"  [{i}] lines={grouped[i].Lines.Count}  {grouped[i].Text}");
 
-        Console.WriteLine("  --- next-line verdicts (gap/align in line heights) ---");
-        foreach (var decision in decisions)
+        // Rows first, then lines, because that is the order they ran in: boxes are gathered into
+        // lines before any line is asked whether it continues another.
+        Console.WriteLine("  --- merge verdicts (gap/fit in line heights) ---");
+        foreach (var decision in decisions.OrderByDescending(decision => decision.Kind))
         {
             Console.WriteLine(
-                $"  {(decision.Joined ? "JOIN  " : "SPLIT ")} gap={decision.VerticalGap,6:0.00} " +
-                $"align={decision.AlignmentDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
-                $"width={decision.WidthRatio:0.00}  [{decision.Rule}]");
+                $"  {decision.Kind,-4} {(decision.Joined ? "JOIN  " : "SPLIT ")} " +
+                $"gap={decision.Gap,6:0.00} fit={decision.Fit,6:0.00} " +
+                $"size={decision.TextSizeRatio:0.00} width={decision.WidthRatio:0.00}  [{decision.Rule}]");
             Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
         }
     }

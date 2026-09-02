@@ -103,9 +103,15 @@ OcrHarness.exe --group-explain 圖.png [更多.png ...]
 ```
 
 一般輸出只看得到「哪些行被併起來」，一段文字被拆成四則翻譯時，看不出是哪個門檻擋下來、
-差多少。這個模式把 `CanJoinNextLine` 的每一次判定都印出來，包含行距、對齊差、字級比、寬度比，
-以及是哪條規則決定的（`vertical gap` / `alignment` / `text size` / `sentence terminator` /
-`shorter final line` / `set solid` / `no continuation evidence`）。
+差多少。這個模式把**兩個合併判定**的每一次結果都印出來：
+
+- `row` —— 同一列（左右）的 `JudgeSameLine`，決定兩個框是不是同一行文字。
+  規則：`same row` / `box height` / `vertical overlap` / `horizontal gap` / `overlaps too far`。
+- `line` —— 上下的 `JudgeNextLine`，決定一行是不是前一行的續行。
+  規則：`vertical gap` / `alignment` / `text size` / `sentence terminator` /
+  `shorter final line` / `set solid` / `no continuation evidence`。
+
+每列帶 `gap`（row 是水平、line 是垂直）、`fit`（row 是垂直交疊、line 是對齊差）、字級比、寬度比。
 
 **數字一律以行高為單位，不是 px**，所以不同大小的截圖可以並排讀。調門檻前先看這份輸出：
 一串被 `vertical gap` 擋在 0.83 擋掉，跟一串行距只有 0.2 卻卡在 `no continuation evidence`，
@@ -114,6 +120,11 @@ OcrHarness.exe --group-explain 圖.png [更多.png ...]
 `set solid`（行距與對齊都極緊，判定為同一段的續行）就是靠這個模式訂出來的 —— 一開始還多要求
 字級比 ≥ 0.94，實測同一個字型的兩行只有 0.91（字高會帶到該行有沒有上下延伸的字母），
 那條規則反而把它要修的句子擋掉了。細節記在 `OcrTextBlockGrouper.IsSetSolidUnder`。
+
+`SameRowMaxGap`（同一列的最大間距）也是。原本 1.35 寬到會把整條導覽列 11 個選單項併成一行送翻譯 ——
+偵測器其實**正確地**回傳了 11 個框，是這條規則把它們黏起來的。實測兩群完全不重疊：
+真正的字間距 -0.18～0.38，導覽列 0.54～0.70，並排卡片 1.11，中間 0.38～0.54 是空的。
+**判讀重點：`row JOIN` 的 `gap` 就是拿來分這兩群的數字**，改門檻前先把它掃出來看分布。
 
 ### 稽核信心過濾丟掉了什麼
 

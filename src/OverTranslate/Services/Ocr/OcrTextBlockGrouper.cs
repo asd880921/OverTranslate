@@ -7,18 +7,18 @@ internal static class OcrTextBlockGrouper
     public static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> blocks) => Group(blocks, null);
 
     /// <param name="decisions">
-    /// Collects one entry per line pair the next-line test was asked about, with the geometry it
-    /// judged on and which rule decided. Null in the app; OcrHarness passes a list, because these
+    /// Collects one entry per pair either merge test was asked about, with the geometry it judged
+    /// on and which rule decided. Null in the app; OcrHarness passes a list, because these
     /// thresholds cannot be tuned from the grouped output alone — it shows what was joined, never
     /// how close the rest came to being.
     /// </param>
     internal static List<OcrTextBlock> Group(
-        IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions)
+        IReadOnlyList<OcrTextBlock> blocks, List<GroupDecision>? decisions)
     {
         if (blocks.Count <= 1)
             return blocks.ToList();
 
-        var sameLineMerged = MergeSameLineFragments(blocks);
+        var sameLineMerged = MergeSameLineFragments(blocks, decisions);
         var sorted = sameLineMerged
             .OrderBy(block => block.Bounds.Y)
             .ThenBy(block => block.Bounds.X)
@@ -38,21 +38,29 @@ internal static class OcrTextBlockGrouper
     }
 
     /// <summary>
-    /// One next-line verdict, with its geometry in line heights so numbers from captures of
-    /// different sizes can be read side by side.
+    /// One merge verdict, with its geometry in line heights so numbers from captures of different
+    /// sizes can be read side by side.
     /// </summary>
+    /// <param name="Kind">
+    /// "row" for the same-line test, which decides whether two boxes are one line of text, and
+    /// "line" for the next-line test, which decides whether one line continues another.
+    /// </param>
+    /// <param name="Gap">Horizontal for a row, vertical for a line.</param>
+    /// <param name="Fit">Vertical overlap for a row, alignment delta for a line.</param>
     /// <param name="Rule">Which test decided, whether it joined or refused.</param>
-    internal readonly record struct NextLineDecision(
+    internal readonly record struct GroupDecision(
+        string Kind,
         string Previous,
         string Current,
-        double VerticalGap,
-        double AlignmentDelta,
+        double Gap,
+        double Fit,
         double TextSizeRatio,
         double WidthRatio,
         bool Joined,
         string Rule);
 
-    private static List<OcrTextBlock> MergeSameLineFragments(IReadOnlyList<OcrTextBlock> blocks)
+    private static List<OcrTextBlock> MergeSameLineFragments(
+        IReadOnlyList<OcrTextBlock> blocks, List<GroupDecision>? decisions)
     {
         // Process left-to-right and append each fragment to whichever open row it continues, rather
         // than a global Y-then-X sort + "compare only with the previous" merge. Latin word boxes on
@@ -69,7 +77,7 @@ internal static class OcrTextBlockGrouper
 
         foreach (var block in ordered)
         {
-            var targetIndex = FindSameLineTarget(merged, block);
+            var targetIndex = FindSameLineTarget(merged, block, decisions);
             if (targetIndex >= 0)
                 merged[targetIndex] = MergeSameLine(merged[targetIndex], block);
             else
@@ -81,16 +89,35 @@ internal static class OcrTextBlockGrouper
 
     // Among the open row-blocks, returns the one this fragment continues — the candidate to its left
     // with the most vertical overlap (best row match), or -1 when none qualifies.
-    private static int FindSameLineTarget(List<OcrTextBlock> merged, OcrTextBlock block)
+    private static int FindSameLineTarget(
+        List<OcrTextBlock> merged, OcrTextBlock block, List<GroupDecision>? decisions)
     {
         var bestIndex = -1;
         var bestOverlap = double.NegativeInfinity;
 
+        // The nearest candidate that was refused, so a fragment that joins nothing can still say
+        // which rule stopped it and by how much. Only the nearest: every row on the far side of the
+        // capture is also a candidate, and reporting all of them would bury the one that mattered.
+        var nearestIndex = -1;
+        var nearestGap = double.PositiveInfinity;
+        var nearestRule = "";
+
         for (var i = 0; i < merged.Count; i++)
         {
             var candidate = merged[i];
-            if (!CanJoinSameLine(candidate, block))
+            var (joined, rule) = JudgeSameLine(candidate, block);
+            if (!joined)
+            {
+                var gap = Math.Abs(block.Bounds.X - candidate.Bounds.Right);
+                if (decisions is not null && gap < nearestGap)
+                {
+                    nearestGap = gap;
+                    nearestIndex = i;
+                    nearestRule = rule;
+                }
+
                 continue;
+            }
 
             var overlap = Math.Min(candidate.Bounds.Bottom, block.Bounds.Bottom) -
                           Math.Max(candidate.Bounds.Top, block.Bounds.Top);
@@ -101,10 +128,43 @@ internal static class OcrTextBlockGrouper
             }
         }
 
+        if (decisions is not null)
+        {
+            if (bestIndex >= 0)
+                decisions.Add(SameLineDecision(merged[bestIndex], block, true, "same row"));
+            else if (nearestIndex >= 0)
+                decisions.Add(SameLineDecision(merged[nearestIndex], block, false, nearestRule));
+        }
+
         return bestIndex;
     }
 
-    private static bool CanJoinSameLine(OcrTextBlock previous, OcrTextBlock current)
+    private static GroupDecision SameLineDecision(
+        OcrTextBlock previous, OcrTextBlock current, bool joined, string rule)
+    {
+        var avgHeight = Math.Max(1, (previous.Bounds.Height + current.Bounds.Height) / 2.0);
+        var overlap = Math.Max(
+            0,
+            Math.Min(previous.Bounds.Bottom, current.Bounds.Bottom) -
+            Math.Max(previous.Bounds.Top, current.Bounds.Top));
+
+        return new GroupDecision(
+            "row",
+            previous.Text,
+            current.Text,
+            (current.Bounds.X - previous.Bounds.Right) / avgHeight,
+            overlap / Math.Max(1, Math.Min(previous.Bounds.Height, current.Bounds.Height)),
+            Math.Min(previous.Bounds.Height, current.Bounds.Height) /
+            Math.Max(1, Math.Max(previous.Bounds.Height, current.Bounds.Height)),
+            previous.Bounds.Width / Math.Max(1, current.Bounds.Width),
+            joined,
+            rule);
+    }
+
+    private static bool CanJoinSameLine(OcrTextBlock previous, OcrTextBlock current) =>
+        JudgeSameLine(previous, current).Joined;
+
+    private static (bool Joined, string Rule) JudgeSameLine(OcrTextBlock previous, OcrTextBlock current)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
 
@@ -126,7 +186,7 @@ internal static class OcrTextBlockGrouper
         var heightRatio = Math.Min(previous.Bounds.Height, current.Bounds.Height) /
                           Math.Max(previous.Bounds.Height, current.Bounds.Height);
         if (heightRatio < 0.5)
-            return false;
+            return (false, "box height");
 
         var verticalOverlap = Math.Max(
             0,
@@ -135,7 +195,7 @@ internal static class OcrTextBlockGrouper
         var verticalOverlapRate = verticalOverlap /
                                   Math.Max(1, Math.Min(previous.Bounds.Height, current.Bounds.Height));
         if (verticalOverlapRate < 0.72)
-            return false;
+            return (false, "vertical overlap");
 
         // The gap can be negative: on large captures the detector's unclip expansion enlarges big
         // heading word-boxes until adjacent ones overlap horizontally (e.g. "Translate" right=533
@@ -143,8 +203,35 @@ internal static class OcrTextBlockGrouper
         // one heading into word-by-word translations. Allow up to a line-height of overlap; the
         // vertical-overlap and height-ratio checks above already keep stacked/unrelated lines out.
         var horizontalGap = current.Bounds.X - previous.Bounds.Right;
-        return horizontalGap >= -avgHeight && horizontalGap <= Math.Max(avgHeight * 1.35, 18);
+        if (horizontalGap < -avgHeight)
+            return (false, "overlaps too far");
+
+        return horizontalGap <= Math.Max(avgHeight * SameRowMaxGap, 6)
+            ? (true, "same row")
+            : (false, "horizontal gap");
     }
+
+    /// <summary>
+    /// How far apart two boxes may sit and still be one line of text, in line heights.
+    /// </summary>
+    /// <remarks>
+    /// <para>The space between words and the space between separate things are different distances,
+    /// and 1.35 — where this stood — was wide enough to swallow both. A documentation site's whole
+    /// navigation bar came back as one line: the detector had returned "Home", "Installation",
+    /// "Quick Start" and eight more as separate boxes, correctly, and this rule glued all eleven
+    /// into a single string for the translator. Two cards side by side went the same way
+    /// ("Intelligent document" + "Certificate information").</para>
+    ///
+    /// <para>Measured, the two populations do not overlap and are not close. Word gaps inside a
+    /// real line — the nine in "Send this session to the background and free the terminal", plus
+    /// every same-row pair the tests were built from — run from -0.18 to 0.38. The navigation bar's
+    /// eleven gaps run from 0.54 to 0.70, and the two cards 1.11. Nothing lies between 0.38 and
+    /// 0.54, so this sits in the middle of that empty band rather than against either edge.</para>
+    ///
+    /// <para>The floor beside it is for text too small for the ratio to mean much; it was 18px,
+    /// which at the sizes it applied to was itself wide enough to cross a menu.</para>
+    /// </remarks>
+    private const double SameRowMaxGap = 0.45;
 
     private static OcrTextBlock MergeSameLine(OcrTextBlock previous, OcrTextBlock current)
     {
@@ -175,14 +262,15 @@ internal static class OcrTextBlockGrouper
     }
 
     private static bool CanJoinNextLine(
-        OcrTextBlock previous, OcrTextBlock current, List<NextLineDecision>? decisions)
+        OcrTextBlock previous, OcrTextBlock current, List<GroupDecision>? decisions)
     {
         var (joined, rule) = JudgeNextLine(previous, current);
         if (decisions is null)
             return joined;
 
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
-        decisions.Add(new NextLineDecision(
+        decisions.Add(new GroupDecision(
+            "line",
             previous.Text,
             current.Text,
             (current.Bounds.Y - previous.Bounds.Bottom) / Math.Max(1, avgHeight),
