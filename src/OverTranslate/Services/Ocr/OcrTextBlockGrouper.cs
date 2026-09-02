@@ -508,8 +508,6 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock previous, OcrTextBlock current, IBlockAppearanceSource? appearance)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
-        if (TextSizeRatio(previous, current) < 0.88)
-            return (false, "text size");
 
         // The gap can be negative, for exactly the reason it can horizontally in CanJoinSameLine:
         // the detector's unclip expansion grows every box a little past its glyphs, so two lines of
@@ -532,6 +530,13 @@ internal static class OcrTextBlockGrouper
         var alignmentDelta = AlignmentDelta(previous, current);
         if (alignmentDelta > Math.Max(avgHeight * 1.2, 18))
             return (false, "alignment");
+
+        var isTightlySet =
+            LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
+            alignmentDelta <= Math.Max(avgHeight * 0.35, 6);
+        if (TextSizeRatio(previous, current) <
+            (isTightlySet ? TightlySetMinTextSizeRatio : MinTextSizeRatio))
+            return (false, "text size");
 
         var overlap = Math.Max(
             0,
@@ -594,6 +599,33 @@ internal static class OcrTextBlockGrouper
     /// <para>CJK reports no glyph height because its box already sits on the glyphs, so those keep
     /// comparing boxes and are unaffected.</para>
     /// </remarks>
+    /// <summary>
+    /// The least two lines' text can differ in size and still be one wrapped sentence.
+    /// </summary>
+    private const double MinTextSizeRatio = 0.88;
+
+    /// <summary>
+    /// The same, for a pair already set at paragraph leading and sharing an edge.
+    /// </summary>
+    /// <remarks>
+    /// <para>The measure this gates is a proxy with known noise: the engine derives a Latin line's
+    /// glyph height from its average glyph pitch, and counts the glyphs without counting the spaces
+    /// between them, so a line with more spaces reads as being set larger than its neighbour. "THAT
+    /// GUY'S FAULT" over "YOU ENDED UP IN" — one hand-lettered line of one speech balloon, in one
+    /// size — comes back at 0.86, and eight comic pages reached the translator in fragments because
+    /// of it.</para>
+    ///
+    /// <para>Two points of slack, and only for pairs whose leading and alignment already say they
+    /// are one block, because that is where a 12% disagreement is noise rather than a heading.
+    /// Loosening it everywhere is not the same trade: measured over the corpus this admits ten
+    /// wrapped sentences and nothing else, while the same bar applied to every pair also admits
+    /// stat-panel rows and table cells.</para>
+    ///
+    /// <para>It cannot go lower than this without reaching real differences: an "X" over a balloon's
+    /// "HOW" measures 0.84, and a save stamp over the character name under it measures 0.58.</para>
+    /// </remarks>
+    private const double TightlySetMinTextSizeRatio = 0.86;
+
     private static double TextSizeRatio(OcrTextBlock previous, OcrTextBlock current)
     {
         if (previous.SourceGlyphHeight is { } previousGlyph and > 0 &&
