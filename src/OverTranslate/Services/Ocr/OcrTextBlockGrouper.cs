@@ -654,6 +654,20 @@ internal static class OcrTextBlockGrouper
     /// </remarks>
     private const double SolidLineAdvance = 1.26;
 
+    /// <summary>
+    /// The same bar for the width rule, which can afford a looser one.
+    /// </summary>
+    /// <remarks>
+    /// Looser on purpose, by the argument that keeps every set-solid threshold well inside the
+    /// general ones: that rule has the leading and nothing else, while this one already knows the
+    /// line above filled its column and the line below did not, so the leading is only here to
+    /// rule out what the widths cannot. The measurements agree — a game panel wraps a sentence at
+    /// 1.28 line advances while the settings list this was written for starts at 1.40, and nothing
+    /// in the corpus falls between.
+    /// </remarks>
+    private const double WrappedFinalLineAdvance = 1.38;
+
+
     private static (bool Joined, string Rule) SentenceContinuationEvidence(
         OcrTextBlock previous,
         OcrTextBlock current,
@@ -673,6 +687,19 @@ internal static class OcrTextBlockGrouper
         // inside every tolerance here — and nothing but the marker says they are separate.
         if (StartsWithListMarker(currentText))
             return (false, "list marker");
+
+        var lineAdvance = LineAdvanceRatio(previous, current);
+
+        // A trailing colon is the one mark that reads both ways. It introduces what follows, which
+        // is what a clause running onto the next line does — and equally what a form label does to
+        // the field beside it. Every other mark here is lopsided enough to trust on its own: a
+        // label does not end in a comma or an open bracket. So the colon alone has to show that
+        // the two lines are set as one block as well, which "From row:" over "Separator Options"
+        // (1.77 line advances apart) and "Column type:" over "Standard" (1.68) do not.
+        if (EndsWithLabelColon(previousText))
+            return lineAdvance <= SolidLineAdvance
+                ? (true, "punctuation")
+                : (false, "label");
 
         if (HasUnclosedDelimiter(previousText) ||
             EndsWithContinuationPunctuation(previousText) ||
@@ -705,6 +732,15 @@ internal static class OcrTextBlockGrouper
         if (IsLongEnoughToHaveWrapped(previous) &&
             previous.Bounds.Width >= current.Bounds.Width * 1.35)
         {
+            // The same leading bar the set-solid rule applies, and for the same reason: a
+            // paragraph's last line is set at the paragraph's leading, so a pair spaced further
+            // apart than that is not a paragraph ending — it is a heading over the thing it
+            // labels, or the next entry in a list. This rule had no leading test at all, which is
+            // how a settings panel joined "Reveal all rooms before proceeding to next floor" to
+            // the unrelated checkbox under it purely because that one was shorter.
+            if (HasMeasurableLeading(previous, current) && lineAdvance > WrappedFinalLineAdvance)
+                return (false, "leading");
+
             return LooksLikeADifferentComponent(previous, current, appearance)
                 ? (false, "different component")
                 : (true, "shorter final line");
@@ -818,8 +854,34 @@ internal static class OcrTextBlockGrouper
 
     private static int Count(string text, char value) => text.Count(c => c == value);
 
+    private static bool EndsWithLabelColon(string text) => text[^1] is '：' or ':';
+
     private static bool EndsWithContinuationPunctuation(string text) =>
-        text[^1] is '、' or '，' or ',' or '：' or ':' or '；' or ';' or '「' or '『' or '（' or '(' or '【' or '《' or '〈';
+        text[^1] is '、' or '，' or ',' or '；' or ';' or '「' or '『' or '（' or '(' or '【' or '《' or '〈';
+
+    /// <summary>
+    /// Whether the leading of this pair is worth gating a rule on, which for now means Latin.
+    /// </summary>
+    /// <remarks>
+    /// <para>The reconstruction in <see cref="DetectionBoxHeight"/> is exact for Latin, whose box
+    /// the engine leaves alone, and only approximate for CJK: the trim it undoes is the smaller of
+    /// a fixed fraction and a bound taken from the glyph pitch, and when the pitch bound is the one
+    /// that applied — which is precisely the case for the long lines a paragraph is made of — the
+    /// box comes back too small and the leading too loose.</para>
+    ///
+    /// <para>The noise is not small enough to gate on. One Korean subtitle, wrapping the same
+    /// sentence, measures 1.36 in one frame and 1.42 in the next, against a settings panel that
+    /// has to be refused from 1.40. So the rule that already holds width evidence keeps it as its
+    /// only evidence for CJK and gains the leading test where it can be trusted — which is where
+    /// every case it was written for lives: an English settings list read as one paragraph, and an
+    /// English product diagram's headings read as their own captions.</para>
+    ///
+    /// <para><see cref="IsSetSolidUnder"/> gates on it for every script regardless, because there
+    /// the leading <em>is</em> the whole evidence, and measured over the corpus doing so costs one
+    /// merge and buys three.</para>
+    /// </remarks>
+    private static bool HasMeasurableLeading(OcrTextBlock previous, OcrTextBlock current) =>
+        previous.SourceGlyphHeight is not null && current.SourceGlyphHeight is not null;
 
     private static bool StartsWithListMarker(string text) =>
         text[0] is '·' or '・' or '•' or '‧' or '●' or '○' or '▪' or '◆' or '※';
