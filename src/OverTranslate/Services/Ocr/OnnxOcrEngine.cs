@@ -56,6 +56,14 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // Automatic mode classifies each block independently, but the overlay should not render two
     // font scales in one frame or jump between them when a borderline OCR reading changes. A
     // shared midpoint keeps the effective glyph height independent from the chosen layout path.
+    //
+    // Which is also why automatic mode keeps counting glyphs where an explicit Latin source counts
+    // the room they take: how much room a character takes depends on which character it is, so the
+    // Latin path's divisor for 「設定設定設定設定」is twice the CJK path's for the same string. One
+    // multiplier cannot then produce one height across both, and no pair of them can either —
+    // the factor between the two divisors is a property of the text, not a constant. So automatic
+    // mode measures the way it always did, and only a source the user has named as Latin gets the
+    // advance. See AutomaticLayout_UsesOneEffectiveGlyphScaleAcrossScripts, which pins this.
     private const double AutomaticGlyphHeightFromPitch = 1.24;
 
     // A runtime holds det + cls + rec ONNX sessions plus their CPU memory arenas (hundreds of
@@ -1013,15 +1021,17 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // The count below is unchanged: how many glyphs there are to average over is a question
         // about whether the estimate is worth trusting, not about how wide a character is.
         //
-        // Latin only, because one CJK multiplier cannot serve both of the scripts it covers.
-        // Japanese writes no spaces at all, so counting them changes nothing there and any
-        // recalibration would simply render it larger; Korean writes plenty, and dividing by them
-        // without recalibrating shrank every Korean box enough to pull four Wikipedia paragraphs
-        // apart. Left as it was until there is a measurement that separates the two.
+        // A named Latin source only. The CJK path is left alone because one multiplier cannot serve
+        // both of the scripts it covers: Japanese writes no spaces at all, so counting them changes
+        // nothing there and any recalibration would simply render it larger, while Korean writes
+        // plenty — dividing by them without recalibrating shrank every Korean box enough to pull
+        // four Wikipedia paragraphs apart. Automatic mode is left alone for the separate reason
+        // given at AutomaticGlyphHeightFromPitch.
         if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
             bounds.Width > bounds.Height * 2)
         {
-            var characters = isCjk ? glyphCount : AdvanceUnits(block.Text);
+            var measuresRoom = !isCjk && glyphHeightFromPitchOverride is null;
+            var characters = measuresRoom ? AdvanceUnits(block.Text) : glyphCount;
             var advance = bounds.Width / Math.Max(1, characters);
             var maxExpectedHeight = advance * glyphHeightFromPitch;
             glyphHeight = Math.Min(glyphHeight, maxExpectedHeight);
