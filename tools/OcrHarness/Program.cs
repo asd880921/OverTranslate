@@ -194,6 +194,20 @@ if (args[0] == "--xlate-line")
         }
     }
 
+    // The same text through the chain a user who picked Google actually gets: the engines above
+    // answer for themselves, this answers for the application. Which one served the block is
+    // printed with it, because "Google looped" and "Google was slow so Bing answered" produce the
+    // same good line and are not the same result — the summary is what tells them apart.
+    var googleChain = new ResilientProvider([
+        new GTranslateProvider(new GoogleTranslator(), null, limit),
+        new GTranslateProvider(new GoogleTranslator2(), null, limit),
+        new GTranslateProvider(new BingTranslator(), null, limit),
+    ]);
+
+    var (chained, _) = await googleChain.TranslateAsync(block, "EN", "ZH-HANT", "");
+    Console.WriteLine($"  [Google chain] {chained[0].TranslatedText}");
+    Console.WriteLine($"                 served by {googleChain.LastBatchSummary}");
+
     return 0;
 }
 
