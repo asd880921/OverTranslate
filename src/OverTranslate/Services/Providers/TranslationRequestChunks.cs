@@ -28,22 +28,28 @@ internal readonly record struct TranslationRequestChunk(
 /// boundary each piece can reach.
 /// </summary>
 /// <remarks>
-/// <para>The keyless endpoints take a thousand characters. Microsoft and Bing say so — GTranslate
-/// refuses the call before it leaves the machine — but Google accepts the text and answers, and
-/// what it answers past its own limit is not a translation. A 1,181-character paragraph came back
-/// with its last sentence replaced by "僅在 GPU 10 秒上實現了 GPU 10 秒）" repeated seven times: the
-/// model looping, not the text being cut off. Nothing in the pipeline could tell that from a
-/// successful translation, because as far as every layer above is concerned it is one.</para>
+/// <para>Microsoft and Bing refuse more than a thousand characters, and GTranslate refuses the call
+/// before it leaves the machine. Both Google endpoints accept far more — 3,000 was translated
+/// complete and in order, every sentence accounted for. So this exists to keep the two engines that
+/// have a limit usable, not because the other two need protecting from long text.</para>
 ///
-/// <para>That silent failure is why the working budget is not the hard limit. A refusal is visible
-/// and recoverable; a corrupted answer is neither, so the text is kept clear of the edge rather
-/// than filled up to it — see <see cref="SafeMaxCharacters"/>.</para>
+/// <para>That matters more than it sounds. A block goes to whichever engine answers first, and when
+/// a text is too long for Microsoft and Bing they both fail instantly, leaving Google as the only
+/// engine that can serve it. That is how a 1,181-character paragraph came back with its last
+/// sentence replaced by "僅在 GPU 10 秒上實現了 GPU 10 秒）" repeated seven times: not because it was
+/// long, but because losing two engines to the limit forced it onto a third that mistranslates that
+/// particular sentence. Split, it fits, Microsoft serves it, and it comes back right.</para>
 ///
-/// <para>This became reachable when a wrapped paragraph started going up as one request instead of
-/// seven, which is the point of grouping and worth keeping. So the limit is answered where it
+/// <para>What this does NOT fix: Google loops on that sentence at any length — sent alone, 270
+/// characters, it fails identically. Whatever triggers it is in the text and not in its size, so a
+/// user whose chosen engine is Google can still receive a translation that came back a success and
+/// is wrong. Nothing here would notice; detecting it would be a separate piece of work.</para>
+///
+/// <para>The limit became reachable when a wrapped paragraph started going up as one request
+/// instead of seven, which is the point of grouping and worth keeping. So it is answered where it
 /// belongs — at the transport that has it — rather than by making the grouper translate less
 /// context than the picture supports. Grouping decides what belongs together; this decides how much
-/// of it an endpoint can safely be handed at once, and the two stay independent.</para>
+/// of it an endpoint can be handed at once, and the two stay independent.</para>
 /// </remarks>
 internal static class TranslationRequestChunks
 {
@@ -54,12 +60,19 @@ internal static class TranslationRequestChunks
     /// The most that is actually sent in one request.
     /// </summary>
     /// <remarks>
-    /// A fifth under the hard limit, because the hard limit is where the <em>refusals</em> start and
-    /// not where the answers stop being good. Google's repetition loop was measured at 1,181
-    /// characters and nothing says where it begins; the endpoints are unpublished, may count
-    /// encoded bytes rather than characters, and can change without notice. The cost of the margin
-    /// is one extra request on a text between this and the hard limit, which is cheap next to a
-    /// paragraph that comes back quietly wrong.
+    /// <para>A fifth under the hard limit, and the margin is for the limit itself rather than for
+    /// translation quality. What the endpoints count is not published — characters as .NET counts
+    /// them, encoded bytes, or something else again — so a text measured at 999 here could still be
+    /// over on the wire, and the failure mode is losing two of the three engines at once. These are
+    /// undocumented endpoints and the number can change without anyone being told.</para>
+    ///
+    /// <para>It is deliberately not justified by quality: clean prose came back complete from both
+    /// Google endpoints at 3,000 characters, and the sentence that loops does so at 270. Length is
+    /// not what decides whether an answer is good, and this budget should not be read as though it
+    /// were.</para>
+    ///
+    /// <para>The cost is one extra request on a text between this and the hard limit. That is cheap
+    /// against a request that fails on two engines out of three.</para>
     /// </remarks>
     public const int SafeMaxCharacters = 800;
 
