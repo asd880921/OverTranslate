@@ -218,19 +218,10 @@ public partial class OverlayWindow : Window
         var full = new System.Windows.Media.Imaging.RenderTargetBitmap(
             fullW, fullH, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
 
-        // The debug boxes are for looking at this screen, not for what gets pasted somewhere else.
-        // Hidden across the render and put back: a copied image should be the translation, whatever
-        // the person who copied it happens to have switched on.
-        var debugVisibility = DebugCanvas.Visibility;
-        DebugCanvas.Visibility = Visibility.Collapsed;
-        try
-        {
-            full.Render((Visual)Content);
-        }
-        finally
-        {
-            DebugCanvas.Visibility = debugVisibility;
-        }
+        // The debug boxes are included, deliberately. Someone with them switched on is looking at
+        // how a capture was read, and the copy is how they show that to somebody else — a picture
+        // of the problem without the boxes is a picture of nothing in particular.
+        full.Render((Visual)Content);
 
         // The overlay window spans the whole virtual screen; the selection sits at this physical
         // offset within it.
