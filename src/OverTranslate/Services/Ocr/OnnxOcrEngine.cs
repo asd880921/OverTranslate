@@ -923,33 +923,107 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// </remarks>
     internal const double CjkGlyphBoxScale = 0.82;
 
+    /// <summary>
+    /// The room a line's characters take, in Latin character widths — the divisor that turns a
+    /// box's width into an average advance.
+    /// </summary>
+    /// <remarks>
+    /// Spaces count because a space takes room, and full-width characters count double because they
+    /// take double. Both corrections push the same way: what the divisor has to be proportional to
+    /// is how wide the line is <em>expected</em> to be, so that dividing the measured width by it
+    /// leaves the size.
+    /// </remarks>
+    private static double AdvanceUnits(string text)
+    {
+        double units = 0;
+
+        foreach (var character in text.Trim())
+            units += IsFullWidth(character) ? 2 : 1;
+
+        return units;
+    }
+
+    /// <summary>
+    /// Whether a character occupies two Latin character widths — Unicode's East Asian Wide and
+    /// Fullwidth classes, by the ranges that carry them.
+    /// </summary>
+    private static bool IsFullWidth(char character) =>
+        character is >= 'ᄀ' and <= 'ᅟ' or       // Hangul Jamo initials
+        >= '⺀' and <= '〾' or                    // CJK radicals, Kangxi, punctuation
+        >= 'ぁ' and <= '㏿' or                    // kana, Hangul compat, CJK compat
+        >= '㐀' and <= '䶿' or                    // CJK extension A
+        >= '一' and <= '鿿' or                    // CJK unified ideographs
+        >= 'ꥠ' and <= '꥿' or                    // Hangul Jamo extended-A
+        >= '가' and <= '힣' or                    // Hangul syllables
+        >= '豈' and <= '﫿' or                    // CJK compatibility ideographs
+        >= '︐' and <= '︙' or                    // vertical forms
+        >= '︰' and <= '﹯' or                    // CJK compatibility forms
+        >= '＀' and <= '｠' or                    // fullwidth forms
+        >= '￠' and <= '￦';                      // fullwidth signs
+
+    /// <summary>
+    /// Line height as a multiple of the average character advance, for a Latin source.
+    /// </summary>
+    /// <remarks>
+    /// Recalibrated with the divisor: counting spaces and full-width characters makes it larger
+    /// than the glyph count it replaced, so the advance is smaller and the multiplier has to grow to
+    /// match. Measured over the corpus's 781 Latin blocks where this clamp actually applies — 62 of
+    /// which mix in full-width text — 1.45 is the multiplier at which the glyph height this produces
+    /// has the same median as before, so the overlay renders at the size it always did and only the
+    /// lines whose spacing or script mix was unusual move.
+    /// </remarks>
+    private const double LatinAdvanceToGlyphHeight = 1.45;
+
     private static OcrTextBlock NormalizeBlock(
         OcrTextBlock block,
         bool isCjk,
         double? glyphHeightFromPitchOverride = null)
     {
 
-        // Convert the average source-glyph pitch (width / glyphCount) into the line height that
-        // drives the overlay font size, clamping the unclipped (loose) detection box so text is
-        // not rendered far too large. The multiplier is keyed on the *rendered* script, which is
-        // always the translated CJK text — so a Latin source page must use ~the CJK ratio too,
-        // not a Latin one. Measured EN-vs-KO box heights on the same screenshot showed the old
-        // Latin value (2.0) rendered English ~1.7x larger than the Korean (CJK) path; 1.3 brings
-        // it in line, leaving English just slightly larger than CJK.
-        var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (isCjk ? 1.18 : 1.3);
+        // Convert the average character advance into the line height that drives the overlay font
+        // size, clamping the unclipped (loose) detection box so text is not rendered far too large.
+        // The multiplier is keyed on the *rendered* script, which is always the translated CJK text
+        // — so a Latin source page must use ~the CJK ratio too, not a Latin one. Measured EN-vs-KO
+        // box heights on the same screenshot showed the old Latin value (2.0) rendered English
+        // ~1.7x larger than the Korean (CJK) path; the Latin figure here brings it in line, leaving
+        // English just slightly larger than CJK.
+        var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (isCjk ? 1.18 : LatinAdvanceToGlyphHeight);
 
         var bounds = block.Bounds;
         var glyphHeight = bounds.Height * CjkGlyphBoxScale;
         var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
 
-        // ONNX/unclip can return vertically loose boxes on wide single lines.
-        // The average glyph pitch is a better proxy for the real line height than
-        // an over-tall detection rectangle.
+        // ONNX/unclip can return vertically loose boxes on wide single lines. The average character
+        // advance is a better proxy for the real line height than an over-tall detection rectangle.
+        //
+        // The width is divided by every character, spaces included, and not only by the glyphs.
+        // A space takes horizontal room like any other character, so leaving it out of the count
+        // while leaving it in the width makes the estimate depend on how spaced-out the line's
+        // words happen to be — which is a property of the sentence, not of its size. Two lines of
+        // one hand-lettered comic balloon read 0.86 of each other on the old count and 0.94 on
+        // this one; a Google result read as one selection and again as part of a larger one moved
+        // from 0.91 to 0.80, because the detector split the line differently the second time and
+        // the two halves' word spacing differed. Both flipped this engine's 0.88 size gate.
+        //
+        // Full-width characters are counted as two, because they are. A Chinese or Japanese glyph
+        // takes about twice the room of a Latin one, and a browser that appends 「·翻譯這個網頁」to
+        // an English result line puts both on one line — so counting characters rather than the
+        // room they take reads that line as being set in a much larger face than it is.
+        //
+        // The count below is unchanged: how many glyphs there are to average over is a question
+        // about whether the estimate is worth trusting, not about how wide a character is.
+        //
+        // Latin only, because one CJK multiplier cannot serve both of the scripts it covers.
+        // Japanese writes no spaces at all, so counting them changes nothing there and any
+        // recalibration would simply render it larger; Korean writes plenty, and dividing by them
+        // without recalibrating shrank every Korean box enough to pull four Wikipedia paragraphs
+        // apart. Left as it was until there is a measurement that separates the two.
         if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
             bounds.Width > bounds.Height * 2)
         {
-            var estimatedGlyphPitch = bounds.Width / glyphCount;
-            var maxExpectedHeight = estimatedGlyphPitch * glyphHeightFromPitch;
+            var characters = isCjk ? glyphCount : AdvanceUnits(block.Text);
+            var advance = bounds.Width / Math.Max(1, characters);
+            var maxExpectedHeight = advance * glyphHeightFromPitch;
             glyphHeight = Math.Min(glyphHeight, maxExpectedHeight);
         }
 
