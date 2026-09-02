@@ -206,9 +206,15 @@ public partial class OverlayWindow : Window
         double selPhysLeft, double selPhysTop, int selPhysWidth, int selPhysHeight)
     {
         if (!_isLoaded) return null;
-        if (BubbleBackgroundCanvas.Visibility != Visibility.Visible) return null;
-        if (BubbleBackgroundCanvas.Children.Count == 0 && BubbleTextCanvas.Children.Count == 0)
-            return null;
+
+        // Null only when there is nothing over the capture at all, which is not the same as "no
+        // bubbles": under 顯示原文 the debug boxes are still up, and that combination — the original
+        // words with the boxes drawn round them — is the one worth sending to somebody. Nobody is
+        // in this state by accident.
+        var hasBubbles = BubbleBackgroundCanvas.Visibility == Visibility.Visible &&
+                         (BubbleBackgroundCanvas.Children.Count > 0 || BubbleTextCanvas.Children.Count > 0);
+        var hasDebugBoxes = DebugCanvas.Visibility == Visibility.Visible && DebugCanvas.Children.Count > 0;
+        if (!hasBubbles && !hasDebugBoxes) return null;
 
         int fullW = Math.Max(1, _physBounds.Width);
         int fullH = Math.Max(1, _physBounds.Height);

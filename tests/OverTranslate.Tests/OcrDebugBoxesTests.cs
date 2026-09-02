@@ -52,8 +52,9 @@ public class OcrDebugBoxesTests
     }
 
     /// <summary>
-    /// The 偵錯工具 card opens shut. The load path shuts it on every visit as well — this pins the
-    /// markup half, which is what a reader tidying attributes would take for decoration.
+    /// The 偵錯工具 card opens shut, and its contents are out of the tab order while it is. The load
+    /// path shuts it on every visit as well; this pins the markup half, which is what a reader
+    /// tidying attributes would take for decoration.
     /// </summary>
     [Fact]
     public void TheDebugToolsCardIsCollapsedInMarkup()
@@ -62,10 +63,13 @@ public class OcrDebugBoxesTests
             StringsParityTests.ProjectDirectory(), "Views", "Settings", "SettingsPage.xaml");
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
 
-        var body = XDocument.Load(page)
+        var fold = XDocument.Load(page)
             .Descendants()
-            .Single(element => (string?)element.Attribute(x + "Name") == "DebugToolsBody");
+            .Single(element => (string?)element.Attribute(x + "Name") == "DebugToolsFold");
 
-        Assert.Equal("Collapsed", (string?)body.Attribute("Visibility"));
+        Assert.Equal("Collapsed", (string?)fold.Attribute("Visibility"));
+        Assert.Equal("0", (string?)fold.Attribute("Height"));
+        // Clipped, or the content would spill out of the card while the height is animating.
+        Assert.Equal("True", (string?)fold.Attribute("ClipToBounds"));
     }
 }
