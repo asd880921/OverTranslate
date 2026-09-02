@@ -966,4 +966,44 @@ public class OcrTextBlockGrouperTests
         Assert.Equal(3, grouped.Count);
         Assert.All(grouped, group => Assert.Equal(2, group.Lines.Count));
     }
+
+    /// <summary>
+    /// A browser sets an article's body looser than the fixed leading bar allows, and one line of
+    /// one paragraph falls outside it while the lines above are already joined. Measured on a
+    /// wikinews article: the paragraph's own lines sit at 1.22 line advances and this one at 1.30,
+    /// which is the spread of Latin boxes rather than a new block, and it cost the translator the
+    /// second half of a sentence.
+    /// </summary>
+    [Fact]
+    public void GroupsALineSetAtTheLeadingTheParagraphAboveItAlreadyEstablished()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Pope Leo XIV arrived by plane in Algeria on", new Rect(700, 500, 400, 22), SourceGlyphHeight: 14),
+            new("Monday, beginning his apostolic visit to", new Rect(700, 527, 390, 22), SourceGlyphHeight: 14),
+            new("Africa, a senior Vatican official told the", new Rect(700, 556, 380, 22), SourceGlyphHeight: 14),
+        };
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+
+        Assert.Equal(3, merged.Lines.Count);
+    }
+
+    /// <summary>
+    /// The same leading with no paragraph behind it, which is what a list of entries offers: no two
+    /// of them ever join, so none is ever in a group with a leading to widen the bar with. This is
+    /// what keeps the rule above away from the menus a looser fixed bar reopened — measured, raising
+    /// it to 1.42 across the corpus lost 22 merges to exactly this shape.
+    /// </summary>
+    [Fact]
+    public void KeepsLinesApartAtThatLeadingWhenNoParagraphEstablishedIt()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Monday, beginning his apostolic visit to", new Rect(700, 527, 390, 22), SourceGlyphHeight: 14),
+            new("Africa, a senior Vatican official told the", new Rect(700, 556, 380, 22), SourceGlyphHeight: 14),
+        };
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks).Count);
+    }
 }

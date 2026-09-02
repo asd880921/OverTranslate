@@ -84,6 +84,10 @@ internal static class OcrTextBlockGrouper
     /// what has to be checked is that the pairs it does not refuse are the ones that look alike.
     /// </param>
     /// <param name="ForegroundDistance"><inheritdoc cref="BackgroundDistance"/></param>
+    /// <param name="LeadingBar">
+    /// The most leading this pair was allowed, which is <see cref="SolidLineAdvance"/> unless the
+    /// group above had already established a tighter one of its own.
+    /// </param>
     internal readonly record struct GroupDecision(
         string Kind,
         string Previous,
@@ -96,7 +100,8 @@ internal static class OcrTextBlockGrouper
         string Rule,
         double BackgroundDistance = -1,
         double ForegroundDistance = -1,
-        double Leading = -1);
+        double Leading = -1,
+        double LeadingBar = -1);
 
     /// <summary>
     /// Rebuilds the lines the detector split, then decides which of them are one line of text.
@@ -402,7 +407,7 @@ internal static class OcrTextBlockGrouper
             if (!nearest && !IsWithinContinuationReach(last, block)) continue;
             nearest = false;
 
-            if (!CanJoinNextLine(last, block, appearance, repeatedRows, trace)) continue;
+            if (!CanJoinNextLine(groups[i], block, appearance, repeatedRows, trace)) continue;
 
             var alignment = AlignmentDelta(last, block);
             if (alignment >= bestAlignment) continue;
@@ -478,13 +483,15 @@ internal static class OcrTextBlockGrouper
     }
 
     private static bool CanJoinNextLine(
-        OcrTextBlock previous,
+        List<OcrTextBlock> group,
         OcrTextBlock current,
         IBlockAppearanceSource? appearance,
         RepeatedRowLayout repeatedRows,
         GroupTrace? trace)
     {
-        var (joined, rule) = JudgeNextLine(previous, current, appearance, repeatedRows);
+        var previous = group[^1];
+        var solidBar = SolidLineAdvanceFor(EstablishedLeading(group));
+        var (joined, rule) = JudgeNextLine(previous, current, solidBar, appearance, repeatedRows);
         if (trace is null)
             return joined;
 
@@ -508,14 +515,20 @@ internal static class OcrTextBlockGrouper
             before is null || after is null
                 ? -1
                 : PerceptualColor.Distance(before.Value.Foreground, after.Value.Foreground),
-            LineAdvanceRatio(previous, current)));
+            LineAdvanceRatio(previous, current),
+            solidBar));
 
         return joined;
     }
 
+    /// <param name="solidBar">
+    /// The most leading a pair of this group's lines may have and still be set solid. See
+    /// <see cref="EstablishedLeading"/>.
+    /// </param>
     private static (bool Joined, string Rule) JudgeNextLine(
         OcrTextBlock previous,
         OcrTextBlock current,
+        double solidBar,
         IBlockAppearanceSource? appearance,
         RepeatedRowLayout repeatedRows)
     {
@@ -544,7 +557,7 @@ internal static class OcrTextBlockGrouper
             return (false, "alignment");
 
         var isTightlySet =
-            LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
+            LineAdvanceRatio(previous, current) <= solidBar &&
             alignmentDelta <= Math.Max(avgHeight * 0.35, 6);
         if (TextSizeRatio(previous, current) <
             (isTightlySet ? TightlySetMinTextSizeRatio : MinTextSizeRatio))
@@ -567,7 +580,7 @@ internal static class OcrTextBlockGrouper
             return (false, "repeated rows");
 
         return SentenceContinuationEvidence(
-            previous, current, verticalGap, alignmentDelta, avgHeight, appearance);
+            previous, current, verticalGap, alignmentDelta, avgHeight, solidBar, appearance);
     }
 
     /// <summary>
@@ -705,6 +718,82 @@ internal static class OcrTextBlockGrouper
     private const double SolidLineAdvance = 1.26;
 
     /// <summary>
+    /// How much looser than its own established leading a paragraph's next line may sit and still
+    /// be the same paragraph.
+    /// </summary>
+    /// <remarks>
+    /// The slack is the measurement's noise, not a preference. A Latin line's detection box grows
+    /// with whatever ascenders and descenders its words happen to carry, so one paragraph set at
+    /// one leading comes back as a spread rather than a number: the wikinews article's body, all
+    /// of it one size in one column, measures 1.05 to 1.30 between consecutive lines. Ten percent
+    /// covers that spread and is the same order as the noise <see cref="TightlySetMinTextSizeRatio"/>
+    /// already allows for, which arises from the same place.
+    /// </remarks>
+    private const double LeadingNoise = 1.10;
+
+    /// <summary>
+    /// The leading a group has already been set at, or -1 when it has not established one this can
+    /// believe.
+    /// </summary>
+    /// <remarks>
+    /// <para>The fixed bar above cannot serve every capture. A browser sets a news article's body
+    /// looser than an application sets a panel, so the wikinews article wraps a sentence at 1.30
+    /// while a game's checkbox list has to be refused from 1.33 — and one number cannot do both.
+    /// Measured, raising the bar to 1.42 buys 9 merges across the corpus and loses 22: a portal's
+    /// headline stack, a settings list and a menu all come back.</para>
+    ///
+    /// <para>Measuring the capture instead — the way <see cref="SameLineGapThreshold"/> measures its
+    /// spacing — does not work here, and the distributions say why. A capture's leadings do not fall
+    /// into two populations the way its word and item spacing does; they run continuously from 0.45
+    /// to 1.9 with nothing to cut at. Worse, the statistic points the wrong way: the article that
+    /// needs a looser bar has its mass at 1.0–1.3, while the portal page that must keep its tight
+    /// one has its mass at 1.3–1.4, because the page is mostly the list this has to refuse.</para>
+    ///
+    /// <para>What the trace does say is that a paragraph knows its own leading. The pair the article
+    /// missed sits at 1.30, and the lines already in the group above it were joined at 1.22 — the
+    /// same paragraph, the same leading, one reading of it caught by the noise. So the bar is
+    /// allowed to grow out of the group it is extending, and only out of a group whose own leading
+    /// is inside the fixed bar. A list cannot exploit that: no two of its entries ever join, so no
+    /// entry is ever in a group with a leading to offer, and the fixed bar is all it ever meets.</para>
+    ///
+    /// <para>The median rather than the last pair or the mean, so that one loose reading admitted at
+    /// the edge cannot pull the bar out again behind it — a group is free to grow only while most of
+    /// it is still set tight, which bounds the whole thing at <c>SolidLineAdvance * LeadingNoise</c>
+    /// however many lines it gathers.</para>
+    ///
+    /// <para>Latin only, by the argument that justifies the slack in the first place: the spread
+    /// this is here to absorb comes from Latin boxes growing with their ascenders and descenders,
+    /// and a CJK box does not have it — its glyphs fill the line box, so a CJK paragraph's leading
+    /// is already one number rather than a spread. Giving it slack it does not need is not free:
+    /// measured, a Japanese Wikipedia page sets consecutive article summaries barely further apart
+    /// than it sets the lines inside one, and two percent of extra room was enough to run two of
+    /// them together into a single eight-line block.</para>
+    /// </remarks>
+    private static double EstablishedLeading(IReadOnlyList<OcrTextBlock> group)
+    {
+        if (group.Count < 2) return -1;
+
+        var leadings = new List<double>(group.Count - 1);
+        for (var i = 1; i < group.Count; i++)
+        {
+            if (!HasMeasurableLeading(group[i - 1], group[i])) return -1;
+
+            leadings.Add(LineAdvanceRatio(group[i - 1], group[i]));
+        }
+
+        leadings.Sort();
+        var median = leadings[leadings.Count / 2];
+
+        return median <= SolidLineAdvance ? median : -1;
+    }
+
+    /// <inheritdoc cref="EstablishedLeading"/>
+    private static double SolidLineAdvanceFor(double establishedLeading) =>
+        establishedLeading > 0
+            ? Math.Max(SolidLineAdvance, establishedLeading * LeadingNoise)
+            : SolidLineAdvance;
+
+    /// <summary>
     /// The same bar for the width rule, which can afford a looser one.
     /// </summary>
     /// <remarks>
@@ -724,6 +813,7 @@ internal static class OcrTextBlockGrouper
         double verticalGap,
         double alignmentDelta,
         double avgHeight,
+        double solidBar,
         IBlockAppearanceSource? appearance)
     {
         var previousText = previous.Text.Trim();
@@ -747,7 +837,7 @@ internal static class OcrTextBlockGrouper
         // the two lines are set as one block as well, which "From row:" over "Separator Options"
         // (1.77 line advances apart) and "Column type:" over "Standard" (1.68) do not.
         if (EndsWithLabelColon(previousText))
-            return lineAdvance <= SolidLineAdvance
+            return lineAdvance <= solidBar
                 ? (true, "punctuation")
                 : (false, "label");
 
@@ -796,7 +886,7 @@ internal static class OcrTextBlockGrouper
                 : (true, "shorter final line");
         }
 
-        return IsSetSolidUnder(previous, current, alignmentDelta, avgHeight)
+        return IsSetSolidUnder(previous, current, alignmentDelta, avgHeight, solidBar)
             ? (true, "set solid")
             : (false, "no continuation evidence");
     }
@@ -851,10 +941,11 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock previous,
         OcrTextBlock current,
         double alignmentDelta,
-        double avgHeight) =>
+        double avgHeight,
+        double solidBar) =>
         (IsLongEnoughToHaveBeenSetSolid(previous) ||
             (IsLongEnoughToHaveBeenSetSolid(current) && IsInsetWithin(previous, current, avgHeight))) &&
-        LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
+        LineAdvanceRatio(previous, current) <= solidBar &&
         alignmentDelta <= Math.Max(avgHeight * 0.35, 6);
 
     /// <summary>

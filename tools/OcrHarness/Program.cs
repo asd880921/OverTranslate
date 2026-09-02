@@ -1098,7 +1098,9 @@ if (args[0] == "--group-explain")
             // column of "bg=-1" beside every one of them is noise.
             // Leading is the same distance as gap, normalised against the ink instead of the
             // box, so a Latin paragraph and a CJK one can be read against one number.
-            var lead = decision.Kind == "line" ? $" lead={decision.Leading,5:0.00}" : string.Empty;
+            var lead = decision.Kind == "line"
+                ? $" lead={decision.Leading,5:0.00}/{decision.LeadingBar,4:0.00}"
+                : string.Empty;
 
             var colour = decision.Kind == "line" && decision.BackgroundDistance >= 0
                 ? $" bg={decision.BackgroundDistance,5:0.0} fg={decision.ForegroundDistance,5:0.0}"
