@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.IO;
 using GTranslate.Translators;
+using OverTranslate.Layout;
 using OverTranslate.Services;
 using OverTranslate.Services.Ocr;
 using OverTranslate.Services.Providers;
@@ -1169,6 +1170,16 @@ foreach (var path in args)
         Console.WriteLine("  --- translations (Microsoft) ---");
         foreach (var t in translated)
             Console.WriteLine($"  EN: {t.OriginalText}\n  ZH: {t.TranslatedText}\n");
+
+        // What actually reaches the screen. A group is one request and several bubbles: it goes up
+        // whole so the translator has the sentence, and comes back onto the lines it was read from
+        // so the capture keeps its layout. Printed separately from the request above because the
+        // two counts differing is the point, not a discrepancy.
+        var placed = GroupedTranslationLines.SplitOntoSourceLines(translated);
+        Console.WriteLine($"  --- placed on {placed.Count} source lines ---");
+        foreach (var p in placed)
+            Console.WriteLine(
+                $"  ({p.Bounds.X:0},{p.Bounds.Y:0},{p.Bounds.Width:0},{p.Bounds.Height:0}) {p.TranslatedText}");
     }
     catch (Exception ex)
     {

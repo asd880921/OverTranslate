@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
 using NLog;
+using OverTranslate.Layout;
 using OverTranslate.Services;
 using OverTranslate.Views.Capture;
 using OverTranslate.Views.Overlay;
@@ -846,6 +847,17 @@ public partial class MainWindow : Window
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
+            // Grouping decides what the translator is asked, not where the answer is drawn: the
+            // sentence goes up whole and comes back onto the lines it was read from. Before the
+            // colour sampling below, so each line is sampled against the picture actually behind
+            // it rather than against the average of the whole paragraph.
+            //
+            // Vertical writing is left as it is. Its "lines" are columns, read by rotating the
+            // capture and mapping back, and the overlay places those itself.
+            var placedBlocks = req.IsVerticalText
+                ? translated
+                : GroupedTranslationLines.SplitOntoSourceLines(translated);
+
             var croppedBitmap = workBitmap;
             var bmpData = croppedBitmap.LockBits(
                 new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height),
@@ -858,7 +870,7 @@ public partial class MainWindow : Window
             List<TranslatedBlock> coloredTranslated;
             try
             {
-                coloredTranslated = translated
+                coloredTranslated = placedBlocks
                     .Select((b, i) =>
                     {
                         if (i < _lastColoredBlocks.Count)

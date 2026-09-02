@@ -516,6 +516,27 @@ public class OcrTextBlockGrouperTests
         Assert.Equal(4, grouped.Count);
     }
 
+    /// <summary>
+    /// Taking whichever edge two lines share made the alignment test looser, and this is the shape
+    /// that must not get through it: two blocks side by side on one row, centred on the same point
+    /// because one sits above a wider one. They are a menu, not a sentence, and only the vertical
+    /// gap stands between them — a row-mate is a whole line height above where a continuation would
+    /// be, so it is refused before alignment is ever consulted.
+    /// </summary>
+    [Fact]
+    public void KeepsSideBySideBlocksApartEvenWhenTheyShareACentre()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("SAVE", new Rect(600, 400, 90, 28)),
+            new("LOAD GAME", new Rect(580, 402, 130, 28)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
+    }
+
     [Fact]
     public void KeepsBoxesThatShareARowOutOfTheNextLineJoin()
     {
