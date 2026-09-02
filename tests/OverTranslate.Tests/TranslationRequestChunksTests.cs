@@ -16,8 +16,9 @@ public class TranslationRequestChunksTests
         chunks.Select(chunk => chunk.Text).ToList();
 
     /// <summary>
-    /// The safe budget is well under what the endpoints refuse, because a refusal is visible and a
-    /// corrupted answer is not — see <see cref="TranslationRequestChunks.SafeMaxCharacters"/>.
+    /// The margin under the refusal point, kept as a test so it cannot quietly be spent. What the
+    /// endpoints count is not published, so a text measured at 999 here may still be over on the
+    /// wire — and going over loses Microsoft and Bing together.
     /// </summary>
     [Fact]
     public void SendsWellShortOfWhatTheEndpointsRefuse()

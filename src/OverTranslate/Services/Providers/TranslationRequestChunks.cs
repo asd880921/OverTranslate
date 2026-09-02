@@ -53,7 +53,21 @@ internal readonly record struct TranslationRequestChunk(
 /// </remarks>
 internal static class TranslationRequestChunks
 {
-    /// <summary>What the endpoints refuse outright, and what this stays away from.</summary>
+    /// <summary>
+    /// Where Microsoft and Bing start refusing, measured. Nothing is ever sent up to this — see
+    /// <see cref="SafeMaxCharacters"/>, which is the limit every request actually uses.
+    /// </summary>
+    /// <remarks>
+    /// <para>Deliberately referenced by no code in this class. It exists so the margin below it can
+    /// be asserted rather than left as a bare number a later reader has to take on trust: raise
+    /// <see cref="SafeMaxCharacters"/> towards this and a test fails and says why. Removing it as
+    /// unused would take that check with it.</para>
+    ///
+    /// <para>It is the limit of two engines and not of four. Both Google endpoints have no
+    /// client-side limit at all — 3,000 characters was accepted and translated complete. What makes
+    /// 1,000 matter anyway is that a block goes to whichever engine answers first, so a text over
+    /// it loses Microsoft and Bing together and lands on Google by default rather than by choice.</para>
+    /// </remarks>
     public const int HardMaxCharacters = 1000;
 
     /// <summary>
