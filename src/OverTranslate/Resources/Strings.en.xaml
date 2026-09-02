@@ -465,9 +465,7 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.LoggingCheck">Record detailed information</sys:String>
     <sys:String x:Key="S.Settings.LoggingHint">Records more information about the app; only recommended while troubleshooting.</sys:String>
     <sys:String x:Key="S.Settings.DebugTools">Debug tools</sys:String>
-    <sys:String x:Key="S.Settings.DebugToolsHint">Shows how the capture was recognised and grouped</sys:String>
     <sys:String x:Key="S.Settings.OcrDebug">Show OCR debug information</sys:String>
-    <sys:String x:Key="S.Settings.OcrDebugHint">Draws the OCR and text-group boxes over a screenshot translation.</sys:String>
     <sys:String x:Key="S.Settings.OcrLineBoxes">OCR boxes</sys:String>
     <sys:String x:Key="S.Settings.OcrLineBoxesHint">Outlines each box the recogniser returned.</sys:String>
     <sys:String x:Key="S.Settings.TextGroupBoxes">Text group boxes</sys:String>
