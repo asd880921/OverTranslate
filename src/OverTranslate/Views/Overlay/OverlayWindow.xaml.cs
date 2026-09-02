@@ -244,6 +244,11 @@ public partial class OverlayWindow : Window
     {
         if (!_isLoaded) return null;
 
+        // Null only when there is nothing over the capture at all, which is not the same as "no
+        // bubbles": under 顯示原文 the debug boxes are still up, and that combination — the original
+        // words with the boxes drawn round them — is the one worth sending to somebody. Nobody is
+        // in this state by accident. Marks count for the same reason: someone can draw before any
+        // translation has run.
         bool hasBubbles = BubbleBackgroundCanvas.Visibility == Visibility.Visible
             && (BubbleBackgroundCanvas.Children.Count > 0 || BubbleTextCanvas.Children.Count > 0);
         bool hasMarks = AnnotationCanvas.Children.Count > 0 || HasInk;

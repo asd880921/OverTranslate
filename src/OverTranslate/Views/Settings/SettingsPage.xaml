@@ -24,6 +24,45 @@
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="Margin"            Value="10,1,10,0"/>
         </Style>
+        <!-- A card heading that opens the card. Templated down to its content so it reads as the
+             heading it replaces and not as a button sitting where one used to be; what the template
+             adds is the part a heading cannot have — a hover, a pressed state that lands on the
+             press rather than on the release, and a focus ring for the keyboard. Padding is
+             cancelled by an equal negative margin so the hit area is larger than the words without
+             the words moving. -->
+        <Style x:Key="CardFoldToggle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor"     Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Hit"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="7,5"
+                                Margin="-8,-6,-8,-6">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Hit" Property="Background"
+                                        Value="{DynamicResource AppSurfaceBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Hit" Property="Background"
+                                        Value="{DynamicResource AppSubtleBorder}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Hit" Property="BorderBrush"
+                                        Value="{DynamicResource AppAccent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- The card's heading strip: glyph, title, and room under it before the first setting. -->
         <Style x:Key="CardHeaderRow" TargetType="StackPanel">
             <Setter Property="Orientation" Value="Horizontal"/>
@@ -1211,30 +1250,58 @@
                 <Border Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2"
                         Style="{StaticResource CardBorder}">
                     <StackPanel>
-                        <Border x:Name="DebugToolsHeader"
-                                Background="Transparent"
-                                Cursor="Hand"
-                                MouseLeftButtonUp="DebugToolsHeader_Click">
+                        <!-- A ToggleButton and not a clickable Border: the fold is a two-state
+                             control, so it should carry that state itself, take focus, and answer
+                             the space bar. The template gives it what a Border cannot — a hover and
+                             a pressed appearance, the latter on the press rather than on the
+                             release, so the card answers the moment it is touched. -->
+                        <ToggleButton x:Name="DebugToolsToggle"
+                                      Style="{StaticResource CardFoldToggle}"
+                                      Checked="DebugToolsToggle_Toggled"
+                                      Unchecked="DebugToolsToggle_Toggled">
                             <StackPanel Style="{StaticResource CardHeaderRow}" Margin="0">
                                 <TextBlock Text="&#xEBE8;" Style="{StaticResource CardHeaderIcon}"/>
                                 <TextBlock Text="{DynamicResource S.Settings.DebugTools}"
                                            Style="{StaticResource CardTitle}"/>
                                 <!-- Beside the title rather than pushed to the far edge of a
-                                     full-width card, where it would read as belonging to nothing. -->
+                                     full-width card, where it would read as belonging to nothing.
+
+                                     It rotates rather than swapping to the other glyph, so opening
+                                     and closing run the same path in opposite directions and a
+                                     fold caught halfway has a chevron caught halfway. -->
                                 <TextBlock x:Name="DebugToolsChevron"
                                            Text="&#xE70D;"
                                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                            FontSize="12"
                                            Foreground="{DynamicResource AppTextSecondary}"
                                            VerticalAlignment="Center"
-                                           Margin="10,1,0,0"/>
+                                           Margin="10,1,0,0"
+                                           RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <RotateTransform x:Name="DebugToolsChevronAngle" Angle="0"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
                             </StackPanel>
-                        </Border>
+                        </ToggleButton>
 
+                        <!-- The fold clips; the panel inside it is what moves. Height is animated on
+                             this Border so the card's own height follows continuously and the cards
+                             below it are pushed rather than jumped. Collapsed outright when shut so
+                             the settings inside are out of the tab order as well as out of sight. -->
+                        <Border x:Name="DebugToolsFold"
+                                ClipToBounds="True"
+                                Height="0"
+                                Visibility="Collapsed">
                         <!-- The description is inside the fold with everything else: shut, this card
                              is its own title and nothing more, which is what a card nobody needs
                              should cost the page. -->
-                        <StackPanel x:Name="DebugToolsBody" Visibility="Collapsed">
+                        <StackPanel x:Name="DebugToolsBody" Opacity="0">
+                            <!-- Rises the last few pixels into place as it fades, so the content
+                                 arrives from behind the header it came out of rather than simply
+                                 appearing where it will end up. -->
+                            <StackPanel.RenderTransform>
+                                <TranslateTransform x:Name="DebugToolsBodyRise" Y="-8"/>
+                            </StackPanel.RenderTransform>
                             <TextBlock Text="{DynamicResource S.Settings.DebugToolsHint}"
                                        Style="{StaticResource OptionDescription}"
                                        Margin="27,8,0,0"/>
@@ -1296,6 +1363,7 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Border>
             </Grid>
