@@ -109,7 +109,18 @@ OcrHarness.exe --group-explain 圖.png [更多.png ...]
   規則：`same row` / `box height` / `vertical overlap` / `horizontal gap` / `overlaps too far`。
 - `line` —— 上下的 `JudgeNextLine`，決定一行是不是前一行的續行。
   規則：`vertical gap` / `alignment` / `text size` / `sentence terminator` / `list marker` /
-  `label` / `leading` / `shorter final line` / `set solid` / `no continuation evidence`。
+  `label` / `repeated rows` / `leading` / `shorter final line` / `set solid` /
+  `no continuation evidence`。
+
+`repeated rows` 跟其他規則不同：**它不是看這兩行，是看整張截圖的版面**（見
+`RepeatedRowLayout`）。遊戲的技能欄／道具欄，行距、對齊、字級、標點四個訊號全都說「這是同一段」
+—— 因為它們的行距真的就是段落行距（實測 1.01～1.25，段落是 0.67～1.24）。分辨的依據不在那兩行
+裡面，而在於它們是「同一欄裡等距排列、而且每一項右邊都有同一個 x 的伴隨欄位（等級／數量）」。
+段落沒有伴隨欄位，所以碰不到它。
+
+判讀時注意兩件事：**它是以「欄」而不是「列」為單位掃的**（兩個並排的清單在閱讀順序下會交錯，
+逐列掃兩個都找不到）；以及**長寬比 ≥ 8 的行一律不會被它否決**——文件網站的並排卡片同樣符合
+前面所有條件，只有「一行文字有多長」能把卡片內文（16～26）跟面板項目（3.6～6.0）分開。
 
 每列帶 `gap`（row 是水平、line 是垂直）、`fit`（row 是垂直交疊、line 是對齊差）、字級比、寬度比。
 
