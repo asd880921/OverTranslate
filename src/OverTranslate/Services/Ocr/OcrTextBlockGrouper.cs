@@ -174,8 +174,8 @@ internal static class OcrTextBlockGrouper
         if (verticalGap < -avgHeight * 0.5 || verticalGap > Math.Max(avgHeight * 0.8, 10))
             return false;
 
-        var leftDelta = Math.Abs(previous.Bounds.X - current.Bounds.X);
-        if (leftDelta > Math.Max(avgHeight * 1.2, 18))
+        var alignmentDelta = AlignmentDelta(previous, current);
+        if (alignmentDelta > Math.Max(avgHeight * 1.2, 18))
             return false;
 
         var overlap = Math.Max(
@@ -184,8 +184,31 @@ internal static class OcrTextBlockGrouper
             Math.Max(previous.Bounds.Left, current.Bounds.Left));
         var overlapRate = overlap / Math.Max(1, Math.Min(previous.Bounds.Width, current.Bounds.Width));
         var isAlignedContinuation =
-            overlapRate >= 0.35 || leftDelta <= Math.Max(avgHeight * 0.7, 12);
-        return isAlignedContinuation && HasSentenceContinuationEvidence(previous, current);
+            overlapRate >= 0.35 || alignmentDelta <= Math.Max(avgHeight * 0.7, 12);
+        return isAlignedContinuation &&
+               HasSentenceContinuationEvidence(previous, current, verticalGap, alignmentDelta, avgHeight);
+    }
+
+    /// <summary>
+    /// How far two lines are from sharing an edge, taking whichever of left, centre or right they
+    /// agree on best. In line heights the caller normalises against, not a fixed distance.
+    /// </summary>
+    /// <remarks>
+    /// Measuring the left edge alone reads centred text as unrelated columns. A centred line that is
+    /// shorter than the one above it starts half the difference further in, so a subtitle losing a
+    /// couple of words between lines moves its left edge by tens of pixels while the block itself
+    /// has not moved at all — and game and film subtitles are centred more often than not. Right
+    /// alignment costs nothing to include and covers the same shape mirrored.
+    /// </remarks>
+    private static double AlignmentDelta(OcrTextBlock previous, OcrTextBlock current)
+    {
+        var left = Math.Abs(previous.Bounds.Left - current.Bounds.Left);
+        var right = Math.Abs(previous.Bounds.Right - current.Bounds.Right);
+        var center = Math.Abs(
+            (previous.Bounds.Left + previous.Bounds.Right) / 2.0 -
+            (current.Bounds.Left + current.Bounds.Right) / 2.0);
+
+        return Math.Min(left, Math.Min(center, right));
     }
 
     /// <summary>
@@ -223,7 +246,12 @@ internal static class OcrTextBlockGrouper
                Math.Max(previous.Bounds.Height, current.Bounds.Height);
     }
 
-    private static bool HasSentenceContinuationEvidence(OcrTextBlock previous, OcrTextBlock current)
+    private static bool HasSentenceContinuationEvidence(
+        OcrTextBlock previous,
+        OcrTextBlock current,
+        double verticalGap,
+        double alignmentDelta,
+        double avgHeight)
     {
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
@@ -246,9 +274,69 @@ internal static class OcrTextBlockGrouper
         // menu entries looks like — a longer label above a shorter one, aligned, evenly spaced. It
         // read 「アビリティ」over「召喚石」and 「캐릭터강화」over「소지품」as wrapped sentences, glued
         // each pair into one string for the translator, and squeezed both into one bubble. See #75.
-        return IsLongEnoughToHaveWrapped(previous) &&
-               previous.Bounds.Width >= current.Bounds.Width * 1.35;
+        if (IsLongEnoughToHaveWrapped(previous) &&
+            previous.Bounds.Width >= current.Bounds.Width * 1.35)
+            return true;
+
+        return IsSetSolidUnder(previous, current, verticalGap, alignmentDelta, avgHeight);
     }
+
+    /// <summary>
+    /// Whether the second line is set as part of the same block of text as the first — close
+    /// enough, aligned tightly enough and at the same size — rather than merely lining up with it.
+    /// </summary>
+    /// <remarks>
+    /// <para>The width rule above only admits a paragraph's <em>last</em> line, the one that ran out
+    /// of text. Every line before it is about as long as the line above, because they all stopped at
+    /// the same wrap boundary, so similar widths were being read as evidence against joining when
+    /// they are the ordinary shape of a paragraph. A three-line subtitle reached the translator as
+    /// "I never thought" / "you would actually" / "come back here." — three requests, none of which
+    /// carries the sentence its neighbours needed to be translated.</para>
+    ///
+    /// <para>Widths are not what tells that apart from a stack of separate lines; they are similar
+    /// in both. The leading is. Text that wrapped is set solid — the lines are a fraction of a line
+    /// height apart because nothing but the line box put them there — while anything laid out as
+    /// separate items is spaced on purpose and sits further apart. So this asks for tight leading, a
+    /// shared edge to within a third of a line, and text of all but the same size, on top of the
+    /// first line being long enough that running out of room is what ended it.</para>
+    ///
+    /// <para>The thresholds are deliberately well inside what <see cref="CanJoinNextLine"/> already
+    /// allows: the general gap tolerance is 0.8 of a line and this takes 0.45, the general alignment
+    /// tolerance is 1.2 and this takes 0.35. A pair that is only just close enough, or only roughly
+    /// aligned, still needs the width or punctuation evidence above. That ordering is the point —
+    /// joining two labels costs an invented phrase in one bubble, so this admits only the shape that
+    /// nothing but wrapped text has.</para>
+    ///
+    /// <para>The measured menu stack of issue #75 is refused on the leading alone: 「キャラクター強化」
+    /// over「所持品」sit 0.73 of a line apart, which is what laying items out on purpose looks like
+    /// and is nowhere near solid.</para>
+    /// </remarks>
+    private static bool IsSetSolidUnder(
+        OcrTextBlock previous,
+        OcrTextBlock current,
+        double verticalGap,
+        double alignmentDelta,
+        double avgHeight) =>
+        IsLongEnoughToHaveBeenSetSolid(previous) &&
+        verticalGap <= avgHeight * 0.45 &&
+        alignmentDelta <= Math.Max(avgHeight * 0.35, 6) &&
+        TextSizeRatio(previous, current) >= 0.94;
+
+    /// <summary>
+    /// Whether a line holds enough text to be a line of a paragraph rather than a stacked word.
+    /// </summary>
+    /// <remarks>
+    /// Half of <see cref="WrappedLineMinAspect"/> — roughly four CJK characters or eight Latin ones.
+    /// The full bar belongs to the width rule, which has only the widths to go on and so needs the
+    /// first line to have plainly filled its column; here the leading has already answered that, and
+    /// holding out for the full bar would refuse a Japanese subtitle for being written in a script
+    /// that fits six characters where English needs twenty. What this is left to exclude is the one
+    /// shape tight leading genuinely shares with wrapped text: single words stacked in a column,
+    /// which stop well short of four characters' worth of line.
+    /// </remarks>
+    private static bool IsLongEnoughToHaveBeenSetSolid(OcrTextBlock line) =>
+        line.Bounds.Height > 0 &&
+        line.Bounds.Width / line.Bounds.Height >= WrappedLineMinAspect / 2;
 
     /// <summary>
     /// Whether a line is long enough that running out of room — and so wrapping — is plausible.

@@ -190,13 +190,37 @@ public class OcrTextBlockGrouperTests
         Assert.Single(grouped);
     }
 
+    /// <summary>
+    /// Similar widths are the ordinary shape of a paragraph, not evidence against one: every line
+    /// but the last stops at the same wrap boundary. Set solid and sharing a left edge, these are
+    /// one block of text.
+    /// </summary>
     [Fact]
-    public void KeepsAlignedIndependentLinesSeparateWhenWidthsAreSimilar()
+    public void GroupsSimilarWidthLinesThatAreSetSolid()
     {
         var blocks = new List<OcrTextBlock>
         {
             new("寧夏夜市美食攻略", new Rect(10, 10, 220, 24)),
             new("食尚玩家最新整理", new Rect(10, 40, 210, 24)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    /// <summary>
+    /// And what keeps that from swallowing anything that merely lines up: the same two lines spaced
+    /// as separate items are. Nothing but the leading differs.
+    /// </summary>
+    [Fact]
+    public void KeepsSimilarWidthLinesSeparateWhenTheyAreSpacedApart()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("寧夏夜市美食攻略", new Rect(10, 10, 220, 24)),
+            new("食尚玩家最新整理", new Rect(10, 51, 210, 24)),
         };
 
         var grouped = OcrTextBlockGrouper.Group(blocks);
@@ -390,6 +414,106 @@ public class OcrTextBlockGrouperTests
     /// as the continuation of its neighbour. Far enough apart that the same-line merge does not take
     /// them first, so this reaches the next-line test the way the real ones did.
     /// </summary>
+    /// <summary>
+    /// The shape this whole path exists for: a dialogue line wrapped across three rows, none of
+    /// which is much shorter than the one above it. Split, the translator sees three fragments and
+    /// none of them carries the sentence the others needed.
+    /// </summary>
+    [Fact]
+    public void GroupsAWrappedSubtitleWhoseLinesAreAllAboutAsLong()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("I never thought", new Rect(10, 100, 250, 30)),
+            new("you would actually", new Rect(10, 133, 290, 30)),
+            new("come back here.", new Rect(10, 166, 240, 30)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.Equal("I never thought you would actually come back here.", merged.Text);
+    }
+
+    /// <summary>
+    /// The same, in a script that fits six characters where English needs twenty, and without the
+    /// punctuation to lean on. Japanese subtitles carry neither, so geometry has to answer alone.
+    /// </summary>
+    [Fact]
+    public void GroupsAWrappedJapaneseSubtitleWithNoPunctuation()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("そんなことを", new Rect(400, 620, 180, 30)),
+            new("言われても", new Rect(400, 653, 150, 30)),
+            new("困るんだけど", new Rect(400, 686, 180, 30)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.Equal(3, merged.Lines.Count);
+    }
+
+    /// <summary>
+    /// Centred subtitles move their left edge by half of whatever the line lost, so measuring the
+    /// left edge alone read these as unrelated columns and translated half a sentence twice.
+    /// </summary>
+    [Fact]
+    public void GroupsACentredSubtitleWhoseLinesShareNoLeftEdge()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("I don't know", new Rect(200, 620, 200, 30)),
+            new("what you're talking about.", new Rect(90, 653, 420, 30)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        var merged = Assert.Single(grouped);
+        Assert.Equal("I don't know what you're talking about.", merged.Text);
+    }
+
+    /// <summary>
+    /// A menu is aligned and evenly sized, and the only thing saying its entries are not a
+    /// paragraph is that they were spaced on purpose. Merging them would hand the translator
+    /// "New Game Settings Exit" and crush three bubbles into one.
+    /// </summary>
+    [Fact]
+    public void KeepsMenuEntriesSeparate()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("New Game", new Rect(10, 100, 140, 30)),
+            new("Settings", new Rect(10, 160, 130, 30)),
+            new("Exit", new Rect(10, 220, 70, 30)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(3, grouped.Count);
+    }
+
+    /// <summary>
+    /// Two columns of a stat panel: each cell is near its neighbour in one axis or the other, and
+    /// none of the four may be read as continuing any of the others.
+    /// </summary>
+    [Fact]
+    public void KeepsTwoColumnStatsOutOfOneAnother()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Attack", new Rect(10, 100, 100, 28)),
+            new("Defense", new Rect(300, 100, 120, 28)),
+            new("120", new Rect(10, 140, 60, 28)),
+            new("98", new Rect(300, 140, 50, 28)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(4, grouped.Count);
+    }
+
     [Fact]
     public void KeepsBoxesThatShareARowOutOfTheNextLineJoin()
     {
