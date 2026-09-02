@@ -92,6 +92,26 @@ OcrHarness.exe --margin-scale-grid 全螢幕.png [更多.png ...]
 
 結論記在 `RealtimeDetectorSize` 的註解，不要沿用 PP-OCRv5 時代「目標約 30px」的說法。
 
+### 看分組為什麼這樣分
+
+```bash
+# 每一張圖：分組結果，加上每一組相鄰行的判定與它依據的幾何數字
+OcrHarness.exe --group-explain 圖.png [更多.png ...]
+```
+
+一般輸出只看得到「哪些行被併起來」，一段文字被拆成四則翻譯時，看不出是哪個門檻擋下來、
+差多少。這個模式把 `CanJoinNextLine` 的每一次判定都印出來，包含行距、對齊差、字級比、寬度比，
+以及是哪條規則決定的（`vertical gap` / `alignment` / `text size` / `sentence terminator` /
+`shorter final line` / `set solid` / `no continuation evidence`）。
+
+**數字一律以行高為單位，不是 px**，所以不同大小的截圖可以並排讀。調門檻前先看這份輸出：
+一串被 `vertical gap` 擋在 0.83 擋掉，跟一串行距只有 0.2 卻卡在 `no continuation evidence`，
+是完全不同的問題。
+
+`set solid`（行距與對齊都極緊，判定為同一段的續行）就是靠這個模式訂出來的 —— 一開始還多要求
+字級比 ≥ 0.94，實測同一個字型的兩行只有 0.91（字高會帶到該行有沒有上下延伸的字母），
+那條規則反而把它要修的句子擋掉了。細節記在 `OcrTextBlockGrouper.IsSetSolidUnder`。
+
 ### 稽核信心過濾丟掉了什麼
 
 ```bash

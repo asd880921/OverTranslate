@@ -484,9 +484,11 @@ public class OcrTextBlockGrouperTests
     {
         var blocks = new List<OcrTextBlock>
         {
+            // Spaced tightly enough to clear the general gap tolerance, so it is the leading rule
+            // and not that one being asked the question.
             new("New Game", new Rect(10, 100, 140, 30)),
-            new("Settings", new Rect(10, 160, 130, 30)),
-            new("Exit", new Rect(10, 220, 70, 30)),
+            new("Settings", new Rect(10, 145, 130, 30)),
+            new("Exit", new Rect(10, 190, 70, 30)),
         };
 
         var grouped = OcrTextBlockGrouper.Group(blocks);

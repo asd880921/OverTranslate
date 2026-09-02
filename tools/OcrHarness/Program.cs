@@ -28,6 +28,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --margin-scale-grid <wholescreen.png> [more.png ...]");
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
+    Console.Error.WriteLine("       OcrHarness --group-explain <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (what the confidence filter drops, and what a line would have reclaimed)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
@@ -996,6 +998,57 @@ if (args[0] == "--reject-audit")
     Console.WriteLine($"  would have merged     : {wouldMerge}   <- what a narrowed rule would keep");
     Console.WriteLine($"  isolated              : {isolated}   <- what it would still drop");
     return 0;
+}
+
+// Every next-line verdict the grouper reached, with the geometry it judged on.
+//
+// The ordinary output shows which lines were joined and no more, so a paragraph that came back as
+// four separate translations says nothing about which threshold refused it, or by how much. These
+// thresholds are the whole of the grouper and they are tuned against real captures, so seeing the
+// near misses is what makes tuning something other than guesswork: a run of pairs refused on
+// "vertical gap" at 0.83 of a line is a different problem from one refused on "no continuation
+// evidence" with the gap at 0.2.
+//
+// Numbers are in line heights, not pixels, so captures of different sizes can be read side by side.
+if (args[0] == "--group-explain")
+{
+    using var explainEngine = new OnnxOcrEngine();
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine($"IMAGE: {path}");
+
+        using var image = new Bitmap(path);
+        var size = harnessSize
+            ?? RealtimeDetectorSize.For(image.Width, image.Height, harnessMode).Primary;
+        var raw = await explainEngine.TryRecognizeAsync(image, harnessLanguage, size);
+        if (raw is null || raw.Count == 0) { Console.WriteLine("  (nothing read)"); continue; }
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        var grouped = OcrTextBlockGrouper.Group(raw, decisions);
+
+        Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
+        for (var i = 0; i < grouped.Count; i++)
+            Console.WriteLine($"  [{i}] lines={grouped[i].Lines.Count}  {grouped[i].Text}");
+
+        Console.WriteLine("  --- next-line verdicts (gap/align in line heights) ---");
+        foreach (var decision in decisions)
+        {
+            Console.WriteLine(
+                $"  {(decision.Joined ? "JOIN  " : "SPLIT ")} gap={decision.VerticalGap,6:0.00} " +
+                $"align={decision.AlignmentDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
+                $"width={decision.WidthRatio:0.00}  [{decision.Rule}]");
+            Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
+        }
+    }
+
+    return 0;
+
+    static string Shorten(string text) =>
+        text.Length <= 42 ? text : string.Concat(text.AsSpan(0, 40), "…");
 }
 
 if (args[0] == "--scale-sweep")

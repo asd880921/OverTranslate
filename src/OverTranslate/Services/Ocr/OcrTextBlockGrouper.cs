@@ -4,7 +4,16 @@ namespace OverTranslate.Services.Ocr;
 
 internal static class OcrTextBlockGrouper
 {
-    public static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> blocks)
+    public static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> blocks) => Group(blocks, null);
+
+    /// <param name="decisions">
+    /// Collects one entry per line pair the next-line test was asked about, with the geometry it
+    /// judged on and which rule decided. Null in the app; OcrHarness passes a list, because these
+    /// thresholds cannot be tuned from the grouped output alone — it shows what was joined, never
+    /// how close the rest came to being.
+    /// </param>
+    internal static List<OcrTextBlock> Group(
+        IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions)
     {
         if (blocks.Count <= 1)
             return blocks.ToList();
@@ -19,7 +28,7 @@ internal static class OcrTextBlockGrouper
         foreach (var block in sorted)
         {
             var previousGroup = groups.LastOrDefault();
-            if (previousGroup is not null && CanJoinNextLine(previousGroup[^1], block))
+            if (previousGroup is not null && CanJoinNextLine(previousGroup[^1], block, decisions))
                 previousGroup.Add(block);
             else
                 groups.Add([block]);
@@ -27,6 +36,21 @@ internal static class OcrTextBlockGrouper
 
         return groups.Select(BuildGroup).ToList();
     }
+
+    /// <summary>
+    /// One next-line verdict, with its geometry in line heights so numbers from captures of
+    /// different sizes can be read side by side.
+    /// </summary>
+    /// <param name="Rule">Which test decided, whether it joined or refused.</param>
+    internal readonly record struct NextLineDecision(
+        string Previous,
+        string Current,
+        double VerticalGap,
+        double AlignmentDelta,
+        double TextSizeRatio,
+        double WidthRatio,
+        bool Joined,
+        string Rule);
 
     private static List<OcrTextBlock> MergeSameLineFragments(IReadOnlyList<OcrTextBlock> blocks)
     {
@@ -150,11 +174,32 @@ internal static class OcrTextBlockGrouper
         return needsSpace ? $"{left} {right}" : $"{left}{right}";
     }
 
-    private static bool CanJoinNextLine(OcrTextBlock previous, OcrTextBlock current)
+    private static bool CanJoinNextLine(
+        OcrTextBlock previous, OcrTextBlock current, List<NextLineDecision>? decisions)
+    {
+        var (joined, rule) = JudgeNextLine(previous, current);
+        if (decisions is null)
+            return joined;
+
+        var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
+        decisions.Add(new NextLineDecision(
+            previous.Text,
+            current.Text,
+            (current.Bounds.Y - previous.Bounds.Bottom) / Math.Max(1, avgHeight),
+            AlignmentDelta(previous, current) / Math.Max(1, avgHeight),
+            TextSizeRatio(previous, current),
+            previous.Bounds.Width / Math.Max(1, current.Bounds.Width),
+            joined,
+            rule));
+
+        return joined;
+    }
+
+    private static (bool Joined, string Rule) JudgeNextLine(OcrTextBlock previous, OcrTextBlock current)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
         if (TextSizeRatio(previous, current) < 0.88)
-            return false;
+            return (false, "text size");
 
         // The gap can be negative, for exactly the reason it can horizontally in CanJoinSameLine:
         // the detector's unclip expansion grows every box a little past its glyphs, so two lines of
@@ -172,11 +217,11 @@ internal static class OcrTextBlockGrouper
         // merge takes most of them first, and this is the backstop for the rest.
         var verticalGap = current.Bounds.Y - (previous.Bounds.Y + previous.Bounds.Height);
         if (verticalGap < -avgHeight * 0.5 || verticalGap > Math.Max(avgHeight * 0.8, 10))
-            return false;
+            return (false, "vertical gap");
 
         var alignmentDelta = AlignmentDelta(previous, current);
         if (alignmentDelta > Math.Max(avgHeight * 1.2, 18))
-            return false;
+            return (false, "alignment");
 
         var overlap = Math.Max(
             0,
@@ -185,8 +230,10 @@ internal static class OcrTextBlockGrouper
         var overlapRate = overlap / Math.Max(1, Math.Min(previous.Bounds.Width, current.Bounds.Width));
         var isAlignedContinuation =
             overlapRate >= 0.35 || alignmentDelta <= Math.Max(avgHeight * 0.7, 12);
-        return isAlignedContinuation &&
-               HasSentenceContinuationEvidence(previous, current, verticalGap, alignmentDelta, avgHeight);
+        if (!isAlignedContinuation)
+            return (false, "not aligned enough to continue");
+
+        return SentenceContinuationEvidence(previous, current, verticalGap, alignmentDelta, avgHeight);
     }
 
     /// <summary>
@@ -246,7 +293,7 @@ internal static class OcrTextBlockGrouper
                Math.Max(previous.Bounds.Height, current.Bounds.Height);
     }
 
-    private static bool HasSentenceContinuationEvidence(
+    private static (bool Joined, string Rule) SentenceContinuationEvidence(
         OcrTextBlock previous,
         OcrTextBlock current,
         double verticalGap,
@@ -256,15 +303,15 @@ internal static class OcrTextBlockGrouper
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
         if (previousText.Length == 0 || currentText.Length == 0)
-            return false;
+            return (false, "empty text");
 
         if (HasUnclosedDelimiter(previousText) ||
             EndsWithContinuationPunctuation(previousText) ||
             StartsWithContinuationPunctuation(currentText))
-            return true;
+            return (true, "punctuation");
 
         if (EndsWithSentenceTerminator(previousText))
-            return false;
+            return (false, "sentence terminator");
 
         // A much shorter following line is a common natural wrap shape.
         // Similar-width lines without linguistic evidence are kept separate
@@ -276,9 +323,11 @@ internal static class OcrTextBlockGrouper
         // each pair into one string for the translator, and squeezed both into one bubble. See #75.
         if (IsLongEnoughToHaveWrapped(previous) &&
             previous.Bounds.Width >= current.Bounds.Width * 1.35)
-            return true;
+            return (true, "shorter final line");
 
-        return IsSetSolidUnder(previous, current, verticalGap, alignmentDelta, avgHeight);
+        return IsSetSolidUnder(previous, verticalGap, alignmentDelta, avgHeight)
+            ? (true, "set solid")
+            : (false, "no continuation evidence");
     }
 
     /// <summary>
@@ -310,17 +359,22 @@ internal static class OcrTextBlockGrouper
     /// <para>The measured menu stack of issue #75 is refused on the leading alone: 「キャラクター強化」
     /// over「所持品」sit 0.73 of a line apart, which is what laying items out on purpose looks like
     /// and is nowhere near solid.</para>
+    ///
+    /// <para>Text size is deliberately not tightened the same way, and asking for it undid the fix.
+    /// Two rows of one paragraph, one font, rendered and read back, measured 0.91 — the glyph
+    /// height carries which ascenders and descenders the words happen to have, exactly as
+    /// <see cref="TextSizeRatio"/> says of box heights, and 9% is the ordinary noise of that. A
+    /// stricter gate here refused the very sentence this exists to join. The 0.88 the caller already
+    /// applies is the measured one, and a title over a body sits far outside it.</para>
     /// </remarks>
     private static bool IsSetSolidUnder(
         OcrTextBlock previous,
-        OcrTextBlock current,
         double verticalGap,
         double alignmentDelta,
         double avgHeight) =>
         IsLongEnoughToHaveBeenSetSolid(previous) &&
         verticalGap <= avgHeight * 0.45 &&
-        alignmentDelta <= Math.Max(avgHeight * 0.35, 6) &&
-        TextSizeRatio(previous, current) >= 0.94;
+        alignmentDelta <= Math.Max(avgHeight * 0.35, 6);
 
     /// <summary>
     /// Whether a line holds enough text to be a line of a paragraph rather than a stacked word.
