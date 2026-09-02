@@ -341,6 +341,13 @@ internal static class OcrTextBlockGrouper
     /// populations are a continuum with no gap to cut at. This is the trade the rest of this file
     /// already states: a label pair costs two words crowded into one bubble, while a sentence left
     /// in halves costs the translator the sentence.</para>
+    ///
+    /// <para>A grid of labels is where that trade is least favourable, and a product architecture
+    /// diagram measured 3 joins right against 4 wrong — the wrapped captions in the top row joined,
+    /// and so did two pairs of list items and two headings with the box under them. The page is a
+    /// grid, so before this it made no joins at all, right or wrong. Two more captions that should
+    /// have joined were refused on text size at 0.87 and 0.88 against a bar of 0.88, which is the
+    /// glyph-height noise <see cref="TextSizeRatio"/> describes and is not this scan's doing.</para>
     /// </remarks>
     private static List<OcrTextBlock>? GroupThisContinues(
         List<List<OcrTextBlock>> groups,
@@ -401,6 +408,16 @@ internal static class OcrTextBlockGrouper
     {
         var top = previous.Bounds.Bottom;
         var bottom = current.Bounds.Top;
+
+        // Two boxes that touch or overlap have no space between them for anything to stand in, and
+        // the detector's unclip expansion makes overlap the ordinary case for two lines of one
+        // wrapped sentence — every joined pair on the MDN capture measured between -0.49 and -0.04
+        // of a line. Without this the span below is inverted, and a tall neighbour reaching past
+        // both lines satisfies neither bound and reads as though it were between them. Measured on
+        // a product architecture diagram, that refused every wrapped label on the page: 47 lines,
+        // 47 groups, and "AI financial" / "report analysis" never even reached a verdict.
+        if (bottom <= top) return true;
+
         var left = Math.Max(previous.Bounds.Left, current.Bounds.Left);
         var right = Math.Min(previous.Bounds.Right, current.Bounds.Right);
 

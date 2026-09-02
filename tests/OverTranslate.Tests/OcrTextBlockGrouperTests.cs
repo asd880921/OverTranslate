@@ -652,6 +652,31 @@ public class OcrTextBlockGrouperTests
     }
 
     /// <summary>
+    /// Two lines of one wrapped label whose boxes overlap, which the detector's unclip expansion
+    /// makes the ordinary case, with a taller box beside them reaching past both. There is no space
+    /// between overlapping lines for anything to stand in, so nothing is in the way — but a span
+    /// read from bottom to top is inverted, and a neighbour crossing it satisfies neither end and
+    /// reads as though it were inside. Measured on a product architecture diagram, that refused
+    /// every wrapped label on the page: 47 lines in, 47 groups out, and "AI financial" over
+    /// "report analysis" never reached a verdict at all.
+    /// </summary>
+    [Fact]
+    public void JoinsAWrappedLabelWhoseBoxesOverlapWithATallerBoxBesideIt()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("AI financial", new Rect(10, 100, 300, 30)),
+            new("report analysis", new Rect(12, 128, 280, 30)),
+            new("Apps", new Rect(330, 90, 150, 90)),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks);
+
+        Assert.Equal(2, grouped.Count);
+        Assert.Contains(grouped, group => group.Text == "AI financial report analysis");
+    }
+
+    /// <summary>
     /// And what that must not cost: the byline is only in the way of the lines it actually stands
     /// between. A second column beside a wrapped line is at the same height as it without being
     /// between anything, so only the width the two lines share is examined.
