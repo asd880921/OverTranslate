@@ -247,7 +247,8 @@ public partial class OverlayWindow : Window
         bool hasBubbles = BubbleBackgroundCanvas.Visibility == Visibility.Visible
             && (BubbleBackgroundCanvas.Children.Count > 0 || BubbleTextCanvas.Children.Count > 0);
         bool hasMarks = AnnotationCanvas.Children.Count > 0 || HasInk;
-        if (!hasBubbles && !hasMarks) return null;
+        bool hasDebugBoxes = DebugCanvas.Visibility == Visibility.Visible && DebugCanvas.Children.Count > 0;
+        if (!hasBubbles && !hasMarks && !hasDebugBoxes) return null;
 
         int fullW = Math.Max(1, _physBounds.Width);
         int fullH = Math.Max(1, _physBounds.Height);
@@ -257,6 +258,13 @@ public partial class OverlayWindow : Window
         var full = new System.Windows.Media.Imaging.RenderTargetBitmap(
             fullW, fullH, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
         full.Render(BubbleBackgroundCanvas);
+
+        // The debug boxes are included, deliberately. Someone with them switched on is looking at
+        // how a capture was read, and the copy is how they show that to somebody else — a picture
+        // of the problem without the boxes is a picture of nothing in particular. Between the two
+        // bubble layers, which is where they sit on screen.
+        full.Render(DebugCanvas);
+
         full.Render(BubbleTextCanvas);
 
         // Drawn here rather than left to a canvas, because the finished marks are shown by the
@@ -273,10 +281,6 @@ public partial class OverlayWindow : Window
         full.Render(marks);
 
         full.Render(AnnotationCanvas);
-
-        // DebugCanvas is deliberately not among them. The boxes are for looking at this
-        // screen, not for what gets pasted somewhere else: a copied image should be the
-        // translation, whatever the person who copied it happens to have switched on.
 
         // The overlay window spans the whole virtual screen; the selection sits at this physical
         // offset within it.
