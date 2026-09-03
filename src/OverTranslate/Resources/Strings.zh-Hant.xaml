@@ -174,13 +174,13 @@
     <sys:String x:Key="S.Toolbar.Mode">截圖的內容類型</sys:String>
     <sys:String x:Key="S.Toolbar.ModeNormal">一般</sys:String>
     <sys:String x:Key="S.Toolbar.ModeComic">漫畫</sys:String>
-    <sys:String x:Key="S.Toolbar.ModeNormalHint">一般網頁、文件、遊戲畫面，譯文會排回原本各行的位置</sys:String>
-    <sys:String x:Key="S.Toolbar.ModeComicHint">漫畫對白，譯文重新排成整段，並更積極地把上下行併成一句</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormalHint">適合網頁、文件、遊戲介面，盡量保留原本的文字位置與排版。</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComicHint">適合漫畫、對話框，會將相關文字整合後重新排版，讓譯文更自然易讀。</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">原文的書寫方向</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontal">橫排</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVertical">直排</sys:String>
-    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">原文是橫著寫的，由左至右</sys:String>
-    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">原文是直著寫的，由上至下、由右至左</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">文字由左至右排列，適合一般橫向排版。</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">文字由上至下排列（由右至左閱讀），適合直向排版。</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">朗讀</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">停止</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">朗讀辨識到的原文</sys:String>

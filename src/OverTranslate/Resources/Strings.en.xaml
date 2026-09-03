@@ -170,13 +170,13 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Toolbar.Mode">What the capture holds</sys:String>
     <sys:String x:Key="S.Toolbar.ModeNormal">Normal</sys:String>
     <sys:String x:Key="S.Toolbar.ModeComic">Comic</sys:String>
-    <sys:String x:Key="S.Toolbar.ModeNormalHint">Web pages, documents and game screens; the translation goes back onto the original lines</sys:String>
-    <sys:String x:Key="S.Toolbar.ModeComicHint">Comic dialogue; the translation is laid out as one paragraph and lines are joined more freely</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormalHint">For web pages, documents and game interfaces. Keeps the text where it was as far as possible.</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComicHint">For comics and speech balloons. Joins related lines and lays the translation out afresh so it reads naturally.</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">Writing direction of the source</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontal">Horizontal</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVertical">Vertical</sys:String>
-    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">The source runs across the page, left to right</sys:String>
-    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">The source runs down the page, right to left</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">Text runs left to right. For ordinary horizontal layout.</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">Text runs top to bottom, read right to left. For vertical layout.</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">Speak</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">Stop</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">Read the recognised source text aloud</sys:String>

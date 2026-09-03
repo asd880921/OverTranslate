@@ -171,13 +171,13 @@
     <sys:String x:Key="S.Toolbar.Mode">キャプチャの内容</sys:String>
     <sys:String x:Key="S.Toolbar.ModeNormal">通常</sys:String>
     <sys:String x:Key="S.Toolbar.ModeComic">マンガ</sys:String>
-    <sys:String x:Key="S.Toolbar.ModeNormalHint">Web ページ・文書・ゲーム画面。訳文は元の各行の位置に戻します</sys:String>
-    <sys:String x:Key="S.Toolbar.ModeComicHint">マンガのセリフ。訳文をひとつの段落にまとめ、行の結合も積極的に行います</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormalHint">Web ページ・文書・ゲーム画面向け。元の文字の位置とレイアウトをできるだけ保ちます。</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComicHint">マンガ・吹き出し向け。関連する文字をまとめて配置し直し、訳文を自然で読みやすくします。</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">原文の書字方向</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontal">横書き</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVertical">縦書き</sys:String>
-    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">原文は横書きで、左から右に読みます</sys:String>
-    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">原文は縦書きで、上から下・右から左に読みます</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">文字が左から右に並びます。一般的な横組み向け。</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">文字が上から下に並びます（右から左に読みます）。縦組み向け。</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">読み上げ</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">停止</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">認識した原文を読み上げる</sys:String>

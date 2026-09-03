@@ -171,13 +171,13 @@
     <sys:String x:Key="S.Toolbar.Mode">캡처한 내용의 종류</sys:String>
     <sys:String x:Key="S.Toolbar.ModeNormal">일반</sys:String>
     <sys:String x:Key="S.Toolbar.ModeComic">만화</sys:String>
-    <sys:String x:Key="S.Toolbar.ModeNormalHint">웹 페이지·문서·게임 화면. 번역문을 원래 각 줄의 위치에 되돌립니다</sys:String>
-    <sys:String x:Key="S.Toolbar.ModeComicHint">만화 대사. 번역문을 한 단락으로 배치하고 줄 병합도 더 적극적으로 합니다</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormalHint">웹 페이지·문서·게임 화면에 적합하며, 원래 글자 위치와 배치를 최대한 유지합니다.</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComicHint">만화·말풍선에 적합하며, 관련된 글자를 합쳐 다시 배치해 번역문을 자연스럽고 읽기 쉽게 만듭니다.</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">원문의 쓰기 방향</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontal">가로쓰기</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVertical">세로쓰기</sys:String>
-    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">원문이 가로로, 왼쪽에서 오른쪽으로 쓰여 있습니다</sys:String>
-    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">원문이 세로로, 위에서 아래·오른쪽에서 왼쪽으로 쓰여 있습니다</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">글자가 왼쪽에서 오른쪽으로 배열됩니다. 일반적인 가로쓰기에 적합합니다.</sys:String>
+    <sys:String x:Key="S.Toolbar.DirectionVerticalHint">글자가 위에서 아래로 배열되며(오른쪽에서 왼쪽으로 읽음), 세로쓰기에 적합합니다.</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">읽어 주기</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">정지</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">인식한 원문을 읽어 줍니다</sys:String>
