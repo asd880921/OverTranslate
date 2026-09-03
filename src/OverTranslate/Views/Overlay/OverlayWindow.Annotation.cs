@@ -423,12 +423,15 @@ public partial class OverlayWindow
     /// Makes sure there is a picture to draw on, and that it is under the stroke being drawn.
     /// </summary>
     /// <remarks>
-    /// Sized to the whole window rather than to the selection, and put in at the bottom so the wet
-    /// stroke — which is added and removed around it — stays on top of what is already there.
+    /// Grown to the selection rather than made the size of the window — see <see cref="InkSurface"/>.
+    /// Anything drawn outside the box is clipped away unseen, so the box is all the picture has to
+    /// hold; a box that is moved or stretched takes the picture with it. Put in at the bottom of the
+    /// canvas so the wet stroke, which is added and removed around it, stays on top.
     /// </remarks>
     private void EnsureInkSurface()
     {
-        _ink.Ensure(new Rect(0, 0, _physBounds.Width / _dpiX, _physBounds.Height / _dpiY), _dpiX);
+        if (_annotationBounds.Width > 0 && _annotationBounds.Height > 0)
+            _ink.Ensure(_annotationBounds, _dpiX);
 
         if (!AnnotationCanvas.Children.Contains(_ink.Element))
             AnnotationCanvas.Children.Insert(0, _ink.Element);

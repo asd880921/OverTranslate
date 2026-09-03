@@ -197,4 +197,46 @@ public class AnnotationEraserTests
             Assert.True(InkAt(surface, 200, 100));
         });
     }
+    /// <summary>
+    /// The picture is only as big as the box, and the box can be dragged or stretched afterwards.
+    /// What was drawn has to come across unmoved when it grows: the marks are placed in the window,
+    /// not in the box, so a mark must not shift because the box did.
+    /// </summary>
+    [Fact]
+    public void GrowingTheSurface_CarriesWhatWasDrawnAcrossUnmoved()
+    {
+        OnStaThread(() =>
+        {
+            var surface = new InkSurface();
+            surface.Ensure(new Rect(200, 100, 200, 100), scale: 1);
+            surface.Lay(Stroke(8, AnnotationTool.Pen, (250, 150), (350, 150)));
+
+            Assert.True(InkAt(surface, 300, 150));
+
+            // Stretched up and to the left, which moves the picture's own origin.
+            surface.Ensure(new Rect(0, 0, 400, 200), scale: 1);
+
+            Assert.True(InkAt(surface, 300, 150));    // still where it was drawn
+            Assert.True(InkAt(surface, 260, 150));
+            Assert.False(InkAt(surface, 100, 150));   // and nothing appeared in the new ground
+        });
+    }
+
+    /// <summary>Shrinking the box must not take ink away — it is hidden by the clip, not deleted.</summary>
+    [Fact]
+    public void ANarrowerBox_DoesNotThrowInkAway()
+    {
+        OnStaThread(() =>
+        {
+            var surface = new InkSurface();
+            surface.Ensure(new Rect(0, 0, 400, 200), scale: 1);
+            surface.Lay(Stroke(8, AnnotationTool.Pen, (50, 100), (350, 100)));
+
+            surface.Ensure(new Rect(150, 80, 100, 40), scale: 1);
+
+            Assert.True(InkAt(surface, 60, 100));
+            Assert.True(InkAt(surface, 340, 100));
+        });
+    }
+
 }

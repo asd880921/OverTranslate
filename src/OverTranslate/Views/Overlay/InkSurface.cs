@@ -46,34 +46,62 @@ public sealed class InkSurface
     /// <summary>The element that shows the marks. Added to the ink canvas once and left there.</summary>
     public Image Element { get; } = new() { IsHitTestVisible = false };
 
-    /// <summary>
-    /// Makes the surface cover <paramref name="bounds"/>, throwing away what it held if it has to grow.
-    /// </summary>
+    /// <summary>Makes the surface cover <paramref name="bounds"/> as well as whatever it covers now.</summary>
     /// <remarks>
-    /// Sized to the window rather than to the selection, because a mark is not owned by the box it
-    /// was drawn in: moving the box off a mark hides it and moving back shows it again, so the ink
-    /// has to go on living outside whatever the selection is at the time. Allocated on the first
-    /// mark and not before — most captures are never drawn on.
+    /// <para>Grown to fit the selection rather than allocated across the whole window. The window is
+    /// pinned to the entire virtual desktop, so sizing to it costs a desktop-sized picture and a
+    /// second copy of it the moment the first mark is made — around 66MB for one 4K screen and more
+    /// for several — however small the box the user actually drew in. The selection is what the ink
+    /// is clipped to, so it is also all the ink there can be to keep.</para>
+    ///
+    /// <para>It grows and never shrinks, and what it holds is carried across when it does, because a
+    /// mark is not owned by the box it was drawn in: moving the box off a mark hides it and moving
+    /// back shows it again, so the ink has to go on living outside whatever the selection is now.
+    /// Allocated on the first mark and not before — most captures are never drawn on.</para>
     /// </remarks>
     public void Ensure(Rect bounds, double scale)
     {
-        int width  = Math.Max(1, (int)Math.Ceiling(bounds.Width  * scale));
-        int height = Math.Max(1, (int)Math.Ceiling(bounds.Height * scale));
-        if (_bitmap is not null && width == _width && height == _height && Math.Abs(scale - _scale) < 1e-9)
-            return;
+        // A change of scale is a change of monitor under the window, and nothing kept at the old one
+        // lines up with the new; that is rare enough to start again over.
+        bool rescaled = _bitmap is not null && Math.Abs(scale - _scale) > 1e-9;
+        var wanted = _bitmap is null || rescaled ? bounds : Rect.Union(_bounds, bounds);
 
-        _bounds = bounds;
+        if (_bitmap is not null && !rescaled && wanted == _bounds) return;
+
+        int width  = Math.Max(1, (int)Math.Ceiling(wanted.Width  * scale));
+        int height = Math.Max(1, (int)Math.Ceiling(wanted.Height * scale));
+
+        var kept       = rescaled ? null : _pixels;
+        var keptBounds = _bounds;
+        int keptWidth  = _width;
+        int keptHeight = _height;
+
+        _bounds = wanted;
         _scale  = scale;
         _width  = width;
         _height = height;
         _pixels = new byte[width * height * 4];
         _bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Pbgra32, null);
 
+        if (kept is not null)
+        {
+            int dx = (int)Math.Round((keptBounds.X - wanted.X) * scale);
+            int dy = (int)Math.Round((keptBounds.Y - wanted.Y) * scale);
+
+            for (int y = 0; y < keptHeight; y++)
+                Array.Copy(
+                    kept, y * keptWidth * 4,
+                    _pixels, ((y + dy) * width + dx) * 4,
+                    keptWidth * 4);
+        }
+
+        _bitmap.WritePixels(new Int32Rect(0, 0, width, height), _pixels, width * 4, 0);
+
         Element.Source = _bitmap;
-        Element.Width  = bounds.Width;
-        Element.Height = bounds.Height;
-        Canvas.SetLeft(Element, bounds.X);
-        Canvas.SetTop(Element, bounds.Y);
+        Element.Width  = wanted.Width;
+        Element.Height = wanted.Height;
+        Canvas.SetLeft(Element, wanted.X);
+        Canvas.SetTop(Element, wanted.Y);
     }
 
     /// <summary>Wipes the picture, which is where repainting from the stroke list starts.</summary>
