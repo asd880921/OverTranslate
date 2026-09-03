@@ -59,14 +59,6 @@ public sealed class AnnotationStroke
     /// </remarks>
     public required double Opacity { get; init; }
 
-    /// <summary>What the eraser has taken out of it, or null while it is untouched.</summary>
-    /// <remarks>
-    /// Coverage over the stroke rather than a shape cut out of it — see <see cref="EraseMask"/> for
-    /// why, and for what it costs. The stroke keeps its points either way, so a rubbed stroke is
-    /// still the line the user drew and is still drawn as one.
-    /// </remarks>
-    public EraseMask? Mask { get; init; }
-
     /// <summary>The box the stroke paints inside, with the width of the nib allowed for.</summary>
     /// <remarks>
     /// Worked out from the points rather than by widening them. The widened outline answers this
@@ -74,9 +66,12 @@ public sealed class AnnotationStroke
     /// exact answer: it places the mask and rejects strokes the eraser is nowhere near, and both
     /// only need a box that is certainly big enough.
     /// </remarks>
-    public Rect Bounds
+    public Rect Bounds => _bounds ??= MeasureBounds();
+
+    private Rect? _bounds;
+
+    private Rect MeasureBounds()
     {
-        get
         {
             double minX = double.MaxValue, minY = double.MaxValue;
             double maxX = double.MinValue, maxY = double.MinValue;
@@ -94,23 +89,6 @@ public sealed class AnnotationStroke
             return new Rect(minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2);
         }
     }
-
-    /// <summary>The same stroke wearing a mask of its own, ready to be rubbed at.</summary>
-    /// <remarks>
-    /// A copy is taken rather than the mask being painted in place, because the stroke this came
-    /// from is in the undo history and the drag must not reach into it. Once per stroke per drag —
-    /// see <see cref="EraseMask.Copy"/>.
-    /// </remarks>
-    public AnnotationStroke WithOwnMask(double scale) => new()
-    {
-        Tool      = Tool,
-        Color     = Color,
-        Thickness = Thickness,
-        Opacity   = Opacity,
-        Points    = Points,
-        Mask      = Mask?.Copy() ?? EraseMask.Covering(Bounds, scale),
-    };
-
 
     /// <summary>
     /// Whether the stroke passes within <paramref name="radius"/> of <paramref name="point"/>.

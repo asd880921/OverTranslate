@@ -64,13 +64,11 @@ public partial class OverlayWindow
 
     // An erase drag in progress: the strokes as they stand right now, where the eraser was last
     // seen, and whether it has taken anything yet.
-    private List<AnnotationStroke>? _eraseWorkingSet;
+    private List<Point>? _erasePoints;
     private Point _eraseLast;
     private bool _eraseTookSomething;
 
-    // Which of the working set this drag has already taken a private mask for. Without it the first
-    // step would copy, and every step after it would copy the copy.
-    private readonly HashSet<int> _eraseOwnMasks = [];
+    private readonly InkSurface _ink = new();
 
     private Rect _annotationBounds;
     private Rect _annotationBoundsPhys;
@@ -261,15 +259,10 @@ public partial class OverlayWindow
 
         if (_annotationTool == AnnotationTool.Eraser)
         {
-            _eraseWorkingSet = [.. CurrentStrokes];
+            EnsureInkSurface();
+            _erasePoints = [point];
             _eraseLast = point;
-            _eraseTookSomething = false;
-            _eraseOwnMasks.Clear();
-
-            // Redrawn once here so the canvas holds one visual per stroke in the same order, which
-            // is what lets each step below replace just the visuals it changed.
-            RenderStrokes(_eraseWorkingSet);
-            EraseStep(point, point);
+            _eraseTookSomething = _ink.Erase(point, point, EraserRadius);
             return;
         }
 
@@ -294,11 +287,12 @@ public partial class OverlayWindow
 
         if (e.LeftButton != MouseButtonState.Pressed) return;
 
-        if (_eraseWorkingSet is not null)
+        if (_erasePoints is not null)
         {
             if (FarEnough(_eraseLast, point))
             {
-                EraseStep(_eraseLast, point);
+                if (_ink.Erase(_eraseLast, point, EraserRadius)) _eraseTookSomething = true;
+                _erasePoints.Add(point);
                 _eraseLast = point;
             }
             return;
@@ -333,26 +327,29 @@ public partial class OverlayWindow
         if (!_isAnnotating) return;
         AnnotationSurface.ReleaseMouseCapture();
 
-        if (_eraseWorkingSet is not null)
+        if (_erasePoints is not null)
         {
-            var erased = _eraseWorkingSet;
+            var path = _erasePoints;
             bool took = _eraseTookSomething;
-            _eraseWorkingSet = null;
+            _erasePoints = null;
             _eraseTookSomething = false;
 
             // Nothing changed if the drag never met a mark — and a history entry for that would be a
             // press of 復原 that visibly does nothing.
-            if (!took)
-            {
-                RedrawAnnotations();
-                return;
-            }
+            if (!took) return;
 
-            // A stroke the eraser took the last of is kept rather than dropped. Knowing it had all
-            // gone would mean asking whether any ink still shows through its mask, which is a read
-            // of every pixel of it on every step; what is left is a line wearing a mask that hides
-            // all of it, and it costs one element nobody can see.
-            CommitStrokes(erased);
+            // The rub is recorded as a stroke of its own rather than as a change to the strokes it
+            // crossed. The picture cannot be stepped backwards, so going back a step repaints it
+            // from this list, and a rub has to be one of the things on the list to be repainted —
+            // in its place, so that a mark drawn afterwards is not rubbed out along with it.
+            CommitStrokes([.. CurrentStrokes, new AnnotationStroke
+            {
+                Tool      = AnnotationTool.Eraser,
+                Color     = Colors.Transparent,
+                Thickness = EraserRadius * 2,
+                Opacity   = 1,
+                Points    = path,
+            }], alreadyPainted: true);
             return;
         }
 
@@ -361,14 +358,18 @@ public partial class OverlayWindow
         var points = _wetPoints;
         AbandonWetStroke();
 
-        CommitStrokes([.. CurrentStrokes, new AnnotationStroke
+        var drawn = new AnnotationStroke
         {
             Tool      = _annotationTool,
             Color     = _annotationColor,
             Thickness = _annotationThickness,
             Opacity   = CurrentStrokeOpacity,
             Points    = points,
-        }]);
+        };
+
+        EnsureInkSurface();
+        _ink.Lay(drawn);
+        CommitStrokes([.. CurrentStrokes, drawn], alreadyPainted: true);
     }
 
     /// <summary>
@@ -385,86 +386,19 @@ public partial class OverlayWindow
         AnnotationCanvas.Children.Remove(_wetLayer);
         _wetLayer.Clear();
         _wetPoints = null;
-        _eraseWorkingSet = null;
+
+        // A rub that is walked away from has already taken ink off the picture, and the picture is
+        // the only place that happened — so the marks that are still on the list are painted again.
+        bool wasRubbing = _erasePoints is not null;
+        _erasePoints = null;
         _eraseTookSomething = false;
-        _eraseOwnMasks.Clear();
+        if (wasRubbing) RedrawAnnotations();
         if (AnnotationSurface.IsMouseCaptured) AnnotationSurface.ReleaseMouseCapture();
     }
 
-    /// <summary>
-    /// Rubs out one step of the drag: the capsule the circle covered going from one point to the next.
-    /// </summary>
-    /// <remarks>
-    /// <para>One step at a time, cutting into what the last step left. Rebuilding the whole swept
-    /// path on every move and taking it out of the untouched strokes gives the same picture and gets
-    /// steadily slower as the drag goes on, because both the shape being subtracted and the shape it
-    /// is subtracted from keep growing — 25ms a step by the end of a long rub, which is what a lag
-    /// while erasing is made of. Cutting into the survivor keeps the work per step roughly constant
-    /// and in fact falling, since the shape being cut is smaller every time.</para>
-    ///
-    /// <para>Painted as it goes, not at the end: an eraser that only shows what it took once the
-    /// button comes up is an eraser nobody can aim.</para>
-    /// </remarks>
-    private void EraseStep(Point from, Point to)
-    {
-        if (_eraseWorkingSet is null) return;
 
-        double radius = EraserRadius;
-        var reach = new Rect(
-            Math.Min(from.X, to.X) - radius, Math.Min(from.Y, to.Y) - radius,
-            Math.Abs(to.X - from.X) + radius * 2, Math.Abs(to.Y - from.Y) + radius * 2);
 
-        for (int i = 0; i < _eraseWorkingSet.Count; i++)
-        {
-            var stroke = _eraseWorkingSet[i];
-            if (!reach.IntersectsWith(stroke.Bounds)) continue;
-            if (!Touches(stroke, from, to, radius)) continue;
-
-            // The first time this drag reaches a stroke it gets a mask of its own, and the visual is
-            // rebuilt once to put that mask on. After that the mask is the brush the line is already
-            // wearing, so painting into it is what the user sees and nothing has to be rebuilt.
-            if (_eraseOwnMasks.Add(i))
-            {
-                stroke = stroke.WithOwnMask(_dpiX);
-                _eraseWorkingSet[i] = stroke;
-
-                if (i < AnnotationCanvas.Children.Count)
-                {
-                    AnnotationCanvas.Children.RemoveAt(i);
-                    AnnotationCanvas.Children.Insert(i, BuildStrokeVisual(stroke));
-                }
-            }
-
-            if (stroke.Mask!.Erase(from, to, radius)) _eraseTookSomething = true;
-        }
-    }
-
-    /// <summary>
-    /// Whether the circle, dragged from one point to the other, came near enough to this stroke's
-    /// ink to be worth the geometry.
-    /// </summary>
-    /// <remarks>
-    /// Sampled along the step rather than tested at its two ends. A flick of the mouse can put a
-    /// hundred pixels between two pointer events, and a stroke crossed in the middle of that jump is
-    /// near neither end — it would be stepped over, and the rub would leave a mark standing in the
-    /// middle of the channel it had just cut.
-    /// </remarks>
-    private static bool Touches(AnnotationStroke stroke, Point from, Point to, double radius)
-    {
-        double dx = to.X - from.X, dy = to.Y - from.Y;
-        double length = Math.Sqrt(dx * dx + dy * dy);
-        int samples = (int)Math.Ceiling(length / radius);
-
-        for (int i = 0; i <= samples; i++)
-        {
-            double t = samples == 0 ? 0 : (double)i / samples;
-            if (stroke.IsWithin(new Point(from.X + dx * t, from.Y + dy * t), radius)) return true;
-        }
-
-        return false;
-    }
-
-    private void CommitStrokes(List<AnnotationStroke> next)
+    private void CommitStrokes(List<AnnotationStroke> next, bool alreadyPainted = false)
     {
         // Anything that was undone and not redone is gone the moment a new mark is made, which is
         // what every editor does and what the user means by carrying on from here.
@@ -476,38 +410,32 @@ public partial class OverlayWindow
         if (_annotationHistory.Count > HistoryLimit) _annotationHistory.RemoveAt(0);
         _annotationHistoryIndex = _annotationHistory.Count - 1;
 
-        RedrawAnnotations();
+        if (!alreadyPainted) RedrawAnnotations();
         AnnotationsChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private void RedrawAnnotations() => RenderStrokes(CurrentStrokes);
-
-    private void RenderStrokes(IReadOnlyList<AnnotationStroke> strokes)
+    private void RedrawAnnotations()
     {
-        AnnotationCanvas.Children.Clear();
-        foreach (var stroke in strokes)
-            AnnotationCanvas.Children.Add(BuildStrokeVisual(stroke));
+        EnsureInkSurface();
+        _ink.Replay(CurrentStrokes);
     }
 
     /// <summary>
-    /// Draws a stroke the cheapest way that is still right for it.
+    /// Makes sure there is a picture to draw on, and that it is under the stroke being drawn.
     /// </summary>
     /// <remarks>
-    /// A stroke nothing has been rubbed out of is a line, and a line is what WPF draws fastest and
-    /// smoothest — the width and the caps are properties of the pen, and there is no outline to
-    /// build. Once the eraser has taken a bite there is no pen that describes the result, so from
-    /// then on it is a filled shape.
+    /// Sized to the whole window rather than to the selection, and put in at the bottom so the wet
+    /// stroke — which is added and removed around it — stays on top of what is already there.
     /// </remarks>
-    private static UIElement BuildStrokeVisual(AnnotationStroke stroke)
+    private void EnsureInkSurface()
     {
-        var line = BuildStrokeLine(stroke);
+        _ink.Ensure(new Rect(0, 0, _physBounds.Width / _dpiX, _physBounds.Height / _dpiY), _dpiX);
 
-        // A rubbed stroke is the same line wearing what is left of it. Nothing about the line itself
-        // changes, which is why the eraser never has to rebuild one.
-        if (stroke.Mask is not null) line.OpacityMask = stroke.Mask.ToBrush();
-
-        return line;
+        if (!AnnotationCanvas.Children.Contains(_ink.Element))
+            AnnotationCanvas.Children.Insert(0, _ink.Element);
     }
+
+
 
     /// <summary>
     /// Flat ends for the highlighter, round for the pen: a chisel tip is what makes a highlight look
@@ -516,27 +444,4 @@ public partial class OverlayWindow
     private static PenLineCap CapFor(AnnotationTool tool) =>
         tool == AnnotationTool.Highlighter ? PenLineCap.Flat : PenLineCap.Round;
 
-    private static Polyline BuildStrokeLine(AnnotationStroke stroke)
-    {
-        var cap = CapFor(stroke.Tool);
-
-        var line = new Polyline
-        {
-            Stroke             = new SolidColorBrush(stroke.Color),
-            StrokeThickness    = stroke.Thickness,
-            StrokeLineJoin     = PenLineJoin.Round,
-            StrokeStartLineCap = cap,
-            StrokeEndLineCap   = cap,
-            Opacity            = stroke.Opacity,
-            IsHitTestVisible   = false,
-        };
-
-        foreach (var point in stroke.Points) line.Points.Add(point);
-
-        // A tap is one point, and a polyline through one point draws nothing. Repeating it gives the
-        // round cap something to sit on, so a tap leaves the dot the user expected.
-        if (line.Points.Count == 1) line.Points.Add(line.Points[0]);
-
-        return line;
-    }
 }
