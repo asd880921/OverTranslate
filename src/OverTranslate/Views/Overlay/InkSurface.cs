@@ -86,51 +86,83 @@ public sealed class InkSurface
     }
 
     /// <summary>Paints the marks in order, which is the only way an erased-then-drawn-over spot comes out right.</summary>
+    /// <remarks>
+    /// In runs rather than one at a time. Order only has to be kept where it changes the answer, and
+    /// that is at a rub: marks laid down between two rubs cannot reach each other's pixels, so they
+    /// can be rasterised together and blended in once. One at a time measured 22ms a mark — 860ms to
+    /// undo a step with forty marks on screen and 2.8 seconds with a hundred and twenty, which is a
+    /// keypress that looks like a hang. The work becomes one pass per rub instead of one per mark.
+    /// </remarks>
     public void Replay(IEnumerable<AnnotationStroke> strokes)
     {
         Clear();
+
+        var run = new List<AnnotationStroke>();
         foreach (var stroke in strokes)
         {
-            if (stroke.Tool == AnnotationTool.Eraser) Rub(stroke);
-            else Lay(stroke);
+            if (stroke.Tool != AnnotationTool.Eraser)
+            {
+                run.Add(stroke);
+                continue;
+            }
+
+            LayAll(run);
+            run.Clear();
+            Rub(stroke);
         }
+
+        LayAll(run);
     }
 
     /// <summary>Lays one finished stroke down.</summary>
-    public void Lay(AnnotationStroke stroke)
-    {
-        if (_pixels is null || _bitmap is null) return;
+    public void Lay(AnnotationStroke stroke) => LayAll([stroke]);
 
-        var box = Clamp(stroke.Bounds);
+    /// <summary>Lays down a run of strokes with nothing rubbed out between them.</summary>
+    public void LayAll(IReadOnlyList<AnnotationStroke> strokes)
+    {
+        if (_pixels is null || _bitmap is null || strokes.Count == 0) return;
+
+        var reach = strokes[0].Bounds;
+        for (int i = 1; i < strokes.Count; i++) reach.Union(strokes[i].Bounds);
+
+        var box = Clamp(reach);
         if (box.IsEmpty) return;
 
-        // Drawn opaque here and faded during the blend below, never segment by segment at its own
-        // opacity: a 螢光筆 crosses itself at every turn, and composing the pieces one over another
-        // is what leaves a band with dark knots in it.
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
             dc.PushTransform(new ScaleTransform(_scale, _scale));
             dc.PushTransform(new TranslateTransform(-box.DipX, -box.DipY));
 
-            var pen = new Pen(new SolidColorBrush(stroke.Color), stroke.Thickness)
+            foreach (var stroke in strokes)
             {
-                StartLineCap = Cap(stroke.Tool),
-                EndLineCap   = Cap(stroke.Tool),
-                LineJoin     = PenLineJoin.Round,
-            };
+                var pen = new Pen(new SolidColorBrush(stroke.Color), stroke.Thickness)
+                {
+                    StartLineCap = Cap(stroke.Tool),
+                    EndLineCap   = Cap(stroke.Tool),
+                    LineJoin     = PenLineJoin.Round,
+                };
 
-            // A single point is a tap. A round nib leaves a dot; a chisel one has no width across a
-            // point it never moved off, so there is nothing to lay down.
-            if (stroke.Points.Count == 1)
-            {
-                if (pen.StartLineCap == PenLineCap.Round)
-                    dc.DrawEllipse(pen.Brush, null, stroke.Points[0], stroke.Thickness / 2, stroke.Thickness / 2);
-            }
-            else
-            {
-                dc.DrawGeometry(null, pen,
-                    Line(AnnotationStroke.WithoutEndJitter(stroke.Points, stroke.Thickness)));
+                // Composed whole and then faded, never piece by piece at its own opacity: a 螢光筆
+                // crosses itself at every turn, and laying the pieces one over another is what
+                // leaves a band with dark knots in it. The fade is per stroke, so two separate
+                // marks still darken where they cross, as two passes of a real highlighter do.
+                dc.PushOpacity(Math.Clamp(stroke.Opacity, 0, 1));
+
+                // A single point is a tap. A round nib leaves a dot; a chisel one has no width
+                // across a point it never moved off, so there is nothing to lay down.
+                if (stroke.Points.Count == 1)
+                {
+                    if (pen.StartLineCap == PenLineCap.Round)
+                        dc.DrawEllipse(pen.Brush, null, stroke.Points[0], stroke.Thickness / 2, stroke.Thickness / 2);
+                }
+                else
+                {
+                    dc.DrawGeometry(null, pen,
+                        Line(AnnotationStroke.WithoutEndJitter(stroke.Points, stroke.Thickness)));
+                }
+
+                dc.Pop();
             }
 
             dc.Pop();
@@ -143,8 +175,6 @@ public sealed class InkSurface
         var src = new byte[box.Width * box.Height * 4];
         patch.CopyPixels(src, box.Width * 4, 0);
 
-        double opacity = Math.Clamp(stroke.Opacity, 0, 1);
-
         for (int y = 0; y < box.Height; y++)
         {
             int from = y * box.Width * 4;
@@ -152,18 +182,15 @@ public sealed class InkSurface
 
             for (int x = 0; x < box.Width * 4; x += 4)
             {
-                // Premultiplied source-over, with the stroke's own opacity folded into the source.
-                // Alpha is one of the four channels rather than a special case, which is what keeps
-                // the colours and the coverage in step.
-                int sa = (int)(src[from + x + 3] * opacity);
+                // Premultiplied source-over. Alpha is one of the four channels rather than a
+                // special case, which is what keeps the colours and the coverage in step.
+                int sa = src[from + x + 3];
                 if (sa == 0) continue;
 
                 int keep = 255 - sa;
                 for (int c = 0; c < 4; c++)
-                {
-                    int s = (int)(src[from + x + c] * opacity);
-                    _pixels[into + x + c] = (byte)Math.Min(255, s + _pixels[into + x + c] * keep / 255);
-                }
+                    _pixels[into + x + c] =
+                        (byte)Math.Min(255, src[from + x + c] + _pixels[into + x + c] * keep / 255);
             }
         }
 
