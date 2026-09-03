@@ -98,12 +98,39 @@ OcrHarness.exe --margin-scale-grid 全螢幕.png [更多.png ...]
 ### 看分組為什麼這樣分
 
 ```bash
-# 每一張圖：分組結果，加上每一組相鄰行的判定與它依據的幾何數字
+# 每一張圖：分組結果，加上每一組相鄰行的判定與它依據的幾何數字（截圖翻譯流程）
 OcrHarness.exe --group-explain 圖.png [更多.png ...]
 
 # 同一張圖，但用工具列「漫畫」模式的門檻
 OcrHarness.exe --group-explain --comic 圖.png [更多.png ...]
+
+# 改問即時翻譯流程（--panel 會自動視為即時）
+OcrHarness.exe --group-explain --realtime 圖.png [更多.png ...]
 ```
+
+### 先確認你問的是哪一條流程
+
+分組同時服務兩條流程，而它們給偵測器的尺寸不同：
+
+| 流程 | 進入點 | 偵測尺寸 |
+|---|---|---|
+| 截圖翻譯 | `OcrService.RecognizeAsync` | `ImgResize = 2048`，**2048 以下完全不縮放** |
+| 即時翻譯 | `OcrService.TryRecognizeAsync` | `RealtimeDetectorSize.For(w, h, mode)`，會縮小 |
+
+這不是細節。**偵測器的框在不同輸入尺度下並不穩定**——同一批 22 張截圖改用即時尺寸讀，78 個多行
+群組裡有 37 個消失、另外冒出 34 個。用錯尺寸讀到的判定，講的是那條流程根本不會看到的版面。
+
+輸出每張圖的開頭都會印 `FLOW:`，因為這些輸出會被存下來、幾個月後互相 diff。
+
+⚠️ **這個旗標之前存下來的基準檔全部是即時尺寸的**（`--group-explain` 當初從隔壁的
+`--reject-audit` 沿用了 `RealtimeDetectorSize`，而那個模式是對的——它測的過濾器只跑在即時路徑）。
+要跟舊基準比較請整份重跑，不要跨著讀。
+
+`--size` 一旦指定就走即時入口（那個旗標本來就是為了固定尺寸掃描而存在）。
+
+另一個還沒對齊的差異：即時流程在分組前會跑 `RejectUnconvincingBlocks` 過濾低信心碎片，
+`--group-explain` 目前兩條流程都不跑（它直接用引擎而不是 `OcrService`）。要看那個過濾器的影響
+用 `--reject-audit`。
 
 `--comic` 對應工具列的一般／漫畫切換。漫畫模式只放寬兩件事，其餘門檻與一般模式完全相同：
 `set solid` 的字級比從 0.86 降到 0.80，以及**免掉它的行長要求**。兩者都是為了對白氣泡——
