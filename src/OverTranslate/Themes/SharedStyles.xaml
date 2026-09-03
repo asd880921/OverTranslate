@@ -1656,6 +1656,21 @@
         </Setter>
     </Style>
 
+    <!-- The 一般／漫畫 halves, whose pill is the bar's accent rather than the raised grey one. That
+         is the only difference and it forces this style: the label on the chosen half now sits on a
+         saturated blue instead of on a step in grey, so it has to be knocked out white. The style
+         trigger outranks the template's, which is what leaves the template — and the direction
+         switch that shares it — untouched. The glyph follows without being told: it strokes itself
+         from the RadioButton's Foreground. -->
+    <Style x:Key="ToolbarModeSegmentButton" TargetType="RadioButton"
+           BasedOn="{StaticResource ToolbarSegmentButton}">
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource ToolbarPrimaryFg}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- The direction mark in front of a segment's label: strokes standing for lines of text, the
          last one short the way a last line is. The two are the same drawing a quarter turn apart,
          and the short stroke lands where that script's last line really is — the bottom for

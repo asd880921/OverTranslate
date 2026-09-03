@@ -96,13 +96,12 @@
     <SolidColorBrush x:Key="ToolbarSegmentThumbBg"     Color="#FFFFFF"/>
     <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="#D8D8D8"/>
 
-    <!-- The same pill on the 一般／漫畫 switch, which is the accent instead — see DarkTheme.xaml for
-         why that switch does not take the grey one. Tinted rather than solid: the segment label is
-         drawn in the bar's own foreground and stays there whichever half is chosen, so the fill has
-         to stay light enough to read dark text on. A solid #0078D4 would need the label knocked out
-         white on one half only, which is a second rule for one pill to carry. -->
-    <SolidColorBrush x:Key="ToolbarModeThumbBg"     Color="#D3E7FA"/>
-    <SolidColorBrush x:Key="ToolbarModeThumbBorder" Color="#A8CDEE"/>
+    <!-- The same pill on the 一般／漫畫 switch, which takes the accent instead — see DarkTheme.xaml
+         for why, and why it is this theme's ToolbarPrimaryBg exactly rather than a tint of it.
+         No border: the pill is now a solid colour against a grey tray, which is a far larger step
+         in value than the white one had, and the hairline that white needed would only muddy it. -->
+    <SolidColorBrush x:Key="ToolbarModeThumbBg"     Color="#0078D4"/>
+    <SolidColorBrush x:Key="ToolbarModeThumbBorder" Color="Transparent"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 
     <!-- 快速翻譯's mark. The drawing it was made from is dark-interface artwork — pale plates with

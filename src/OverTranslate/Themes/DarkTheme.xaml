@@ -107,11 +107,13 @@
     <SolidColorBrush x:Key="ToolbarSegmentThumbBg"     Color="#4E4E4E"/>
     <SolidColorBrush x:Key="ToolbarSegmentThumbBorder" Color="Transparent"/>
 
-    <!-- The same pill on the 一般／漫畫 switch, which is the accent instead. Two identical grey
+    <!-- The same pill on the 一般／漫畫 switch, which takes the accent instead. Two identical grey
          switches side by side read as one four-way control; the colour is what keeps them two
-         questions. It is ToolbarPrimaryBg — the blue 翻譯 is already drawn in on this bar — held
-         back to a fill this theme can carry a label on, rather than a colour of its own. -->
-    <SolidColorBrush x:Key="ToolbarModeThumbBg"     Color="#2C5AA0"/>
+         questions. Deliberately the very value ToolbarPrimaryBg holds rather than a muted version
+         of it: the bar has one accent, 翻譯 is drawn in it, and a second nearly-but-not-quite blue
+         beside it reads as a mistake rather than as a quieter relative. The chosen half's label
+         goes to ToolbarPrimaryFg to sit on it — see ToolbarModeSegmentButton. -->
+    <SolidColorBrush x:Key="ToolbarModeThumbBg"     Color="#3B82F6"/>
     <SolidColorBrush x:Key="ToolbarModeThumbBorder" Color="Transparent"/>
     <Color x:Key="ToolbarShadowColor"          >#000000</Color>
 

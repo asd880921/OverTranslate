@@ -178,14 +178,20 @@
                                          Grid.Column="0"
                                          GroupName="CaptureContentMode"
                                          IsChecked="True"
-                                         Style="{StaticResource ToolbarSegmentButton}"
+                                         Style="{StaticResource ToolbarModeSegmentButton}"
                                          ToolTip="{DynamicResource S.Toolbar.ModeNormalHint}"
                                          PreviewMouseLeftButtonDown="ModeSegment_PreviewMouseLeftButtonDown"
                                          Checked="ModeSegment_Checked">
                                 <StackPanel Orientation="Horizontal">
-                                    <!-- A page: the ordinary shape of everything this mode is for. -->
+                                    <!-- A page with its corner turned: the ordinary shape of
+                                         everything this mode is for. The fold is what carries it at
+                                         14px — a plain rectangle is a rectangle, and the ruled lines
+                                         that used to sit inside this one closed up into a smudge at
+                                         1.5 stroke, besides saying "lines of text", which is the
+                                         drawing the switch next to it already uses. So the page says
+                                         it with its silhouette and keeps its inside empty. -->
                                     <Path Style="{StaticResource ToolbarSegmentGlyph}"
-                                          Data="M3,2 H11 V12 H3 Z M5,5 H9 M5,7.5 H9"/>
+                                          Data="M3,2.5 H7.5 L11,6 V11.5 H3 Z M7.5,2.5 V6 H11"/>
                                     <TextBlock VerticalAlignment="Center"
                                                Text="{DynamicResource S.Toolbar.ModeNormal}"/>
                                 </StackPanel>
@@ -194,16 +200,20 @@
                             <RadioButton x:Name="ComicModeSeg"
                                          Grid.Column="1"
                                          GroupName="CaptureContentMode"
-                                         Style="{StaticResource ToolbarSegmentButton}"
+                                         Style="{StaticResource ToolbarModeSegmentButton}"
                                          ToolTip="{DynamicResource S.Toolbar.ModeComicHint}"
                                          PreviewMouseLeftButtonDown="ModeSegment_PreviewMouseLeftButtonDown"
                                          Checked="ModeSegment_Checked">
                                 <StackPanel Orientation="Horizontal">
                                     <!-- A speech balloon with its tail, which is what the mode is
                                          really about: the unit it groups and lays out is a balloon,
-                                         not a page. -->
+                                         not a page. Rounded against the page's square corners, so
+                                         the pair is told apart by silhouette before either drawing
+                                         is read. The tail hangs straight off the bottom-left corner
+                                         rather than slanting away from it — a slanted one thins to
+                                         nothing at 14px and reads as a hook. -->
                                     <Path Style="{StaticResource ToolbarSegmentGlyph}"
-                                          Data="M2.5,2.5 H11.5 V9 H6 L3.5,11.5 V9 H2.5 Z"/>
+                                          Data="M4,3 H10 A1.5,1.5 0 0 1 11.5,4.5 V8 A1.5,1.5 0 0 1 10,9.5 H6.5 L4,11.5 V9.5 A1.5,1.5 0 0 1 2.5,8 V4.5 A1.5,1.5 0 0 1 4,3 Z"/>
                                     <TextBlock VerticalAlignment="Center"
                                                Text="{DynamicResource S.Toolbar.ModeComic}"/>
                                 </StackPanel>
