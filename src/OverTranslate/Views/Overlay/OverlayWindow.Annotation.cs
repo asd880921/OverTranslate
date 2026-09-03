@@ -59,7 +59,6 @@ public partial class OverlayWindow
     private double _annotationOpacity = 0.45;
 
     private List<Point>? _wetPoints;
-    private Point _wetLast;
     private readonly WetInkLayer _wetLayer = new();
 
     // An erase drag in progress: the strokes as they stand right now, where the eraser was last
@@ -267,11 +266,12 @@ public partial class OverlayWindow
         }
 
         _wetPoints = [point];
-        _wetLast = point;
 
-        _wetLayer.Begin(_annotationColor, _annotationThickness, CurrentStrokeOpacity, CapFor(_annotationTool));
+        _wetLayer.Begin(
+            _annotationColor, _annotationThickness, CurrentStrokeOpacity,
+            _annotationTool == AnnotationTool.Highlighter ? PenLineCap.Flat : PenLineCap.Round,
+            point);
         AnnotationCanvas.Children.Add(_wetLayer);
-        _wetLayer.Extend(point, point);
     }
 
     private void AnnotationSurface_MouseMove(object sender, MouseEventArgs e)
@@ -302,8 +302,7 @@ public partial class OverlayWindow
         if (!FarEnough(_wetPoints[^1], point)) return;
 
         _wetPoints.Add(point);
-        _wetLayer.Extend(_wetLast, point);
-        _wetLast = point;
+        _wetLayer.Extend(point);
     }
 
     private void AnnotationSurface_MouseLeave(object sender, MouseEventArgs e)

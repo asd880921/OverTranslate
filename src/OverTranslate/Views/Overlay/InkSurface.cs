@@ -120,10 +120,17 @@ public sealed class InkSurface
                 LineJoin     = PenLineJoin.Round,
             };
 
+            // A single point is a tap. A round nib leaves a dot; a chisel one has no width across a
+            // point it never moved off, so there is nothing to lay down.
             if (stroke.Points.Count == 1)
-                dc.DrawEllipse(pen.Brush, null, stroke.Points[0], stroke.Thickness / 2, stroke.Thickness / 2);
+            {
+                if (pen.StartLineCap == PenLineCap.Round)
+                    dc.DrawEllipse(pen.Brush, null, stroke.Points[0], stroke.Thickness / 2, stroke.Thickness / 2);
+            }
             else
+            {
                 dc.DrawGeometry(null, pen, Line(stroke.Points));
+            }
 
             dc.Pop();
             dc.Pop();
