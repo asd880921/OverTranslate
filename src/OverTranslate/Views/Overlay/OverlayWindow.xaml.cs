@@ -540,7 +540,19 @@ public partial class OverlayWindow : Window
                     // reaching here without wrap means it already fits; leaving CharacterEllipsis on
                     // would only mean that a measurement being a pixel out costs the user a word.
                     TextTrimming = TextTrimming.None,
-                    VerticalAlignment = VerticalAlignment.Center,
+
+                    // Centred everywhere the bubble is about as tall as its text, which is every
+                    // bubble but a comic one: there the box is the union of a balloon's lines and
+                    // the paragraph replacing them is shorter than the lines it replaces, so the
+                    // text floats in the middle of a band of empty box. Measured on a stat page
+                    // laid out as label / body / label / body — 「額外獎勵」over its two indented
+                    // centred lines — the body ended up nearer the label below it than the one it
+                    // belongs to, and a list of pairs stopped reading as pairs. Top puts the
+                    // paragraph where the balloon's first line was, which is where the reader is
+                    // already looking.
+                    VerticalAlignment = _currentComicMode
+                        ? VerticalAlignment.Top
+                        : VerticalAlignment.Center,
                     FontFamily = new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 }
             };
