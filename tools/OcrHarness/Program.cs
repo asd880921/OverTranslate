@@ -1405,17 +1405,6 @@ if (args[0] == "--roi-stability")
                 : $"   missing box scores: {string.Join(" ", missingScores.Select(s => s.ToString("0.000")))}"));
     }
 
-    static double RoiPct(IReadOnlyList<double> sorted, double at) =>
-        sorted.Count == 0 ? 0 : sorted[Math.Min(sorted.Count - 1, (int)(at * (sorted.Count - 1)))];
-
-    static double RoiIou(System.Windows.Rect a, System.Windows.Rect b)
-    {
-        var overlap = System.Windows.Rect.Intersect(a, b);
-        if (overlap.IsEmpty) return 0;
-        var inter = overlap.Width * overlap.Height;
-        return inter / (a.Width * a.Height + b.Width * b.Height - inter);
-    }
-
     // Layer 3. Compares the bitmap actually handed to the detector over the region the two ROIs
     // share, each read at its own local offset.
     static bool RoiAlignedOverlapMatches(RoiProbed a, RoiProbed b)
@@ -1434,6 +1423,298 @@ if (args[0] == "--roi-stability")
         }
 
         return true;
+    }
+}
+
+// Candidate 1, measured but not shipped: separate what the user framed from what the detector is
+// shown, and derive the second by snapping the first to a grid IN SOURCE IMAGE COORDINATES.
+//
+//   Logical ROI    what the user dragged. Still what the answer is about.
+//   Analysis ROI   left/top snapped DOWN to a multiple of the grid, right/bottom snapped UP.
+//
+// The point is not that the canvas comes out a round size — padding a capture to a fixed canvas
+// does that too, and it does not help, because two selections of different sizes still hold
+// different pixels. Snapping in ABSOLUTE coordinates is different in kind: two Logical ROIs that
+// land inside the same grid cells produce the SAME Analysis ROI, so the crop is the same crop, and
+// the detector cannot tell them apart at all. What --roi-stability found — that everything up to
+// the detector is already identical and the boxes move anyway — is exactly the failure this shape
+// is meant to sidestep, by making the whole input identical rather than only the overlap.
+//
+// So the two questions this answers are:
+//
+//   1 while the Logical ROI has not crossed a grid line, is the answer bit-for-bit stable?
+//   2 what does it cost — how often is a boundary crossed anyway, how big is the jump when it is,
+//     and what does filtering the results back to the Logical ROI do to them?
+//
+// Question 2 is the one that decides whether this is worth shipping, because a grid does not remove
+// the instability. It removes most of the OPPORTUNITIES for it, and enlarges what happens when one
+// arrives — a crossing changes the input by a whole cell rather than by a pixel.
+if (args[0] == "--roi-snap")
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine(
+            "usage: --roi-snap <image> [--roi X,Y,W,H] [--grid 32,64,128] [--grow down,right,all] [--steps 1,2,4,...]");
+        return 1;
+    }
+
+    var snapPath = args[1];
+    if (!File.Exists(snapPath)) { Console.Error.WriteLine($"(missing) {snapPath}"); return 1; }
+
+    using var snapSource = new Bitmap(snapPath);
+
+    var snapRoi = new System.Drawing.Rectangle(
+        snapSource.Width / 8, snapSource.Height / 8,
+        snapSource.Width * 3 / 4, snapSource.Height * 3 / 4);
+
+    var snapRoiFlag = Array.IndexOf(args, "--roi");
+    if (snapRoiFlag >= 0 && snapRoiFlag + 1 < args.Length)
+    {
+        var parts = args[snapRoiFlag + 1].Split(',');
+        if (parts.Length != 4 || !parts.All(part => int.TryParse(part, out _)))
+        {
+            Console.Error.WriteLine("usage: --roi X,Y,W,H");
+            return 1;
+        }
+
+        snapRoi = new System.Drawing.Rectangle(
+            int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]), int.Parse(parts[3]));
+    }
+
+    var gridFlag = Array.IndexOf(args, "--grid");
+    var snapGrids = gridFlag >= 0 && gridFlag + 1 < args.Length
+        ? args[gridFlag + 1].Split(',').Select(int.Parse).ToArray()
+        : new[] { 32, 64, 128 };
+
+    var snapGrowFlag = Array.IndexOf(args, "--grow");
+    var snapSides = snapGrowFlag >= 0 && snapGrowFlag + 1 < args.Length
+        ? args[snapGrowFlag + 1].Split(',').Select(side => side.Trim().ToLowerInvariant()).ToArray()
+        : new[] { "down", "right", "all" };
+
+    var snapStepFlag = Array.IndexOf(args, "--steps");
+    var snapSteps = snapStepFlag >= 0 && snapStepFlag + 1 < args.Length
+        ? args[snapStepFlag + 1].Split(',').Select(int.Parse).ToArray()
+        : new[] { 1, 2, 4, 8, 16, 32, 64 };
+
+    using var snapEngine = new OnnxOcrEngine();
+
+    // Held rather than disposed per probe: the byte-for-byte comparison needs the base's bitmap
+    // alive while every variant is measured against it.
+    var SnapProbes = new List<SnapProbed>();
+
+    Console.WriteLine($"IMAGE: {snapPath}  ({snapSource.Width}x{snapSource.Height})");
+    Console.WriteLine($"LOGICAL ROI: {snapRoi.X},{snapRoi.Y} {snapRoi.Width}x{snapRoi.Height}");
+    Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+
+    foreach (var grid in snapGrids)
+    {
+        var baseAnalysis = SnapTo(snapRoi, grid);
+        var snapBase = await SnapProbe(snapRoi, baseAnalysis);
+
+        Console.WriteLine();
+        Console.WriteLine($"=== grid {grid} ===");
+        Console.WriteLine(
+            $"BASE  logical={Fmt(snapRoi)}  analysis={Fmt(baseAnalysis)}  " +
+            $"detBoxes={snapBase.Boxes.Count}  groups={snapBase.All.Count}  " +
+            $"kept={snapBase.Kept.Count}  straddling={snapBase.Straddling}");
+        Console.WriteLine(
+            "grow  step  logical        analysis         cell   crop   det =/+/-  dH% 50/90/max  ocr    kept  rec =/x/0  strad");
+        Console.WriteLine(new string('-', 124));
+
+        var crossings = 0;
+        var totalSteps = 0;
+
+        foreach (var side in snapSides)
+        {
+            foreach (var step in snapSteps)
+            {
+                var logical = SnapGrow(snapRoi, side, step);
+                if (logical == snapRoi) continue;
+
+                totalSteps++;
+                var analysis = SnapTo(logical, grid);
+                var crossed = analysis != baseAnalysis;
+                if (crossed) crossings++;
+
+                var probe = await SnapProbe(logical, analysis);
+                SnapReport(side, step, grid, snapBase, probe, crossed);
+            }
+        }
+
+        Console.WriteLine(
+            $"      grid {grid}: {crossings} of {totalSteps} steps crossed a grid line " +
+            $"({(totalSteps == 0 ? 0 : 100.0 * crossings / totalSteps):0.0}%)");
+    }
+
+    foreach (var probe in SnapProbes) probe.Aligned.Dispose();
+    return 0;
+
+    static string Fmt(System.Drawing.Rectangle r) => $"{r.X},{r.Y} {r.Width}x{r.Height}";
+
+    // Outward on every side, so the Analysis ROI always contains the Logical one.
+    System.Drawing.Rectangle SnapTo(System.Drawing.Rectangle rect, int grid)
+    {
+        var x = rect.X / grid * grid;
+        var y = rect.Y / grid * grid;
+        var right = Math.Min(snapSource.Width, (rect.Right + grid - 1) / grid * grid);
+        var bottom = Math.Min(snapSource.Height, (rect.Bottom + grid - 1) / grid * grid);
+
+        return new System.Drawing.Rectangle(x, y, right - x, bottom - y);
+    }
+
+    System.Drawing.Rectangle SnapGrow(System.Drawing.Rectangle rect, string side, int by)
+    {
+        var grow = side switch
+        {
+            "up" => (L: 0, T: by, R: 0, B: 0),
+            "down" => (L: 0, T: 0, R: 0, B: by),
+            "left" => (L: by, T: 0, R: 0, B: 0),
+            "right" => (L: 0, T: 0, R: by, B: 0),
+            _ => (L: by, T: by, R: by, B: by),
+        };
+
+        var x = Math.Max(0, rect.X - grow.L);
+        var y = Math.Max(0, rect.Y - grow.T);
+        var right = Math.Min(snapSource.Width, rect.Right + grow.R);
+        var bottom = Math.Min(snapSource.Height, rect.Bottom + grow.B);
+
+        return new System.Drawing.Rectangle(x, y, right - x, bottom - y);
+    }
+
+    async Task<SnapProbed> SnapProbe(System.Drawing.Rectangle logical, System.Drawing.Rectangle analysis)
+    {
+        using var crop = snapSource.Clone(analysis, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+        var options = OnnxOcrEngine.CreateOptions(null);
+        using var sk = OnnxOcrEngine.ConvertToSkBitmap(crop);
+        var aligned = OnnxOcrEngine.AlignForDetector(sk, options.Padding);
+
+        var read = await snapEngine.RecognizeAsync(crop, harnessLanguage);
+
+        // Grouping runs on the whole Analysis ROI, which is the honest way round: it is what the
+        // engine returned, and the capture-wide rules (SameLineGapThreshold, RepeatedRowLayout) are
+        // supposed to see a whole layout. It is also where this design's own risk lives — those
+        // rules now see content the user did not frame. Filtering first would trade that for the
+        // opposite problem, a layout with holes in it.
+        var grouped = OcrTextBlockGrouper.Group(
+            read, null, BitmapBlockAppearance.Sample(crop, read), harnessComicMode);
+
+        var all = grouped
+            .Select(block => (
+                Bounds: new System.Windows.Rect(
+                    block.Bounds.X + analysis.X, block.Bounds.Y + analysis.Y,
+                    block.Bounds.Width, block.Bounds.Height),
+                block.Text))
+            .ToList();
+
+        // Filter back to what the user framed. Centre-inside rather than intersects-at-all or
+        // fully-inside: a box the user framed the middle of is a box they meant, one they clipped
+        // the edge of is usually the neighbour's, and "fully inside" throws away every line the
+        // selection deliberately cut through. The two rejected rules are counted as Straddling so
+        // the cost of the choice is visible rather than assumed.
+        var logicalRect = new System.Windows.Rect(
+            logical.X, logical.Y, logical.Width, logical.Height);
+
+        var kept = all
+            .Where(block => logicalRect.Contains(
+                new System.Windows.Point(
+                    block.Bounds.X + block.Bounds.Width / 2,
+                    block.Bounds.Y + block.Bounds.Height / 2)))
+            .ToList();
+
+        var straddling = all.Count(block =>
+            block.Bounds.IntersectsWith(logicalRect) && !logicalRect.Contains(block.Bounds));
+
+        // The detector's own boxes too, so the OCR layer can be judged before grouping and before
+        // the filter — the three move for different reasons and reporting one number hides that.
+        var boxes = snapEngine.DetectBoxesOnly(crop, harnessLanguage)
+            .Select(box => new System.Windows.Rect(
+                box.Bounds.X + analysis.X, box.Bounds.Y + analysis.Y,
+                box.Bounds.Width, box.Bounds.Height))
+            .ToList();
+
+        var probed = new SnapProbed(logical, analysis, aligned, boxes, all, kept, straddling);
+        SnapProbes.Add(probed);
+        return probed;
+    }
+
+    void SnapReport(string side, int step, int grid, SnapProbed b, SnapProbed v, bool crossed)
+    {
+        // The claim under test: while no grid line has been crossed, the Analysis ROI is the same
+        // rectangle of the same image, so the bitmap handed to the detector must be identical in
+        // full — not merely over an overlap, which is all --roi-stability could ask.
+        var cropIdentical = !crossed && SnapAlignedIdentical(b.Aligned, v.Aligned);
+
+        // Three layers, kept apart on purpose, because they move for different reasons:
+        //
+        //   det    the detector's boxes over the whole Analysis ROI. Nothing of the user's
+        //          selection reaches this, so it is the OCR's own stability.
+        //   ocr    the grouped text over the whole Analysis ROI, likewise.
+        //   kept   what survives filtering back to the Logical ROI. This one moves whenever the
+        //          selection edge moves across a block, WHICH IS CORRECT — the user really did
+        //          include something they had not before. Reporting it together with the two above
+        //          is what made the first draft of this table look like instability when the OCR
+        //          had not moved at all.
+        var detSame = b.Boxes.Count == v.Boxes.Count &&
+                      b.Boxes.Zip(v.Boxes).All(pair => pair.First == pair.Second);
+        var ocrSame = b.All.Count == v.All.Count &&
+                      b.All.Zip(v.All).All(pair =>
+                          pair.First.Bounds == pair.Second.Bounds &&
+                          pair.First.Text == pair.Second.Text);
+
+        var heightDeltas = new List<double>();
+        var used = new bool[v.Boxes.Count];
+        var matchedBoxes = 0;
+        foreach (var box in b.Boxes)
+        {
+            var best = -1;
+            var bestIou = 0.35;
+            for (var i = 0; i < v.Boxes.Count; i++)
+            {
+                if (used[i]) continue;
+                var iou = RoiIou(box, v.Boxes[i]);
+                if (iou <= bestIou) continue;
+                bestIou = iou;
+                best = i;
+            }
+
+            if (best < 0) continue;
+            used[best] = true;
+            matchedBoxes++;
+            heightDeltas.Add(
+                Math.Abs(v.Boxes[best].Height - box.Height) / Math.Max(1, box.Height) * 100);
+        }
+
+        heightDeltas.Sort();
+
+        int same = 0, changed = 0, lost = 0;
+        foreach (var block in b.Kept)
+        {
+            var hit = v.Kept
+                .Select(other => (other, iou: RoiIou(block.Bounds, other.Bounds)))
+                .Where(pair => pair.iou > 0.35)
+                .OrderByDescending(pair => pair.iou)
+                .Select(pair => (string?)pair.other.Text)
+                .FirstOrDefault();
+
+            if (hit is null) lost++;
+            else if (hit.Trim() == block.Text.Trim()) same++;
+            else changed++;
+        }
+
+        Console.WriteLine(
+            $"{side,-5} +{step,-4} {Fmt(v.Logical),-14} {Fmt(v.Analysis),-16} " +
+            $"{(crossed ? "CROSS" : "same "),-6} {(crossed ? "-" : cropIdentical ? "IDENT" : "DIFF!"),-6} " +
+            $"{(detSame ? "same" : $"{matchedBoxes}/{v.Boxes.Count - matchedBoxes}/{b.Boxes.Count - matchedBoxes}"),-10} " +
+            $"{RoiPct(heightDeltas, 0.5),4:0.0}/{RoiPct(heightDeltas, 0.9),4:0.0}/{RoiPct(heightDeltas, 1.0),4:0.0}  " +
+            $"{(ocrSame ? "same" : "MOVED"),-6} " +
+            $"{v.Kept.Count,-5} {same}/{changed}/{lost,-8} {v.Straddling}");
+    }
+
+    static bool SnapAlignedIdentical(SkiaSharp.SKBitmap a, SkiaSharp.SKBitmap b)
+    {
+        if (a.Width != b.Width || a.Height != b.Height) return false;
+        return a.GetPixelSpan().SequenceEqual(b.GetPixelSpan());
     }
 }
 
@@ -1572,7 +1853,32 @@ foreach (var path in args)
     }
 }
 
+// Shared by --roi-stability and --roi-snap, which compare the same things about the same boxes.
+static double RoiPct(IReadOnlyList<double> sorted, double at) =>
+    sorted.Count == 0 ? 0 : sorted[Math.Min(sorted.Count - 1, (int)(at * (sorted.Count - 1)))];
+
+static double RoiIou(System.Windows.Rect a, System.Windows.Rect b)
+{
+    var overlap = System.Windows.Rect.Intersect(a, b);
+    if (overlap.IsEmpty) return 0;
+    var inter = overlap.Width * overlap.Height;
+    return inter / (a.Width * a.Height + b.Width * b.Height - inter);
+}
+
 return 0;
+
+/// <summary>
+/// One (Logical, Analysis) pair's answer, in source-image coordinates. <c>All</c> is everything the
+/// Analysis ROI produced; <c>Kept</c> is what survives filtering back to the Logical one.
+/// </summary>
+internal sealed record SnapProbed(
+    System.Drawing.Rectangle Logical,
+    System.Drawing.Rectangle Analysis,
+    SkiaSharp.SKBitmap Aligned,
+    IReadOnlyList<System.Windows.Rect> Boxes,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> All,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> Kept,
+    int Straddling);
 
 /// <summary>
 /// One ROI's answer at every layer --roi-stability compares, in source-image coordinates.
