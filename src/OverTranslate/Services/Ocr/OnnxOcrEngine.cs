@@ -300,6 +300,49 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             _ => "cjk",
         };
 
+    /// <summary>
+    /// The detector's own output — every box it found and the score it gave — with none of the
+    /// recognition, normalisation or filtering that <see cref="RecognizeAsync"/> runs afterwards.
+    /// </summary>
+    /// <remarks>
+    /// For OcrHarness, and specifically for telling a box the detector never found from a box it
+    /// found and the recogniser then read differently. Those two are indistinguishable in the
+    /// finished blocks and have completely different causes, and no other entry point separates
+    /// them.
+    ///
+    /// Everything ahead of the detector is shared with the real path on purpose — the same options,
+    /// the same alignment, the same runtime — because a measurement that prepared its own input
+    /// would be measuring the preparation.
+    /// </remarks>
+    /// <param name="maxDetectSize">As <see cref="TryRecognizeAsync"/>; null is the screenshot flow.</param>
+    internal IReadOnlyList<(System.Windows.Rect Bounds, float Score)> DetectBoxesOnly(
+        Bitmap bitmap, string sourceLanguage, int? maxDetectSize = null)
+    {
+        var runtime = AcquireRuntime(OcrLanguageRouter.Normalize(sourceLanguage));
+        try
+        {
+            var options = CreateOptions(maxDetectSize);
+            using var skBitmap = ConvertToSkBitmap(bitmap);
+            using var detectorInput = AlignForDetector(skBitmap, options.Padding);
+
+            return runtime.Engine.DetectBoxes(detectorInput, options)
+                .Select(box =>
+                {
+                    var xs = box.BoxPoints.Select(point => point.X).ToList();
+                    var ys = box.BoxPoints.Select(point => point.Y).ToList();
+                    return (
+                        new System.Windows.Rect(
+                            xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min()),
+                        box.Score);
+                })
+                .ToList();
+        }
+        finally
+        {
+            ReleaseRuntime();
+        }
+    }
+
     // Selects (loading if necessary) the runtime for the language and registers an in-use
     // reference under _sync. Every successful call MUST be paired with a ReleaseRuntime().
     private RapidOcrRuntime AcquireRuntime(string language)
@@ -671,7 +714,12 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// </remarks>
     internal static DetectorThresholds? DetectorThresholdOverride { get; set; }
 
-    private static RapidOcrOptions CreateOptions(int? maxDetectSize)
+    /// <remarks>
+    /// Internal rather than private only so OcrHarness can ask what the app would send. A measuring
+    /// mode that rebuilt these itself would be measuring its own copy, and the copy is exactly the
+    /// thing that drifts.
+    /// </remarks>
+    internal static RapidOcrOptions CreateOptions(int? maxDetectSize)
     {
         var options = RapidOcrOptions.Default with
         {
