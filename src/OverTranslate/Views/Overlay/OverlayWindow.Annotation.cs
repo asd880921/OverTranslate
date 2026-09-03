@@ -59,13 +59,18 @@ public partial class OverlayWindow
     private double _annotationOpacity = 0.45;
 
     private List<Point>? _wetPoints;
-    private Polyline? _wetLine;
+    private Point _wetLast;
+    private readonly WetInkLayer _wetLayer = new();
 
     // An erase drag in progress: the strokes as they stand right now, where the eraser was last
     // seen, and whether it has taken anything yet.
     private List<AnnotationStroke>? _eraseWorkingSet;
     private Point _eraseLast;
     private bool _eraseTookSomething;
+
+    // Which of the working set this drag has already taken a private mask for. Without it the first
+    // step would copy, and every step after it would copy the copy.
+    private readonly HashSet<int> _eraseOwnMasks = [];
 
     private Rect _annotationBounds;
     private Rect _annotationBoundsPhys;
@@ -259,6 +264,7 @@ public partial class OverlayWindow
             _eraseWorkingSet = [.. CurrentStrokes];
             _eraseLast = point;
             _eraseTookSomething = false;
+            _eraseOwnMasks.Clear();
 
             // Redrawn once here so the canvas holds one visual per stroke in the same order, which
             // is what lets each step below replace just the visuals it changed.
@@ -268,15 +274,11 @@ public partial class OverlayWindow
         }
 
         _wetPoints = [point];
-        _wetLine = BuildStrokeLine(new AnnotationStroke
-        {
-            Tool      = _annotationTool,
-            Color     = _annotationColor,
-            Thickness = _annotationThickness,
-            Opacity   = CurrentStrokeOpacity,
-            Points    = _wetPoints,
-        });
-        AnnotationCanvas.Children.Add(_wetLine);
+        _wetLast = point;
+
+        _wetLayer.Begin(_annotationColor, _annotationThickness, CurrentStrokeOpacity, CapFor(_annotationTool));
+        AnnotationCanvas.Children.Add(_wetLayer);
+        _wetLayer.Extend(point, point);
     }
 
     private void AnnotationSurface_MouseMove(object sender, MouseEventArgs e)
@@ -302,11 +304,12 @@ public partial class OverlayWindow
             return;
         }
 
-        if (_wetPoints is null || _wetLine is null) return;
+        if (_wetPoints is null) return;
         if (!FarEnough(_wetPoints[^1], point)) return;
 
         _wetPoints.Add(point);
-        _wetLine.Points.Add(point);
+        _wetLayer.Extend(_wetLast, point);
+        _wetLast = point;
     }
 
     private void AnnotationSurface_MouseLeave(object sender, MouseEventArgs e)
@@ -345,9 +348,11 @@ public partial class OverlayWindow
                 return;
             }
 
-            // Anything the eraser took the last of goes now rather than staying as an empty shape
-            // nothing can see and every later step still has to work through.
-            CommitStrokes([.. erased.Where(stroke => !stroke.IsErasedAway)]);
+            // A stroke the eraser took the last of is kept rather than dropped. Knowing it had all
+            // gone would mean asking whether any ink still shows through its mask, which is a read
+            // of every pixel of it on every step; what is left is a line wearing a mask that hides
+            // all of it, and it costs one element nobody can see.
+            CommitStrokes(erased);
             return;
         }
 
@@ -377,11 +382,12 @@ public partial class OverlayWindow
     /// </remarks>
     private void AbandonWetStroke()
     {
-        if (_wetLine is not null) AnnotationCanvas.Children.Remove(_wetLine);
-        _wetLine = null;
+        AnnotationCanvas.Children.Remove(_wetLayer);
+        _wetLayer.Clear();
         _wetPoints = null;
         _eraseWorkingSet = null;
         _eraseTookSomething = false;
+        _eraseOwnMasks.Clear();
         if (AnnotationSurface.IsMouseCaptured) AnnotationSurface.ReleaseMouseCapture();
     }
 
@@ -404,33 +410,32 @@ public partial class OverlayWindow
         if (_eraseWorkingSet is null) return;
 
         double radius = EraserRadius;
-        var capsule = AnnotationStroke.SweptCircle(from == to ? [from] : [from, to], radius);
-        var reach = capsule.Bounds;
+        var reach = new Rect(
+            Math.Min(from.X, to.X) - radius, Math.Min(from.Y, to.Y) - radius,
+            Math.Abs(to.X - from.X) + radius * 2, Math.Abs(to.Y - from.Y) + radius * 2);
 
         for (int i = 0; i < _eraseWorkingSet.Count; i++)
         {
             var stroke = _eraseWorkingSet[i];
-            if (!reach.IntersectsWith(stroke.Painted.Bounds)) continue;
+            if (!reach.IntersectsWith(stroke.Bounds)) continue;
             if (!Touches(stroke, from, to, radius)) continue;
 
-            _eraseWorkingSet[i] = stroke.WithErased(capsule);
-            _eraseTookSomething = true;
-
-            // Only the visual that changed. The canvas holds one child per stroke in order — see the
-            // redraw where the drag starts — so rebuilding all of them would mean copying every
-            // other stroke's points into a fresh line on every step of the rub.
-            //
-            // Removed and re-inserted, not assigned to the index. A UIElement has one parent, and
-            // WPF refuses to overwrite an occupied slot rather than silently orphaning what is in
-            // it: assigning throws "指定的索引已在使用中". Thrown from a mouse handler it reaches
-            // App's last-resort handler, which tears the whole capture session down — so the first
-            // rub that actually took anything ended the session outside a debugger, and stopped
-            // dead inside one.
-            if (i < AnnotationCanvas.Children.Count)
+            // The first time this drag reaches a stroke it gets a mask of its own, and the visual is
+            // rebuilt once to put that mask on. After that the mask is the brush the line is already
+            // wearing, so painting into it is what the user sees and nothing has to be rebuilt.
+            if (_eraseOwnMasks.Add(i))
             {
-                AnnotationCanvas.Children.RemoveAt(i);
-                AnnotationCanvas.Children.Insert(i, BuildStrokeVisual(_eraseWorkingSet[i]));
+                stroke = stroke.WithOwnMask(_dpiX);
+                _eraseWorkingSet[i] = stroke;
+
+                if (i < AnnotationCanvas.Children.Count)
+                {
+                    AnnotationCanvas.Children.RemoveAt(i);
+                    AnnotationCanvas.Children.Insert(i, BuildStrokeVisual(stroke));
+                }
             }
+
+            if (stroke.Mask!.Erase(from, to, radius)) _eraseTookSomething = true;
         }
     }
 
@@ -495,22 +500,25 @@ public partial class OverlayWindow
     /// </remarks>
     private static UIElement BuildStrokeVisual(AnnotationStroke stroke)
     {
-        if (stroke.Carved is null) return BuildStrokeLine(stroke);
+        var line = BuildStrokeLine(stroke);
 
-        return new Path
-        {
-            Fill             = new SolidColorBrush(stroke.Color),
-            Data             = stroke.Painted,
-            Opacity          = stroke.Opacity,
-            IsHitTestVisible = false,
-        };
+        // A rubbed stroke is the same line wearing what is left of it. Nothing about the line itself
+        // changes, which is why the eraser never has to rebuild one.
+        if (stroke.Mask is not null) line.OpacityMask = stroke.Mask.ToBrush();
+
+        return line;
     }
+
+    /// <summary>
+    /// Flat ends for the highlighter, round for the pen: a chisel tip is what makes a highlight look
+    /// laid down over a line of text rather than piped onto it.
+    /// </summary>
+    private static PenLineCap CapFor(AnnotationTool tool) =>
+        tool == AnnotationTool.Highlighter ? PenLineCap.Flat : PenLineCap.Round;
 
     private static Polyline BuildStrokeLine(AnnotationStroke stroke)
     {
-        // Flat ends for the highlighter, round for the pen: a chisel tip is what makes a highlight
-        // look laid down over a line of text rather than piped onto it.
-        var cap = stroke.Tool == AnnotationTool.Highlighter ? PenLineCap.Flat : PenLineCap.Round;
+        var cap = CapFor(stroke.Tool);
 
         var line = new Polyline
         {

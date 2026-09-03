@@ -3,8 +3,6 @@ using System.Windows.Media;
 // UseWindowsForms puts System.Drawing in the implicit usings, so these names collide
 using Color = System.Windows.Media.Color;
 using Point = System.Windows.Point;
-using Pen = System.Windows.Media.Pen;
-using Brushes = System.Windows.Media.Brushes;
 
 namespace OverTranslate.Models;
 
@@ -61,63 +59,58 @@ public sealed class AnnotationStroke
     /// </remarks>
     public required double Opacity { get; init; }
 
-    /// <summary>
-    /// What is left of the stroke after the eraser, or null while nothing has been taken.
-    /// </summary>
+    /// <summary>What the eraser has taken out of it, or null while it is untouched.</summary>
     /// <remarks>
-    /// <para>What survives, not what was removed. The difference matters at the speed a drag happens
-    /// at. Keeping the removed area means every step subtracts a union that is one capsule longer
-    /// than the last from an outline that never shrinks, so a step near the end of a long rub costs
-    /// far more than one at the start — measured at 25ms a step, which is the lag. Keeping the
-    /// survivor means each step cuts one small capsule out of a shape that is already reduced, so
-    /// the work stops growing: the same 200-step rub measured 122ms in total against 3394ms.</para>
-    ///
-    /// <para>Those two figures were taken on one short stroke, and read as a claim about the level
-    /// rather than the trend they are misleading. Six full-width scribbles measured 13ms a step and
-    /// stayed there — flat, as the paragraph above says, but flat at a height that is felt. What
-    /// sets that height is how many points the outline was built from, which is why the cut is
-    /// taken against a simplified centre line — see <see cref="Simplified"/>.</para>
-    ///
-    /// <para>Either way the bite is the swept circle and not a cut across the centre line. Cutting
-    /// the centre line is the cheap way to do this and it is wrong in exactly the case that matters
-    /// most: a 30px highlight rubbed with a 12px eraser would lose either its whole width or nothing
-    /// at all, because the centre line is a single thread down the middle of a band. Taking the
-    /// circle out of the painted area makes what disappears exactly what the circle covered — which
-    /// is what the ring under the pointer has been promising all along.</para>
+    /// Coverage over the stroke rather than a shape cut out of it — see <see cref="EraseMask"/> for
+    /// why, and for what it costs. The stroke keeps its points either way, so a rubbed stroke is
+    /// still the line the user drew and is still drawn as one.
     /// </remarks>
-    public Geometry? Carved { get; init; }
+    public EraseMask? Mask { get; init; }
 
-    // Costly to produce and a pure function of the fields above, so it is worked out once and kept.
-    // Safe on an immutable object, and the reason WithErased hands its outline to the stroke it
-    // makes: the outline does not depend on what has been rubbed out, so re-widening a 400-point
-    // line on every step of a drag would be work with an answer already known.
-    private Geometry? _outline;
-
-    /// <summary>The shape this stroke would paint if nothing had been erased from it.</summary>
-    public Geometry Outline => _outline ??= BuildOutline();
-
-    /// <summary>The shape it paints now.</summary>
-    public Geometry Painted => Carved ?? Outline;
-
-    /// <summary>Whether the eraser has taken all of it.</summary>
-    public bool IsErasedAway => Painted.IsEmpty();
-
-    /// <summary>The same stroke with <paramref name="sweep"/> rubbed out of it as well.</summary>
-    public AnnotationStroke WithErased(Geometry sweep)
+    /// <summary>The box the stroke paints inside, with the width of the nib allowed for.</summary>
+    /// <remarks>
+    /// Worked out from the points rather than by widening them. The widened outline answers this
+    /// exactly and costs about five segments for every point recorded, and nothing here needs the
+    /// exact answer: it places the mask and rejects strokes the eraser is nowhere near, and both
+    /// only need a box that is certainly big enough.
+    /// </remarks>
+    public Rect Bounds
     {
-        var next = new AnnotationStroke
+        get
         {
-            Tool      = Tool,
-            Color     = Color,
-            Thickness = Thickness,
-            Opacity   = Opacity,
-            Points    = Points,
-            Carved    = Freeze(Geometry.Combine(Painted, sweep, GeometryCombineMode.Exclude, null)),
-        };
+            double minX = double.MaxValue, minY = double.MaxValue;
+            double maxX = double.MinValue, maxY = double.MinValue;
+            foreach (var p in Points)
+            {
+                if (p.X < minX) minX = p.X;
+                if (p.Y < minY) minY = p.Y;
+                if (p.X > maxX) maxX = p.X;
+                if (p.Y > maxY) maxY = p.Y;
+            }
 
-        next._outline = Outline;
-        return next;
+            // Half a nib each way for the width, and one more DIP so the round caps and the mask's
+            // own soft rim have somewhere to land.
+            double pad = Thickness / 2 + 1;
+            return new Rect(minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2);
+        }
     }
+
+    /// <summary>The same stroke wearing a mask of its own, ready to be rubbed at.</summary>
+    /// <remarks>
+    /// A copy is taken rather than the mask being painted in place, because the stroke this came
+    /// from is in the undo history and the drag must not reach into it. Once per stroke per drag —
+    /// see <see cref="EraseMask.Copy"/>.
+    /// </remarks>
+    public AnnotationStroke WithOwnMask(double scale) => new()
+    {
+        Tool      = Tool,
+        Color     = Color,
+        Thickness = Thickness,
+        Opacity   = Opacity,
+        Points    = Points,
+        Mask      = Mask?.Copy() ?? EraseMask.Covering(Bounds, scale),
+    };
+
 
     /// <summary>
     /// Whether the stroke passes within <paramref name="radius"/> of <paramref name="point"/>.
@@ -147,143 +140,7 @@ public sealed class AnnotationStroke
         return false;
     }
 
-    private Geometry BuildOutline()
-    {
-        // A tap is one point, and a line through one point has no length to widen along. The dot the
-        // user expects is the shape of the nib itself.
-        if (Points.Count < 2)
-            return Freeze(new EllipseGeometry(Points[0], Thickness / 2, Thickness / 2));
 
-        // Flat ends for the highlighter, round for the pen: a chisel tip is what makes a highlight
-        // look laid down over a line of text rather than piped onto it.
-        var cap = Tool == AnnotationTool.Highlighter ? PenLineCap.Flat : PenLineCap.Round;
-        var pen = new Pen(Brushes.Black, Thickness)
-        {
-            StartLineCap = cap,
-            EndLineCap   = cap,
-            LineJoin     = PenLineJoin.Round,
-        };
-
-        return Freeze(CentreLine(Simplified(Points)).GetWidenedPathGeometry(pen));
-    }
-
-    /// <summary>How far a recorded point may sit off the line through its neighbours and still be dropped.</summary>
-    /// <remarks>
-    /// A tenth of a DIP: below anything that can be drawn, so the shape this produces is the shape
-    /// the dense run of points described. It is a threshold on error, not on spacing, which is why
-    /// it can be this small and still throw most of the points away — see <see cref="Simplified"/>.
-    /// </remarks>
-    private const double SimplifyTolerance = 0.1;
-
-    /// <summary>The same line through fewer points, none of them further than the tolerance off it.</summary>
-    /// <remarks>
-    /// <para>Points arrive every 1.2 DIP of travel, which is what a smooth line on screen needs and
-    /// far more than the shape needs: a hand moving in anything but a tight curl lays down long runs
-    /// that are straight to well under a pixel. Widening keeps all of them — about five outline
-    /// segments per recorded point — and every cut the eraser makes has to work through the whole
-    /// outline however little of it the circle touches, so those runs are paid for on every step of
-    /// every rub. Dropping them measured 5913 points to 663 and the cut from 9.1ms to 1.1ms, with
-    /// the worst case tried (a dense curl, 16625 points) going 26.5ms to 2.9ms.</para>
-    ///
-    /// <para>Not <c>GetFlattenedPathGeometry</c>, which sounds like this and is not: flattening
-    /// subdivides curves and never removes a point, and a widened polyline has no curves left to
-    /// subdivide — measured at every tolerance from 0.1 to 2.0 it returned the same ~9940 segments.
-    /// The cost is carried by the point count, so the point count is what has to come down.</para>
-    ///
-    /// <para>Applied here rather than to <see cref="Points"/> so it touches the erased shape only.
-    /// Until the eraser takes a bite the stroke is drawn as a line through the recorded points and
-    /// none of this is in the way of it; hit testing and undo keep the full run as drawn.</para>
-    /// </remarks>
-    private static IReadOnlyList<Point> Simplified(IReadOnlyList<Point> points)
-    {
-        if (points.Count < 3) return points;
-
-        // Douglas-Peucker. Keep the two ends, then keep whichever point between them lies furthest
-        // off the chord if it is off by more than the tolerance, and ask the same of each half.
-        var keep = new bool[points.Count];
-        keep[0] = keep[^1] = true;
-
-        var pending = new Stack<(int From, int To)>();
-        pending.Push((0, points.Count - 1));
-
-        while (pending.Count > 0)
-        {
-            var (from, to) = pending.Pop();
-            if (to <= from + 1) continue;
-
-            double ax = points[from].X, ay = points[from].Y;
-            double dx = points[to].X - ax, dy = points[to].Y - ay;
-            double chord = Math.Sqrt(dx * dx + dy * dy);
-
-            int furthest = -1;
-            double worst = SimplifyTolerance;
-            for (int i = from + 1; i < to; i++)
-            {
-                double ox = points[i].X - ax, oy = points[i].Y - ay;
-
-                // A closed loop back to where it started has no chord to measure against, so the
-                // distance from the shared end stands in for it.
-                double off = chord < 1e-9
-                    ? Math.Sqrt(ox * ox + oy * oy)
-                    : Math.Abs(dy * ox - dx * oy) / chord;
-
-                if (off > worst) { worst = off; furthest = i; }
-            }
-
-            if (furthest < 0) continue;
-
-            keep[furthest] = true;
-            pending.Push((from, furthest));
-            pending.Push((furthest, to));
-        }
-
-        var kept = new List<Point>(points.Count);
-        for (int i = 0; i < points.Count; i++)
-            if (keep[i]) kept.Add(points[i]);
-
-        return kept;
-    }
-
-    /// <summary>The bare line through a run of points, with nothing widened onto it yet.</summary>
-    public static PathGeometry CentreLine(IReadOnlyList<Point> points)
-    {
-        var figure = new PathFigure { StartPoint = points[0], IsClosed = false, IsFilled = false };
-        figure.Segments.Add(new PolyLineSegment([.. points.Skip(1)], true));
-
-        var geometry = new PathGeometry();
-        geometry.Figures.Add(figure);
-        return geometry;
-    }
-
-    /// <summary>
-    /// Everything a circle of <paramref name="radius"/> covered on its way along <paramref name="path"/>.
-    /// </summary>
-    /// <remarks>
-    /// One shape for a whole drag rather than a circle per pointer event. The pointer is sampled, so
-    /// a string of separate circles would leave gaps at any speed above a crawl. It is the same
-    /// widening the strokes themselves use, which is why the swept area has round ends and rounded
-    /// turns — it is a circle being dragged.
-    /// </remarks>
-    public static Geometry SweptCircle(IReadOnlyList<Point> path, double radius)
-    {
-        if (path.Count < 2)
-            return Freeze(new EllipseGeometry(path[0], radius, radius));
-
-        var pen = new Pen(Brushes.Black, radius * 2)
-        {
-            StartLineCap = PenLineCap.Round,
-            EndLineCap   = PenLineCap.Round,
-            LineJoin     = PenLineJoin.Round,
-        };
-
-        return Freeze(CentreLine(path).GetWidenedPathGeometry(pen));
-    }
-
-    private static T Freeze<T>(T geometry) where T : Geometry
-    {
-        if (geometry.CanFreeze) geometry.Freeze();
-        return geometry;
-    }
 
     private static double DistanceSquared(Point a, Point b)
     {
