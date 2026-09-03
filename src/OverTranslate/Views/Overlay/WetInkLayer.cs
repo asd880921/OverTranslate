@@ -61,13 +61,27 @@ internal sealed class WetInkLayer : FrameworkElement
     {
         if (_pen is null) return;
 
+        double nib = _pen.Thickness / 2;
+
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
             // A tap has no length to draw along, and a zero-length line draws nothing however round
             // the cap is. The dot the user expects is the nib itself.
-            if (from == to) dc.DrawEllipse(_pen.Brush, null, from, _pen.Thickness / 2, _pen.Thickness / 2);
-            else dc.DrawLine(_pen, from, to);
+            if (from == to)
+            {
+                dc.DrawEllipse(_pen.Brush, null, from, nib, nib);
+                _segments.Add(visual);
+                return;
+            }
+
+            // The joint, filled by hand. The finished stroke is one line with a round join, and each
+            // vertex there is a disc of the nib's width; here each piece of the line is drawn on its
+            // own, so a 螢光筆 — which is flat-ended, because that is what a chisel tip looks like —
+            // leaves a wedge of bare screen at the outside of every turn. That is a line that comes
+            // out dashed while it is being drawn and whole the moment it is let go.
+            dc.DrawEllipse(_pen.Brush, null, from, nib, nib);
+            dc.DrawLine(_pen, from, to);
         }
 
         _segments.Add(visual);
