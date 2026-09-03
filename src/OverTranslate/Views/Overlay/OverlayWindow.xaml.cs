@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using OverTranslate.Services;
 using OverTranslate.Layout;
@@ -99,8 +100,29 @@ public partial class OverlayWindow : Window
         // low-level hook precisely because none of these windows take it — see AnnotationShortcutHook.
         WindowStyles.ApplyClickThrough(this, noActivate: true);
 
+        // WS_EX_NOACTIVATE stops this window being activated; it does not stop the click asking for
+        // somebody to be activated. DefWindowProc forwards WM_MOUSEACTIVATE to the owner, so a press
+        // on the ink surface activated ScreenCaptureWindow instead — and activating an owner raises
+        // it together with everything it owns, in an order that is not the one it had. That is how a
+        // window carrying NOACTIVATE still ended up in front of both toolbars after one stroke.
+        //
+        // MA_NOACTIVATE, not MA_NOACTIVATEANDEAT: the click still has to arrive as a stroke.
+        HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(RefuseMouseActivate);
+
         // Before Loaded reads the DPI: pinning settles which monitor the window belongs to.
         ScreenGeometry.PinPhysicalBounds(this, _physBounds);
+    }
+
+    private const int WM_MOUSEACTIVATE = 0x0021;
+    private const int MA_NOACTIVATE = 3;
+
+    private static IntPtr RefuseMouseActivate(
+        IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != WM_MOUSEACTIVATE) return IntPtr.Zero;
+
+        handled = true;
+        return (IntPtr)MA_NOACTIVATE;
     }
 
     // Shows a centered status card and clears old bubbles so the indicator is unobstructed.
