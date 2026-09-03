@@ -1372,6 +1372,7 @@ public partial class MainWindow : Window
 
         panel.Show();
         PlaceAnnotationPanel();
+        RaiseToolbarsAboveInk();
         panel.SetHistoryState(_overlayWindow.CanUndoAnnotation, _overlayWindow.CanRedoAnnotation);
     }
 
@@ -1402,6 +1403,23 @@ public partial class MainWindow : Window
         // Off the right of the monitor is allowed rather than nudged back on, for the same reason:
         // a panel that shifted left only when it was near an edge would move for reasons the user
         // cannot see. Centred again on the next open — see OnAnnotateModeChanged.
+    }
+
+    /// <summary>
+    /// Puts both toolbars in front of the ink layer.
+    /// </summary>
+    /// <remarks>
+    /// Said rather than inherited from the order the windows happened to be created in. While 標記
+    /// is on, the ink surface covers the whole selection and the toolbar is placed inside it
+    /// whenever there is no room outside — so anything that lifted the ink over the buttons would
+    /// leave the user holding a pen and no way to put it down. In front, the buttons keep their own
+    /// pointer and their own cursor, and a stroke dragged across them carries on underneath because
+    /// the ink surface holds the mouse capture for the length of the drag.
+    /// </remarks>
+    private void RaiseToolbarsAboveInk()
+    {
+        if (_toolbarWindow is { } toolbar) AlwaysOnTop.Reassert(toolbar);
+        if (_annotationPanel is { } panel) AlwaysOnTop.Reassert(panel);
     }
 
     private void PlaceAnnotationPanel()

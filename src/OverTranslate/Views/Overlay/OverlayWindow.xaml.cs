@@ -88,7 +88,16 @@ public partial class OverlayWindow : Window
     {
         base.OnSourceInitialized(e);
 
-        WindowStyles.ApplyClickThrough(this);
+        // Never takes activation, not even while 標記 has handed it the pointer. Topmost is a band,
+        // and activating a window moves it to the front of that band — so a single click on the ink
+        // surface used to lift this window over both toolbars. Wherever a toolbar overlaps the
+        // selection (which is where it is put when there is no room outside it) that buried it: the
+        // pointer found the ink surface instead of the buttons, and the only tool still reachable
+        // was the one already in hand.
+        //
+        // Nothing here wants the focus anyway. Every key this feature answers to arrives through a
+        // low-level hook precisely because none of these windows take it — see AnnotationShortcutHook.
+        WindowStyles.ApplyClickThrough(this, noActivate: true);
 
         // Before Loaded reads the DPI: pinning settles which monitor the window belongs to.
         ScreenGeometry.PinPhysicalBounds(this, _physBounds);
