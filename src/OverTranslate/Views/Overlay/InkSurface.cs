@@ -129,7 +129,8 @@ public sealed class InkSurface
             }
             else
             {
-                dc.DrawGeometry(null, pen, Line(stroke.Points));
+                dc.DrawGeometry(null, pen,
+                    Line(AnnotationStroke.WithoutEndJitter(stroke.Points, stroke.Thickness)));
             }
 
             dc.Pop();

@@ -91,6 +91,47 @@ public sealed class AnnotationStroke
     }
 
     /// <summary>
+    /// The same path with the specks at either end that only say which way the hand shook left out.
+    /// </summary>
+    /// <remarks>
+    /// <para>For the two ends, and for the flat nib in particular. A flat end is drawn square to the
+    /// last bit of travel, and the last bit of travel at the moment a button goes down or comes up
+    /// is a pixel or two of the hand settling — so on a quick stroke the end can be squared off
+    /// against a direction the stroke never went in, and comes out sliced at a steep angle with a
+    /// tab of ink sticking off it. It shows up now and then rather than always because it depends on
+    /// which way the hand happened to move.</para>
+    ///
+    /// <para>The ends themselves are kept, so the stroke still covers exactly what it covered; what
+    /// goes is the handful of points between an end and somewhere far enough away to mean a
+    /// direction. Half the nib's width is that distance — nearer than that and the point is inside
+    /// the ink the end cap draws anyway.</para>
+    /// </remarks>
+    public static IReadOnlyList<Point> WithoutEndJitter(IReadOnlyList<Point> points, double thickness)
+    {
+        if (points.Count < 3) return points;
+
+        double reach = thickness / 2;
+        double reachSquared = reach * reach;
+
+        int first = 0;
+        while (first + 2 < points.Count && DistanceSquared(points[0], points[first + 1]) < reachSquared)
+            first++;
+
+        int last = points.Count - 1;
+        while (last - 2 > first && DistanceSquared(points[^1], points[last - 1]) < reachSquared)
+            last--;
+
+        if (first == 0 && last == points.Count - 1) return points;
+
+        // The two ends, and everything between them that was far enough from either to be travel.
+        var kept = new List<Point>(points.Count) { points[0] };
+        for (int i = first + 1; i < last; i++) kept.Add(points[i]);
+        kept.Add(points[^1]);
+
+        return kept;
+    }
+
+    /// <summary>
     /// Whether the stroke passes within <paramref name="radius"/> of <paramref name="point"/>.
     /// </summary>
     /// <remarks>

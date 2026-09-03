@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using OverTranslate.Models;
 // UseWindowsForms puts System.Drawing in the implicit usings, so these names collide
 using Brushes = System.Windows.Media.Brushes;
 using Color = System.Windows.Media.Color;
@@ -130,11 +131,19 @@ internal sealed class WetInkLayer : FrameworkElement
             return;
         }
 
+        // Only the first block: it owns the stroke's start cap, and a start cap squared against a
+        // speck of hand-shake is what leaves a tab of ink pointing off the end of a quick stroke.
+        // The trailing end is left alone here because it is wherever the pointer is, and is settled
+        // once for good when the stroke is committed.
+        var drawn = _isFirstBlock
+            ? AnnotationStroke.WithoutEndJitter(_activePoints, _pen.Thickness)
+            : _activePoints;
+
         var geometry = new StreamGeometry();
         using (var ctx = geometry.Open())
         {
-            ctx.BeginFigure(_activePoints[0], isFilled: false, isClosed: false);
-            ctx.PolyLineTo([.. _activePoints.Skip(1)], isStroked: true, isSmoothJoin: false);
+            ctx.BeginFigure(drawn[0], isFilled: false, isClosed: false);
+            ctx.PolyLineTo([.. drawn.Skip(1)], isStroked: true, isSmoothJoin: false);
         }
         geometry.Freeze();
 

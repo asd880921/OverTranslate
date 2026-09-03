@@ -84,4 +84,53 @@ public class AnnotationStrokeTests
         Assert.True(stroke.IsWithin(new Point(10, 10), radius: 1));
         Assert.False(stroke.IsWithin(new Point(40, 10), radius: 1));
     }
+    /// <summary>
+    /// A speck of hand-shake at the moment the button goes down decides which way a flat end is
+    /// squared off, and squares it against a direction the stroke never went in. It is left out.
+    /// </summary>
+    [Fact]
+    public void AShakeAtTheStart_DoesNotGetToPointTheEndCap()
+    {
+        // Pressed at (0,0), twitched a pixel sideways, then drawn away to the right.
+        var drawn = new[] { new Point(0, 0), new Point(0, 1), new Point(60, 0), new Point(120, 0) };
+
+        var kept = AnnotationStroke.WithoutEndJitter(drawn, thickness: 20);
+
+        Assert.Equal(new Point(0, 0), kept[0]);        // the stroke still starts where it started
+        Assert.Equal(new Point(60, 0), kept[1]);       // but the twitch no longer aims the cap
+        Assert.Equal(new Point(120, 0), kept[^1]);
+    }
+
+    [Fact]
+    public void AShakeAtTheEnd_GoesToo()
+    {
+        var drawn = new[] { new Point(0, 0), new Point(60, 0), new Point(120, 0), new Point(120, 1) };
+
+        var kept = AnnotationStroke.WithoutEndJitter(drawn, thickness: 20);
+
+        Assert.Equal(new Point(120, 1), kept[^1]);     // still ends where the hand let go
+        Assert.Equal(new Point(60, 0), kept[^2]);      // squared against real travel
+    }
+
+    /// <summary>Travel is not shake, however short the stroke. A drawn line keeps its shape.</summary>
+    [Fact]
+    public void APathThatIsAllTravel_IsLeftAlone()
+    {
+        var drawn = new[] { new Point(0, 0), new Point(40, 0), new Point(80, 40), new Point(120, 0) };
+
+        Assert.Equal(drawn, AnnotationStroke.WithoutEndJitter(drawn, thickness: 20));
+    }
+
+    /// <summary>A stroke shorter than its own nib has nothing to spare, and keeps both ends.</summary>
+    [Fact]
+    public void AStrokeShorterThanItsNib_KeepsItsEnds()
+    {
+        var drawn = new[] { new Point(0, 0), new Point(1, 0), new Point(2, 0) };
+
+        var kept = AnnotationStroke.WithoutEndJitter(drawn, thickness: 40);
+
+        Assert.Equal(new Point(0, 0), kept[0]);
+        Assert.Equal(new Point(2, 0), kept[^1]);
+    }
+
 }
