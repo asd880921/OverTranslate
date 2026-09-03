@@ -1118,4 +1118,61 @@ public class OcrTextBlockGrouperTests
 
         Assert.Equal(2, OcrTextBlockGrouper.Group(blocks, null, null, comicMode: true).Count);
     }
+
+    /// <summary>
+    /// One balloon holding two sentences, the second starting where the letterer broke the line.
+    /// A balloon is a speech rather than a sentence, so the full stop inside it is not the end of
+    /// anything the translator should be asked about separately.
+    /// </summary>
+    /// <remarks>
+    /// The geometry is comic-en's own — the two lines of 「IT'S NOT THAT GUY'S FAULT YOU ENDED UP
+    /// IN A TINY BODY.」— with the sentence ending moved onto the line break.
+    /// </remarks>
+    [Fact]
+    public void ComicModeGroupsASecondSentenceStartingAfterABalloonsLineBreak()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("IT'S NOT THAT GUY'S FAULT.", new Rect(368, 726, 417, 56), SourceGlyphHeight: 30),
+            new("YOU ENDED UP IN A TINY BODY.", new Rect(372, 782, 415, 56), SourceGlyphHeight: 30),
+        };
+
+        var merged = Assert.Single(
+            OcrTextBlockGrouper.Group(blocks, null, null, comicMode: true));
+
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    /// <summary>
+    /// The same pair in the ordinary mode, where a finished sentence is the end of the matter: the
+    /// thing under it is the next paragraph, the next list entry, the next subtitle.
+    /// </summary>
+    [Fact]
+    public void KeepsASentenceApartFromTheNextOneInTheOrdinaryMode()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("IT'S NOT THAT GUY'S FAULT.", new Rect(368, 726, 417, 56), SourceGlyphHeight: 30),
+            new("YOU ENDED UP IN A TINY BODY.", new Rect(372, 782, 415, 56), SourceGlyphHeight: 30),
+        };
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks).Count);
+    }
+
+    /// <summary>
+    /// The same sentence over a line the leading says was laid out on purpose rather than set
+    /// solid — 1.39 line advances, where the balloon above is at 1.00. Only the set-solid test may
+    /// overrule the full stop, so a pair that fails it is still refused on the mark.
+    /// </summary>
+    [Fact]
+    public void ComicModeStillKeepsASentenceApartFromALineNotSetSolidUnderIt()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("IT'S NOT THAT GUY'S FAULT.", new Rect(368, 726, 417, 56), SourceGlyphHeight: 30),
+            new("YOU ENDED UP IN A TINY BODY.", new Rect(372, 804, 415, 56), SourceGlyphHeight: 30),
+        };
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks, null, null, comicMode: true).Count);
+    }
 }

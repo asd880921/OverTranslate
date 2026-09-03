@@ -912,7 +912,30 @@ internal static class OcrTextBlockGrouper
                 : (true, "punctuation");
 
         if (EndsWithSentenceTerminator(previousText))
-            return (false, "sentence terminator");
+            // A full stop ends a sentence, and everywhere but a comic that is the end of the
+            // matter: the thing under a finished sentence is the next paragraph, the next list
+            // entry, the next subtitle, and joining it invents a sentence nobody wrote.
+            //
+            // A balloon is the exception, because a balloon is not a sentence — it is a speech,
+            // and a speech is often two or three of them. Split at the full stop, each half
+            // reaches the translator without the half it needed: the corpus already holds
+            // "IT'S NOT EVEN MY REAL BODY. DO YOU THINK THAT'D HURT ME?", which survives only
+            // because the letterer happened to break the line mid-sentence and put the full stop
+            // in the middle of a line rather than at the end of one. Had the break fallen after
+            // "BODY.", the same balloon would have gone up as two requests. That is not a thing
+            // about the writing, and comics are where it bites hardest — the sentences are short,
+            // so the share of them that end on a line break is large.
+            //
+            // Only the set-solid test may overrule it, never the width rule below: the mark is
+            // real evidence, and what has to outweigh it is the strictest geometry in this file —
+            // the group's own leading and a shared edge to within a third of a line. Two balloons
+            // are never set that close to each other. Measured over the ten comic pages this
+            // changes no verdict at all; it is here for the shape the corpus does not happen to
+            // contain, and the pair of tests either side of it is what says so.
+            return comicMode &&
+                   IsSetSolidUnder(previous, current, alignmentDelta, avgHeight, solidBar, comicMode)
+                ? (true, "set solid")
+                : (false, "sentence terminator");
 
         // A much shorter following line is a common natural wrap shape.
         // Similar-width lines without linguistic evidence are kept separate
