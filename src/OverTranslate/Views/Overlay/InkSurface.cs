@@ -43,6 +43,15 @@ public sealed class InkSurface
     private double _scale = 1;
     private Rect _bounds;
 
+    // What has been painted into the mirror but not yet handed to the bitmap, and whether a hand-over
+    // is already booked for the next frame.
+    private Int32Rect _pending;
+    private bool _flushBooked;
+
+    // Handing over is what makes a transparent window recompose, and that is the expensive part;
+    // this is how often it is allowed to happen.
+    private readonly System.Diagnostics.Stopwatch _sinceFlush = System.Diagnostics.Stopwatch.StartNew();
+
     /// <summary>The element that shows the marks. Added to the ink canvas once and left there.</summary>
     public Image Element { get; } = new() { IsHitTestVisible = false };
 
@@ -95,6 +104,7 @@ public sealed class InkSurface
                     keptWidth * 4);
         }
 
+        _pending = default;
         _bitmap.WritePixels(new Int32Rect(0, 0, width, height), _pixels, width * 4, 0);
 
         Element.Source = _bitmap;
@@ -110,7 +120,85 @@ public sealed class InkSurface
         if (_pixels is null || _bitmap is null) return;
 
         Array.Clear(_pixels);
-        _bitmap.WritePixels(new Int32Rect(0, 0, _width, _height), _pixels, _width * 4, 0);
+        Touched(0, 0, _width, _height);
+    }
+
+    /// <summary>
+    /// Notes that a patch of the mirror has changed, and books one hand-over for the coming frame.
+    /// </summary>
+    /// <remarks>
+    /// <para>Booked rather than done on the spot, and merged into one rectangle, because a
+    /// <c>WriteableBitmap</c> only tracks a few changed rectangles before it gives up and treats the
+    /// whole picture as changed. A rub sends a pointer event every millisecond or so and each one
+    /// used to hand over its own little patch, so a single frame could carry dozens of them and the
+    /// bitmap would fall back to sending all of it — which costs what the whole surface costs, not
+    /// what was rubbed.</para>
+    ///
+    /// <para>That is what a full-screen box felt like: measured against a smaller box with a
+    /// <em>larger</em> eraser, a step cost twice as much and frames spiked from 21-28ms to 39-50ms,
+    /// while the median frame stayed at 1ms — occasional, which is what an occasional full upload
+    /// looks like. Merging leaves one rectangle a frame, so what is sent is what changed.</para>
+    ///
+    /// <para>This is not the same as coalescing the pointer events themselves, which was measured
+    /// and does nothing: the arithmetic of a rub is under a tenth of a millisecond. It is the
+    /// hand-over to the bitmap that had to be rationed, not the work.</para>
+    /// </remarks>
+    private void Touched(int x, int y, int width, int height)
+    {
+        if (width <= 0 || height <= 0) return;
+
+        if (_pending.Width == 0 || _pending.Height == 0)
+        {
+            _pending = new Int32Rect(x, y, width, height);
+        }
+        else
+        {
+            int left   = Math.Min(_pending.X, x);
+            int top    = Math.Min(_pending.Y, y);
+            int right  = Math.Max(_pending.X + _pending.Width,  x + width);
+            int bottom = Math.Max(_pending.Y + _pending.Height, y + height);
+            _pending = new Int32Rect(left, top, right - left, bottom - top);
+        }
+
+        if (_flushBooked) return;
+
+        _flushBooked = true;
+        CompositionTarget.Rendering += OnRendering;
+    }
+
+    /// <summary>Hands over at most sixty times a second, however often frames come round.</summary>
+    /// <remarks>
+    /// The overlay is a transparent window, and the system composes one of those from a copy of its
+    /// whole content whenever any of it changes — measured at 6ms a frame opaque against 15ms and
+    /// worse layered, with the surface's own size making little difference and cutting it into tiles
+    /// making none. So what costs is how often the picture is handed over, not how much of it
+    /// changed; and frames here come round far faster than a screen can show them, the app having
+    /// been seen at three hundred a second. That was three hundred recompositions for a rub the eye
+    /// reads at sixty.
+    /// </remarks>
+    private void OnRendering(object? sender, EventArgs e)
+    {
+        if (_sinceFlush.Elapsed.TotalMilliseconds < 15) return;
+        Flush();
+    }
+
+    /// <summary>Hands over everything painted since the last frame. Safe to call when there is nothing.</summary>
+    public void Flush()
+    {
+        if (_flushBooked)
+        {
+            CompositionTarget.Rendering -= OnRendering;
+            _flushBooked = false;
+        }
+
+        if (_pixels is null || _bitmap is null) return;
+        if (_pending.Width == 0 || _pending.Height == 0) return;
+
+        _bitmap.WritePixels(
+            _pending, _pixels, _width * 4, (_pending.Y * _width + _pending.X) * 4);
+
+        _pending = default;
+        _sinceFlush.Restart();
     }
 
     /// <summary>Paints the marks in order, which is the only way an erased-then-drawn-over spot comes out right.</summary>
@@ -222,9 +310,7 @@ public sealed class InkSurface
             }
         }
 
-        _bitmap.WritePixels(
-            new Int32Rect(box.X, box.Y, box.Width, box.Height),
-            _pixels, _width * 4, (box.Y * _width + box.X) * 4);
+        Touched(box.X, box.Y, box.Width, box.Height);
     }
 
     /// <summary>Takes the whole path of one erase drag back off again.</summary>
@@ -287,10 +373,7 @@ public sealed class InkSurface
 
         if (!took) return false;
 
-        int w = maxX - minX + 1, h = maxY - minY + 1;
-        _bitmap.WritePixels(
-            new Int32Rect(minX, minY, w, h),
-            _pixels, _width * 4, (minY * _width + minX) * 4);
+        Touched(minX, minY, maxX - minX + 1, maxY - minY + 1);
 
         return true;
     }
