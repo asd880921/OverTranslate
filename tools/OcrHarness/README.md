@@ -118,6 +118,28 @@ OcrHarness.exe --roi-stability 圖.png --roi X,Y,W,H --grow down,right,all --ste
 `ImgResize` 是**上限不是目標**：260x200 的圖在 512／1024／2048／4096 下讀到完全一樣的框。所以小
 於上限的擷取縮放比就是 1.0，中間沒有任何重取樣。
 
+### 量「Logical ROI / Analysis ROI 分離」這個候選方案
+
+```bash
+# Analysis ROI = 把 Logical ROI 依來源影像絕對座標 snap 到格線，OCR 後再濾回 Logical ROI
+OcrHarness.exe --roi-snap 圖.png --roi X,Y,W,H --grid 32,64,128 --grow down,right,all --steps 1,2,4,8,16,32,64
+```
+
+跟「把不同大小的 ROI 補成相同 canvas」是兩回事：補 canvas 只讓尺寸一樣、內容仍然不同；依**絕對
+座標** snap 會讓落在同一批格子裡的兩個 Logical ROI 得到**同一個 Analysis ROI**，也就是同一張裁切圖。
+
+輸出把三層分開，因為它們變動的原因不同：
+
+| 欄 | 意義 |
+|---|---|
+| `crop` | 未跨格時 Analysis 裁切圖是否逐位元組相同（`IDENT`） |
+| `det` / `ocr` | 整個 Analysis ROI 的偵測框與分組結果是否相同——與使用者框了什麼無關，這是 OCR 自身的穩定度 |
+| `kept` / `rec` | 濾回 Logical ROI 後剩下什麼。這一欄本來就會隨框選邊界移動而變，那是**正確**的 |
+| `strad` | 與 Logical ROI 相交但未被完全包含的區塊數，也就是濾除規則在猜的那些 |
+
+濾除規則用「中心點落在 Logical ROI 內」：使用者框到中間的區塊算他要的，只切到邊的通常是隔壁的，
+而「完全包含」會丟掉每一條被刻意切斷的行。`strad` 就是這個選擇的代價。
+
 ### 稽核信心過濾丟掉了什麼
 
 ```bash
