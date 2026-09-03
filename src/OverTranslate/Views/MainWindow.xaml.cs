@@ -1312,9 +1312,14 @@ public partial class MainWindow : Window
     {
         bool onTop = _recoveryYield?.HasYielded != true;
 
+        // Bottom of the stack first: each one steps in directly behind the recovery window, so the
+        // last one placed ends up highest and the layers keep their own order among themselves.
         foreach (var window in new Window?[] { _captureWindow, _overlayWindow, _toolbarWindow })
         {
-            if (window is not null && window.Topmost != onTop) window.Topmost = onTop;
+            if (window is null) continue;
+
+            window.Topmost = onTop;
+            if (!onTop) AlwaysOnTop.PlaceBehind(window, _recoveryYield!.RecoveryWindow);
         }
     }
 

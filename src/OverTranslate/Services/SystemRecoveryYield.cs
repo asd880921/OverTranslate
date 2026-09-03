@@ -65,10 +65,19 @@ internal sealed class SystemRecoveryYield : IDisposable
     private readonly HookThread _thread = new("OverTranslate recovery watch");
 
     private IntPtr _hookId;
-    private int _yielded; // 0/1 rather than bool: written on the hook thread, read on the dispatcher
+    private int _yielded;         // 0/1 rather than bool: written on the hook thread, read on the dispatcher
+    private IntPtr _recoveryWindow; // the window to sit directly behind while yielded
 
     /// <summary>True while Task Manager is the one that should be on top.</summary>
     public bool HasYielded => Volatile.Read(ref _yielded) != 0;
+
+    /// <summary>
+    /// The recovery window to sit behind, or zero. Leaving the topmost band is not enough on its
+    /// own: it puts a window at the front of the ordinary band, which is still above the Task
+    /// Manager the user just brought up. Measured — the layer stayed in front until it was
+    /// explicitly placed behind this handle.
+    /// </summary>
+    public IntPtr RecoveryWindow => Volatile.Read(ref _recoveryWindow);
 
     private SystemRecoveryYield(Action onChanged)
     {
@@ -110,9 +119,17 @@ internal sealed class SystemRecoveryYield : IDisposable
         bool? yield = ClassifyForeground(hwnd);
         if (yield is not { } wanted) return; // some third application: leave the decision as it is
 
-        if (Interlocked.Exchange(ref _yielded, wanted ? 1 : 0) == (wanted ? 1 : 0)) return;
+        Volatile.Write(ref _recoveryWindow, wanted ? hwnd : IntPtr.Zero);
 
-        Log.Info("Capture layer {Action} the top for the system recovery interface", wanted ? "yields" : "takes back");
+        // Raised again even when the answer has not changed. Task Manager coming forward a second
+        // time — from the taskbar, from Ctrl+Alt+Del, after its window was rebuilt — has to put the
+        // layer behind whatever window it is now, and a handle from the first time it appeared may
+        // no longer exist.
+        bool changed = Interlocked.Exchange(ref _yielded, wanted ? 1 : 0) != (wanted ? 1 : 0);
+        if (!changed && !wanted) return;
+
+        if (changed)
+            Log.Info("Capture layer {Action} the top for the system recovery interface", wanted ? "yields" : "takes back");
 
         // Send priority, and posted rather than run here: this is an OS callback on a hook thread,
         // and Topmost belongs to the thread that owns the windows.

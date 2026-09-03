@@ -42,6 +42,22 @@ internal static class AlwaysOnTop
         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
+    /// <summary>
+    /// Puts a window directly behind another one, wherever that one is.
+    /// </summary>
+    /// <remarks>
+    /// The counterpart to <see cref="Reassert"/>, for stepping aside rather than coming forward.
+    /// Clearing Topmost alone does not do it: a window leaving the topmost band arrives at the
+    /// front of the ordinary band, which is still in front of the window it was making room for.
+    /// </remarks>
+    public static void PlaceBehind(Window window, IntPtr other)
+    {
+        var hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero || other == IntPtr.Zero) return;
+
+        SetWindowPos(hwnd, other, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowPos(
