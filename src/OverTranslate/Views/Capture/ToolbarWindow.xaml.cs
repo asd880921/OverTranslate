@@ -55,6 +55,7 @@ public partial class ToolbarWindow : Window
     private bool _bubblesVisible = true;
     private bool _hasTranslated;
     private bool _initializingDirection = true;
+    private bool _initializingMode = true;
 
     // Whether there is recognised text to read, and whether it is being read right now. The voice
     // itself lives with the capture session, not here: this window only shows its state.
@@ -74,6 +75,16 @@ public partial class ToolbarWindow : Window
     /// </remarks>
     public bool IsVerticalText => VerticalSeg.IsChecked == true;
 
+    /// <summary>
+    /// Whether the user has said the selection holds comic artwork, which loosens grouping and
+    /// lays the translation out as one paragraph instead of back onto the source lines.
+    /// </summary>
+    /// <remarks>
+    /// Restored and saved the same way <see cref="IsVerticalText"/> is, and for the same reason:
+    /// somebody reading a comic is reading it for more than one capture.
+    /// </remarks>
+    public bool IsComicMode => ComicModeSeg.IsChecked == true;
+
     public ToolbarWindow(
         double selPhysLeft, double selPhysTop,
         double selPhysWidth, double selPhysHeight,
@@ -91,6 +102,11 @@ public partial class ToolbarWindow : Window
         VerticalSeg.IsChecked = verticalText;
         _initializingDirection = false;
 
+        bool comicMode = SettingsService.Instance.Current.Capture.ComicMode;
+        NormalModeSeg.IsChecked = !comicMode;
+        ComicModeSeg.IsChecked = comicMode;
+        _initializingMode = false;
+
         InitializeSelectors(sourceLang, targetLang);
         SizeSelectorsToClosedLabels();
 
@@ -101,7 +117,11 @@ public partial class ToolbarWindow : Window
 
         // The shared columns do not have a width until layout. A remembered vertical choice already
         // checks the right half above; this places the thumb under it on the first rendered frame.
-        Loaded += (_, _) => RenderDirectionThumb(animate: false);
+        Loaded += (_, _) =>
+        {
+            RenderDirectionThumb(animate: false);
+            RenderModeThumb(animate: false);
+        };
 
         RenderSpeakButton();
     }
@@ -281,6 +301,43 @@ public partial class ToolbarWindow : Window
             });
     }
 
+    /// <inheritdoc cref="DirectionSegment_PreviewMouseLeftButtonDown"/>
+    private void ModeSegment_PreviewMouseLeftButtonDown(
+        object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.RadioButton segment) segment.IsChecked = true;
+    }
+
+    /// <inheritdoc cref="DirectionSegment_Checked"/>
+    private void ModeSegment_Checked(object sender, RoutedEventArgs e)
+    {
+        if (ModeThumb is null || ModeThumbShift is null || ComicModeSeg is null) return;
+
+        if (!_initializingMode)
+            SaveContentModeSelection();
+
+        RenderModeThumb(animate: IsLoaded);
+    }
+
+    private void RenderModeThumb(bool animate)
+    {
+        double target = IsComicMode ? ModeThumb.ActualWidth : 0;
+
+        if (!animate || ModeThumb.ActualWidth <= 0)
+        {
+            ModeThumbShift.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+            ModeThumbShift.X = target;
+            return;
+        }
+
+        ModeThumbShift.BeginAnimation(
+            System.Windows.Media.TranslateTransform.XProperty,
+            new DoubleAnimation(target, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            });
+    }
+
     private void TranslateBtn_Click(object sender, RoutedEventArgs e)
         => RequestTranslate();
 
@@ -293,7 +350,7 @@ public partial class ToolbarWindow : Window
     {
         if (_isBusy) return;
         TranslateRequested?.Invoke(this, new TranslateRequest(
-            CurrentSourceLang, CurrentTargetLang, IsVerticalText));
+            CurrentSourceLang, CurrentTargetLang, IsVerticalText, IsComicMode));
     }
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
@@ -554,9 +611,17 @@ public partial class ToolbarWindow : Window
         settings.Capture.VerticalText = IsVerticalText;
         SettingsService.Instance.Save();
     }
+
+    private void SaveContentModeSelection()
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.Capture.ComicMode = IsComicMode;
+        SettingsService.Instance.Save();
+    }
 }
 
-public record TranslateRequest(string SourceLang, string TargetLang, bool IsVerticalText);
+public record TranslateRequest(
+    string SourceLang, string TargetLang, bool IsVerticalText, bool IsComicMode);
 
 public record CopyTextRequest(CopyTextKind Kind, string SourceLang, bool IsVerticalText);
 

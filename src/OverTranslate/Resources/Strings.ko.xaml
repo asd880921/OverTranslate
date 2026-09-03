@@ -168,6 +168,11 @@
     <sys:String x:Key="S.Toolbar.OpenWindowHint">이번 번역 결과를 창에서 열기</sys:String>
     <sys:String x:Key="S.Toolbar.Swap">원문과 번역문의 언어 바꾸기</sys:String>
     <sys:String x:Key="S.Toolbar.Close">캡처 번역 종료</sys:String>
+    <sys:String x:Key="S.Toolbar.Mode">캡처한 내용의 종류</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormal">일반</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComic">만화</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormalHint">웹 페이지·문서·게임 화면. 번역문을 원래 각 줄의 위치에 되돌립니다</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComicHint">만화 대사. 번역문을 한 단락으로 배치하고 줄 병합도 더 적극적으로 합니다</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">원문의 쓰기 방향</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontal">가로쓰기</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVertical">세로쓰기</sys:String>

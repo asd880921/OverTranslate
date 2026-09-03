@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     private double _lastSelPhysWidth;
     private double _lastSelPhysHeight;
     private bool _lastVerticalText;
+    private bool _lastComicMode;
     private int _selectionSessionId;
 
     public MainWindow()
@@ -665,6 +666,7 @@ public partial class MainWindow : Window
         _lastSelPhysWidth  = selection.Width;
         _lastSelPhysHeight = selection.Height;
         _lastVerticalText  = false;
+        _lastComicMode     = false;
 
         var settings = SettingsService.Instance.Current;
         ShowOverlay(
@@ -676,7 +678,8 @@ public partial class MainWindow : Window
             selection.Height,
             srcLang,
             settings.TargetLanguage,
-            verticalText: false);
+            verticalText: false,
+            comicMode: false);
 
         var toolbar  = new ToolbarWindow(
             selection.Left, selection.Top, selection.Width, selection.Height,
@@ -709,7 +712,8 @@ public partial class MainWindow : Window
         double selPhysHeight,
         string sourceLang,
         string targetLang,
-        bool verticalText)
+        bool verticalText,
+        bool comicMode)
     {
         if (_overlayWindow != null)
         {
@@ -722,7 +726,8 @@ public partial class MainWindow : Window
                 selPhysHeight,
                 sourceLang,
                 targetLang,
-                verticalText);
+                verticalText,
+                comicMode);
             return;
         }
 
@@ -735,7 +740,8 @@ public partial class MainWindow : Window
             selPhysHeight,
             sourceLang,
             targetLang,
-            verticalText);
+            verticalText,
+            comicMode);
         if (_captureWindow != null)
             _overlayWindow.Owner = _captureWindow;
         // This runs when the overlay closes on its own (Esc via the keyboard hook). Same fault
@@ -821,7 +827,8 @@ public partial class MainWindow : Window
                 workBitmap,
                 req.SourceLang,
                 cancellationToken,
-                req.IsVerticalText);
+                req.IsVerticalText,
+                req.IsComicMode);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -862,7 +869,14 @@ public partial class MainWindow : Window
             //
             // Vertical writing is left as it is. Its "lines" are columns, read by rotating the
             // capture and mapping back, and the overlay places those itself.
-            var placedBlocks = req.IsVerticalText
+            //
+            // Comic mode is left as it is too, and for the opposite reason to the vertical one: not
+            // that the split cannot be done, but that it must not be. A balloon's line breaks are
+            // where the letterer ran out of balloon, not where the sentence has joints, so the
+            // shares handed to those boxes cut the translation at four arbitrary points — and the
+            // reader is then asked to assemble a sentence out of four short centred lines. The
+            // group's own box is where the balloon is; the overlay lays one paragraph across it.
+            var placedBlocks = req.IsVerticalText || req.IsComicMode
                 ? translated
                 : GroupedTranslationLines.SplitOntoSourceLines(translated);
 
@@ -908,6 +922,7 @@ public partial class MainWindow : Window
 
             _lastColoredBlocks = coloredTranslated;
             _lastVerticalText = req.IsVerticalText;
+            _lastComicMode = req.IsComicMode;
             ShowOverlay(
                 coloredTranslated,
                 _lastOcrBlocks,
@@ -917,7 +932,8 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 req.SourceLang,
                 req.TargetLang,
-                req.IsVerticalText);
+                req.IsVerticalText,
+                req.IsComicMode);
             requestToolbar?.SetTranslationState(true);
             requestToolbar?.SetToggleEnabled(coloredTranslated.Count > 0);
             requestToolbar?.SetEngineBadge(AppServices.Translation.LastEngineUsage);
@@ -957,7 +973,8 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 req.SourceLang,
                 req.TargetLang,
-                _lastVerticalText);
+                _lastVerticalText,
+                _lastComicMode);
             requestToolbar?.SetTranslationState(_lastColoredBlocks.Count > 0);
             requestToolbar?.SetToggleEnabled(_lastColoredBlocks.Count > 0);
             ShowBalloon(

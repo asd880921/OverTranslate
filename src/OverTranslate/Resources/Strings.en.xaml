@@ -167,6 +167,11 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Toolbar.OpenWindowHint">Open this translation in a window</sys:String>
     <sys:String x:Key="S.Toolbar.Swap">Swap source and target languages</sys:String>
     <sys:String x:Key="S.Toolbar.Close">End screenshot translation</sys:String>
+    <sys:String x:Key="S.Toolbar.Mode">What the capture holds</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormal">Normal</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComic">Comic</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormalHint">Web pages, documents and game screens; the translation goes back onto the original lines</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComicHint">Comic dialogue; the translation is laid out as one paragraph and lines are joined more freely</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">Writing direction of the source</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontal">Horizontal</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVertical">Vertical</sys:String>

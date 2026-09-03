@@ -47,6 +47,7 @@ public partial class OverlayWindow : Window
     private string _currentSourceLanguage;
     private string _currentTargetLanguage;
     private bool _currentVerticalText;
+    private bool _currentComicMode;
 
     public OverlayWindow(
         List<TranslatedBlock> blocks,
@@ -57,7 +58,8 @@ public partial class OverlayWindow : Window
         double selectionScreenHeight,
         string sourceLanguage,
         string targetLanguage,
-        bool verticalText)
+        bool verticalText,
+        bool comicMode)
     {
         InitializeComponent();
         _currentBlocks = blocks;
@@ -69,6 +71,7 @@ public partial class OverlayWindow : Window
         _currentSourceLanguage = sourceLanguage;
         _currentTargetLanguage = targetLanguage;
         _currentVerticalText = verticalText;
+        _currentComicMode = comicMode;
 
         // Provisional: OnSourceInitialized pins the window to _physBounds instead.
         Left   = SystemParameters.VirtualScreenLeft;
@@ -160,7 +163,8 @@ public partial class OverlayWindow : Window
         double selScreenHeight,
         string sourceLanguage,
         string targetLanguage,
-        bool verticalText)
+        bool verticalText,
+        bool comicMode)
     {
         _currentBlocks = blocks;
         _currentOcrBlocks = ocrBlocks;
@@ -171,6 +175,7 @@ public partial class OverlayWindow : Window
         _currentSourceLanguage = sourceLanguage;
         _currentTargetLanguage = targetLanguage;
         _currentVerticalText = verticalText;
+        _currentComicMode = comicMode;
         ProcessingBorder.Visibility = Visibility.Collapsed;
         SetTranslationLayersVisible(true);
         if (_isLoaded)
@@ -325,15 +330,22 @@ public partial class OverlayWindow : Window
                 var sourceLineCount = block.SourceLineBounds!.Count;
                 var hasLowerBlock = HasLowerOverlappingBlock(block, blocks);
                 var maxLineCount = hasLowerBlock ? sourceLineCount : sourceLineCount + 1;
-                var rightAvailableW = GetRightExpansionWidth(
-                    block,
-                    blocks,
-                    canvasX,
-                    canvasY,
-                    wpfH,
-                    selScreenX,
-                    selScreenWidth,
-                    canvasWidth);
+                // Growing rightwards is room borrowed from whatever the capture has beside this
+                // group, and on a comic page that is artwork rather than empty margin: the group's
+                // box is the balloon, and the balloon is the only place the text may be. So comic
+                // mode keeps the box it was given and pays for the text in font size instead,
+                // which is what a letterer does with a balloon that is already drawn.
+                var rightAvailableW = _currentComicMode
+                    ? borderW
+                    : GetRightExpansionWidth(
+                        block,
+                        blocks,
+                        canvasX,
+                        canvasY,
+                        wpfH,
+                        selScreenX,
+                        selScreenWidth,
+                        canvasWidth);
                 var preferredGroupedWidth = Math.Min(
                     availableWidth,
                     Math.Max(borderW, Math.Min(measured.Width + BubbleHorizontalPadding, rightAvailableW)));

@@ -167,6 +167,11 @@
     <sys:String x:Key="S.Toolbar.OpenWindowHint">在窗口中打开这次的翻译结果</sys:String>
     <sys:String x:Key="S.Toolbar.Swap">互换原文与译文语言</sys:String>
     <sys:String x:Key="S.Toolbar.Close">结束截图翻译</sys:String>
+    <sys:String x:Key="S.Toolbar.Mode">截图的内容类型</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormal">一般</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComic">漫画</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeNormalHint">一般网页、文档、游戏画面，译文会排回原本各行的位置</sys:String>
+    <sys:String x:Key="S.Toolbar.ModeComicHint">漫画对白，译文重新排成整段，并更积极地把上下行并成一句</sys:String>
     <sys:String x:Key="S.Toolbar.Direction">原文的书写方向</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontal">横排</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVertical">竖排</sys:String>

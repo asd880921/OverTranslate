@@ -131,6 +131,86 @@
                                    VerticalAlignment="Center"/>
                     </Border>
 
+                    <!-- What kind of material the selection holds, which is a different question from
+                         the one beside it: 橫排／直排 says how the source is written, this says what it
+                         is. They are adjacent because they are asked of the same rectangle at the
+                         same moment — the user looks at a page of a comic, sets both, presses 翻譯 —
+                         and this one comes first because it is the coarser of the two: it decides
+                         whether the translation is laid back onto the source lines at all, while the
+                         direction only decides which way those lines run.
+
+                         Its pill takes the accent rather than the tray's raised grey. Two identical
+                         switches side by side read as one four-way control, and the eye has no way
+                         to tell which half of which pair it last set; the colour is what keeps them
+                         two questions. The accent is the bar's own — the same blue 翻譯 is drawn in
+                         — so this is a second use of a colour already on the bar rather than a new
+                         one, and 漫畫 being marked in it says the mode is on in the way an unlit
+                         grey pill cannot.
+
+                         Remembered between sessions for the same reason the direction is: someone
+                         reading a comic is reading a comic for more than one capture. -->
+                    <Border Background="{DynamicResource ToolbarGroupBg}"
+                            CornerRadius="10"
+                            Padding="3"
+                            Margin="10,0,0,0"
+                            Grid.IsSharedSizeScope="True"
+                            AutomationProperties.Name="{DynamicResource S.Toolbar.Mode}">
+                        <Grid>
+                            <!-- Shared for the reason the direction tray's are: an even split is what
+                                 lets the pill travel one fixed distance. -->
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="CaptureModeSegment"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="CaptureModeSegment"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border x:Name="ModeThumb"
+                                    Grid.Column="0"
+                                    CornerRadius="7"
+                                    Background="{DynamicResource ToolbarModeThumbBg}"
+                                    BorderBrush="{DynamicResource ToolbarModeThumbBorder}"
+                                    BorderThickness="1">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="ModeThumbShift"/>
+                                </Border.RenderTransform>
+                            </Border>
+
+                            <RadioButton x:Name="NormalModeSeg"
+                                         Grid.Column="0"
+                                         GroupName="CaptureContentMode"
+                                         IsChecked="True"
+                                         Style="{StaticResource ToolbarSegmentButton}"
+                                         ToolTip="{DynamicResource S.Toolbar.ModeNormalHint}"
+                                         PreviewMouseLeftButtonDown="ModeSegment_PreviewMouseLeftButtonDown"
+                                         Checked="ModeSegment_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- A page: the ordinary shape of everything this mode is for. -->
+                                    <Path Style="{StaticResource ToolbarSegmentGlyph}"
+                                          Data="M3,2 H11 V12 H3 Z M5,5 H9 M5,7.5 H9"/>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{DynamicResource S.Toolbar.ModeNormal}"/>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton x:Name="ComicModeSeg"
+                                         Grid.Column="1"
+                                         GroupName="CaptureContentMode"
+                                         Style="{StaticResource ToolbarSegmentButton}"
+                                         ToolTip="{DynamicResource S.Toolbar.ModeComicHint}"
+                                         PreviewMouseLeftButtonDown="ModeSegment_PreviewMouseLeftButtonDown"
+                                         Checked="ModeSegment_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- A speech balloon with its tail, which is what the mode is
+                                         really about: the unit it groups and lays out is a balloon,
+                                         not a page. -->
+                                    <Path Style="{StaticResource ToolbarSegmentGlyph}"
+                                          Data="M2.5,2.5 H11.5 V9 H6 L3.5,11.5 V9 H2.5 Z"/>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{DynamicResource S.Toolbar.ModeComic}"/>
+                                </StackPanel>
+                            </RadioButton>
+                        </Grid>
+                    </Border>
+
                     <!-- Which way the text in the selection is written. Last of the settings and hard
                          against the button that consumes it, because that is the order it is used in:
                          the user looks at a page of vertical Japanese, flips this, presses 翻譯. It is
@@ -150,7 +230,7 @@
                     <Border Background="{DynamicResource ToolbarGroupBg}"
                             CornerRadius="10"
                             Padding="3"
-                            Margin="10,0,0,0"
+                            Margin="6,0,0,0"
                             Grid.IsSharedSizeScope="True"
                             AutomationProperties.Name="{DynamicResource S.Toolbar.Direction}">
                         <Grid>
