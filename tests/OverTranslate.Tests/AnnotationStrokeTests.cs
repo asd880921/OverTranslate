@@ -84,4 +84,39 @@ public class AnnotationStrokeTests
         Assert.True(stroke.IsWithin(new Point(10, 10), radius: 1));
         Assert.False(stroke.IsWithin(new Point(40, 10), radius: 1));
     }
+    /// <summary>
+    /// The outline is built from a thinned copy of the points, so what it must not do is drift off
+    /// the line the user drew. Every point they put down is still inside the painted shape.
+    /// </summary>
+    /// <remarks>
+    /// Densely sampled on purpose: it is the run of near-collinear points that gets thrown away, and
+    /// a stroke without them would pass this whether the thinning were right or not.
+    /// </remarks>
+    [Fact]
+    public void ThinningTheOutline_LeavesEveryDrawnPointInsideIt()
+    {
+        var drawn = Enumerable.Range(0, 800)
+            .Select(i => (X: i * 1.2, Y: Math.Sin(i * 0.01) * 140))
+            .ToArray();
+
+        var painted = Stroke(8, drawn).Painted;
+
+        foreach (var (x, y) in drawn)
+            Assert.True(painted.FillContains(new Point(x, y)), $"({x:F1}, {y:F1}) fell outside");
+    }
+
+    /// <summary>
+    /// A corner is not oversampling and must survive the thinning: it is the one point in its
+    /// neighbourhood that is nowhere near the line through its neighbours.
+    /// </summary>
+    [Fact]
+    public void ThinningTheOutline_KeepsASharpCorner()
+    {
+        var stroke = Stroke(6, (0, 0), (50, 0), (100, 0), (100, 50), (100, 100));
+
+        // The turn is filled; the square it would cut off if the corner were dropped is not.
+        Assert.True(stroke.Painted.FillContains(new Point(100, 50)));
+        Assert.False(stroke.Painted.FillContains(new Point(60, 60)));
+    }
+
 }

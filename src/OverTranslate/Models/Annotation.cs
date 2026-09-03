@@ -69,9 +69,14 @@ public sealed class AnnotationStroke
     /// at. Keeping the removed area means every step subtracts a union that is one capsule longer
     /// than the last from an outline that never shrinks, so a step near the end of a long rub costs
     /// far more than one at the start — measured at 25ms a step, which is the lag. Keeping the
-    /// survivor means each step cuts one small capsule out of a shape that is already reduced, and
-    /// the work goes down as the drag goes on rather than up: the same 200-step rub measured 122ms
-    /// in total against 3394ms, with the last step at 0.6ms.</para>
+    /// survivor means each step cuts one small capsule out of a shape that is already reduced, so
+    /// the work stops growing: the same 200-step rub measured 122ms in total against 3394ms.</para>
+    ///
+    /// <para>Those two figures were taken on one short stroke, and read as a claim about the level
+    /// rather than the trend they are misleading. Six full-width scribbles measured 13ms a step and
+    /// stayed there — flat, as the paragraph above says, but flat at a height that is felt. What
+    /// sets that height is how many points the outline was built from, which is why the cut is
+    /// taken against a simplified centre line — see <see cref="Simplified"/>.</para>
     ///
     /// <para>Either way the bite is the swept circle and not a cut across the centre line. Cutting
     /// the centre line is the cheap way to do this and it is wrong in exactly the case that matters
@@ -159,7 +164,84 @@ public sealed class AnnotationStroke
             LineJoin     = PenLineJoin.Round,
         };
 
-        return Freeze(CentreLine(Points).GetWidenedPathGeometry(pen));
+        return Freeze(CentreLine(Simplified(Points)).GetWidenedPathGeometry(pen));
+    }
+
+    /// <summary>How far a recorded point may sit off the line through its neighbours and still be dropped.</summary>
+    /// <remarks>
+    /// A tenth of a DIP: below anything that can be drawn, so the shape this produces is the shape
+    /// the dense run of points described. It is a threshold on error, not on spacing, which is why
+    /// it can be this small and still throw most of the points away — see <see cref="Simplified"/>.
+    /// </remarks>
+    private const double SimplifyTolerance = 0.1;
+
+    /// <summary>The same line through fewer points, none of them further than the tolerance off it.</summary>
+    /// <remarks>
+    /// <para>Points arrive every 1.2 DIP of travel, which is what a smooth line on screen needs and
+    /// far more than the shape needs: a hand moving in anything but a tight curl lays down long runs
+    /// that are straight to well under a pixel. Widening keeps all of them — about five outline
+    /// segments per recorded point — and every cut the eraser makes has to work through the whole
+    /// outline however little of it the circle touches, so those runs are paid for on every step of
+    /// every rub. Dropping them measured 5913 points to 663 and the cut from 9.1ms to 1.1ms, with
+    /// the worst case tried (a dense curl, 16625 points) going 26.5ms to 2.9ms.</para>
+    ///
+    /// <para>Not <c>GetFlattenedPathGeometry</c>, which sounds like this and is not: flattening
+    /// subdivides curves and never removes a point, and a widened polyline has no curves left to
+    /// subdivide — measured at every tolerance from 0.1 to 2.0 it returned the same ~9940 segments.
+    /// The cost is carried by the point count, so the point count is what has to come down.</para>
+    ///
+    /// <para>Applied here rather than to <see cref="Points"/> so it touches the erased shape only.
+    /// Until the eraser takes a bite the stroke is drawn as a line through the recorded points and
+    /// none of this is in the way of it; hit testing and undo keep the full run as drawn.</para>
+    /// </remarks>
+    private static IReadOnlyList<Point> Simplified(IReadOnlyList<Point> points)
+    {
+        if (points.Count < 3) return points;
+
+        // Douglas-Peucker. Keep the two ends, then keep whichever point between them lies furthest
+        // off the chord if it is off by more than the tolerance, and ask the same of each half.
+        var keep = new bool[points.Count];
+        keep[0] = keep[^1] = true;
+
+        var pending = new Stack<(int From, int To)>();
+        pending.Push((0, points.Count - 1));
+
+        while (pending.Count > 0)
+        {
+            var (from, to) = pending.Pop();
+            if (to <= from + 1) continue;
+
+            double ax = points[from].X, ay = points[from].Y;
+            double dx = points[to].X - ax, dy = points[to].Y - ay;
+            double chord = Math.Sqrt(dx * dx + dy * dy);
+
+            int furthest = -1;
+            double worst = SimplifyTolerance;
+            for (int i = from + 1; i < to; i++)
+            {
+                double ox = points[i].X - ax, oy = points[i].Y - ay;
+
+                // A closed loop back to where it started has no chord to measure against, so the
+                // distance from the shared end stands in for it.
+                double off = chord < 1e-9
+                    ? Math.Sqrt(ox * ox + oy * oy)
+                    : Math.Abs(dy * ox - dx * oy) / chord;
+
+                if (off > worst) { worst = off; furthest = i; }
+            }
+
+            if (furthest < 0) continue;
+
+            keep[furthest] = true;
+            pending.Push((from, furthest));
+            pending.Push((furthest, to));
+        }
+
+        var kept = new List<Point>(points.Count);
+        for (int i = 0; i < points.Count; i++)
+            if (keep[i]) kept.Add(points[i]);
+
+        return kept;
     }
 
     /// <summary>The bare line through a run of points, with nothing widened onto it yet.</summary>
