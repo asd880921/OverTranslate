@@ -25,11 +25,17 @@ public class OcrService : IDisposable
 {
     private readonly OnnxOcrEngine _engine = new();
 
+    /// <param name="comicMode">
+    /// Whether the user has put the capture toolbar in 漫畫 mode, which loosens one grouping
+    /// threshold — see <see cref="OcrTextBlockGrouper"/>. Ignored on the vertical path, whose
+    /// columns are grouped by their own rules.
+    /// </param>
     public Task<List<OcrTextBlock>> RecognizeAsync(
         Bitmap bitmap,
         string sourceLanguage,
         CancellationToken cancellationToken = default,
-        bool verticalText = false)
+        bool verticalText = false,
+        bool comicMode = false)
     {
         if (!OcrLanguageRouter.IsSupported(sourceLanguage))
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
@@ -37,7 +43,7 @@ public class OcrService : IDisposable
         var language = OcrLanguageRouter.Normalize(sourceLanguage);
         return verticalText
             ? RecognizeVerticalAsync(_engine, bitmap, language, cancellationToken)
-            : RecognizeAndGroupAsync(_engine, bitmap, language, cancellationToken);
+            : RecognizeAndGroupAsync(_engine, bitmap, language, cancellationToken, comicMode);
     }
 
     /// <summary>
@@ -143,10 +149,12 @@ public class OcrService : IDisposable
         IOcrEngine engine,
         Bitmap bitmap,
         string sourceLanguage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool comicMode)
     {
         var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage, cancellationToken);
-        return OcrTextBlockGrouper.Group(blocks, null, BitmapBlockAppearance.Sample(bitmap, blocks));
+        return OcrTextBlockGrouper.Group(
+            blocks, null, BitmapBlockAppearance.Sample(bitmap, blocks), comicMode);
     }
 
     /// <summary>
@@ -163,7 +171,8 @@ public class OcrService : IDisposable
         using var rotated = new Bitmap(bitmap);
         rotated.RotateFlip(RotateFlipType.Rotate270FlipNone);
 
-        var blocks = await RecognizeAndGroupAsync(engine, rotated, sourceLanguage, cancellationToken);
+        var blocks = await RecognizeAndGroupAsync(
+            engine, rotated, sourceLanguage, cancellationToken, comicMode: false);
         var columns = blocks.Select(block => block with
         {
             Bounds = MapVerticalBoundsBack(block.Bounds, bitmap.Width),

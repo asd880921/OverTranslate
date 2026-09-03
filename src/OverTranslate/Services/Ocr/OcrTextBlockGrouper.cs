@@ -18,8 +18,16 @@ internal static class OcrTextBlockGrouper
     /// and a capture whose pixels could not be read, both get the geometry-only result rather than
     /// an error. See <see cref="VisualSplitEvidence"/> for what it is allowed to decide.
     /// </param>
+    /// <param name="comicMode">
+    /// Whether the user said this capture is comic artwork. See
+    /// <see cref="ComicTightlySetMinTextSizeRatio"/> for the one threshold it moves and why the
+    /// mode has to exist for it to be moved at all.
+    /// </param>
     internal static List<OcrTextBlock> Group(
-        IReadOnlyList<OcrTextBlock> blocks, GroupTrace? trace, IBlockAppearanceSource? appearance)
+        IReadOnlyList<OcrTextBlock> blocks,
+        GroupTrace? trace,
+        IBlockAppearanceSource? appearance,
+        bool comicMode = false)
     {
         if (blocks.Count <= 1)
         {
@@ -45,7 +53,7 @@ internal static class OcrTextBlockGrouper
         foreach (var block in sorted)
         {
             var continued = GroupThisContinues(
-                groups, block, sorted, appearance, repeatedRows, trace);
+                groups, block, sorted, appearance, repeatedRows, comicMode, trace);
             if (continued is not null) continued.Add(block);
             else groups.Add([block]);
         }
@@ -386,6 +394,7 @@ internal static class OcrTextBlockGrouper
         IReadOnlyList<OcrTextBlock> lines,
         IBlockAppearanceSource? appearance,
         RepeatedRowLayout repeatedRows,
+        bool comicMode,
         GroupTrace? trace)
     {
         List<OcrTextBlock>? best = null;
@@ -407,7 +416,8 @@ internal static class OcrTextBlockGrouper
             if (!nearest && !IsWithinContinuationReach(last, block)) continue;
             nearest = false;
 
-            if (!CanJoinNextLine(groups[i], block, appearance, repeatedRows, trace)) continue;
+            if (!CanJoinNextLine(groups[i], block, appearance, repeatedRows, comicMode, trace))
+                continue;
 
             var alignment = AlignmentDelta(last, block);
             if (alignment >= bestAlignment) continue;
@@ -487,11 +497,13 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock current,
         IBlockAppearanceSource? appearance,
         RepeatedRowLayout repeatedRows,
+        bool comicMode,
         GroupTrace? trace)
     {
         var previous = group[^1];
         var solidBar = SolidLineAdvanceFor(EstablishedLeading(group));
-        var (joined, rule) = JudgeNextLine(previous, current, solidBar, appearance, repeatedRows);
+        var (joined, rule) = JudgeNextLine(
+            previous, current, solidBar, appearance, repeatedRows, comicMode);
         if (trace is null)
             return joined;
 
@@ -530,7 +542,8 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock current,
         double solidBar,
         IBlockAppearanceSource? appearance,
-        RepeatedRowLayout repeatedRows)
+        RepeatedRowLayout repeatedRows,
+        bool comicMode)
     {
         var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
 
@@ -559,8 +572,10 @@ internal static class OcrTextBlockGrouper
         var isTightlySet =
             LineAdvanceRatio(previous, current) <= solidBar &&
             alignmentDelta <= Math.Max(avgHeight * 0.35, 6);
-        if (TextSizeRatio(previous, current) <
-            (isTightlySet ? TightlySetMinTextSizeRatio : MinTextSizeRatio))
+        var tightlySetBar = comicMode
+            ? ComicTightlySetMinTextSizeRatio
+            : TightlySetMinTextSizeRatio;
+        if (TextSizeRatio(previous, current) < (isTightlySet ? tightlySetBar : MinTextSizeRatio))
             return (false, "text size");
 
         var overlap = Math.Max(
@@ -580,7 +595,8 @@ internal static class OcrTextBlockGrouper
             return (false, "repeated rows");
 
         return SentenceContinuationEvidence(
-            previous, current, verticalGap, alignmentDelta, avgHeight, solidBar, appearance);
+            previous, current, verticalGap, alignmentDelta, avgHeight, solidBar, appearance,
+            comicMode);
     }
 
     /// <summary>
@@ -656,6 +672,41 @@ internal static class OcrTextBlockGrouper
     /// "HOW" measures 0.84, and a save stamp over the character name under it measures 0.58.</para>
     /// </remarks>
     private const double TightlySetMinTextSizeRatio = 0.86;
+
+    /// <summary>
+    /// The same again for a capture the user has said is comic artwork.
+    /// </summary>
+    /// <remarks>
+    /// <para>Two points of slack was as far as the general bar could go, and the paragraph above
+    /// says why: the same looseness applied everywhere also admits stat-panel rows and table cells.
+    /// A comic page has no stat panels, and the user picking 漫畫 is what says so — which is the
+    /// whole reason the mode is worth having as a mode rather than as a better heuristic.</para>
+    ///
+    /// <para>What it buys is measured on the ten-page region-comic-en corpus, where every wrongly
+    /// split pair on the page failed on this one rule and nothing else:</para>
+    ///
+    /// <code>
+    ///   "WHAT IS"  + "THIS...?"              0.83   lead 0.88
+    ///   "HOW"      + "CHILDISH."             0.83   lead 1.01
+    ///   "THIS IS"  + "UNPRECEDENTED!"        0.85   lead 0.95
+    ///   "THE"      + "CHANCELLOR ARRANGED"   0.85   lead 0.98
+    /// </code>
+    ///
+    /// <para>All four are one hand-lettered balloon in one size, set solid and centred, and all four
+    /// are short opening lines — which is where the glyph-pitch proxy is noisiest, because one space
+    /// in a three-word line moves the average further than one space in a ten-word line does.</para>
+    ///
+    /// <para>0.80 rather than a hair under 0.83, because that spread is noise and its edge is not a
+    /// number worth sitting on. It still stops well above the real size differences the same corpus
+    /// contains: the stat pages set 「MERIT」over their body text at 0.66, and an "X" sound effect
+    /// over a balloon's "HOW" measures 0.84 — the latter refused on its leading (1.89 line advances)
+    /// rather than on this, which is the rule that ought to be deciding it.</para>
+    ///
+    /// <para>Measured over the ten pages this moves two verdicts and no others — "THIS IS" and
+    /// "THE" above; the other two need the length waiver in <see cref="IsSetSolidUnder"/> as well.
+    /// General mode is byte-identical on all twenty-two captures to hand, comic and web alike.</para>
+    /// </remarks>
+    private const double ComicTightlySetMinTextSizeRatio = 0.80;
 
     private static double TextSizeRatio(OcrTextBlock previous, OcrTextBlock current)
     {
@@ -814,7 +865,8 @@ internal static class OcrTextBlockGrouper
         double alignmentDelta,
         double avgHeight,
         double solidBar,
-        IBlockAppearanceSource? appearance)
+        IBlockAppearanceSource? appearance,
+        bool comicMode)
     {
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
@@ -899,7 +951,7 @@ internal static class OcrTextBlockGrouper
                 : (true, "shorter final line");
         }
 
-        return IsSetSolidUnder(previous, current, alignmentDelta, avgHeight, solidBar)
+        return IsSetSolidUnder(previous, current, alignmentDelta, avgHeight, solidBar, comicMode)
             ? (true, "set solid")
             : (false, "no continuation evidence");
     }
@@ -950,13 +1002,22 @@ internal static class OcrTextBlockGrouper
     /// stricter gate here refused the very sentence this exists to join. The 0.88 the caller already
     /// applies is the measured one, and a title over a body sits far outside it.</para>
     /// </remarks>
+    /// <param name="comicMode">
+    /// Waives the length test, and only that: a comic balloon is short lines stacked in a column,
+    /// which is the one shape the length test is written to exclude. See
+    /// <see cref="ComicTightlySetMinTextSizeRatio"/> for why a mode may say so when a measurement
+    /// may not, and the remarks above for what still has to hold — the leading, the shared edge and
+    /// the text size all stay exactly as they are.
+    /// </param>
     private static bool IsSetSolidUnder(
         OcrTextBlock previous,
         OcrTextBlock current,
         double alignmentDelta,
         double avgHeight,
-        double solidBar) =>
-        (IsLongEnoughToHaveBeenSetSolid(previous) ||
+        double solidBar,
+        bool comicMode) =>
+        (comicMode ||
+            IsLongEnoughToHaveBeenSetSolid(previous) ||
             (IsLongEnoughToHaveBeenSetSolid(current) && IsInsetWithin(previous, current, avgHeight))) &&
         LineAdvanceRatio(previous, current) <= solidBar &&
         alignmentDelta <= Math.Max(avgHeight * 0.35, 6);

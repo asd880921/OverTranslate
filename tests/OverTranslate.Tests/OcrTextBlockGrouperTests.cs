@@ -1044,4 +1044,78 @@ public class OcrTextBlockGrouperTests
 
         Assert.Equal(2, merged.Lines.Count);
     }
+
+    /// <summary>
+    /// A hand-lettered balloon whose two lines measure 0.83 apart in text size — one balloon, one
+    /// size, and the disagreement is the glyph-pitch proxy counting a space it cannot see. Comic
+    /// mode is what says a stat panel cannot be on this page, so the bar can go where the noise is.
+    /// </summary>
+    [Fact]
+    public void ComicModeGroupsABalloonWhoseLinesDisagreeOnSizeByTheProxysNoise()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("WHAT IS", new Rect(519, 190, 194, 58), SourceGlyphHeight: 40),
+            new("THIS...?", new Rect(524, 243, 183, 63), SourceGlyphHeight: 48),
+        };
+
+        var merged = Assert.Single(
+            OcrTextBlockGrouper.Group(blocks, null, null, comicMode: true));
+
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    /// <summary>
+    /// The same pair in the ordinary mode, where the looser bar is not on offer: a page that may
+    /// hold a settings list or a table cannot spend the slack, which is the whole argument for
+    /// putting it behind a mode rather than lowering the bar for everyone.
+    /// </summary>
+    [Fact]
+    public void KeepsThoseLinesApartInTheOrdinaryMode()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("WHAT IS", new Rect(519, 190, 194, 58), SourceGlyphHeight: 40),
+            new("THIS...?", new Rect(524, 243, 183, 63), SourceGlyphHeight: 48),
+        };
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks).Count);
+    }
+
+    /// <summary>
+    /// Two words stacked in a balloon, neither long enough to have plainly filled a column. The
+    /// length test exists to keep exactly this shape out, and a comic is where the shape is a
+    /// sentence rather than a pair of labels.
+    /// </summary>
+    [Fact]
+    public void ComicModeGroupsShortStackedBalloonLinesTheLengthTestWouldRefuse()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("HOW", new Rect(504, 122, 147, 70), SourceGlyphHeight: 48),
+            new("CHILDISH.", new Rect(445, 191, 261, 67), SourceGlyphHeight: 58),
+        };
+
+        var merged = Assert.Single(
+            OcrTextBlockGrouper.Group(blocks, null, null, comicMode: true));
+
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    /// <summary>
+    /// A sound effect over the balloon under it, on the same page as the pair above. Comic mode
+    /// waives the length test and nothing else, so this is still refused on its leading — 1.89 line
+    /// advances is what a thing laid out somewhere else on the panel looks like.
+    /// </summary>
+    [Fact]
+    public void ComicModeStillKeepsASoundEffectOffTheBalloonBelowIt()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("X", new Rect(316, 0, 84, 59), SourceGlyphHeight: 40),
+            new("HOW", new Rect(504, 122, 147, 70), SourceGlyphHeight: 48),
+        };
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks, null, null, comicMode: true).Count);
+    }
 }

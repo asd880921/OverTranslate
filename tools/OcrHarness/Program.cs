@@ -51,6 +51,11 @@ if (args.Length == 0)
 var harnessMode = args.Contains("--panel") ? RealtimeBlockMode.Panel : RealtimeBlockMode.Subtitle;
 args = [.. args.Where(argument => argument != "--panel")];
 
+// The toolbar's 漫畫 mode, for --group-explain. Stripped the same way --panel is so it can be
+// written anywhere on the line rather than in one fixed place.
+var harnessComicMode = args.Contains("--comic");
+args = [.. args.Where(argument => argument != "--comic")];
+
 // Which language to read as. It picks the recognition model, and that is not a detail on a Korean
 // dump: the general model carries no Hangul at all, so a Korean frame read as EN comes back as
 // whatever Latin and Han the recogniser can force onto the shapes. The detector is shared, so this
@@ -1068,7 +1073,7 @@ if (args[0] == "--group-explain")
         // Without this the harness would judge on geometry alone and quietly disagree with the
         // application on exactly the captures worth looking at.
         var appearance = BitmapBlockAppearance.Sample(image, raw);
-        var grouped = OcrTextBlockGrouper.Group(raw, trace, appearance);
+        var grouped = OcrTextBlockGrouper.Group(raw, trace, appearance, harnessComicMode);
 
         Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
         for (var i = 0; i < grouped.Count; i++)
