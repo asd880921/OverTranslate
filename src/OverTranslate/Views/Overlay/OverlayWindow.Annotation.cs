@@ -419,8 +419,18 @@ public partial class OverlayWindow
             // Only the visual that changed. The canvas holds one child per stroke in order — see the
             // redraw where the drag starts — so rebuilding all of them would mean copying every
             // other stroke's points into a fresh line on every step of the rub.
+            //
+            // Removed and re-inserted, not assigned to the index. A UIElement has one parent, and
+            // WPF refuses to overwrite an occupied slot rather than silently orphaning what is in
+            // it: assigning throws "指定的索引已在使用中". Thrown from a mouse handler it reaches
+            // App's last-resort handler, which tears the whole capture session down — so the first
+            // rub that actually took anything ended the session outside a debugger, and stopped
+            // dead inside one.
             if (i < AnnotationCanvas.Children.Count)
-                AnnotationCanvas.Children[i] = BuildStrokeVisual(_eraseWorkingSet[i]);
+            {
+                AnnotationCanvas.Children.RemoveAt(i);
+                AnnotationCanvas.Children.Insert(i, BuildStrokeVisual(_eraseWorkingSet[i]));
+            }
         }
     }
 
