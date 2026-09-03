@@ -1319,7 +1319,12 @@ public partial class MainWindow : Window
             if (window is null) continue;
 
             window.Topmost = onTop;
-            if (!onTop) AlwaysOnTop.PlaceBehind(window, _recoveryYield!.RecoveryWindow);
+
+            // Both halves or neither. A step-aside that could not be completed — Task Manager gone
+            // between the event and here — would otherwise leave the layer out of the topmost band
+            // and still in front of it, which is worse than never having moved.
+            if (!onTop && !AlwaysOnTop.PlaceBehind(window, _recoveryYield!.RecoveryWindow))
+                window.Topmost = true;
         }
     }
 

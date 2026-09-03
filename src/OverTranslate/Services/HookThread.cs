@@ -1,4 +1,5 @@
 using System.Windows.Threading;
+using NLog;
 
 namespace OverTranslate.Services;
 
@@ -22,8 +23,10 @@ namespace OverTranslate.Services;
 /// </remarks>
 internal sealed class HookThread : IDisposable
 {
-    // How long Stop waits for the thread to finish pumping. Bounded rather than infinite: a hook
-    // listener is not worth hanging the application's close on.
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
+    // How long each step of Stop waits. Bounded rather than infinite: a hook listener is not worth
+    // hanging the application's close on.
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
 
     private readonly string _name;
@@ -78,11 +81,25 @@ internal sealed class HookThread : IDisposable
 
         if (!dispatcher.HasShutdownStarted)
         {
-            if (teardown is not null) dispatcher.Invoke(teardown);
+            // Bounded, not a plain Invoke. This thread exists precisely because it can be sitting
+            // inside an OS callback that nobody controls the length of, and waiting on it without a
+            // limit would hang the application's close on exactly that — the hang this class is
+            // here to keep off the interface thread in the first place.
+            if (teardown is not null &&
+                dispatcher.InvokeAsync(teardown).Wait(ShutdownTimeout) != DispatcherOperationStatus.Completed)
+            {
+                Log.Warn("Hook thread '{Name}' did not run its teardown within {Timeout}", _name, ShutdownTimeout);
+            }
+
             dispatcher.InvokeShutdown();
         }
 
-        _thread?.Join(ShutdownTimeout);
+        // Said out loud rather than assumed: the fields are cleared either way, so a later Start
+        // would quietly build a second thread beside a first one that is still pumping, and two
+        // threads under the same name is not something anyone would work out from a stack list.
+        if (_thread?.Join(ShutdownTimeout) == false)
+            Log.Warn("Hook thread '{Name}' still running after {Timeout}", _name, ShutdownTimeout);
+
         _thread = null;
         _dispatcher = null;
     }

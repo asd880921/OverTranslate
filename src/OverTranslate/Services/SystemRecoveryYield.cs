@@ -52,6 +52,9 @@ internal sealed class SystemRecoveryYield : IDisposable
     private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
 
     [DllImport("user32.dll")]
+    private static extern bool IsWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
 
     private delegate void WinEventProc(
@@ -116,10 +119,36 @@ internal sealed class SystemRecoveryYield : IDisposable
     private void OnForegroundChanged(
         IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
     {
+        // Nothing may leave this method. It is an OS callback on a thread with no other frame above
+        // it, so an exception here is not a failed step-aside — it is the whole application gone,
+        // in the middle of a capture, over a question about somebody else's window.
+        try
+        {
+            Decide(hwnd);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "Foreground change could not be classified — the capture layer stays where it is");
+        }
+    }
+
+    private void Decide(IntPtr hwnd)
+    {
         if (hwnd == IntPtr.Zero) return;
 
         bool? yield = ClassifyForeground(hwnd);
-        if (yield is not { } wanted) return; // some third application: leave the decision as it is
+
+        if (yield is null)
+        {
+            // Some third application. Normally not an answer to this question — but if the window
+            // that was being made room for has since been closed, it is: otherwise the layers stay
+            // out of the topmost band for the rest of the session, buried under whatever the user
+            // switched to next, with the thing they stepped aside for no longer even on screen.
+            if (!HasYielded || IsWindow(RecoveryWindow)) return;
+            yield = false;
+        }
+
+        bool wanted = yield.Value;
 
         Volatile.Write(ref _recoveryWindow, wanted ? hwnd : IntPtr.Zero);
 
@@ -155,12 +184,11 @@ internal sealed class SystemRecoveryYield : IDisposable
             using var process = Process.GetProcessById((int)pid);
             return IsRecoveryProcess(process.ProcessName) ? true : null;
         }
-        catch (ArgumentException)
+        catch (Exception)
         {
-            return null; // already gone between the event and this lookup
-        }
-        catch (InvalidOperationException)
-        {
+            // Every kind of "cannot answer" is the same answer here: the process ended between the
+            // event and this lookup, or it is one this one is not allowed to ask about. Neither is
+            // Task Manager as far as anything downstream is concerned.
             return null;
         }
     }
