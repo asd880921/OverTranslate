@@ -19,7 +19,9 @@ namespace OverTranslate.Services;
 ///
 /// <para>The narrow answer, rather than dropping Topmost generally: Topmost is what keeps the
 /// capture layer over the window being captured, and giving that up for every window would change
-/// the feature during ordinary use. Only Task Manager gets past, and only while it is in front.</para>
+/// the feature during ordinary use. Only Task Manager sets it off, and returning to this
+/// application puts it back. In between the layer is an ordinary window and anything can cover it —
+/// which is the point, since by then the user has gone looking for a way to end the session.</para>
 ///
 /// <para>This is not a substitute for <see cref="GlobalEscapeHook"/>. Both the foreground callback
 /// and the Topmost change need the interface thread eventually — a thread wedged solid answers
@@ -137,8 +139,9 @@ internal sealed class SystemRecoveryYield : IDisposable
     }
 
     /// <summary>
-    /// True to hand the top over, false to take it back, null for a window that is neither — this
-    /// application's own or the recovery interface.
+    /// True for the recovery interface, false for one of this application's own windows, and null
+    /// for everything else — a third application coming forward is not an answer to this question,
+    /// so whatever was decided last stands.
     /// </summary>
     private static bool? ClassifyForeground(IntPtr hwnd)
     {
