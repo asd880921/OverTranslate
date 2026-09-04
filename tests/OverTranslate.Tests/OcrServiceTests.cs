@@ -60,7 +60,7 @@ public class OcrServiceTests
     [InlineData("English 中文", true)]
     public void AutomaticLayout_IsChosenPerRecognizedBlock(string text, bool expectedCjk)
     {
-        Assert.Equal(expectedCjk, OnnxOcrEngine.UsesCjkLayoutForText(text));
+        Assert.Equal(expectedCjk, OnnxOcrEngine.UsesCjkRenderMetricsForText(text));
     }
 
     [Fact]
@@ -84,12 +84,14 @@ public class OcrServiceTests
         Assert.Null(normalized[1].RenderGlyphHeight);
         Assert.True(normalized[1].Bounds.Height < bounds.Height);
 
-        // Kept, where it used to be deleted. It is still measured on the Latin path — one Han
-        // character does not satisfy UsesCjkLayoutForText — which is wrong for a full-width glyph
-        // and is pinned here so the geometry work that fixes it has to come past this test rather
-        // than change it by accident. Wrong geometry is a smaller fault than a missing label.
+        // Kept, where it used to be deleted. The render side still measures it on the Latin path —
+        // one Han character does not satisfy UsesCjkRenderMetricsForText — and that is now a
+        // deliberate difference rather than the open defect this comment used to describe: the
+        // layout side reads a lone Han as Cjk (see LayoutScript below), while the overlay's font
+        // scale stays on the rule that keeps it from jumping between frames.
         Assert.Equal("白", normalized[2].Text);
         Assert.NotNull(normalized[2].RenderGlyphHeight);
+        Assert.Equal(OcrLayoutScript.Cjk, normalized[2].LayoutScript);
     }
 
     [Fact]
@@ -219,7 +221,7 @@ public class OcrServiceTests
         var blocks = await engine.RecognizeAsync(bitmap, "AUTO");
 
         Assert.NotEmpty(blocks);
-        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkLayoutForText(block.Text));
+        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkRenderMetricsForText(block.Text));
     }
 
     [Fact]
@@ -239,7 +241,7 @@ public class OcrServiceTests
         var text = TextOf(blocks);
 
         Assert.Contains("日本語", text);
-        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkLayoutForText(block.Text));
+        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkRenderMetricsForText(block.Text));
     }
 
     [Fact]

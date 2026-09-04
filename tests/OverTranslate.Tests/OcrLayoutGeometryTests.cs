@@ -20,8 +20,8 @@ public class OcrLayoutGeometryTests
             new("彈匣內每發子彈的傷害", detected),
         ];
 
-        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false);
-        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true);
+        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: false);
+        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: true);
         var automatic = OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks());
 
         foreach (var normalized in new[] { latin, cjk, automatic })
@@ -39,7 +39,7 @@ public class OcrLayoutGeometryTests
     public void LayoutBounds_IsTheDetectionBox_NotTheNormalisedOne()
     {
         var detected = new System.Windows.Rect(0, 0, 120, 30);
-        var normalized = OnnxOcrEngine.NormalizeBlocks([new("設定設定", detected)], isCjk: true);
+        var normalized = OnnxOcrEngine.NormalizeBlocks([new("設定設定", detected)], useCjkRenderMetrics: true);
 
         Assert.Equal(detected, normalized[0].LayoutBounds);
         Assert.True(normalized[0].Bounds.Height < detected.Height);
@@ -55,8 +55,8 @@ public class OcrLayoutGeometryTests
             new("彈匣內每發子彈的傷害", detected),
         ];
 
-        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false);
-        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true);
+        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: false);
+        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: true);
         var automatic = OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks());
 
         Assert.Equal(latin.Select(b => b.LayoutGlyphHeight), cjk.Select(b => b.LayoutGlyphHeight));
@@ -70,7 +70,7 @@ public class OcrLayoutGeometryTests
     public void CjkLayoutGlyphHeight_IsAnEstimate_NotTheDetectionBox()
     {
         var detected = new System.Windows.Rect(0, 0, 120, 30);
-        var normalized = OnnxOcrEngine.NormalizeBlocks([new("設定設定", detected)], isCjk: true);
+        var normalized = OnnxOcrEngine.NormalizeBlocks([new("設定設定", detected)], useCjkRenderMetrics: true);
 
         var height = Assert.IsType<double>(normalized[0].LayoutGlyphHeight);
         Assert.True(height < normalized[0].LayoutBounds.Height);
@@ -84,7 +84,7 @@ public class OcrLayoutGeometryTests
     public void MixedAndUnknownBlocks_CarryNoLayoutGlyphHeight(string text)
     {
         var detected = new System.Windows.Rect(0, 0, 240, 30);
-        var normalized = OnnxOcrEngine.NormalizeBlocks([new(text, detected)], isCjk: false);
+        var normalized = OnnxOcrEngine.NormalizeBlocks([new(text, detected)], useCjkRenderMetrics: false);
 
         Assert.Null(normalized[0].LayoutGlyphHeight);
     }
@@ -106,8 +106,8 @@ public class OcrLayoutGeometryTests
         var detected = new System.Windows.Rect(10, 10, 74, 40);
         List<OcrTextBlock> Blocks() => [new("闇", detected)];
 
-        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false);
-        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true);
+        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: false);
+        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: true);
         var automatic = OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks());
 
         // The fixture is only worth anything if the two rectangles disagree across the threshold.
@@ -133,8 +133,8 @@ public class OcrLayoutGeometryTests
 
         foreach (var normalized in new[]
         {
-            OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false),
-            OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true),
+            OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: false),
+            OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: true),
             OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks()),
         })
         {

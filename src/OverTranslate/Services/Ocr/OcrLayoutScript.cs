@@ -33,7 +33,7 @@ public enum OcrLayoutScript
 /// knowing the line is set in full-width glyphs does not, and that is all the layout side asks.
 /// Two is also what left a single 攻 on the Latin geometry path — see #161.
 ///
-/// Deliberately separate from <c>OnnxOcrEngine.UsesCjkLayoutForText</c>, which keeps its own rule
+/// Deliberately separate from <c>OnnxOcrEngine.UsesCjkRenderMetricsForText</c>, which keeps its own rule
 /// because it chooses a *render* normalisation strategy, not the script of the text.
 /// </remarks>
 internal static class LayoutScriptDetection

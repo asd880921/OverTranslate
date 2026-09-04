@@ -51,8 +51,8 @@ public class LayoutScriptDetectionTests
         ];
 
         // The three normalisation paths the source language routes to today.
-        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false);
-        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true);
+        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: false);
+        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: true);
         var automatic = OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks());
 
         OcrLayoutScript[] expected =
@@ -75,8 +75,8 @@ public class LayoutScriptDetectionTests
         var bounds = new System.Windows.Rect(0, 0, 240, 30);
         List<OcrTextBlock> Blocks() => [new("本Wikiについて", bounds)];
 
-        Assert.Equal(OcrLayoutScript.Mixed, OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false)[0].LayoutScript);
-        Assert.Equal(OcrLayoutScript.Mixed, OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true)[0].LayoutScript);
+        Assert.Equal(OcrLayoutScript.Mixed, OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: false)[0].LayoutScript);
+        Assert.Equal(OcrLayoutScript.Mixed, OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: true)[0].LayoutScript);
         Assert.Equal(OcrLayoutScript.Mixed, OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks())[0].LayoutScript);
     }
 
@@ -101,8 +101,8 @@ public class LayoutScriptDetectionTests
 
         foreach (var normalized in new[]
         {
-            OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false),
-            OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true),
+            OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: false),
+            OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: true),
             OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks()),
         })
         {

@@ -434,7 +434,7 @@ public class OcrTextBlockGrouperTests
         Assert.Equal(1.0, OcrTextBlockGrouper.TextSizeRatio(latin, cjk), precision: 9);
 
         // What it used to be: normalisation makes the same box 0.82 as tall on the CJK side.
-        var normalizedCjk = OnnxOcrEngine.NormalizeBlocks([new("ゲーム設定", new Rect(10, 10, 240, 30))], isCjk: true)[0];
+        var normalizedCjk = OnnxOcrEngine.NormalizeBlocks([new("ゲーム設定", new Rect(10, 10, 240, 30))], useCjkRenderMetrics: true)[0];
         Assert.True(normalizedCjk.Bounds.Height / latin.Bounds.Height < 0.88);
     }
 

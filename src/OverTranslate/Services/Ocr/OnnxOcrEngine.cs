@@ -216,7 +216,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         Bitmap bitmap, string sourceLanguage, int? maxDetectSize = null)
     {
         var normalizedLanguage = OcrLanguageRouter.Normalize(sourceLanguage);
-        var isCjk = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
+        var useCjkRenderMetrics = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
         var usesAutomaticLayout = OcrLanguageRouter.UsesAutomaticLayout(normalizedLanguage);
 
         // Select the runtime and register an in-use reference atomically under _sync, so the
@@ -238,7 +238,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             using var skBitmap = ConvertToSkBitmap(bitmap);
             using var detectorInput = AlignForDetector(skBitmap, options.Padding);
             var result = runtime.Engine.Detect(detectorInput, options);
-            var blocks = ApplyBlockFilters(result.TextBlocks, normalizedLanguage, isCjk, usesAutomaticLayout);
+            var blocks = ApplyBlockFilters(result.TextBlocks, normalizedLanguage, useCjkRenderMetrics, usesAutomaticLayout);
 
             // Counts and lengths only — enough to tell "found nothing" from "found the wrong thing"
             // without the recognised text itself, which LogBlocks keeps at Debug.
@@ -909,7 +909,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // One method rather than a chain repeated at each entry point: the order matters (see the
     // comments inside), and a second copy of it is the kind of thing that drifts a filter at a time.
     private static List<OcrTextBlock> ApplyBlockFilters(
-        TextBlock[] textBlocks, string normalizedLanguage, bool isCjk, bool usesAutomaticLayout)
+        TextBlock[] textBlocks, string normalizedLanguage, bool useCjkRenderMetrics, bool usesAutomaticLayout)
     {
         var converted = ConvertBlocks(textBlocks);
 
@@ -927,7 +927,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // out, so a stray box is never joined to the line beside it.
         var normalized = usesAutomaticLayout
             ? NormalizeAutomaticBlocks(converted)
-            : NormalizeBlocks(converted, isCjk);
+            : NormalizeBlocks(converted, useCjkRenderMetrics);
 
         return RemoveMisshapenBlocks(normalized, normalizedLanguage);
     }
@@ -1097,12 +1097,17 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     }
 
     /// <summary>
-    /// Chooses the layout path from one recognized block when the source language is automatic.
-    /// Kana is unambiguously Japanese. Two Han characters are enough to identify real CJK text,
-    /// while a lone Han character stays on the Latin path so the existing icon-noise filter can
-    /// remove the common one-character misreads found in English interfaces.
+    /// Which of the two render normalisations one recognised block gets when the source language
+    /// is automatic. Kana is unambiguously Japanese, and two Han characters identify real CJK text.
     /// </summary>
-    internal static bool UsesCjkLayoutForText(string text) =>
+    /// <remarks>
+    /// Not the block's script — that is <see cref="LayoutScriptDetection.For"/>, which counts a
+    /// single Han character and which grouping reads. This is a choice between two ways of sizing
+    /// the overlay's font, and the two answers deliberately differ: the layout side wants to know
+    /// what is written, the render side wants a font scale that does not jump between frames when
+    /// a borderline reading changes. Nothing here reaches grouping.
+    /// </remarks>
+    internal static bool UsesCjkRenderMetricsForText(string text) =>
         text.Any(LayoutScriptDetection.IsKana) || text.Count(LayoutScriptDetection.IsHanIdeograph) >= 2;
 
     internal static List<OcrTextBlock> NormalizeAutomaticBlocks(List<OcrTextBlock> blocks)
@@ -1111,15 +1116,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
         foreach (var block in blocks)
         {
-            var isCjk = UsesCjkLayoutForText(block.Text);
-            normalized.Add(NormalizeBlock(block, isCjk, AutomaticGlyphHeightFromPitch));
+            var useCjkRenderMetrics = UsesCjkRenderMetricsForText(block.Text);
+            normalized.Add(NormalizeBlock(block, useCjkRenderMetrics, AutomaticGlyphHeightFromPitch));
         }
 
         return normalized;
     }
 
-    internal static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool isCjk)
-        => blocks.Select(block => NormalizeBlock(block, isCjk)).ToList();
+    internal static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool useCjkRenderMetrics)
+        => blocks.Select(block => NormalizeBlock(block, useCjkRenderMetrics)).ToList();
 
     /// <summary>
     /// Glyph body height estimated from a detection box: 0.82 of it, clamped against the average
@@ -1168,9 +1173,16 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             : ShortTextGlyphHeight.For(glyphHeight, box.Height, glyphCount);
     }
 
+    /// <param name="useCjkRenderMetrics">
+    /// Which overlay-font normalisation to apply. It follows the source language the user picked
+    /// (or, under 自動, one block's own text), and it is render-only: it decides the pitch
+    /// multiplier and whether Bounds is pulled in onto the glyphs. Everything grouping reads is
+    /// filled in below from the block's own text and the detector's own box, so this cannot reach
+    /// it — which is the whole of why the metrics were split.
+    /// </param>
     private static OcrTextBlock NormalizeBlock(
         OcrTextBlock block,
-        bool isCjk,
+        bool useCjkRenderMetrics,
         double? glyphHeightFromPitchOverride = null)
     {
         // Convert the average source-glyph pitch (width / glyphCount) into the line height that
@@ -1180,11 +1192,12 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // not a Latin one. Measured EN-vs-KO box heights on the same screenshot showed the old
         // Latin value (2.0) rendered English ~1.7x larger than the Korean (CJK) path; 1.3 brings
         // it in line, leaving English just slightly larger than CJK.
-        var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (isCjk ? 1.18 : 1.3);
+        var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (useCjkRenderMetrics ? 1.18 : 1.3);
 
-        // Per block, from its own text, and the box exactly as the detector drew it. Both callers
-        // reach here, and this runs before the CJK branch below rewrites Bounds, so it is the one
-        // place the layout side gets told what it is looking at.
+        // Per block, from its own text, and the box exactly as the detector drew it — neither of
+        // them touched by useCjkRenderMetrics above. Both callers reach here, and this runs before
+        // the CJK branch below rewrites Bounds, so it is the one place the layout side is told what
+        // it is looking at.
         var layoutScript = LayoutScriptDetection.For(block.Text);
         block = block with
         {
@@ -1197,7 +1210,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
         var glyphHeight = EstimateGlyphHeight(bounds, glyphCount, glyphHeightFromPitch);
 
-        if (isCjk)
+        if (useCjkRenderMetrics)
         {
             // CJK glyphs ≈ the detection box height, so shrinking + recentering the box
             // drives both the overlay font and its background coverage correctly.
