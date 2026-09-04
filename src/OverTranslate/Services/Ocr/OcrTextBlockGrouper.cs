@@ -3,6 +3,19 @@ using System.Windows;
 
 namespace OverTranslate.Services.Ocr;
 
+/// <summary>
+/// Joins the lines the engine read into the blocks that get translated together.
+/// </summary>
+/// <remarks>
+/// Every measurement a decision here is made on comes from <c>LayoutBounds</c>, the box the
+/// detector drew, and never from <c>Bounds</c>. Bounds has been normalised per script by the time
+/// it arrives — a CJK line is pulled in onto its glyphs and a Latin one is left whole — so reading
+/// it made every threshold mean something different depending on which language the user had
+/// selected. The horizontal figures are the same in both (normalisation only touches Y and height);
+/// the vertical ones are not, and neither is anything derived from a line height.
+///
+/// What the group carries out is still Bounds: that is the area the overlay has to cover.
+/// </remarks>
 internal static class OcrTextBlockGrouper
 {
     public static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> blocks) => Group(blocks, null);
@@ -23,8 +36,8 @@ internal static class OcrTextBlockGrouper
 
         var sameLineMerged = MergeSameLineFragments(blocks);
         var sorted = sameLineMerged
-            .OrderBy(block => block.Bounds.Y)
-            .ThenBy(block => block.Bounds.X)
+            .OrderBy(block => block.LayoutBounds.Y)
+            .ThenBy(block => block.LayoutBounds.X)
             .ToList();
 
         var groups = new List<List<OcrTextBlock>>();
@@ -91,8 +104,8 @@ internal static class OcrTextBlockGrouper
         // line's fragments in reading order; the vertical-overlap test in CanJoinSameLine routes
         // each fragment to the correct row when several lines are present.
         var ordered = blocks
-            .OrderBy(block => block.Bounds.X)
-            .ThenBy(block => block.Bounds.Y)
+            .OrderBy(block => block.LayoutBounds.X)
+            .ThenBy(block => block.LayoutBounds.Y)
             .ToList();
         var merged = new List<OcrTextBlock>();
 
@@ -121,8 +134,8 @@ internal static class OcrTextBlockGrouper
             if (!CanJoinSameLine(candidate, block))
                 continue;
 
-            var overlap = Math.Min(candidate.Bounds.Bottom, block.Bounds.Bottom) -
-                          Math.Max(candidate.Bounds.Top, block.Bounds.Top);
+            var overlap = Math.Min(candidate.LayoutBounds.Bottom, block.LayoutBounds.Bottom) -
+                          Math.Max(candidate.LayoutBounds.Top, block.LayoutBounds.Top);
             if (overlap > bestOverlap)
             {
                 bestOverlap = overlap;
@@ -135,7 +148,7 @@ internal static class OcrTextBlockGrouper
 
     private static bool CanJoinSameLine(OcrTextBlock previous, OcrTextBlock current)
     {
-        var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
+        var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
 
         // Vertical overlap — NOT height ratio — is what tells an in-line word from a distinct
         // neighbour. A short mid-line word ("to" h=25 on a h=31 line → heightRatio 0.81) sits on the
@@ -152,17 +165,17 @@ internal static class OcrTextBlockGrouper
         // the word has no descender, which is a property of the letters, not of whether they belong
         // to the line. Discriminating between lines is the vertical-overlap test's job below, as the
         // note above says; this only has to keep out boxes of wildly different size.
-        var heightRatio = Math.Min(previous.Bounds.Height, current.Bounds.Height) /
-                          Math.Max(previous.Bounds.Height, current.Bounds.Height);
+        var heightRatio = Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height) /
+                          Math.Max(previous.LayoutBounds.Height, current.LayoutBounds.Height);
         if (heightRatio < 0.5)
             return false;
 
         var verticalOverlap = Math.Max(
             0,
-            Math.Min(previous.Bounds.Bottom, current.Bounds.Bottom) -
-            Math.Max(previous.Bounds.Top, current.Bounds.Top));
+            Math.Min(previous.LayoutBounds.Bottom, current.LayoutBounds.Bottom) -
+            Math.Max(previous.LayoutBounds.Top, current.LayoutBounds.Top));
         var verticalOverlapRate = verticalOverlap /
-                                  Math.Max(1, Math.Min(previous.Bounds.Height, current.Bounds.Height));
+                                  Math.Max(1, Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height));
         if (verticalOverlapRate < 0.72)
             return false;
 
@@ -171,7 +184,7 @@ internal static class OcrTextBlockGrouper
         // vs "your website" left=515 → gap -18), which the old `>= 0` guard rejected, scattering
         // one heading into word-by-word translations. Allow up to a line-height of overlap; the
         // vertical-overlap and height-ratio checks above already keep stacked/unrelated lines out.
-        var horizontalGap = current.Bounds.X - previous.Bounds.Right;
+        var horizontalGap = current.LayoutBounds.X - previous.LayoutBounds.Right;
         return horizontalGap >= -avgHeight && horizontalGap <= Math.Max(avgHeight * 1.35, 18);
     }
 
@@ -214,16 +227,16 @@ internal static class OcrTextBlockGrouper
         if (decisions is null)
             return joined;
 
-        var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
+        var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
         decisions.Add(new NextLineDecision(
             previous.Text,
             current.Text,
             previous.LayoutScript,
             current.LayoutScript,
-            (current.Bounds.Y - previous.Bounds.Bottom) / Math.Max(1, avgHeight),
-            Math.Abs(previous.Bounds.X - current.Bounds.X) / Math.Max(1, avgHeight),
+            (current.LayoutBounds.Y - previous.LayoutBounds.Bottom) / Math.Max(1, avgHeight),
+            Math.Abs(previous.LayoutBounds.X - current.LayoutBounds.X) / Math.Max(1, avgHeight),
             TextSizeRatio(previous, current),
-            previous.Bounds.Width / Math.Max(1, current.Bounds.Width),
+            previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
             joined,
             rule));
 
@@ -232,7 +245,7 @@ internal static class OcrTextBlockGrouper
 
     private static (bool Joined, string Rule) JudgeNextLine(OcrTextBlock previous, OcrTextBlock current)
     {
-        var avgHeight = (previous.Bounds.Height + current.Bounds.Height) / 2.0;
+        var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
         if (TextSizeRatio(previous, current) < 0.88)
             return (false, "text size");
 
@@ -250,19 +263,19 @@ internal static class OcrTextBlockGrouper
         // -0.9 to -1.0. Nothing at all falls between, so the threshold sits in empty space rather
         // than on either edge. Those row-mates are what this really has to keep out; the same-line
         // merge takes most of them first, and this is the backstop for the rest.
-        var verticalGap = current.Bounds.Y - (previous.Bounds.Y + previous.Bounds.Height);
+        var verticalGap = current.LayoutBounds.Y - (previous.LayoutBounds.Y + previous.LayoutBounds.Height);
         if (verticalGap < -avgHeight * 0.5 || verticalGap > Math.Max(avgHeight * 0.8, 10))
             return (false, "vertical gap");
 
-        var leftDelta = Math.Abs(previous.Bounds.X - current.Bounds.X);
+        var leftDelta = Math.Abs(previous.LayoutBounds.X - current.LayoutBounds.X);
         if (leftDelta > Math.Max(avgHeight * 1.2, 18))
             return (false, "alignment");
 
         var overlap = Math.Max(
             0,
-            Math.Min(previous.Bounds.Right, current.Bounds.Right) -
-            Math.Max(previous.Bounds.Left, current.Bounds.Left));
-        var overlapRate = overlap / Math.Max(1, Math.Min(previous.Bounds.Width, current.Bounds.Width));
+            Math.Min(previous.LayoutBounds.Right, current.LayoutBounds.Right) -
+            Math.Max(previous.LayoutBounds.Left, current.LayoutBounds.Left));
+        var overlapRate = overlap / Math.Max(1, Math.Min(previous.LayoutBounds.Width, current.LayoutBounds.Width));
         var isAlignedContinuation =
             overlapRate >= 0.35 || leftDelta <= Math.Max(avgHeight * 0.7, 12);
         if (!isAlignedContinuation)
@@ -340,7 +353,7 @@ internal static class OcrTextBlockGrouper
         // read 「アビリティ」over「召喚石」and 「캐릭터강화」over「소지품」as wrapped sentences, glued
         // each pair into one string for the translator, and squeezed both into one bubble. See #75.
         return IsLongEnoughToHaveWrapped(previous) &&
-               previous.Bounds.Width >= current.Bounds.Width * 1.35
+               previous.LayoutBounds.Width >= current.LayoutBounds.Width * 1.35
             ? (true, "shorter final line")
             : (false, "no continuation evidence");
     }
@@ -362,8 +375,8 @@ internal static class OcrTextBlockGrouper
     private const double WrappedLineMinAspect = 8.0;
 
     private static bool IsLongEnoughToHaveWrapped(OcrTextBlock line) =>
-        line.Bounds.Height > 0 &&
-        line.Bounds.Width / line.Bounds.Height >= WrappedLineMinAspect;
+        line.LayoutBounds.Height > 0 &&
+        line.LayoutBounds.Width / line.LayoutBounds.Height >= WrappedLineMinAspect;
 
     private static bool HasUnclosedDelimiter(string text) =>
         Count(text, '「') > Count(text, '」') ||
