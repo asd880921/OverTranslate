@@ -1434,6 +1434,16 @@ public partial class MainWindow : Window
     /// </remarks>
     private void RaiseToolbarsAboveInk()
     {
+        // Not while the session has stepped aside for Task Manager. Coming forward here would put
+        // the two toolbars back over the window everything else just made room for, and 標記 can be
+        // switched on while the layers are already behind it. Placing them is the recovery watch's
+        // job in that state, and it does the whole session in one go.
+        if (_recoveryYield?.HasYielded == true)
+        {
+            ApplyCaptureTopmost();
+            return;
+        }
+
         if (_toolbarWindow is { } toolbar) AlwaysOnTop.Reassert(toolbar);
         if (_annotationPanel is { } panel) AlwaysOnTop.Reassert(panel);
     }
@@ -1489,7 +1499,8 @@ public partial class MainWindow : Window
 
         // Bottom of the stack first: each one steps in directly behind the recovery window, so the
         // last one placed ends up highest and the layers keep their own order among themselves.
-        foreach (var window in new Window?[] { _captureWindow, _overlayWindow, _toolbarWindow })
+        foreach (var window in new Window?[]
+                 { _captureWindow, _overlayWindow, _toolbarWindow, _annotationPanel })
         {
             if (window is null) continue;
 
