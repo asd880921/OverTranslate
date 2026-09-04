@@ -161,12 +161,26 @@ if (args[0] == "--xlate-line")
         return 1;
     }
 
-    var block = new List<OcrTextBlock> { new(line, new System.Windows.Rect(0, 0, 100, 20)) };
+    // All four, named apart. "Google" is two different endpoints and they need not behave alike —
+    // the resilient chains use GoogleTranslator2 as a backup and GoogleTranslator as a primary, so
+    // a limit measured on one says nothing about the other.
+    //
+    // --raw hands each engine the whole text, bypassing TranslationRequestChunks. That is what
+    // reproduces the fault the chunking exists to prevent, so it stays available: without it the
+    // only way to see an endpoint's real behaviour past its limit is to delete the fix.
+    var raw = args.Contains("--raw");
+    var line2 = raw ? string.Join(' ', args.Skip(1).Where(a => a != "--raw")) : line;
+    var limit = raw ? int.MaxValue : (int?)null;
+
+    var block = new List<OcrTextBlock> { new(line2, new System.Windows.Rect(0, 0, 100, 20)) };
+    Console.WriteLine($"  input: {line2.Length} chars, chunking {(raw ? "OFF" : "ON")}");
+
     foreach (var (name, provider) in new (string, GTranslateProvider)[]
              {
-                 ("Microsoft", new GTranslateProvider(new MicrosoftTranslator())),
-                 ("Google   ", new GTranslateProvider(new GoogleTranslator2())),
-                 ("Bing     ", new GTranslateProvider(new BingTranslator())),
+                 ("Microsoft", new GTranslateProvider(new MicrosoftTranslator(), null, limit)),
+                 ("Google Web", new GTranslateProvider(new GoogleTranslator(), null, limit)),
+                 ("Google RPC", new GTranslateProvider(new GoogleTranslator2(), null, limit)),
+                 ("Bing      ", new GTranslateProvider(new BingTranslator(), null, limit)),
              })
     {
         try
@@ -179,6 +193,20 @@ if (args[0] == "--xlate-line")
             Console.WriteLine($"  [{name}] FAILED: {ex.Message}");
         }
     }
+
+    // The same text through the chain a user who picked Google actually gets: the engines above
+    // answer for themselves, this answers for the application. Which one served the block is
+    // printed with it, because "Google looped" and "Google was slow so Bing answered" produce the
+    // same good line and are not the same result — the summary is what tells them apart.
+    var googleChain = new ResilientProvider([
+        new GTranslateProvider(new GoogleTranslator(), null, limit),
+        new GTranslateProvider(new GoogleTranslator2(), null, limit),
+        new GTranslateProvider(new BingTranslator(), null, limit),
+    ]);
+
+    var (chained, _) = await googleChain.TranslateAsync(block, "EN", "ZH-HANT", "");
+    Console.WriteLine($"  [Google chain] {chained[0].TranslatedText}");
+    Console.WriteLine($"                 served by {googleChain.LastBatchSummary}");
 
     return 0;
 }

@@ -1,18 +1,32 @@
 using GTranslate.Results;
 using GTranslate.Translators;
+using NLog;
 using OverTranslate.Models;
 
 namespace OverTranslate.Services.Providers;
 
 public class GTranslateProvider : ITranslationProvider
 {
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
     private readonly ITranslator _translator;
     private readonly Dictionary<string, string> _targetOverrides;
+    private readonly int _safeInputLimit;
 
-    public GTranslateProvider(ITranslator translator, Dictionary<string, string>? targetOverrides = null)
+    /// <param name="safeInputLimit">
+    /// The most this engine is handed in one request, or null for the shared default. Each engine
+    /// splits for itself at its own transport boundary, so one that turns out to want a smaller
+    /// budget can be given one without every other engine inheriting it — which is what would
+    /// happen if <see cref="ResilientProvider"/> split once for whichever of them answers.
+    /// </param>
+    public GTranslateProvider(
+        ITranslator translator,
+        Dictionary<string, string>? targetOverrides = null,
+        int? safeInputLimit = null)
     {
         _translator     = translator;
         _targetOverrides = targetOverrides ?? [];
+        _safeInputLimit  = safeInputLimit ?? TranslationRequestChunks.SafeMaxCharacters;
     }
 
     public bool RequiresApiKey => false;
@@ -101,10 +115,43 @@ public class GTranslateProvider : ITranslationProvider
         var toCode   = MapToGTranslate(targetLang);
         var fromCode = MapSourceToGTranslate(sourceLang);
 
-        var r       = await _translator.TranslateAsync(text, toCode, fromCode);
-        var detLang = r.SourceLanguage?.ISO6391 ?? "";
-        var mapped  = string.IsNullOrEmpty(detLang) ? "" : MapDetectedToDeepL(detLang);
-        return (r.Translation, mapped);
+        // A text past this engine's budget is sent as consecutive sentences rather than as one
+        // request. Two of the three engines refuse an over-long text outright and the third answers
+        // with a repetition loop, which nothing above here could tell from a translation — see
+        // TranslationRequestChunks.
+        var chunks = TranslationRequestChunks.Split(text, _safeInputLimit);
+        if (chunks.Count == 1)
+        {
+            var single  = await _translator.TranslateAsync(text, toCode, fromCode);
+            var oneLang = single.SourceLanguage?.ISO6391 ?? "";
+            return (single.Translation, string.IsNullOrEmpty(oneLang) ? "" : MapDetectedToDeepL(oneLang));
+        }
+
+        // Where a long text was cut and why, because a translation that reads oddly at a seam is
+        // otherwise indistinguishable from one the engine simply got wrong.
+        Log.Debug(
+            "{Engine}：{Length} 字超過 {Limit} 字上限，分成 {Count} 段（{Boundaries}）",
+            Name, text.Length, _safeInputLimit, chunks.Count,
+            string.Join(", ", chunks.Select(chunk => $"{chunk.Text.Length}/{chunk.BoundaryAfter}")));
+
+        var translations = new List<string>(chunks.Count);
+        var detected = "";
+
+        // One at a time, never in parallel: these are keyless endpoints, and a burst of requests
+        // from one machine is what throttling is for.
+        foreach (var chunk in chunks)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var part = await _translator.TranslateAsync(chunk.Text, toCode, fromCode);
+            translations.Add(part.Translation);
+            // The first chunk that names a language speaks for the block; the rest are the same
+            // text and a later disagreement is a shorter piece being read with less to go on.
+            if (detected.Length == 0) detected = part.SourceLanguage?.ISO6391 ?? "";
+        }
+
+        var mapped = string.IsNullOrEmpty(detected) ? "" : MapDetectedToDeepL(detected);
+        return (TranslationRequestChunks.Join(chunks, translations), mapped);
     }
 
     public async Task<DictionaryLookupData?> LookupDictionaryAsync(
