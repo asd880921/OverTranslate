@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using NLog;
@@ -245,24 +246,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             using var skBitmap = ConvertToSkBitmap(bitmap);
             using var detectorInput = AlignForDetector(skBitmap, options.Padding);
             var result = runtime.Engine.Detect(detectorInput, options);
-            var converted = ConvertBlocks(result.TextBlocks);
-
-            // Every language, because an accented letter is a misread whichever script surrounds
-            // it, and it costs the whole line its translation rather than just one character.
-            converted = FoldBlockDiacritics(converted);
-
-            // On a non-CJK (Latin) page the shared general model occasionally misreads icons
-            // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
-            if (!isCjk && !usesAutomaticLayout)
-                converted = RemoveIconIdeographNoise(converted);
-
-            // After normalisation, because that is where a CJK box is pulled in onto its glyphs and
-            // the shape being judged becomes the real one. Before grouping, which happens further
-            // out, so a stray box is never joined to the line beside it.
-            var normalized = usesAutomaticLayout
-                ? NormalizeAutomaticBlocks(converted)
-                : NormalizeBlocks(converted, isCjk);
-            var blocks = RemoveMisshapenBlocks(normalized, normalizedLanguage);
+            var blocks = ApplyBlockFilters(result.TextBlocks, normalizedLanguage, isCjk, usesAutomaticLayout);
 
             // Counts and lengths only — enough to tell "found nothing" from "found the wrong thing"
             // without the recognised text itself, which LogBlocks keeps at Debug.
@@ -350,6 +334,189 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             ReleaseRuntime();
         }
     }
+
+    /// <summary>
+    /// Detection held open, so recognition can be asked for a chosen subset of the boxes instead of
+    /// all of them. Everything after recognition is the shipped path.
+    /// </summary>
+    /// <remarks>
+    /// For OcrHarness, and specifically for the candidate that detects once over the whole source
+    /// image and then reads only the boxes that fall inside what the user framed: the boxes then
+    /// come from a bitmap larger than the answer is about, which no other entry point allows.
+    ///
+    /// Assembled out of the library's own pieces rather than reimplemented, several of them reached
+    /// by reflection. That is the point of the type. Recognition does NOT crop from the bitmap that
+    /// was handed in: the library prepares a detector input first — outer padding, an optional
+    /// letterbox, and the resize <see cref="RapidOcrOptions.ImgResize"/> caps — detects on that, and
+    /// crops the part images from THAT bitmap, mapping the boxes back to the original only on the
+    /// way out. Cropping from the original instead reads a different picture, and on a page the
+    /// resize actually shrinks it would read a picture at the wrong size, which is exactly the cost
+    /// this measurement exists to find.
+    ///
+    /// Verified rather than argued — see the harness's <c>--roi-fullframe</c>, which begins by
+    /// recognising every box through here and checking the text against <see cref="RecognizeAsync"/>.
+    /// </remarks>
+    internal DetectionSession BeginDetection(
+        Bitmap bitmap, string sourceLanguage, int? maxDetectSize = null)
+    {
+        var normalizedLanguage = OcrLanguageRouter.Normalize(sourceLanguage);
+        var runtime = AcquireRuntime(normalizedLanguage);
+        try
+        {
+            return new DetectionSession(this, runtime, bitmap, normalizedLanguage, maxDetectSize);
+        }
+        catch
+        {
+            ReleaseRuntime();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// One detection, kept alive so its boxes can be recognised a subset at a time.
+    /// </summary>
+    internal sealed class DetectionSession : IDisposable
+    {
+        private readonly OnnxOcrEngine _owner;
+        private readonly RapidOcr _engine;
+        private readonly string _language;
+        private readonly SKBitmap _skBitmap;
+        private readonly SKBitmap _aligned;
+        // Boxed, because the type is internal to the library and cannot be named here.
+        private readonly object _detectorInput;
+        private readonly SKBitmap _detectorBitmap;
+        private readonly RapidOcrOptions _options;
+        private readonly IReadOnlyList<RapidOcrNet.TextBox> _detectorSpaceBoxes;
+
+        internal DetectionSession(
+            OnnxOcrEngine owner,
+            RapidOcrRuntime runtime,
+            Bitmap bitmap,
+            string normalizedLanguage,
+            int? maxDetectSize)
+        {
+            _owner = owner;
+            _engine = runtime.Engine;
+            _language = normalizedLanguage;
+            _options = CreateOptions(maxDetectSize);
+            _skBitmap = ConvertToSkBitmap(bitmap);
+            _aligned = AlignForDetector(_skBitmap, _options.Padding);
+
+            _detectorInput = PrepareDetectorInputMethod.Invoke(null, new object[] { _aligned, _options })!;
+            _detectorBitmap = (SKBitmap)DetectorInputBitmapField.GetValue(_detectorInput)!;
+            var scale = (ScaleParam)DetectorInputScaleField.GetValue(_detectorInput)!;
+
+            var detector = (TextDetector)TextDetectorField.GetValue(_engine)!;
+            _detectorSpaceBoxes = detector.GetTextBoxes(
+                _detectorBitmap, scale, _options.BoxScoreThresh, _options.BoxThresh, _options.UnClipRatio);
+
+            // The caller works in the coordinates of the bitmap it handed in, so every box is
+            // reported there. The detector-space originals are what recognition crops with and are
+            // kept beside them, because mapping is not reversible once the resize is not 1.0.
+            Boxes = _detectorSpaceBoxes
+                .Select(box =>
+                {
+                    var points = (SKPointI[])box.BoxPoints.Clone();
+                    MapToOriginalMethod.Invoke(_detectorInput, new object[] { points });
+                    var xs = points.Select(point => point.X).ToList();
+                    var ys = points.Select(point => point.Y).ToList();
+                    return (
+                        Bounds: new System.Windows.Rect(
+                            xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min()),
+                        box.Score);
+                })
+                .ToList();
+        }
+
+        /// <summary>Every box the detector found, in the handed-in bitmap's own coordinates.</summary>
+        internal IReadOnlyList<(System.Windows.Rect Bounds, float Score)> Boxes { get; }
+
+        /// <summary>
+        /// Recognises the boxes at the given indices into <see cref="Boxes"/> and nothing else.
+        /// </summary>
+        internal IReadOnlyList<OcrTextBlock> Recognize(IReadOnlyList<int> boxIndices)
+        {
+            if (boxIndices.Count == 0) return Array.Empty<OcrTextBlock>();
+
+            var chosen = boxIndices.Select(index => _detectorSpaceBoxes[index]).ToList();
+            var partImages = (SKBitmap[])GetPartImagesMethod.Invoke(
+                null, new object[] { _detectorBitmap, chosen })!;
+            try
+            {
+                // No classifier pass: DoAngle is false on every options set the app builds, and the
+                // library's own 180° rotation is gated on it.
+                var recognizer = (TextRecognizer)TextRecognizerField.GetValue(_engine)!;
+                var lines = recognizer.GetTextLines(partImages);
+
+                var textBlocks = new List<TextBlock>(chosen.Count);
+                for (var i = 0; i < chosen.Count; i++)
+                {
+                    // The library's own floor, applied here for the same reason it applies it: what
+                    // reaches ConvertBlocks on the shipped path has already been through it.
+                    var scores = lines[i].CharScores;
+                    if (scores is not { Length: > 0 } || scores.Average() < _options.TextScore)
+                        continue;
+
+                    var points = (SKPointI[])chosen[i].BoxPoints.Clone();
+                    MapToOriginalMethod.Invoke(_detectorInput, new object[] { points });
+
+                    textBlocks.Add(new TextBlock
+                    {
+                        BoxPoints = points,
+                        BoxScore = chosen[i].Score,
+                        // Required by the type and ignored downstream: ConvertBlocks builds the text
+                        // from Chars, the same as it does for the shipped path.
+                        Text = string.Concat(lines[i].Chars ?? Array.Empty<string>()),
+                        Chars = lines[i].Chars,
+                        CharScores = scores,
+                    });
+                }
+
+                return ApplyBlockFilters(
+                    textBlocks.ToArray(),
+                    _language,
+                    OcrLanguageRouter.UsesCjkOnnx(_language),
+                    OcrLanguageRouter.UsesAutomaticLayout(_language));
+            }
+            finally
+            {
+                foreach (var part in partImages) part.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            ((IDisposable)_detectorInput).Dispose();
+            _aligned.Dispose();
+            _skBitmap.Dispose();
+            _owner.ReleaseRuntime();
+        }
+    }
+
+    private static readonly MethodInfo PrepareDetectorInputMethod =
+        typeof(RapidOcr).GetMethod("PrepareDetectorInput", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static readonly MethodInfo GetPartImagesMethod =
+        typeof(RapidOcr).Assembly.GetType("RapidOcrNet.OcrUtils")!
+            .GetMethod("GetPartImages", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static readonly FieldInfo TextRecognizerField =
+        typeof(RapidOcr).GetField("_textRecognizer", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private static readonly FieldInfo TextDetectorField =
+        typeof(RapidOcr).GetField("_textDetector", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private static readonly Type DetectorInputType =
+        typeof(RapidOcr).Assembly.GetType("RapidOcrNet.RapidOcr+DetectorInput")!;
+
+    private static readonly FieldInfo DetectorInputBitmapField =
+        DetectorInputType.GetField("Bitmap", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private static readonly FieldInfo DetectorInputScaleField =
+        DetectorInputType.GetField("Scale", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private static readonly MethodInfo MapToOriginalMethod =
+        DetectorInputType.GetMethod("MapToOriginal", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!;
 
     // Selects (loading if necessary) the runtime for the language and registers an in-use
     // reference under _sync. Every successful call MUST be paired with a ReleaseRuntime().
@@ -743,6 +910,33 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             BoxScoreThresh = thresholds.BoxScoreThresh,
             UnClipRatio = thresholds.UnClipRatio,
         };
+    }
+
+    // Everything between the library handing back its raw blocks and the caller getting usable ones.
+    // One method rather than a chain repeated at each entry point: the order matters (see the
+    // comments inside), and a second copy of it is the kind of thing that drifts a filter at a time.
+    private static List<OcrTextBlock> ApplyBlockFilters(
+        TextBlock[] textBlocks, string normalizedLanguage, bool isCjk, bool usesAutomaticLayout)
+    {
+        var converted = ConvertBlocks(textBlocks);
+
+        // Every language, because an accented letter is a misread whichever script surrounds
+        // it, and it costs the whole line its translation rather than just one character.
+        converted = FoldBlockDiacritics(converted);
+
+        // On a non-CJK (Latin) page the shared general model occasionally misreads icons
+        // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
+        if (!isCjk && !usesAutomaticLayout)
+            converted = RemoveIconIdeographNoise(converted);
+
+        // After normalisation, because that is where a CJK box is pulled in onto its glyphs and
+        // the shape being judged becomes the real one. Before grouping, which happens further
+        // out, so a stray box is never joined to the line beside it.
+        var normalized = usesAutomaticLayout
+            ? NormalizeAutomaticBlocks(converted)
+            : NormalizeBlocks(converted, isCjk);
+
+        return RemoveMisshapenBlocks(normalized, normalizedLanguage);
     }
 
     private static List<OcrTextBlock> ConvertBlocks(TextBlock[] textBlocks)
@@ -1298,7 +1492,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         _inferenceGate.Dispose();
     }
 
-    private sealed record RapidOcrRuntime(string ModelName, RapidOcr Engine) : IDisposable
+    internal sealed record RapidOcrRuntime(string ModelName, RapidOcr Engine) : IDisposable
     {
         public void Dispose() => Engine.Dispose();
     }
