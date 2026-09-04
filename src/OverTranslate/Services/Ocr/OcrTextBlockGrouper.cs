@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 
 namespace OverTranslate.Services.Ocr;
@@ -15,6 +16,8 @@ internal static class OcrTextBlockGrouper
     internal static List<OcrTextBlock> Group(
         IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions)
     {
+        AssertLayoutGeometryFilled(blocks);
+
         if (blocks.Count <= 1)
             return blocks.ToList();
 
@@ -35,6 +38,30 @@ internal static class OcrTextBlockGrouper
         }
 
         return groups.Select(BuildGroup).ToList();
+    }
+
+    /// <summary>
+    /// Every block reaching the grouper must carry the detection box the layout tests measure on.
+    /// </summary>
+    /// <remarks>
+    /// Loud on purpose, and deliberately not a fallback to <c>Bounds</c>. A block that arrives with
+    /// nothing in LayoutBounds is a construction path that forgot to fill it, and quietly reading
+    /// Bounds instead would put the script-dependent geometry — the 0.820 this whole split exists
+    /// to remove — back into grouping without anything saying so. Compiled out of Release, so a
+    /// degenerate detection box cannot take the app down; the tests run Debug and will not miss it.
+    /// </remarks>
+    [Conditional("DEBUG")]
+    private static void AssertLayoutGeometryFilled(IReadOnlyList<OcrTextBlock> blocks)
+    {
+        foreach (var block in blocks)
+        {
+            if (block.LayoutBounds.Width > 0 && block.LayoutBounds.Height > 0)
+                continue;
+
+            throw new InvalidOperationException(
+                $"Block \"{block.Text}\" reached the grouper with no LayoutBounds " +
+                $"({block.LayoutBounds}). Fill it where the block is built.");
+        }
     }
 
     /// <summary>

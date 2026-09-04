@@ -165,7 +165,7 @@ public class VerticalTextCaptureTests
             CancellationToken cancellationToken = default)
         {
             RecognizedSize = bitmap.Size;
-            return Task.FromResult(blocks.ToList());
+            return Task.FromResult(blocks.AsDetected());
         }
 
         public Task<List<OcrTextBlock>?> TryRecognizeAsync(
@@ -173,7 +173,7 @@ public class VerticalTextCaptureTests
             string sourceLanguage,
             int? maxDetectSize = null,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<List<OcrTextBlock>?>(blocks.ToList());
+            Task.FromResult<List<OcrTextBlock>?>(blocks.AsDetected());
 
         public void Dispose()
         {

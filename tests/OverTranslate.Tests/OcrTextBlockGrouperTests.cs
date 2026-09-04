@@ -16,7 +16,7 @@ public class OcrTextBlockGrouperTests
             new("食尚玩家", new Rect(10, 40, 110, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal(2, grouped[0].Lines.Count);
@@ -32,7 +32,7 @@ public class OcrTextBlockGrouperTests
             new("RIGHT", new Rect(220, 38, 110, 20)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -46,7 +46,7 @@ public class OcrTextBlockGrouperTests
             new("summary", new Rect(10, 48, 180, 16)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -60,7 +60,7 @@ public class OcrTextBlockGrouperTests
             new("body text", new Rect(10, 44, 220, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -75,7 +75,7 @@ public class OcrTextBlockGrouperTests
             new("攻略", new Rect(106, 10, 42, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal("寧夏夜市攻略", grouped[0].Text);
@@ -101,7 +101,7 @@ public class OcrTextBlockGrouperTests
             new("to", new Rect(539, 37, 72, 54)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal("Send this session to the background and free the terminal", grouped[0].Text);
@@ -120,7 +120,7 @@ public class OcrTextBlockGrouperTests
             new("your website", new Rect(515, 71, 565, 102)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal("Translate your website", grouped[0].Text);
@@ -139,7 +139,7 @@ public class OcrTextBlockGrouperTests
             new("the", new Rect(250, 8, 46, 31)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal("session to the", grouped[0].Text);
@@ -157,7 +157,7 @@ public class OcrTextBlockGrouperTests
             new("Create key", new Rect(1632, 298, 112, 38)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -171,7 +171,7 @@ public class OcrTextBlockGrouperTests
             new("右側", new Rect(140, 10, 42, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -185,7 +185,7 @@ public class OcrTextBlockGrouperTests
             new("GO ON」のセットリストプレイリストを公開！", new Rect(10, 40, 290, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
     }
@@ -199,7 +199,7 @@ public class OcrTextBlockGrouperTests
             new("食尚玩家最新整理", new Rect(10, 40, 210, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -213,7 +213,7 @@ public class OcrTextBlockGrouperTests
             new("第二句重新開始", new Rect(10, 40, 110, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -231,7 +231,7 @@ public class OcrTextBlockGrouperTests
             new("home.", new Rect(970, 106, 141, 51)),
         };
 
-        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        var merged = Assert.Single(GroupDetected(blocks));
         Assert.Equal("Let's pay CiRCLE a visit on the way home.", merged.Text);
     }
 
@@ -246,7 +246,7 @@ public class OcrTextBlockGrouperTests
             new("Create key", new Rect(215, 27, 160, 38)),
         };
 
-        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks).Count);
+        Assert.Equal(2, GroupDetected(blocks).Count);
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public class OcrTextBlockGrouperTests
             new("!!", new Rect(266, 10, 20, 24), Confidence: 0.6),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         var merged = Assert.Single(grouped);
         Assert.NotNull(merged.Confidence);
@@ -277,7 +277,7 @@ public class OcrTextBlockGrouperTests
             new("第二段文字", new Rect(112, 10, 100, 24)),
         };
 
-        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        var merged = Assert.Single(GroupDetected(blocks));
         Assert.Null(merged.Confidence);
     }
 
@@ -296,7 +296,7 @@ public class OcrTextBlockGrouperTests
             new("magazine", new Rect(698, 311, 109, 31)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         var merged = Assert.Single(grouped);
         Assert.Equal(
@@ -319,7 +319,7 @@ public class OcrTextBlockGrouperTests
             new("magazine", new Rect(112, 108, 105, 26), RenderGlyphHeight: 15),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         var merged = Assert.Single(grouped);
         Assert.Equal(
@@ -340,7 +340,7 @@ public class OcrTextBlockGrouperTests
             new("Narmaya", new Rect(41, 79, 90, 29), RenderGlyphHeight: 11.6),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -360,7 +360,7 @@ public class OcrTextBlockGrouperTests
             new("所持品", new Rect(165, 539, 94, 38)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -378,7 +378,7 @@ public class OcrTextBlockGrouperTests
             new("플레이할 수 있습니다", new Rect(355, 478, 248, 29)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         var merged = Assert.Single(grouped);
         Assert.Equal(2, merged.Lines.Count);
@@ -399,8 +399,11 @@ public class OcrTextBlockGrouperTests
             new("HOLD TO SALVAGE", new Rect(20, 361, 160, 25)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
+
+    private static List<OcrTextBlock> GroupDetected(IReadOnlyList<OcrTextBlock> blocks) =>
+        OcrTextBlockGrouper.Group(blocks.AsDetected());
 }
