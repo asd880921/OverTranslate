@@ -179,9 +179,13 @@ public class OcrService : IDisposable
         var columns = blocks.Select(block => block with
         {
             Bounds = MapVerticalBoundsBack(block.Bounds, bitmap.Width),
+            // The layout box turns with the picture. Without it the second pass below would be
+            // reading a rectangle still in the rotated frame beside one that is not.
+            LayoutBounds = MapVerticalBoundsBack(block.LayoutBounds, bitmap.Width),
             SourceLineBounds = null,
             // After mapping back, a column is tall and narrow. The rotated row height is the
-            // original glyph width and is the useful reference for a square vertical cell.
+            // original glyph width and is the useful reference for a square vertical cell. Only the
+            // render metric: what the columns are grouped on is LayoutBounds, above.
             RenderGlyphHeight = block.Bounds.Height,
         }).ToList();
 
@@ -202,7 +206,7 @@ public class OcrService : IDisposable
     {
         var remaining = columns
             .Where(IsVerticalColumnCandidate)
-            .OrderByDescending(column => column.Bounds.X)
+            .OrderByDescending(column => column.LayoutBounds.X)
             .ToList();
         var merged = new List<OcrTextBlock>();
 
@@ -238,22 +242,26 @@ public class OcrService : IDisposable
         const double maxWidthToHeightRatio = 1.4;
         int characters = column.Text.Count(character => !char.IsWhiteSpace(character));
         return characters <= 1 ||
-               column.Bounds.Width <= column.Bounds.Height * maxWidthToHeightRatio;
+               column.LayoutBounds.Width <= column.LayoutBounds.Height * maxWidthToHeightRatio;
     }
 
     private static bool IsSameVerticalTextGroup(OcrTextBlock a, OcrTextBlock b)
     {
-        double columnWidth = Math.Max(a.Bounds.Width, b.Bounds.Width);
-        if (Math.Abs(a.Bounds.Y - b.Bounds.Y) > columnWidth * 0.6)
+        double columnWidth = Math.Max(a.LayoutBounds.Width, b.LayoutBounds.Width);
+        if (Math.Abs(a.LayoutBounds.Y - b.LayoutBounds.Y) > columnWidth * 0.6)
             return false;
 
-        double gap = Math.Max(a.Bounds.Left, b.Bounds.Left) - Math.Min(a.Bounds.Right, b.Bounds.Right);
+        double gap = Math.Max(a.LayoutBounds.Left, b.LayoutBounds.Left) -
+                     Math.Min(a.LayoutBounds.Right, b.LayoutBounds.Right);
         return gap <= columnWidth * 0.6;
     }
 
     private static OcrTextBlock CombineVerticalColumns(List<OcrTextBlock> group)
     {
-        var ordered = group.OrderByDescending(column => column.Bounds.X).ToList();
+        // Reading order is a layout question, so it is decided on the detector's boxes. Everything
+        // built below — the coverage rectangle, the cell size, the character cells — is what the
+        // overlay draws, and stays on Bounds.
+        var ordered = group.OrderByDescending(column => column.LayoutBounds.X).ToList();
         var bounds = ordered.Select(column => column.Bounds).Aggregate(Rect.Union);
         var widths = ordered.Select(column => column.Bounds.Width).OrderBy(width => width).ToList();
         var glyphSize = widths[widths.Count / 2];
@@ -267,12 +275,38 @@ public class OcrService : IDisposable
             : scored.Sum(column => column.Confidence!.Value * Math.Max(1, column.Text.Length)) /
               scored.Sum(column => Math.Max(1, column.Text.Length));
 
+        var text = string.Concat(ordered.Select(column => column.Text));
+        var layoutScript = LayoutScriptDetection.For(text);
+
         return new OcrTextBlock(
-            string.Concat(ordered.Select(column => column.Text)),
+            text,
             bounds,
             lines,
             glyphSize,
-            confidence);
+            confidence,
+            // From the text as read. A vertical frame is not required to be Japanese — a western
+            // title down the spine of a book is still Latin.
+            layoutScript,
+            ordered.Select(column => column.LayoutBounds).Aggregate(Rect.Union),
+            CombineVerticalGlyphSize(layoutScript, ordered));
+    }
+
+    /// <summary>
+    /// One layout glyph size for a merged column group: the median of the columns', and nothing
+    /// once the joined text is no longer of a single script.
+    /// </summary>
+    private static double? CombineVerticalGlyphSize(OcrLayoutScript script, List<OcrTextBlock> columns)
+    {
+        if (script is not (OcrLayoutScript.Latin or OcrLayoutScript.Cjk))
+            return null;
+
+        var sizes = columns
+            .Where(column => column.LayoutGlyphHeight is > 0)
+            .Select(column => column.LayoutGlyphHeight!.Value)
+            .OrderBy(size => size)
+            .ToList();
+
+        return sizes.Count > 0 ? sizes[sizes.Count / 2] : null;
     }
 
     private static List<Rect> SplitIntoVerticalCharacterCells(Rect column, double glyphSize)

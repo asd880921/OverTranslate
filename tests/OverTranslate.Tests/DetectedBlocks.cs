@@ -17,6 +17,11 @@ internal static class DetectedBlocks
 {
     public static OcrTextBlock AsDetected(this OcrTextBlock block)
     {
+        // A fixture that set its own layout box meant it: those are the cases where the two
+        // rectangles have to disagree for the test to be worth anything.
+        if (block.LayoutBounds.Width > 0 && block.LayoutBounds.Height > 0)
+            return block;
+
         var script = LayoutScriptDetection.For(block.Text);
         return block with
         {

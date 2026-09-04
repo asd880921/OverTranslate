@@ -38,7 +38,7 @@ public class VerticalTextCaptureTests
             new("中", new System.Windows.Rect(68, 12, 10, 60), Confidence: 0.6),
         };
 
-        var result = OcrService.MergeVerticalColumns(columns);
+        var result = OcrService.MergeVerticalColumns(columns.AsDetected());
 
         Assert.Equal(2, result.Count);
         Assert.Equal("右中左", result[0].Text);
@@ -58,7 +58,7 @@ public class VerticalTextCaptureTests
             new("左", new System.Windows.Rect(20, 10, 10, 60)),
         };
 
-        var result = OcrService.MergeVerticalColumns(columns);
+        var result = OcrService.MergeVerticalColumns(columns.AsDetected());
 
         Assert.Equal(2, result.Count);
         Assert.Equal(["右", "左"], result.Select(block => block.Text));
@@ -69,7 +69,7 @@ public class VerticalTextCaptureTests
     {
         var column = new OcrTextBlock("！", new System.Windows.Rect(10, 20, 30, 15));
 
-        var result = OcrService.MergeVerticalColumns([column]);
+        var result = OcrService.MergeVerticalColumns([column.AsDetected()]);
 
         var kept = Assert.Single(result);
         Assert.Equal(column.Text, kept.Text);
@@ -153,6 +153,99 @@ public class VerticalTextCaptureTests
 
         if (failure is not null)
             throw new Xunit.Sdk.XunitException(failure.ToString());
+    }
+
+    /// <summary>
+    /// The layout box has to turn with the picture, or the column merge below is comparing a
+    /// rectangle in the rotated frame against ones that are not.
+    /// </summary>
+    [Fact]
+    public async Task VerticalRecognition_MapsLayoutBoundsBackAsWellAsBounds()
+    {
+        using var source = new Bitmap(100, 60);
+        // As the CJK path hands it over: Bounds pulled in onto the glyphs, LayoutBounds untouched.
+        var recognized = new OcrTextBlock("縦書き", new System.Windows.Rect(10, 22, 30, 8))
+        {
+            LayoutBounds = new System.Windows.Rect(10, 20, 30, 12),
+            LayoutScript = OcrLayoutScript.Cjk,
+        };
+        using var engine = new RecordingOcrEngine(recognized);
+
+        var result = await OcrService.RecognizeVerticalAsync(
+            engine, source, "JA", CancellationToken.None);
+
+        var block = Assert.Single(result);
+        Assert.Equal(OcrService.MapVerticalBoundsBack(recognized.Bounds, source.Width), block.Bounds);
+        Assert.Equal(
+            OcrService.MapVerticalBoundsBack(recognized.LayoutBounds, source.Width),
+            block.LayoutBounds);
+        Assert.NotEqual(block.Bounds, block.LayoutBounds);
+
+        // Render contract: the overlay's own numbers are still the rotated row height and the
+        // mapped coverage box, untouched by any of the above.
+        Assert.Equal(recognized.Bounds.Height, block.RenderGlyphHeight);
+    }
+
+    [Theory]
+    // Vertical writing is not a script. A western title down the spine of a Japanese book is
+    // still Latin, and the layout side must be told so by the text rather than by the rotation.
+    [InlineData("縦書き", OcrLayoutScript.Cjk)]
+    [InlineData("Vertigo", OcrLayoutScript.Latin)]
+    [InlineData("BanG夢", OcrLayoutScript.Mixed)]
+    public async Task VerticalText_LayoutScript_FollowsActualText_NotOrientation(
+        string text, OcrLayoutScript expected)
+    {
+        using var source = new Bitmap(100, 60);
+        using var engine = new RecordingOcrEngine(
+            new OcrTextBlock(text, new System.Windows.Rect(10, 20, 30, 10)));
+
+        var result = await OcrService.RecognizeVerticalAsync(
+            engine, source, "JA", CancellationToken.None);
+
+        Assert.Equal(expected, Assert.Single(result).LayoutScript);
+    }
+
+    /// <summary>
+    /// The same shape as the wide-horizontal-text case above, but with the two rectangles landing
+    /// on opposite sides of the 1.4 candidate test: normalised, the strip looks narrow enough to be
+    /// a column and bridges the two real ones into a single group.
+    /// </summary>
+    [Fact]
+    public void MergeVerticalColumns_JudgesTheColumnShapeOnLayoutBounds()
+    {
+        var strip = new OcrTextBlock("橫排標題", new System.Windows.Rect(35, 8, 54, 40))
+        {
+            // 54 / 40 = 1.35, inside the 1.4 bar; the detector's own 66 / 40 = 1.65 is outside it.
+            LayoutBounds = new System.Windows.Rect(35, 8, 66, 40),
+        };
+        var columns = new List<OcrTextBlock>
+        {
+            new OcrTextBlock("右", new System.Windows.Rect(80, 10, 10, 60)).AsDetected(),
+            strip,
+            new OcrTextBlock("左", new System.Windows.Rect(20, 10, 10, 60)).AsDetected(),
+        };
+
+        var result = OcrService.MergeVerticalColumns(columns);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(["右", "左"], result.Select(block => block.Text));
+    }
+
+    /// <summary>A merged column group carries layout metrics on, so nothing downstream sees a gap.</summary>
+    [Fact]
+    public void MergeVerticalColumns_CarriesLayoutMetricsOntoTheGroup()
+    {
+        var columns = new List<OcrTextBlock>
+        {
+            new OcrTextBlock("右", new System.Windows.Rect(80, 10, 10, 60)),
+            new OcrTextBlock("中", new System.Windows.Rect(68, 12, 10, 60)),
+        }.AsDetected();
+
+        var merged = Assert.Single(OcrService.MergeVerticalColumns(columns));
+
+        Assert.Equal(OcrLayoutScript.Cjk, merged.LayoutScript);
+        Assert.Equal(new System.Windows.Rect(68, 10, 22, 62), merged.LayoutBounds);
+        Assert.NotNull(merged.LayoutGlyphHeight);
     }
 
     private sealed class RecordingOcrEngine(params OcrTextBlock[] blocks) : IOcrEngine
