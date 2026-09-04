@@ -16,7 +16,10 @@ public record OcrTextBlock(
     // Mean per-character recognition confidence, 0–1. Reading the same unchanged text twice
     // gives two slightly different answers, and this is what says which to believe; null when
     // the engine reported no scores.
-    double? Confidence = null)
+    double? Confidence = null,
+    // Writing system of this block's own text, for the grouping geometry to reason about. Never
+    // derived from the source language the user picked — that is the whole point of it existing.
+    OcrLayoutScript LayoutScript = OcrLayoutScript.Unknown)
 {
     public IReadOnlyList<System.Windows.Rect> Lines => SourceLineBounds ?? [Bounds];
 }

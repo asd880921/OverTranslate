@@ -1103,23 +1103,14 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         if (text.Length == 0)
             return text;
 
-        if (text.Length >= 2 && IsHanIdeograph(text[0]) && !IsHanIdeograph(text[1]) && char.IsAsciiLetter(text[1]))
+        if (text.Length >= 2 && LayoutScriptDetection.IsHanIdeograph(text[0]) && !LayoutScriptDetection.IsHanIdeograph(text[1]) && char.IsAsciiLetter(text[1]))
             text = text[1..].TrimStart();
 
-        if (text.Length >= 2 && IsHanIdeograph(text[^1]) && !IsHanIdeograph(text[^2]) && char.IsAsciiLetter(text[^2]))
+        if (text.Length >= 2 && LayoutScriptDetection.IsHanIdeograph(text[^1]) && !LayoutScriptDetection.IsHanIdeograph(text[^2]) && char.IsAsciiLetter(text[^2]))
             text = text[..^1].TrimEnd();
 
         return text;
     }
-
-    private static bool IsHanIdeograph(char c) =>
-        c is >= '一' and <= '鿿' || // CJK Unified Ideographs
-        c is >= '㐀' and <= '䶿' || // Extension A
-        c is >= '豈' and <= '﫿';   // Compatibility Ideographs
-
-    private static bool IsKana(char c) =>
-        c is >= 'ぁ' and <= 'ヿ' || // Hiragana + Katakana
-        c is >= 'ㇰ' and <= 'ㇿ';   // Katakana Phonetic Extensions
 
     /// <summary>
     /// Chooses the layout path from one recognized block when the source language is automatic.
@@ -1128,7 +1119,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// remove the common one-character misreads found in English interfaces.
     /// </summary>
     internal static bool UsesCjkLayoutForText(string text) =>
-        text.Any(IsKana) || text.Count(IsHanIdeograph) >= 2;
+        text.Any(LayoutScriptDetection.IsKana) || text.Count(LayoutScriptDetection.IsHanIdeograph) >= 2;
 
     internal static List<OcrTextBlock> NormalizeAutomaticBlocks(List<OcrTextBlock> blocks)
     {
@@ -1155,7 +1146,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         return normalized;
     }
 
-    private static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool isCjk)
+    internal static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool isCjk)
         => blocks.Select(block => NormalizeBlock(block, isCjk)).ToList();
 
     private static OcrTextBlock NormalizeBlock(
@@ -1173,6 +1164,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // Latin value (2.0) rendered English ~1.7x larger than the Korean (CJK) path; 1.3 brings
         // it in line, leaving English just slightly larger than CJK.
         var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (isCjk ? 1.18 : 1.3);
+
+        // Per block, from its own text. Both callers reach here, so this is the single place the
+        // layout side is told what script it is looking at.
+        block = block with { LayoutScript = LayoutScriptDetection.For(block.Text) };
 
         var bounds = block.Bounds;
         var glyphHeight = bounds.Height * verticalScale;
