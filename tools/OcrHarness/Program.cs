@@ -10,6 +10,12 @@ using OverTranslate.Services.Realtime;
 // Usage: OcrHarness <imagePath> [imagePath...]   (PNG/JPG screenshots)
 // Prints the grouped blocks that would be sent to translation, then the EN->ZH-HANT result.
 
+// Everything this prints is the text off a capture, which is Japanese, Korean or Chinese as often
+// as not. Left alone, a redirected run encodes it in the console's code page and every CJK
+// character lands in the file as "?" — so a run kept for comparison holds the geometry and none of
+// the text it belongs to, which is the half that says whether a verdict was right.
+Console.OutputEncoding = System.Text.Encoding.UTF8;
+
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: OcrHarness <image.png> [more.png ...]");
@@ -1026,6 +1032,977 @@ if (args[0] == "--reject-audit")
     return 0;
 }
 
+// Where a change in the user's selection first becomes a change in the answer.
+//
+// The complaint this exists for is old and was always reported the same way: the same text on the
+// same screen reads differently depending on how much the user framed around it. It is now
+// reproducible to one pixel, so the useful thing is no longer to reproduce it but to say WHICH
+// LAYER moves first — the layers have different fixes, and one of them has none.
+//
+// So this walks the pipeline in order and reports each layer against the base ROI:
+//
+//   1 source pixels    the overlapping crop. Comes from one file, so it can only differ if the
+//                      experiment is cropping wrongly.
+//   2 preprocessing    the canvas AlignForDetector builds and the scale the library then applies.
+//                      Both are arithmetic on the ROI's own dimensions.
+//   3 detector input   the aligned bitmap's pixels over the overlap. If this moves, resizing moved
+//                      the glyphs; if it does not, the tensor differs only in how much blank
+//                      surrounds them, and a box that still changed changed inside the network.
+//   4 detector boxes   DetectBoxesOnly, ahead of recognition and every filter, so a box that was
+//                      never found can be told from a box that was found and read differently.
+//   5 recognition      text on the boxes that survived.
+//   6 grouping         how far all of the above is amplified by the thing that consumes it.
+//
+// Everything is compared in SOURCE IMAGE coordinates. Growing a ROI upwards moves every local
+// coordinate by the amount it grew, and comparing those directly reports the whole page as moved.
+if (args[0] == "--roi-stability")
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine(
+            "usage: --roi-stability <image> [--roi X,Y,W,H] [--grow up,down,left,right,all] [--steps 1,2,4,8,16,32]");
+        return 1;
+    }
+
+    var roiPath = args[1];
+    if (!File.Exists(roiPath)) { Console.Error.WriteLine($"(missing) {roiPath}"); return 1; }
+
+    using var roiSource = new Bitmap(roiPath);
+
+    // Defaults to a centre crop with room to grow on every side, so the mode says something on an
+    // image nobody has framed by hand yet.
+    var roiRect = new System.Drawing.Rectangle(
+        roiSource.Width / 8, roiSource.Height / 8,
+        roiSource.Width * 3 / 4, roiSource.Height * 3 / 4);
+
+    var roiFlag = Array.IndexOf(args, "--roi");
+    if (roiFlag >= 0 && roiFlag + 1 < args.Length)
+    {
+        var roiParts = args[roiFlag + 1].Split(',');
+        if (roiParts.Length != 4 || !roiParts.All(part => int.TryParse(part, out _)))
+        {
+            Console.Error.WriteLine("usage: --roi X,Y,W,H");
+            return 1;
+        }
+
+        roiRect = new System.Drawing.Rectangle(
+            int.Parse(roiParts[0]), int.Parse(roiParts[1]),
+            int.Parse(roiParts[2]), int.Parse(roiParts[3]));
+    }
+
+    var growFlag = Array.IndexOf(args, "--grow");
+    var growSides = growFlag >= 0 && growFlag + 1 < args.Length
+        ? args[growFlag + 1].Split(',').Select(side => side.Trim().ToLowerInvariant()).ToArray()
+        : new[] { "down" };
+
+    var roiStepFlag = Array.IndexOf(args, "--steps");
+    var roiSteps = roiStepFlag >= 0 && roiStepFlag + 1 < args.Length
+        ? args[roiStepFlag + 1].Split(',').Select(int.Parse).ToArray()
+        : new[] { 1, 2, 4, 8, 16, 32 };
+
+    using var roiEngine = new OnnxOcrEngine();
+
+    // The aligned bitmaps have to outlive the probe that made them — layer 3 compares one ROI's
+    // against another's — so they are held here and freed together at the end.
+    var RoiProbes = new List<RoiProbed>();
+
+    Console.WriteLine($"IMAGE: {roiPath}  ({roiSource.Width}x{roiSource.Height})");
+    Console.WriteLine($"BASE ROI: {roiRect.X},{roiRect.Y} {roiRect.Width}x{roiRect.Height}");
+    Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+    Console.WriteLine();
+
+    var roiBase = await RoiProbe(roiRect);
+    Console.WriteLine(
+        $"BASE  {roiBase.Roi.Width}x{roiBase.Roi.Height}  canvas={roiBase.Canvas}  scale={roiBase.Scale}  " +
+        $"detBoxes={roiBase.Boxes.Count}  blocks={roiBase.Blocks.Count}  groups={roiBase.Groups}");
+    Console.WriteLine(
+        $"      box scores: {string.Join(" ", roiBase.Boxes.Select(box => box.Score.ToString("0.000")).OrderBy(s => s))}");
+    Console.WriteLine($"      BoxScoreThresh={OnnxOcrEngine.ExportedThresholds.BoxScoreThresh}  BoxThresh={OnnxOcrEngine.ExportedThresholds.BoxThresh}");
+    Console.WriteLine();
+    Console.WriteLine(
+        "grow  step  size        canvas       scale         input   det =/+/-      dH% 50/90/max   rec =/x/0     groups");
+    Console.WriteLine(new string('-', 116));
+
+    foreach (var side in growSides)
+    {
+        foreach (var step in roiSteps)
+        {
+            var grown = RoiGrow(roiRect, side, step);
+            if (grown == roiRect)
+            {
+                Console.WriteLine($"{side,-5} +{step,-4} (no room left in the source image)");
+                continue;
+            }
+
+            RoiReport(side, step, roiBase, await RoiProbe(grown));
+        }
+    }
+
+    foreach (var probe in RoiProbes) probe.Aligned.Dispose();
+    return 0;
+
+    System.Drawing.Rectangle RoiGrow(System.Drawing.Rectangle rect, string side, int by)
+    {
+        var grow = side switch
+        {
+            "up" => (L: 0, T: by, R: 0, B: 0),
+            "down" => (L: 0, T: 0, R: 0, B: by),
+            "left" => (L: by, T: 0, R: 0, B: 0),
+            "right" => (L: 0, T: 0, R: by, B: 0),
+            _ => (L: by, T: by, R: by, B: by),
+        };
+
+        var x = Math.Max(0, rect.X - grow.L);
+        var y = Math.Max(0, rect.Y - grow.T);
+        var right = Math.Min(roiSource.Width, rect.Right + grow.R);
+        var bottom = Math.Min(roiSource.Height, rect.Bottom + grow.B);
+
+        return new System.Drawing.Rectangle(x, y, right - x, bottom - y);
+    }
+
+    async Task<RoiProbed> RoiProbe(System.Drawing.Rectangle rect)
+    {
+        using var crop = roiSource.Clone(rect, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+        var options = OnnxOcrEngine.CreateOptions(null);
+        using var sk = OnnxOcrEngine.ConvertToSkBitmap(crop);
+        var aligned = OnnxOcrEngine.AlignForDetector(sk, options.Padding);
+
+        // What the library does next: pad by options.Padding on all four sides, then scale that so
+        // its long side lands on the target. ImgResize is a CAP and not a target — measured, a
+        // 260x200 capture reads identically at ImgResize 512, 1024, 2048 and 4096 — so the target is
+        // the padded long side whenever that is the smaller of the two, and the scale is then 1.0
+        // and nothing is resampled at all. Asking GetScaleParam for ImgResize directly reports the
+        // upscale it would apply if it were a target, which is not what runs.
+        var paddedWidth = aligned.Width + 2 * options.Padding;
+        var paddedHeight = aligned.Height + 2 * options.Padding;
+        using var padded = new SkiaSharp.SKBitmap(paddedWidth, paddedHeight);
+        var scale = RapidOcrNet.ScaleParam.GetScaleParam(
+            padded, Math.Min(options.ImgResize, Math.Max(paddedWidth, paddedHeight)));
+
+        var boxes = roiEngine.DetectBoxesOnly(crop, harnessLanguage)
+            .Select(box => (
+                Bounds: new System.Windows.Rect(
+                    box.Bounds.X + rect.X, box.Bounds.Y + rect.Y, box.Bounds.Width, box.Bounds.Height),
+                box.Score))
+            .ToList();
+
+        var read = await roiEngine.RecognizeAsync(crop, harnessLanguage);
+        var groups = OcrTextBlockGrouper.Group(read).Count;
+
+        var blocks = read
+            .Select(block => (
+                Bounds: new System.Windows.Rect(
+                    block.Bounds.X + rect.X, block.Bounds.Y + rect.Y,
+                    block.Bounds.Width, block.Bounds.Height),
+                block.Text))
+            .ToList();
+
+        var probed = new RoiProbed(
+            rect,
+            $"{aligned.Width}x{aligned.Height}",
+            $"{scale.ScaleWidth:0.0000}x{scale.ScaleHeight:0.0000}",
+            aligned,
+            boxes,
+            blocks,
+            groups);
+
+        RoiProbes.Add(probed);
+        return probed;
+    }
+
+    void RoiReport(string side, int step, RoiProbed b, RoiProbed v)
+    {
+        var inputSame = RoiAlignedOverlapMatches(b, v);
+
+        var used = new bool[v.Boxes.Count];
+        var heightDeltas = new List<double>();
+        var matchedCount = 0;
+        var missingScores = new List<float>();
+        foreach (var (box, score) in b.Boxes)
+        {
+            var best = -1;
+            var bestIou = 0.35;
+            for (var i = 0; i < v.Boxes.Count; i++)
+            {
+                if (used[i]) continue;
+                var iou = RoiIou(box, v.Boxes[i].Bounds);
+                if (iou <= bestIou) continue;
+                bestIou = iou;
+                best = i;
+            }
+
+            if (best < 0) { missingScores.Add(score); continue; }
+            used[best] = true;
+            matchedCount++;
+            heightDeltas.Add(
+                Math.Abs(v.Boxes[best].Bounds.Height - box.Height) / Math.Max(1, box.Height) * 100);
+        }
+
+        heightDeltas.Sort();
+        var missing = b.Boxes.Count - matchedCount;
+        var added = v.Boxes.Count - matchedCount;
+
+        // Recognition keyed by position, because the question is whether the same place on the
+        // screen came back saying the same thing.
+        int same = 0, changed = 0, lost = 0;
+        foreach (var block in b.Blocks)
+        {
+            var hit = v.Blocks
+                .Select(other => (other, iou: RoiIou(block.Bounds, other.Bounds)))
+                .Where(pair => pair.iou > 0.35)
+                .OrderByDescending(pair => pair.iou)
+                .Select(pair => (string?)pair.other.Text)
+                .FirstOrDefault();
+
+            if (hit is null) lost++;
+            else if (hit.Trim() == block.Text.Trim()) same++;
+            else changed++;
+        }
+
+        Console.WriteLine(
+            $"{side,-5} +{step,-4} {v.Roi.Width}x{v.Roi.Height,-7} {v.Canvas,-12} {v.Scale,-13} " +
+            $"{(inputSame ? "same" : "MOVED"),-7} " +
+            $"{matchedCount}/{added}/{missing,-10} " +
+            $"{RoiPct(heightDeltas, 0.5),4:0.0}/{RoiPct(heightDeltas, 0.9),4:0.0}/{RoiPct(heightDeltas, 1.0),4:0.0}   " +
+            $"{same}/{changed}/{lost,-9} {v.Groups}{(v.Groups == b.Groups ? "" : "  <- changed")}" +
+            (missingScores.Count == 0
+                ? string.Empty
+                : $"   missing box scores: {string.Join(" ", missingScores.Select(s => s.ToString("0.000")))}"));
+    }
+
+    // Layer 3. Compares the bitmap actually handed to the detector over the region the two ROIs
+    // share, each read at its own local offset.
+    static bool RoiAlignedOverlapMatches(RoiProbed a, RoiProbed b)
+    {
+        var overlap = System.Drawing.Rectangle.Intersect(a.Roi, b.Roi);
+        if (overlap.Width <= 0 || overlap.Height <= 0) return false;
+
+        for (var y = 0; y < overlap.Height; y++)
+        {
+            for (var x = 0; x < overlap.Width; x++)
+            {
+                if (a.Aligned.GetPixel(overlap.X - a.Roi.X + x, overlap.Y - a.Roi.Y + y) !=
+                    b.Aligned.GetPixel(overlap.X - b.Roi.X + x, overlap.Y - b.Roi.Y + y))
+                    return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+// Candidate 1, measured but not shipped: separate what the user framed from what the detector is
+// shown, and derive the second by snapping the first to a grid IN SOURCE IMAGE COORDINATES.
+//
+//   Logical ROI    what the user dragged. Still what the answer is about.
+//   Analysis ROI   left/top snapped DOWN to a multiple of the grid, right/bottom snapped UP.
+//
+// The point is not that the canvas comes out a round size — padding a capture to a fixed canvas
+// does that too, and it does not help, because two selections of different sizes still hold
+// different pixels. Snapping in ABSOLUTE coordinates is different in kind: two Logical ROIs that
+// land inside the same grid cells produce the SAME Analysis ROI, so the crop is the same crop, and
+// the detector cannot tell them apart at all. What --roi-stability found — that everything up to
+// the detector is already identical and the boxes move anyway — is exactly the failure this shape
+// is meant to sidestep, by making the whole input identical rather than only the overlap.
+//
+// So the two questions this answers are:
+//
+//   1 while the Logical ROI has not crossed a grid line, is the answer bit-for-bit stable?
+//   2 what does it cost — how often is a boundary crossed anyway, how big is the jump when it is,
+//     and what does filtering the results back to the Logical ROI do to them?
+//
+// Question 2 is the one that decides whether this is worth shipping, because a grid does not remove
+// the instability. It removes most of the OPPORTUNITIES for it, and enlarges what happens when one
+// arrives — a crossing changes the input by a whole cell rather than by a pixel.
+if (args[0] == "--roi-snap")
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine(
+            "usage: --roi-snap <image> [--roi X,Y,W,H] [--grid 32,64,128] [--grow down,right,all] [--steps 1,2,4,...]");
+        return 1;
+    }
+
+    var snapPath = args[1];
+    if (!File.Exists(snapPath)) { Console.Error.WriteLine($"(missing) {snapPath}"); return 1; }
+
+    using var snapSource = new Bitmap(snapPath);
+
+    var snapRoi = new System.Drawing.Rectangle(
+        snapSource.Width / 8, snapSource.Height / 8,
+        snapSource.Width * 3 / 4, snapSource.Height * 3 / 4);
+
+    var snapRoiFlag = Array.IndexOf(args, "--roi");
+    if (snapRoiFlag >= 0 && snapRoiFlag + 1 < args.Length)
+    {
+        var parts = args[snapRoiFlag + 1].Split(',');
+        if (parts.Length != 4 || !parts.All(part => int.TryParse(part, out _)))
+        {
+            Console.Error.WriteLine("usage: --roi X,Y,W,H");
+            return 1;
+        }
+
+        snapRoi = new System.Drawing.Rectangle(
+            int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]), int.Parse(parts[3]));
+    }
+
+    var gridFlag = Array.IndexOf(args, "--grid");
+    var snapGrids = gridFlag >= 0 && gridFlag + 1 < args.Length
+        ? args[gridFlag + 1].Split(',').Select(int.Parse).ToArray()
+        : new[] { 32, 64, 128 };
+
+    var snapGrowFlag = Array.IndexOf(args, "--grow");
+    var snapSides = snapGrowFlag >= 0 && snapGrowFlag + 1 < args.Length
+        ? args[snapGrowFlag + 1].Split(',').Select(side => side.Trim().ToLowerInvariant()).ToArray()
+        : new[] { "down", "right", "all" };
+
+    var snapStepFlag = Array.IndexOf(args, "--steps");
+    var snapSteps = snapStepFlag >= 0 && snapStepFlag + 1 < args.Length
+        ? args[snapStepFlag + 1].Split(',').Select(int.Parse).ToArray()
+        : new[] { 1, 2, 4, 8, 16, 32, 64 };
+
+    using var snapEngine = new OnnxOcrEngine();
+
+    // Held rather than disposed per probe: the byte-for-byte comparison needs the base's bitmap
+    // alive while every variant is measured against it.
+    var SnapProbes = new List<SnapProbed>();
+
+    Console.WriteLine($"IMAGE: {snapPath}  ({snapSource.Width}x{snapSource.Height})");
+    Console.WriteLine($"LOGICAL ROI: {snapRoi.X},{snapRoi.Y} {snapRoi.Width}x{snapRoi.Height}");
+    Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+
+    foreach (var grid in snapGrids)
+    {
+        var baseAnalysis = SnapTo(snapRoi, grid);
+        var snapBase = await SnapProbe(snapRoi, baseAnalysis);
+
+        Console.WriteLine();
+        Console.WriteLine($"=== grid {grid} ===");
+        Console.WriteLine(
+            $"BASE  logical={Fmt(snapRoi)}  analysis={Fmt(baseAnalysis)}  " +
+            $"detBoxes={snapBase.Boxes.Count}  groups={snapBase.All.Count}  " +
+            $"kept={snapBase.Kept.Count}  straddling={snapBase.Straddling}");
+        Console.WriteLine(
+            "grow  step  logical        analysis         cell   crop   det =/+/-  dH% 50/90/max  ocr    kept  rec =/x/0  strad");
+        Console.WriteLine(new string('-', 124));
+
+        var crossings = 0;
+        var totalSteps = 0;
+
+        foreach (var side in snapSides)
+        {
+            foreach (var step in snapSteps)
+            {
+                var logical = SnapGrow(snapRoi, side, step);
+                if (logical == snapRoi) continue;
+
+                totalSteps++;
+                var analysis = SnapTo(logical, grid);
+                var crossed = analysis != baseAnalysis;
+                if (crossed) crossings++;
+
+                var probe = await SnapProbe(logical, analysis);
+                SnapReport(side, step, grid, snapBase, probe, crossed);
+            }
+        }
+
+        Console.WriteLine(
+            $"      grid {grid}: {crossings} of {totalSteps} steps crossed a grid line " +
+            $"({(totalSteps == 0 ? 0 : 100.0 * crossings / totalSteps):0.0}%)");
+    }
+
+    foreach (var probe in SnapProbes) probe.Aligned.Dispose();
+    return 0;
+
+    static string Fmt(System.Drawing.Rectangle r) => $"{r.X},{r.Y} {r.Width}x{r.Height}";
+
+    // Outward on every side, so the Analysis ROI always contains the Logical one.
+    System.Drawing.Rectangle SnapTo(System.Drawing.Rectangle rect, int grid)
+    {
+        var x = rect.X / grid * grid;
+        var y = rect.Y / grid * grid;
+        var right = Math.Min(snapSource.Width, (rect.Right + grid - 1) / grid * grid);
+        var bottom = Math.Min(snapSource.Height, (rect.Bottom + grid - 1) / grid * grid);
+
+        return new System.Drawing.Rectangle(x, y, right - x, bottom - y);
+    }
+
+    System.Drawing.Rectangle SnapGrow(System.Drawing.Rectangle rect, string side, int by)
+    {
+        var grow = side switch
+        {
+            "up" => (L: 0, T: by, R: 0, B: 0),
+            "down" => (L: 0, T: 0, R: 0, B: by),
+            "left" => (L: by, T: 0, R: 0, B: 0),
+            "right" => (L: 0, T: 0, R: by, B: 0),
+            _ => (L: by, T: by, R: by, B: by),
+        };
+
+        var x = Math.Max(0, rect.X - grow.L);
+        var y = Math.Max(0, rect.Y - grow.T);
+        var right = Math.Min(snapSource.Width, rect.Right + grow.R);
+        var bottom = Math.Min(snapSource.Height, rect.Bottom + grow.B);
+
+        return new System.Drawing.Rectangle(x, y, right - x, bottom - y);
+    }
+
+    async Task<SnapProbed> SnapProbe(System.Drawing.Rectangle logical, System.Drawing.Rectangle analysis)
+    {
+        using var crop = snapSource.Clone(analysis, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+        var options = OnnxOcrEngine.CreateOptions(null);
+        using var sk = OnnxOcrEngine.ConvertToSkBitmap(crop);
+        var aligned = OnnxOcrEngine.AlignForDetector(sk, options.Padding);
+
+        var read = await snapEngine.RecognizeAsync(crop, harnessLanguage);
+
+        // Grouping runs on the whole Analysis ROI, which is the honest way round: it is what the
+        // engine returned, and the capture-wide rules (SameLineGapThreshold, RepeatedRowLayout) are
+        // supposed to see a whole layout. It is also where this design's own risk lives — those
+        // rules now see content the user did not frame. Filtering first would trade that for the
+        // opposite problem, a layout with holes in it.
+        var grouped = OcrTextBlockGrouper.Group(read);
+
+        var all = grouped
+            .Select(block => (
+                Bounds: new System.Windows.Rect(
+                    block.Bounds.X + analysis.X, block.Bounds.Y + analysis.Y,
+                    block.Bounds.Width, block.Bounds.Height),
+                block.Text))
+            .ToList();
+
+        // Filter back to what the user framed. Centre-inside rather than intersects-at-all or
+        // fully-inside: a box the user framed the middle of is a box they meant, one they clipped
+        // the edge of is usually the neighbour's, and "fully inside" throws away every line the
+        // selection deliberately cut through. The two rejected rules are counted as Straddling so
+        // the cost of the choice is visible rather than assumed.
+        var logicalRect = new System.Windows.Rect(
+            logical.X, logical.Y, logical.Width, logical.Height);
+
+        var kept = all
+            .Where(block => logicalRect.Contains(
+                new System.Windows.Point(
+                    block.Bounds.X + block.Bounds.Width / 2,
+                    block.Bounds.Y + block.Bounds.Height / 2)))
+            .ToList();
+
+        var straddling = all.Count(block =>
+            block.Bounds.IntersectsWith(logicalRect) && !logicalRect.Contains(block.Bounds));
+
+        // The detector's own boxes too, so the OCR layer can be judged before grouping and before
+        // the filter — the three move for different reasons and reporting one number hides that.
+        var boxes = snapEngine.DetectBoxesOnly(crop, harnessLanguage)
+            .Select(box => new System.Windows.Rect(
+                box.Bounds.X + analysis.X, box.Bounds.Y + analysis.Y,
+                box.Bounds.Width, box.Bounds.Height))
+            .ToList();
+
+        var probed = new SnapProbed(logical, analysis, aligned, boxes, all, kept, straddling);
+        SnapProbes.Add(probed);
+        return probed;
+    }
+
+    void SnapReport(string side, int step, int grid, SnapProbed b, SnapProbed v, bool crossed)
+    {
+        // The claim under test: while no grid line has been crossed, the Analysis ROI is the same
+        // rectangle of the same image, so the bitmap handed to the detector must be identical in
+        // full — not merely over an overlap, which is all --roi-stability could ask.
+        var cropIdentical = !crossed && SnapAlignedIdentical(b.Aligned, v.Aligned);
+
+        // Three layers, kept apart on purpose, because they move for different reasons:
+        //
+        //   det    the detector's boxes over the whole Analysis ROI. Nothing of the user's
+        //          selection reaches this, so it is the OCR's own stability.
+        //   ocr    the grouped text over the whole Analysis ROI, likewise.
+        //   kept   what survives filtering back to the Logical ROI. This one moves whenever the
+        //          selection edge moves across a block, WHICH IS CORRECT — the user really did
+        //          include something they had not before. Reporting it together with the two above
+        //          is what made the first draft of this table look like instability when the OCR
+        //          had not moved at all.
+        var detSame = b.Boxes.Count == v.Boxes.Count &&
+                      b.Boxes.Zip(v.Boxes).All(pair => pair.First == pair.Second);
+        var ocrSame = b.All.Count == v.All.Count &&
+                      b.All.Zip(v.All).All(pair =>
+                          pair.First.Bounds == pair.Second.Bounds &&
+                          pair.First.Text == pair.Second.Text);
+
+        var heightDeltas = new List<double>();
+        var used = new bool[v.Boxes.Count];
+        var matchedBoxes = 0;
+        foreach (var box in b.Boxes)
+        {
+            var best = -1;
+            var bestIou = 0.35;
+            for (var i = 0; i < v.Boxes.Count; i++)
+            {
+                if (used[i]) continue;
+                var iou = RoiIou(box, v.Boxes[i]);
+                if (iou <= bestIou) continue;
+                bestIou = iou;
+                best = i;
+            }
+
+            if (best < 0) continue;
+            used[best] = true;
+            matchedBoxes++;
+            heightDeltas.Add(
+                Math.Abs(v.Boxes[best].Height - box.Height) / Math.Max(1, box.Height) * 100);
+        }
+
+        heightDeltas.Sort();
+
+        int same = 0, changed = 0, lost = 0;
+        foreach (var block in b.Kept)
+        {
+            var hit = v.Kept
+                .Select(other => (other, iou: RoiIou(block.Bounds, other.Bounds)))
+                .Where(pair => pair.iou > 0.35)
+                .OrderByDescending(pair => pair.iou)
+                .Select(pair => (string?)pair.other.Text)
+                .FirstOrDefault();
+
+            if (hit is null) lost++;
+            else if (hit.Trim() == block.Text.Trim()) same++;
+            else changed++;
+        }
+
+        Console.WriteLine(
+            $"{side,-5} +{step,-4} {Fmt(v.Logical),-14} {Fmt(v.Analysis),-16} " +
+            $"{(crossed ? "CROSS" : "same "),-6} {(crossed ? "-" : cropIdentical ? "IDENT" : "DIFF!"),-6} " +
+            $"{(detSame ? "same" : $"{matchedBoxes}/{v.Boxes.Count - matchedBoxes}/{b.Boxes.Count - matchedBoxes}"),-10} " +
+            $"{RoiPct(heightDeltas, 0.5),4:0.0}/{RoiPct(heightDeltas, 0.9),4:0.0}/{RoiPct(heightDeltas, 1.0),4:0.0}  " +
+            $"{(ocrSame ? "same" : "MOVED"),-6} " +
+            $"{v.Kept.Count,-5} {same}/{changed}/{lost,-8} {v.Straddling}");
+    }
+
+    static bool SnapAlignedIdentical(SkiaSharp.SKBitmap a, SkiaSharp.SKBitmap b)
+    {
+        if (a.Width != b.Width || a.Height != b.Height) return false;
+        return a.GetPixelSpan().SequenceEqual(b.GetPixelSpan());
+    }
+}
+
+// Candidate 2, measured but not shipped: fix what the DETECTOR is shown to the whole source image,
+// and let the user's selection decide only which of its boxes go any further.
+//
+//   Logical ROI    what the user dragged. Still what the answer is about.
+//   Analysis frame the whole source image, every time. It does not move when the selection does.
+//
+// Candidate 1 (--roi-snap) made the detector's input identical only while the selection stayed
+// inside one grid cell, and paid for it three ways: a bigger jump when a line was crossed, text
+// truncated at the Analysis ROI's edge, and unrelated content inside it changing how the rest was
+// grouped. This shape has no cell to cross — the frame is the same frame for every selection on the
+// image — and nothing is truncated, because nothing is cropped. The selection is applied AFTER
+// detection, so recognition and grouping still see only what the user framed, which is what keeps
+// the unrelated content out.
+//
+// Deliberately NOT what this measures: recognising the whole screen. Only detection is full-frame.
+//
+// The risk it has instead is resolution. ImgResize is a cap on the detector's long side, so a small
+// ROI is usually handed over at 1.0 while a whole 4K screen cannot be — and a box found on a
+// downscaled page is a different box. That is question B, and it is the one that decides this.
+//
+//   A  stability: does the full-frame arm stop moving when the selection grows?
+//   B  cost:      what does the same ROI lose against today's crop-the-ROI-and-detect baseline,
+//                 and what does it cost in time and memory?
+if (args[0] == "--roi-fullframe")
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine(
+            "usage: --roi-fullframe <image> [--roi X,Y,W,H] [--grow up,down,left,right,all] [--steps 1,2,4,8,16,32]");
+        return 1;
+    }
+
+    var ffPath = args[1];
+    if (!File.Exists(ffPath)) { Console.Error.WriteLine($"(missing) {ffPath}"); return 1; }
+
+    using var ffSource = new Bitmap(ffPath);
+
+    var ffRect = new System.Drawing.Rectangle(
+        ffSource.Width / 8, ffSource.Height / 8,
+        ffSource.Width * 3 / 4, ffSource.Height * 3 / 4);
+
+    var ffRoiFlag = Array.IndexOf(args, "--roi");
+    if (ffRoiFlag >= 0 && ffRoiFlag + 1 < args.Length)
+    {
+        var parts = args[ffRoiFlag + 1].Split(',');
+        if (parts.Length != 4 || !parts.All(part => int.TryParse(part, out _)))
+        {
+            Console.Error.WriteLine("usage: --roi X,Y,W,H");
+            return 1;
+        }
+
+        ffRect = new System.Drawing.Rectangle(
+            int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]), int.Parse(parts[3]));
+    }
+
+    var ffGrowFlag = Array.IndexOf(args, "--grow");
+    var ffGrowSides = ffGrowFlag >= 0 && ffGrowFlag + 1 < args.Length
+        ? args[ffGrowFlag + 1].Split(',').Select(side => side.Trim().ToLowerInvariant()).ToArray()
+        : new[] { "down", "right", "all" };
+
+    // The corpus has no screen wide enough for ImgResize to shrink, and that shrink is the whole of
+    // question B's risk. This forces the full-frame arm's detection to a smaller cap — 1024 on a
+    // 1900px screen is the 0.53 a 4K screen would get — WITHOUT touching the baseline arm, which is
+    // what makes the two comparable.
+    var ffSizeFlag = Array.IndexOf(args, "--ff-size");
+    int? ffSize = ffSizeFlag >= 0 && ffSizeFlag + 1 < args.Length
+        ? int.Parse(args[ffSizeFlag + 1])
+        : null;
+
+    var ffExplain = args.Contains("--explain");
+
+    var ffStepFlag = Array.IndexOf(args, "--steps");
+    var ffSteps = ffStepFlag >= 0 && ffStepFlag + 1 < args.Length
+        ? args[ffStepFlag + 1].Split(',').Select(int.Parse).ToArray()
+        : new[] { 1, 2, 4, 8, 16, 32 };
+
+    using var ffEngine = new OnnxOcrEngine();
+
+    Console.WriteLine($"IMAGE: {ffPath}  ({ffSource.Width}x{ffSource.Height})");
+    Console.WriteLine($"BASE ROI: {ffRect.X},{ffRect.Y} {ffRect.Width}x{ffRect.Height}");
+    Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+    Console.WriteLine();
+
+    // Nothing below means anything unless recognition over supplied boxes is the same recognition
+    // the app runs. Checked here rather than asserted in a comment: the detector's own boxes on the
+    // ROI crop, read back through the seam, against what RecognizeAsync makes of the same crop.
+    using (var seamCrop = ffSource.Clone(ffRect, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+    {
+        using var seamSession = ffEngine.BeginDetection(seamCrop, harnessLanguage);
+        var viaSeam = seamSession.Recognize(Enumerable.Range(0, seamSession.Boxes.Count).ToList());
+        var viaApp = await ffEngine.RecognizeAsync(seamCrop, harnessLanguage);
+
+        var seamText = string.Join(" | ", viaSeam.Select(block => block.Text));
+        var appText = string.Join(" | ", viaApp.Select(block => block.Text));
+        Console.WriteLine(
+            $"SEAM CHECK  boxes={seamSession.Boxes.Count}  seam={viaSeam.Count} app={viaApp.Count}  " +
+            (seamText == appText ? "text IDENTICAL" : "text DIFFERS"));
+        if (seamText != appText)
+        {
+            Console.WriteLine($"   seam: {seamText}");
+            Console.WriteLine($"   app : {appText}");
+        }
+
+        Console.WriteLine();
+    }
+
+    // The one detection the whole mode is built on. Timed and measured alone, because in a shipped
+    // version of this it would run once per capture no matter how the selection then moved.
+    GC.Collect();
+    GC.WaitForPendingFinalizers();
+    var ffBeforeMemory = Environment.WorkingSet;
+    var ffDetectWatch = System.Diagnostics.Stopwatch.StartNew();
+    using var ffSession = ffEngine.BeginDetection(ffSource, harnessLanguage, ffSize);
+    var ffAllBoxes = ffSession.Boxes;
+    ffDetectWatch.Stop();
+    var ffAfterMemory = Environment.WorkingSet;
+
+    var ffOptions = OnnxOcrEngine.CreateOptions(ffSize);
+    using (var ffSk = OnnxOcrEngine.ConvertToSkBitmap(ffSource))
+    using (var ffAligned = OnnxOcrEngine.AlignForDetector(ffSk, ffOptions.Padding))
+    {
+        // The same reading of ImgResize as --roi-stability's: a cap on the padded long side, not a
+        // target, so the scale is 1.0 whenever the page already fits. This is the line that says
+        // whether question B has anything to answer on this image.
+        var paddedWidth = ffAligned.Width + 2 * ffOptions.Padding;
+        var paddedHeight = ffAligned.Height + 2 * ffOptions.Padding;
+        using var ffPadded = new SkiaSharp.SKBitmap(paddedWidth, paddedHeight);
+        var ffScale = RapidOcrNet.ScaleParam.GetScaleParam(
+            ffPadded, Math.Min(ffOptions.ImgResize, Math.Max(paddedWidth, paddedHeight)));
+
+        Console.WriteLine(
+            $"FULL FRAME DETECT  canvas={ffAligned.Width}x{ffAligned.Height}  " +
+            $"scale={ffScale.ScaleWidth:0.0000}x{ffScale.ScaleHeight:0.0000}  boxes={ffAllBoxes.Count}  " +
+            $"{ffDetectWatch.ElapsedMilliseconds}ms  workingSet {(ffAfterMemory - ffBeforeMemory) / 1024 / 1024:+0;-0;0}MB");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("A. STABILITY — the full-frame arm against its own base ROI");
+    Console.WriteLine(
+        "grow  step  size        kept  strad  det =/+/-      dH% 50/90/max   rec =/x/0     groups");
+    Console.WriteLine(new string('-', 104));
+
+    var ffBase = await FullFrameProbe(ffRect);
+    Console.WriteLine(
+        $"BASE  -     {ffBase.Roi.Width}x{ffBase.Roi.Height,-7} {ffBase.Boxes.Count,-5} {ffBase.Straddling,-6} " +
+        $"-              -               -             {ffBase.Groups}");
+
+    var ffVariants = new List<(string Side, int Step, FullFrameProbed Probe)>();
+    foreach (var side in ffGrowSides)
+    {
+        foreach (var step in ffSteps)
+        {
+            var grown = FullFrameGrow(ffRect, side, step);
+            if (grown == ffRect)
+            {
+                Console.WriteLine($"{side,-5} +{step,-4} (no room left in the source image)");
+                continue;
+            }
+
+            var probe = await FullFrameProbe(grown);
+            ffVariants.Add((side, step, probe));
+            FullFrameStabilityReport(side, step, ffBase, probe);
+        }
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("B. COST & ACCURACY — the full-frame arm against today's crop-the-ROI baseline");
+    Console.WriteLine("   det ff/roi is how many boxes each arm has INSIDE the logical ROI; the rest");
+    Console.WriteLine("   compares the full-frame arm's answer to the baseline's on the same ROI.");
+    Console.WriteLine(
+        "roi                canvas(roi)  scale(roi)    det ff/roi  =/+/-        dH% 50/90/max   rec =/x/0     chars ff/roi   ff rec ms  roi det+rec ms");
+    Console.WriteLine(new string('-', 152));
+
+    FullFrameCostReport(ffBase);
+    foreach (var (_, _, probe) in ffVariants) FullFrameCostReport(probe);
+
+    return 0;
+
+    System.Drawing.Rectangle FullFrameGrow(System.Drawing.Rectangle rect, string side, int by)
+    {
+        var grow = side switch
+        {
+            "up" => (L: 0, T: by, R: 0, B: 0),
+            "down" => (L: 0, T: 0, R: 0, B: by),
+            "left" => (L: by, T: 0, R: 0, B: 0),
+            "right" => (L: 0, T: 0, R: by, B: 0),
+            _ => (L: by, T: by, R: by, B: by),
+        };
+
+        var x = Math.Max(0, rect.X - grow.L);
+        var y = Math.Max(0, rect.Y - grow.T);
+        var right = Math.Min(ffSource.Width, rect.Right + grow.R);
+        var bottom = Math.Min(ffSource.Height, rect.Bottom + grow.B);
+
+        return new System.Drawing.Rectangle(x, y, right - x, bottom - y);
+    }
+
+    // The candidate itself: filter the one full-frame detection down to the selection, then read and
+    // group only what is left. Everything is already in source-image coordinates, because the
+    // detection was run on the source image.
+    async Task<FullFrameProbed> FullFrameProbe(System.Drawing.Rectangle logical)
+    {
+        var logicalRect = new System.Windows.Rect(
+            logical.X, logical.Y, logical.Width, logical.Height);
+
+        // Centre-inside, the same rule --roi-snap filters with, so the two candidates' numbers can
+        // be read against each other.
+        var kept = Enumerable.Range(0, ffAllBoxes.Count)
+            .Where(index => logicalRect.Contains(
+                new System.Windows.Point(
+                    ffAllBoxes[index].Bounds.X + ffAllBoxes[index].Bounds.Width / 2,
+                    ffAllBoxes[index].Bounds.Y + ffAllBoxes[index].Bounds.Height / 2)))
+            .ToList();
+
+        // Boxes the selection cuts through. Under this shape they arrive WHOLE — the detector saw
+        // the entire line — which is exactly what --roi-snap could not do, so the count is here to
+        // show how often that difference is in play rather than to flag a problem.
+        var straddling = ffAllBoxes.Count(box =>
+            box.Bounds.IntersectsWith(logicalRect) && !logicalRect.Contains(box.Bounds));
+
+        var recognitionWatch = System.Diagnostics.Stopwatch.StartNew();
+        var read = ffSession.Recognize(kept);
+        recognitionWatch.Stop();
+
+        var groups = OcrTextBlockGrouper.Group(read).Count;
+
+        // Today's behaviour, for the same selection: crop, detect on the crop, recognise, group.
+        using var crop = ffSource.Clone(logical, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        var baselineWatch = System.Diagnostics.Stopwatch.StartNew();
+        var baselineBoxes = ffEngine.DetectBoxesOnly(crop, harnessLanguage)
+            .Select(box => new System.Windows.Rect(
+                box.Bounds.X + logical.X, box.Bounds.Y + logical.Y, box.Bounds.Width, box.Bounds.Height))
+            .ToList();
+        var baselineRead = await ffEngine.RecognizeAsync(crop, harnessLanguage);
+        baselineWatch.Stop();
+
+        var baselineBlocks = baselineRead
+            .Select(block => (
+                Bounds: new System.Windows.Rect(
+                    block.Bounds.X + logical.X, block.Bounds.Y + logical.Y,
+                    block.Bounds.Width, block.Bounds.Height),
+                block.Text))
+            .ToList();
+
+        var baselineOptions = OnnxOcrEngine.CreateOptions(null);
+        using var baselineSk = OnnxOcrEngine.ConvertToSkBitmap(crop);
+        using var baselineAligned = OnnxOcrEngine.AlignForDetector(baselineSk, baselineOptions.Padding);
+        var baselinePaddedWidth = baselineAligned.Width + 2 * baselineOptions.Padding;
+        var baselinePaddedHeight = baselineAligned.Height + 2 * baselineOptions.Padding;
+        using var baselinePadded = new SkiaSharp.SKBitmap(baselinePaddedWidth, baselinePaddedHeight);
+        var baselineScale = RapidOcrNet.ScaleParam.GetScaleParam(
+            baselinePadded,
+            Math.Min(baselineOptions.ImgResize, Math.Max(baselinePaddedWidth, baselinePaddedHeight)));
+
+        return new FullFrameProbed(
+            logical,
+            kept.Select(index => ffAllBoxes[index].Bounds).ToList(),
+            straddling,
+            read.Select(block => (block.Bounds, block.Text)).ToList(),
+            groups,
+            recognitionWatch.ElapsedMilliseconds,
+            baselineBoxes,
+            baselineBlocks,
+            baselineWatch.ElapsedMilliseconds,
+            $"{baselineAligned.Width}x{baselineAligned.Height}",
+            $"{baselineScale.ScaleWidth:0.0000}x{baselineScale.ScaleHeight:0.0000}");
+    }
+
+    void FullFrameStabilityReport(string side, int step, FullFrameProbed b, FullFrameProbed v)
+    {
+        var (matched, added, missing, heightDeltas) = FullFrameMatchBoxes(
+            b.Boxes,
+            v.Boxes);
+        var (same, changed, lost) = FullFrameMatchText(b.Blocks, v.Blocks);
+
+        Console.WriteLine(
+            $"{side,-5} +{step,-4} {v.Roi.Width}x{v.Roi.Height,-7} {v.Boxes.Count,-5} {v.Straddling,-6} " +
+            $"{matched}/{added}/{missing,-10} " +
+            $"{RoiPct(heightDeltas, 0.5),4:0.0}/{RoiPct(heightDeltas, 0.9),4:0.0}/{RoiPct(heightDeltas, 1.0),4:0.0}   " +
+            $"{same}/{changed}/{lost,-9} {v.Groups}{(v.Groups == b.Groups ? "" : "  <- changed")}");
+    }
+
+    void FullFrameCostReport(FullFrameProbed p)
+    {
+        // The baseline's boxes are already only inside the ROI — it never saw anything else — so the
+        // comparison is the full-frame arm's kept boxes against all of them.
+        var (matched, added, missing, heightDeltas) = FullFrameMatchBoxes(
+            p.BaselineBoxes,
+            p.Boxes);
+        var (same, changed, lost) = FullFrameMatchText(p.BaselineBlocks, p.Blocks);
+
+        Console.WriteLine(
+            $"{p.Roi.X},{p.Roi.Y} {p.Roi.Width}x{p.Roi.Height,-8} {p.BaselineCanvas,-12} {p.BaselineScale,-13} " +
+            $"{p.Boxes.Count}/{p.BaselineBoxes.Count,-9} " +
+            $"{matched}/{added}/{missing,-11} " +
+            $"{RoiPct(heightDeltas, 0.5),4:0.0}/{RoiPct(heightDeltas, 0.9),4:0.0}/{RoiPct(heightDeltas, 1.0),4:0.0}   " +
+            $"{same}/{changed}/{lost,-9} " +
+            $"{FullFrameChars(p.Blocks)}/{FullFrameChars(p.BaselineBlocks),-9} " +
+            $"{p.RecognitionMs,-10} {p.BaselineMs}");
+
+        if (!ffExplain) return;
+
+        // Every block the two arms disagree about, so the counts above can be read rather than
+        // trusted. Baseline first, because it is what ships today.
+        foreach (var block in p.BaselineBlocks)
+        {
+            var hit = p.Blocks
+                .Select(other => (other, iou: RoiIou(block.Bounds, other.Bounds)))
+                .Where(pair => pair.iou > 0.35)
+                .OrderByDescending(pair => pair.iou)
+                .Select(pair => (string?)pair.other.Text)
+                .FirstOrDefault();
+
+            if (hit is null)
+            {
+                // Not just that the baseline had it and the full-frame arm did not, but WHY. Three
+                // different things look identical in a "roi only" line and want different answers:
+                // the selection edge cut across the line's width, it cut through the line's height
+                // (every glyph sliced), or the full frame merged the fragment into a longer line
+                // whose centre then fell outside. The box that overlaps it, and where its centre is,
+                // says which.
+                var overlapping = ffAllBoxes
+                    .Select((box, index) => (box, index, iou: RoiIou(block.Bounds, box.Bounds)))
+                    .Where(candidate => candidate.box.Bounds.IntersectsWith(block.Bounds))
+                    .OrderByDescending(candidate => candidate.iou)
+                    .FirstOrDefault();
+
+                var logical = new System.Windows.Rect(p.Roi.X, p.Roi.Y, p.Roi.Width, p.Roi.Height);
+                var why = "no full-frame box overlaps it";
+                if (overlapping.box.Bounds.Width > 0)
+                {
+                    var ffBox = overlapping.box.Bounds;
+                    var centre = new System.Windows.Point(
+                        ffBox.X + ffBox.Width / 2, ffBox.Y + ffBox.Height / 2);
+                    var horizontallyOut = centre.X < logical.X || centre.X > logical.Right;
+                    var verticallyOut = centre.Y < logical.Y || centre.Y > logical.Bottom;
+                    why =
+                        $"ff box {ffBox.X:0},{ffBox.Y:0} {ffBox.Width:0}x{ffBox.Height:0} " +
+                        $"centre {centre.X:0},{centre.Y:0} out={(horizontallyOut ? "L/R" : "")}{(verticallyOut ? "T/B" : "")}" +
+                        $" wider={(ffBox.Width > block.Bounds.Width * 1.2 ? "yes" : "no")}";
+                }
+
+                Console.WriteLine(
+                    $"      roi only : {block.Text}");
+                Console.WriteLine(
+                    $"                 roi box {block.Bounds.X:0},{block.Bounds.Y:0} " +
+                    $"{block.Bounds.Width:0}x{block.Bounds.Height:0}  |  {why}");
+            }
+            else if (hit.Trim() != block.Text.Trim())
+            {
+                Console.WriteLine($"      roi      : {block.Text}");
+                Console.WriteLine($"      fullframe: {hit}");
+            }
+        }
+
+        foreach (var block in p.Blocks)
+        {
+            var matchedByBaseline = p.BaselineBlocks.Any(other => RoiIou(block.Bounds, other.Bounds) > 0.35);
+            if (!matchedByBaseline) Console.WriteLine($"      ff only  : {block.Text}");
+        }
+    }
+
+    static int FullFrameChars(IReadOnlyList<(System.Windows.Rect Bounds, string Text)> blocks) =>
+        blocks.Sum(block => block.Text.Count(character => !char.IsWhiteSpace(character)));
+
+    // Greedy IoU pairing, the same 0.35 the other two ROI modes use, so "matched" means the same
+    // thing in all three tables.
+    static (int Matched, int Added, int Missing, List<double> HeightDeltas) FullFrameMatchBoxes(
+        IReadOnlyList<System.Windows.Rect> reference, IReadOnlyList<System.Windows.Rect> candidate)
+    {
+        var used = new bool[candidate.Count];
+        var heightDeltas = new List<double>();
+        var matched = 0;
+
+        foreach (var box in reference)
+        {
+            var best = -1;
+            var bestIou = 0.35;
+            for (var i = 0; i < candidate.Count; i++)
+            {
+                if (used[i]) continue;
+                var iou = RoiIou(box, candidate[i]);
+                if (iou <= bestIou) continue;
+                bestIou = iou;
+                best = i;
+            }
+
+            if (best < 0) continue;
+            used[best] = true;
+            matched++;
+            heightDeltas.Add(Math.Abs(candidate[best].Height - box.Height) / Math.Max(1, box.Height) * 100);
+        }
+
+        heightDeltas.Sort();
+        return (matched, candidate.Count - matched, reference.Count - matched, heightDeltas);
+    }
+
+    static (int Same, int Changed, int Lost) FullFrameMatchText(
+        IReadOnlyList<(System.Windows.Rect Bounds, string Text)> reference,
+        IReadOnlyList<(System.Windows.Rect Bounds, string Text)> candidate)
+    {
+        int same = 0, changed = 0, lost = 0;
+        foreach (var block in reference)
+        {
+            var hit = candidate
+                .Select(other => (other, iou: RoiIou(block.Bounds, other.Bounds)))
+                .Where(pair => pair.iou > 0.35)
+                .OrderByDescending(pair => pair.iou)
+                .Select(pair => (string?)pair.other.Text)
+                .FirstOrDefault();
+
+            if (hit is null) lost++;
+            else if (hit.Trim() == block.Text.Trim()) same++;
+            else changed++;
+        }
+
+        return (same, changed, lost);
+    }
+}
+
 if (args[0] == "--scale-sweep")
 {
     var sweepArgs = args.Skip(1).ToList();
@@ -1151,4 +2128,58 @@ foreach (var path in args)
     }
 }
 
+// Shared by --roi-stability and --roi-snap, which compare the same things about the same boxes.
+static double RoiPct(IReadOnlyList<double> sorted, double at) =>
+    sorted.Count == 0 ? 0 : sorted[Math.Min(sorted.Count - 1, (int)(at * (sorted.Count - 1)))];
+
+static double RoiIou(System.Windows.Rect a, System.Windows.Rect b)
+{
+    var overlap = System.Windows.Rect.Intersect(a, b);
+    if (overlap.IsEmpty) return 0;
+    var inter = overlap.Width * overlap.Height;
+    return inter / (a.Width * a.Height + b.Width * b.Height - inter);
+}
+
 return 0;
+
+/// <summary>
+/// One Logical ROI answered under both arms, in source-image coordinates. The full-frame arm boxes
+/// are a filtered view of ONE detection shared by every ROI; the baseline has its own.
+/// </summary>
+internal sealed record FullFrameProbed(
+    System.Drawing.Rectangle Roi,
+    IReadOnlyList<System.Windows.Rect> Boxes,
+    int Straddling,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> Blocks,
+    int Groups,
+    long RecognitionMs,
+    IReadOnlyList<System.Windows.Rect> BaselineBoxes,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> BaselineBlocks,
+    long BaselineMs,
+    string BaselineCanvas,
+    string BaselineScale);
+
+/// <summary>
+/// One (Logical, Analysis) pair's answer, in source-image coordinates. <c>All</c> is everything the
+/// Analysis ROI produced; <c>Kept</c> is what survives filtering back to the Logical one.
+/// </summary>
+internal sealed record SnapProbed(
+    System.Drawing.Rectangle Logical,
+    System.Drawing.Rectangle Analysis,
+    SkiaSharp.SKBitmap Aligned,
+    IReadOnlyList<System.Windows.Rect> Boxes,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> All,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> Kept,
+    int Straddling);
+
+/// <summary>
+/// One ROI's answer at every layer --roi-stability compares, in source-image coordinates.
+/// </summary>
+internal sealed record RoiProbed(
+    System.Drawing.Rectangle Roi,
+    string Canvas,
+    string Scale,
+    SkiaSharp.SKBitmap Aligned,
+    IReadOnlyList<(System.Windows.Rect Bounds, float Score)> Boxes,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> Blocks,
+    int Groups);
