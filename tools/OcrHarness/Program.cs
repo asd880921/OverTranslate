@@ -1088,7 +1088,7 @@ if (args[0] == "--group-explain")
             Console.WriteLine(
                 $"  {decision.Kind,-4} {(decision.Joined ? "JOIN  " : "SPLIT ")} gap={decision.VerticalGap,6:0.00} " +
                 $"align={decision.LeftDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
-                $"width={decision.WidthRatio:0.00} " +
+                $"width={decision.WidthRatio:0.00} adv={decision.LineAdvance,5:0.00} " +
                 $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
             Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
         }

@@ -376,13 +376,21 @@ public class OcrTextBlockGrouperTests
     /// And what that must not cost: a real wrapped sentence, whose first line is long because it
     /// ran out of room. Real bounds from the same corpus as the menu above.
     /// </summary>
+    /// <remarks>
+    /// The boxes are the detector's, which is not what this fixture used to hold: it carried the
+    /// normalised ones, 30 and 29 tall against the same 51px step, and those put the pair 1.73 line
+    /// advances apart. The capture itself reads 1.33 — the normalisation had taken a quarter off
+    /// the height and left the step, so the leading came back looking half again as loose as it is.
+    /// Re-measured on the capture: gap 0.39 of a line, advance 1.33, heights 0.89 apart, first line
+    /// 2.27 times the width of the second.
+    /// </remarks>
     [Fact]
     public void StillGroupsASentenceLongEnoughToHaveWrapped()
     {
         var blocks = new List<OcrTextBlock>
         {
-            new("그랑 사이퍼의 갑판에 있는 연습용 더미를 조사하면", new Rect(354, 427, 564, 30)),
-            new("플레이할 수 있습니다", new Rect(355, 478, 248, 29)),
+            new("그랑 사이퍼의 갑판에 있는 연습용 더미를 조사하면", new Rect(355, 429, 563, 32.9)),
+            new("플레이할 수 있습니다", new Rect(355, 475.4, 248, 37)),
         };
 
         var grouped = GroupDetected(blocks);
@@ -552,4 +560,62 @@ public class OcrTextBlockGrouperTests
             ["Alpha beta", "Gamma delta", "Epsilon zeta", "Eta theta"],
             grouped.Select(block => block.Text));
     }
+
+    /// <summary>
+    /// A checkbox entry is not the last line of the entry above it, however much shorter it is.
+    /// </summary>
+    /// <remarks>
+    /// Measured from region-panel-en, the corpus set that exists to catch exactly this: three of
+    /// its entries were being joined on the width rule alone, at 1.40 and 1.43 line advances, while
+    /// every pair in the corpus that really is one sentence wrapping stops at 1.33.
+    /// </remarks>
+    [Fact]
+    public void AShorterLineSetTooFarBelow_IsNotTheEndOfTheParagraph()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Reveal all rooms before proceeding to next floor", new Rect(100, 100, 520, 30)),
+            new("Allow automatic pomander use", new Rect(100, 143, 320, 30)),
+        };
+
+        // 43 / 30 = 1.43 line advances, past what a paragraph's own leading reaches.
+        var grouped = GroupDetected(blocks);
+
+        Assert.Equal(2, grouped.Count);
+    }
+
+    /// <summary>
+    /// The leading is measured on the detector's box, and this pair is where that changes the
+    /// answer.
+    /// </summary>
+    /// <remarks>
+    /// A CJK pair stepped 44px apart in boxes the engine normalised from 34 down to 27.9. On the
+    /// detection height that is 1.29 line advances and the second line ends the paragraph; on the
+    /// normalised height it is 1.58 and it does not. Which one the rule reads decides the answer,
+    /// and only one of them is the same on every source language.
+    /// </remarks>
+    [Fact]
+    public void WrappedFinalLineLeading_IsMeasuredOnLayoutBounds_NotTheNormalisedBox()
+    {
+        OcrTextBlock Normalised(string text, double y, double width) =>
+            new OcrTextBlock(text, new Rect(100, y + 3.05, width, 27.9))
+            {
+                LayoutBounds = new Rect(100, y, width, 34),
+                LayoutScript = OcrLayoutScript.Cjk,
+            };
+
+        var previous = Normalised("彾匣內每發子彈的傷害會增加而且", 100, 460);
+        var current = Normalised("更容易觸發", 144, 160);
+
+        Assert.Equal(44 / 34.0, LineAdvanceOf(previous, current), precision: 6);
+        Assert.True(44 / 34.0 < 1.38);
+        Assert.True(44 / 27.9 > 1.38);
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group([previous, current]));
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    private static double LineAdvanceOf(OcrTextBlock previous, OcrTextBlock current) =>
+        (current.LayoutBounds.Y - previous.LayoutBounds.Y) /
+        ((previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0);
 }

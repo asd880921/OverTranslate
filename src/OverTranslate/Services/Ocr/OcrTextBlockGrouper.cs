@@ -92,6 +92,7 @@ internal static class OcrTextBlockGrouper
         double LeftDelta,
         double TextSizeRatio,
         double WidthRatio,
+        double LineAdvance,
         bool Joined,
         string Rule);
 
@@ -268,6 +269,7 @@ internal static class OcrTextBlockGrouper
             VerticalOverlapRate(previous, current),
             0,
             previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
+            0,
             joined,
             rule);
 
@@ -321,10 +323,30 @@ internal static class OcrTextBlockGrouper
             Math.Abs(previous.LayoutBounds.X - current.LayoutBounds.X) / Math.Max(1, avgHeight),
             TextSizeRatio(previous, current),
             previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
+            LineAdvanceRatio(previous, current),
             joined,
             rule));
 
         return joined;
+    }
+
+    /// <summary>
+    /// The leading: how far the second line sits below the first, in detection-box heights. One
+    /// line advance is 1.0, so a paragraph reads a little under it and anything laid out on purpose
+    /// reads well over.
+    /// </summary>
+    /// <remarks>
+    /// Measured on <see cref="OcrTextBlock.LayoutBounds"/>, which is what makes a leading test
+    /// possible at all. Against the normalised box the same typographic leading comes back as two
+    /// different fractions — a Japanese Wikipedia paragraph read 0.37 between its lines where an
+    /// English one read 0.09 — so the two populations overlapped and no threshold separated them.
+    /// On the detector's own box they agree.
+    /// </remarks>
+    private static double LineAdvanceRatio(OcrTextBlock previous, OcrTextBlock current)
+    {
+        var box = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
+
+        return box > 0 ? (current.LayoutBounds.Y - previous.LayoutBounds.Y) / box : -1;
     }
 
     private static (bool Joined, string Rule) JudgeNextLine(OcrTextBlock previous, OcrTextBlock current)
@@ -436,10 +458,18 @@ internal static class OcrTextBlockGrouper
         // menu entries looks like — a longer label above a shorter one, aligned, evenly spaced. It
         // read 「アビリティ」over「召喚石」and 「캐릭터강화」over「소지품」as wrapped sentences, glued
         // each pair into one string for the translator, and squeezed both into one bubble. See #75.
-        return IsLongEnoughToHaveWrapped(previous) &&
-               previous.LayoutBounds.Width >= current.LayoutBounds.Width * 1.35
+        if (!IsLongEnoughToHaveWrapped(previous) ||
+            previous.LayoutBounds.Width < current.LayoutBounds.Width * 1.35)
+            return (false, "no continuation evidence");
+
+        // A paragraph's last line is set at the paragraph's leading, so a pair spaced further apart
+        // than that is not a paragraph ending — it is a heading over the thing it labels, or the
+        // next entry in a list. This rule had no leading test at all, which is how a settings panel
+        // joined "Reveal all rooms before proceeding to next floor" to the unrelated checkbox under
+        // it purely because that one was shorter.
+        return LineAdvanceRatio(previous, current) <= WrappedFinalLineAdvance
             ? (true, "shorter final line")
-            : (false, "no continuation evidence");
+            : (false, "leading");
     }
 
     /// <summary>
@@ -457,6 +487,28 @@ internal static class OcrTextBlockGrouper
     /// half a sentence, which is the far worse failure — it is the whole of #74.</para>
     /// </remarks>
     private const double WrappedLineMinAspect = 8.0;
+
+    /// <summary>
+    /// The most leading a shorter following line can have and still be the end of the paragraph
+    /// above it.
+    /// </summary>
+    /// <remarks>
+    /// <para>Measured over the image corpus on LayoutBounds, after the row rule had stopped side by
+    /// side things being joined: every pair that is really one sentence wrapping sits at or under
+    /// 1.33 — a Korean panel's instruction at 1.26 and 1.33, an English page's "Resources for
+    /// Developers," / "by Developers" at 1.32 — while the pairs that must come apart start at 1.40:
+    /// three checkbox entries of the settings panel at 1.40 and 1.43, and a documentation site's
+    /// breadcrumb over its filter box at 1.55. Nothing falls between 1.33 and 1.40.</para>
+    ///
+    /// <para>1.38 is where the branch this was ported from put it, on a different corpus and a
+    /// reconstructed detection box; landing inside the empty band measured here as well is the
+    /// reason to keep the number rather than move it to the midpoint.</para>
+    ///
+    /// <para>Every script, not Latin only. The port gated this on Latin because it had to rebuild
+    /// the detector's box from the normalised one and that reconstruction was only approximate for
+    /// CJK. LayoutBounds is the box, so there is nothing to approximate and nothing to gate.</para>
+    /// </remarks>
+    private const double WrappedFinalLineAdvance = 1.38;
 
     private static bool IsLongEnoughToHaveWrapped(OcrTextBlock line) =>
         line.LayoutBounds.Height > 0 &&
