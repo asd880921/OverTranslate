@@ -765,7 +765,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         {
             var text = StripLoneIdeographs(block.Text);
             if (text.Length == 0)
-                continue; // the whole block was a single ideograph (an icon) -> drop it
+                continue; // nothing but the stripped ideograph and whitespace was there
             cleaned.Add(text == block.Text ? block : block with { Text = text });
         }
 
@@ -843,18 +843,23 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         c is >= 'À' and <= 'ɏ'    // Latin-1 Supplement, Latin Extended-A and -B
         or >= 'Ḁ' and <= 'ỿ';     // Latin Extended Additional
 
-    // Strips a single isolated Han ideograph when it is clearly icon noise: either the block is
-    // exactly one ideograph, or one is glued to the start/end of a Latin word. The letter-adjacency
-    // guard preserves date glyphs like the 年/月/日 in "2026年5月8日" (those sit next to digits), and
-    // multi-ideograph runs (真實中文 such as 翻譯這個網頁 / 免費) are never single, so are kept.
+    // Strips a single isolated Han ideograph glued to the start or end of a Latin word, which is
+    // what an icon misread on a Latin page looks like. The letter-adjacency guard preserves date
+    // glyphs like the 年/月/日 in "2026年5月8日" (those sit next to digits), and multi-ideograph runs
+    // (真實中文 such as 翻譯這個網頁 / 免費) are never single, so are kept.
+    //
+    // A block that is nothing BUT one ideograph is deliberately not touched. It used to be dropped
+    // outright, on the reasoning that a lone ideograph on an English page is an icon — and that is
+    // sometimes true, but 攻 防 技 火 水 光 闇 標準 are how a Chinese or Japanese interface labels
+    // things, and a screenshot is not required to be in one language just because the user named
+    // one. The old rule deleted them under 英文 and under 自動 alike, silently and with nothing in
+    // the log. Keeping a piece of OCR rubbish costs the reader one wrong word; deleting a real
+    // label costs them the one thing they pointed the tool at.
     internal static string StripLoneIdeographs(string text)
     {
         text = text.Trim();
         if (text.Length == 0)
             return text;
-
-        if (text.Length == 1 && IsHanIdeograph(text[0]))
-            return string.Empty;
 
         if (text.Length >= 2 && IsHanIdeograph(text[0]) && !IsHanIdeograph(text[1]) && char.IsAsciiLetter(text[1]))
             text = text[1..].TrimStart();

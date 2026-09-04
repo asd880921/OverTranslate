@@ -64,7 +64,7 @@ public class OcrServiceTests
     }
 
     [Fact]
-    public void AutomaticLayout_NormalizesEachBlockAndKeepsLatinIconFiltering()
+    public void AutomaticLayout_NormalizesEachBlockAndKeepsLoneIdeographs()
     {
         var bounds = new System.Windows.Rect(0, 0, 120, 20);
         var blocks = new List<OcrTextBlock>
@@ -76,13 +76,20 @@ public class OcrServiceTests
 
         var normalized = OnnxOcrEngine.NormalizeAutomaticBlocks(blocks);
 
-        Assert.Equal(2, normalized.Count);
+        Assert.Equal(3, normalized.Count);
         Assert.Equal("Settings", normalized[0].Text);
         Assert.NotNull(normalized[0].SourceGlyphHeight);
         Assert.Equal(bounds.Height, normalized[0].Bounds.Height);
         Assert.Equal("設定", normalized[1].Text);
         Assert.Null(normalized[1].SourceGlyphHeight);
         Assert.True(normalized[1].Bounds.Height < bounds.Height);
+
+        // Kept, where it used to be deleted. It is still measured on the Latin path — one Han
+        // character does not satisfy UsesCjkLayoutForText — which is wrong for a full-width glyph
+        // and is pinned here so the geometry work that fixes it has to come past this test rather
+        // than change it by accident. Wrong geometry is a smaller fault than a missing label.
+        Assert.Equal("白", normalized[2].Text);
+        Assert.NotNull(normalized[2].SourceGlyphHeight);
     }
 
     [Fact]
@@ -103,9 +110,16 @@ public class OcrServiceTests
     }
 
     [Theory]
-    // Whole-block lone ideographs are icon misreads on a Latin page -> dropped (empty).
-    [InlineData("白", "")]
-    [InlineData("品", "")]
+    // A block that is nothing but one ideograph is kept. These are how a Chinese or Japanese
+    // interface labels things — a game's 攻/防/技, a colour, a difficulty — and a screenshot is not
+    // required to be in one language just because the user named one. They used to be dropped.
+    [InlineData("白", "白")]
+    [InlineData("品", "品")]
+    [InlineData("攻", "攻")]
+    [InlineData("防", "防")]
+    [InlineData("技", "技")]
+    [InlineData("火", "火")]
+    [InlineData("水", "水")]
     // A lone ideograph glued to the start/end of a Latin word is icon noise -> stripped.
     [InlineData("甲Glossaries", "Glossaries")]
     [InlineData("业spoken terms", "spoken terms")]
