@@ -88,4 +88,58 @@ public class OcrLayoutGeometryTests
 
         Assert.Null(normalized[0].LayoutGlyphHeight);
     }
+
+    /// <summary>
+    /// The shape filter must reach the same verdict whatever the user picked, which is only true
+    /// while it measures the detection box rather than the normalised one.
+    /// </summary>
+    /// <remarks>
+    /// The fixture is the case this was found on: a 74x40 detection holding one full-width glyph.
+    /// Normalised for CJK the box becomes 74x32.8, and 74 / 1 / 32.8 = 2.26 crosses the 2.0 bar
+    /// while the detection's own 1.85 does not. Under 日文 the label was deleted and under 英文 it
+    /// survived — the same picture, the same reading, a different menu setting. Eighteen blocks of
+    /// the corpus went that way, among them 闇, 三, 決定 and 결정.
+    /// </remarks>
+    [Fact]
+    public void ShapeFilter_ReachesTheSameVerdict_WhateverTheSourceLanguage()
+    {
+        var detected = new System.Windows.Rect(10, 10, 74, 40);
+        List<OcrTextBlock> Blocks() => [new("闇", detected)];
+
+        var latin = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false);
+        var cjk = OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true);
+        var automatic = OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks());
+
+        // The fixture is only worth anything if the two rectangles disagree across the threshold.
+        Assert.NotEqual(cjk[0].Bounds, cjk[0].LayoutBounds);
+        Assert.True(cjk[0].Bounds.Width / cjk[0].Bounds.Height >= BoxShapeNoise.MaxWidthPerGlyph);
+        Assert.True(cjk[0].LayoutBounds.Width / cjk[0].LayoutBounds.Height < BoxShapeNoise.MaxWidthPerGlyph);
+
+        foreach (var normalized in new[] { latin, cjk, automatic })
+        {
+            Assert.False(BoxShapeNoise.IsTooWideForItsText(normalized[0]));
+            Assert.Single(OnnxOcrEngine.RemoveMisshapenBlocks(normalized, "JA"));
+        }
+    }
+
+    /// <summary>
+    /// And the same in the other direction: a box that really is too wide goes, on every language.
+    /// </summary>
+    [Fact]
+    public void ShapeFilter_StillDropsAWidelyMisshapenBox_WhateverTheSourceLanguage()
+    {
+        var detected = new System.Windows.Rect(10, 10, 300, 40);
+        List<OcrTextBlock> Blocks() => [new("□", detected)];
+
+        foreach (var normalized in new[]
+        {
+            OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false),
+            OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true),
+            OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks()),
+        })
+        {
+            Assert.True(BoxShapeNoise.IsTooWideForItsText(normalized[0]));
+            Assert.Empty(OnnxOcrEngine.RemoveMisshapenBlocks(normalized, "JA"));
+        }
+    }
 }

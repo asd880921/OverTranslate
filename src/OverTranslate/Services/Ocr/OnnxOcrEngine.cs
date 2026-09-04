@@ -974,7 +974,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// about Latin pages. A Japanese or Korean capture had no noise filter at all before this, and
     /// the lone □ that a detector returns for a strip of interface is not a script-specific problem.
     /// </remarks>
-    private static List<OcrTextBlock> RemoveMisshapenBlocks(List<OcrTextBlock> blocks, string language)
+    internal static List<OcrTextBlock> RemoveMisshapenBlocks(List<OcrTextBlock> blocks, string language)
     {
         List<OcrTextBlock>? kept = null;
 
