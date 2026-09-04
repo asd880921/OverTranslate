@@ -81,14 +81,16 @@ public class LayoutScriptDetectionTests
     }
 
     /// <summary>
-    /// Nothing rewrites a block's text on the way to layout any more, so the classification is of
-    /// what was actually read.
+    /// Normalisation classifies the text it is given and never rewrites it, so whatever reaches it
+    /// reaches every source language identically.
     /// </summary>
     /// <remarks>
     /// The lone-ideograph cleanup used to run on the Latin and automatic paths and not on the CJK
     /// one, which took the leading Han off each of these under 英文 and 自動 and left it under 日文.
-    /// For 甲Glossaries that changed the answer outright — Mixed became Latin — and for the other two
-    /// it changed the text a reader would be shown. See 本Wikiについて, which is a heading, not noise.
+    /// For 甲Glossaries that changed the answer outright — Mixed became Latin. It now runs once,
+    /// earlier, for all four alike, and it will not touch 文A日本語 or 本Wikiについて at all — the
+    /// latter is a heading, not noise. 甲Glossaries is stripped before it gets here; what this
+    /// guards is that normalisation itself is not a second place where text can change.
     /// </remarks>
     [Theory]
     [InlineData("甲Glossaries")]
@@ -113,17 +115,26 @@ public class LayoutScriptDetectionTests
     }
 
     /// <summary>
-    /// The rule itself stays, unreferenced by the product, as the starting point for whatever
-    /// replaces it: 904 blocks measured, four hits, all four real icon noise.
+    /// The lone-ideograph cleanup runs once, ahead of normalisation, and asks no question that
+    /// could be answered differently per source language.
     /// </summary>
+    /// <remarks>
+    /// It used to run twice — inside the automatic normaliser and again beside it for explicit
+    /// Latin — which is how the same picture came back with different text under 自動 and under
+    /// 日文. Normalising is not where text is decided any more, and these three calls prove it: all
+    /// three leave the string exactly as handed to them.
+    /// </remarks>
     [Fact]
-    public void TheLoneIdeographRule_StillExists_ButNoLongerRunsOnAnyPath()
+    public void TheLoneIdeographRule_RunsBeforeNormalisation_NotInsideIt()
     {
-        Assert.Equal("Glossaries", OnnxOcrEngine.StripLoneIdeographs("甲Glossaries"));
-
         var bounds = new System.Windows.Rect(0, 0, 240, 30);
-        Assert.Equal(
-            "甲Glossaries",
-            OnnxOcrEngine.NormalizeAutomaticBlocks([new("甲Glossaries", bounds)])[0].Text);
+        List<OcrTextBlock> Blocks() => [new("甲Glossaries", bounds)];
+
+        Assert.Equal("甲Glossaries", OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: false)[0].Text);
+        Assert.Equal("甲Glossaries", OnnxOcrEngine.NormalizeBlocks(Blocks(), useCjkRenderMetrics: true)[0].Text);
+        Assert.Equal("甲Glossaries", OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks())[0].Text);
+
+        // And the stage that does decide it takes no language, so it cannot answer differently.
+        Assert.Equal("Glossaries", OnnxOcrEngine.StripIconIdeographs(Blocks())[0].Text);
     }
 }

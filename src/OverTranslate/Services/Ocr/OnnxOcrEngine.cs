@@ -277,8 +277,8 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             // labels, ratings), which a Latin-only model dropped or garbled; this reads Latin AND
             // those CJK glyphs in one pass. The text is still Latin, so source-language routing
             // (UsesCjkOnnx) keeps EN on the Latin layout path. Lone-ideograph icon misreads that
-            // come with reading both scripts at once are no longer stripped — see
-            // <see cref="StripLoneIdeographs"/>.
+            // come with reading both scripts at once are stripped only where nothing CJK is left
+            // behind — see <see cref="StripLoneIdeographs"/>.
             //
             // Korean stays on its own model above because v6 carries no Hangul at all — measured
             // on its dictionary, 0 of 18,708 characters — so the one model cannot cover KO.
@@ -917,11 +917,14 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // it, and it costs the whole line its translation rather than just one character.
         converted = FoldBlockDiacritics(converted);
 
-        // The lone-ideograph icon filter used to run here, on Latin pages only. It is off — see
-        // StripLoneIdeographs, which is kept for whatever replaces it — because a cleanup that
-        // deletes text on some source languages and not others is the one thing that cannot be
-        // reconciled with reading the same picture the same way whatever the user picked.
-        //
+        // Every language, and that is the change that let this run at all. It used to be a Latin-
+        // pages-only rule, which made the recognised text depend on the source language picked;
+        // narrowed to "only when nothing CJK is left" it is safe to apply to all four alike, so
+        // 田Projects reads as Projects under 自動 and under 日文 and under 中文 identically. Before
+        // normalisation, so the script and glyph height a block is measured with come from the
+        // text that survives. See StripLoneIdeographs for what it will not touch.
+        converted = StripIconIdeographs(converted);
+
         // After normalisation, because that is where a CJK box is pulled in onto its glyphs and
         // the shape being judged becomes the real one. Before grouping, which happens further
         // out, so a stray box is never joined to the line beside it.
@@ -971,9 +974,9 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// Drops boxes that cannot be holding the text read out of them — see <see cref="BoxShapeNoise"/>.
     /// </summary>
     /// <remarks>
-    /// Applies to every language, which the lone-ideograph rule that used to sit beside it did not.
-    /// A Japanese or Korean capture had no noise filter at all before this, and the lone □ that a
-    /// detector returns for a strip of interface is not a script-specific problem.
+    /// Applies to every language, as the lone-ideograph rule beside it now does too. A Japanese or
+    /// Korean capture had no noise filter at all before this, and the lone □ that a detector
+    /// returns for a strip of interface is not a script-specific problem.
     /// </remarks>
     internal static List<OcrTextBlock> RemoveMisshapenBlocks(List<OcrTextBlock> blocks, string language)
     {
@@ -996,6 +999,41 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         }
 
         return kept ?? blocks;
+    }
+
+    /// <summary>
+    /// Rewrites the text of blocks that begin or end with an icon's ideograph — see
+    /// <see cref="StripLoneIdeographs"/>. Never drops a block.
+    /// </summary>
+    /// <remarks>
+    /// The rule it used to have could empty a block, and the caller then removed it. It cannot any
+    /// more: a cut needs a Latin letter beside the ideograph to happen at all, so at least that
+    /// letter survives. Nothing here decides whether a block exists, which is one less way for the
+    /// same picture to come back with different blocks.
+    /// </remarks>
+    internal static List<OcrTextBlock> StripIconIdeographs(List<OcrTextBlock> blocks)
+    {
+        List<OcrTextBlock>? cleaned = null;
+
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            var text = StripLoneIdeographs(blocks[index].Text);
+            if (text == blocks[index].Text)
+            {
+                cleaned?.Add(blocks[index]);
+                continue;
+            }
+
+            cleaned ??= [.. blocks.Take(index)];
+            cleaned.Add(blocks[index] with { Text = text });
+
+            if (Log.IsDebugEnabled)
+                Log.Debug(
+                    "ONNX OCR stripped an icon ideograph \"{Before}\" -> \"{After}\"",
+                    blocks[index].Text, text);
+        }
+
+        return cleaned ?? blocks;
     }
 
     private static List<OcrTextBlock> FoldBlockDiacritics(List<OcrTextBlock> blocks)
@@ -1070,30 +1108,54 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         or >= 'Ḁ' and <= 'ỿ';     // Latin Extended Additional
 
     // Strips a single isolated Han ideograph glued to the start or end of a Latin word, which is
-    // what an icon misread on a Latin page looks like. The letter-adjacency guard preserves date
-    // glyphs like the 年/月/日 in "2026年5月8日" (those sit next to digits), and multi-ideograph runs
-    // (真實中文 such as 翻譯這個網頁 / 免費) are never single, so are kept.
+    // what an icon misread looks like. The letter-adjacency guard preserves date glyphs like the
+    // 年/月/日 in "2026年5月8日" (those sit next to digits), and multi-ideograph runs (真實中文 such
+    // as 翻譯這個網頁 / 免費) are never single, so are kept.
     //
     // A block that is nothing BUT one ideograph is deliberately not touched. It used to be dropped
     // outright, on the reasoning that a lone ideograph on an English page is an icon — and that is
     // sometimes true, but 攻 防 技 火 水 光 闇 標準 are how a Chinese or Japanese interface labels
     // things, and a screenshot is not required to be in one language just because the user named
-    // one. The old rule deleted them under 英文 and under 自動 alike, silently and with nothing in
-    // the log. Keeping a piece of OCR rubbish costs the reader one wrong word; deleting a real
-    // label costs them the one thing they pointed the tool at.
+    // one. Keeping a piece of OCR rubbish costs the reader one wrong word; deleting a real label
+    // costs them the one thing they pointed the tool at.
+    //
+    // The remainder gate is what makes this safe enough to run on every source language, which is
+    // the shape it has to have: a cleanup that rewrites text on some source languages and not
+    // others cannot be reconciled with reading the same picture the same way whatever the user
+    // picked. Strip only when what is left carries no CJK at all — 本Wikiについて keeps its 本
+    // because the rest of it is Japanese, and a line that reads as CJK or Mixed after the cut is
+    // one this rule has no business judging.
+    //
+    // Two known gaps, neither closed by the narrowing:
+    //
+    //   文A日本語 — the remainder A日本語 is Mixed, so the 文 an icon was read as stays. That is the
+    //   price of the gate and it is the right way round: a kept rubbish character is visible to the
+    //   reader, a deleted real one is not.
+    //
+    //   閣Lv100 50 — the remainder is pure Latin so this DOES strip, and on the picture that came
+    //   from it is a real 闇 misread as 閣, not an icon. Narrowing does not solve wrong deletion;
+    //   only a heuristic that looks at the box geometry or the recognition confidence can tell an
+    //   icon's ideograph from a text one, and that is still deferred. Do not read this rule as
+    //   having fixed that.
     internal static string StripLoneIdeographs(string text)
     {
         text = text.Trim();
         if (text.Length == 0)
             return text;
 
-        if (text.Length >= 2 && LayoutScriptDetection.IsHanIdeograph(text[0]) && !LayoutScriptDetection.IsHanIdeograph(text[1]) && char.IsAsciiLetter(text[1]))
-            text = text[1..].TrimStart();
+        var stripped = text;
 
-        if (text.Length >= 2 && LayoutScriptDetection.IsHanIdeograph(text[^1]) && !LayoutScriptDetection.IsHanIdeograph(text[^2]) && char.IsAsciiLetter(text[^2]))
-            text = text[..^1].TrimEnd();
+        if (stripped.Length >= 2 && LayoutScriptDetection.IsHanIdeograph(stripped[0]) && !LayoutScriptDetection.IsHanIdeograph(stripped[1]) && char.IsAsciiLetter(stripped[1]))
+            stripped = stripped[1..].TrimStart();
 
-        return text;
+        if (stripped.Length >= 2 && LayoutScriptDetection.IsHanIdeograph(stripped[^1]) && !LayoutScriptDetection.IsHanIdeograph(stripped[^2]) && char.IsAsciiLetter(stripped[^2]))
+            stripped = stripped[..^1].TrimEnd();
+
+        // Same reading of "CJK" the grouping side uses, so the two cannot drift apart on what
+        // counts as real text. When in doubt, keep: this returns the original, not the cut.
+        return LayoutScriptDetection.For(stripped) is OcrLayoutScript.Cjk or OcrLayoutScript.Mixed
+            ? text
+            : stripped;
     }
 
     /// <summary>
