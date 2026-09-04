@@ -24,6 +24,62 @@
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="Margin"            Value="10,1,10,0"/>
         </Style>
+        <Style x:Key="CardFoldFocusVisual">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle Stroke="{DynamicResource AppAccent}"
+                                   StrokeThickness="1"
+                                   StrokeDashArray="2 2"
+                                   RadiusX="6"
+                                   RadiusY="6"
+                                   Margin="-8,-6,-8,-6"
+                                   SnapsToDevicePixels="True"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- A card heading that opens the card. Templated down to its content so it reads as the
+             heading it replaces and not as a button sitting where one used to be; what the template
+             adds is the part a heading cannot have — a hover, a pressed state that lands on the
+             press rather than on the release, and a focus ring for the keyboard. Padding is
+             cancelled by an equal negative margin so the hit area is larger than the words without
+             the words moving. -->
+        <Style x:Key="CardFoldToggle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor"     Value="Hand"/>
+            <!-- Not an IsKeyboardFocused trigger, which would ring the card after an ordinary
+                 click: clicking gives it keyboard focus too, and a heading that keeps a focus
+                 outline after being pressed looks stuck. FocusVisualStyle is WPF's answer to the
+                 same question — it is drawn only when the keyboard was the last thing used — so
+                 the ring appears for someone tabbing and never for someone clicking. -->
+            <Setter Property="FocusVisualStyle" Value="{StaticResource CardFoldFocusVisual}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Hit"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="7,5"
+                                Margin="-8,-6,-8,-6">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Hit" Property="Background"
+                                        Value="{DynamicResource AppSurfaceBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Hit" Property="Background"
+                                        Value="{DynamicResource AppSubtleBorder}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- The card's heading strip: glyph, title, and room under it before the first setting. -->
         <Style x:Key="CardHeaderRow" TargetType="StackPanel">
             <Setter Property="Orientation" Value="Horizontal"/>
@@ -97,6 +153,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -1196,7 +1253,127 @@
                             </Border>
                         </StackPanel>
                     </Border>
+
                 </Grid>
+                <!-- ══════════ 偵錯工具 ══════════
+                     Its own full-width row under 進階設定, and last on the page, because it is for
+                     working out why a capture was read the way it was and for nothing else. Full
+                     width because shut it is one line, while open it is three settings whose
+                     sentences would wrap twice in a half-width column.
+
+                     The header opens it. The fold is deliberately not remembered, so nobody returns
+                     to this page and finds the app looking like a debugger because of a click weeks
+                     ago; what is inside the fold is remembered, because that part is a preference. -->
+                <Border x:Name="DebugToolsCard"
+                        Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2"
+                        Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <!-- A ToggleButton and not a clickable Border: the fold is a two-state
+                             control, so it should carry that state itself, take focus, and answer
+                             the space bar. The template gives it what a Border cannot — a hover and
+                             a pressed appearance, the latter on the press rather than on the
+                             release, so the card answers the moment it is touched. -->
+                        <ToggleButton x:Name="DebugToolsToggle"
+                                      Style="{StaticResource CardFoldToggle}"
+                                      Checked="DebugToolsToggle_Toggled"
+                                      Unchecked="DebugToolsToggle_Toggled">
+                            <StackPanel Style="{StaticResource CardHeaderRow}" Margin="0">
+                                <TextBlock Text="&#xEBE8;" Style="{StaticResource CardHeaderIcon}"/>
+                                <TextBlock Text="{DynamicResource S.Settings.DebugTools}"
+                                           Style="{StaticResource CardTitle}"/>
+                                <!-- Beside the title rather than pushed to the far edge of a
+                                     full-width card, where it would read as belonging to nothing.
+
+                                     It rotates rather than swapping to the other glyph, so opening
+                                     and closing run the same path in opposite directions and a
+                                     fold caught halfway has a chevron caught halfway. -->
+                                <TextBlock x:Name="DebugToolsChevron"
+                                           Text="&#xE70D;"
+                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource AppTextSecondary}"
+                                           VerticalAlignment="Center"
+                                           Margin="10,1,0,0"
+                                           RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <RotateTransform x:Name="DebugToolsChevronAngle" Angle="0"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </StackPanel>
+                        </ToggleButton>
+
+                        <!-- The fold clips; the panel inside it is what moves. Height is animated on
+                             this Border so the card's own height follows continuously and the cards
+                             below it are pushed rather than jumped. Collapsed outright when shut so
+                             the settings inside are out of the tab order as well as out of sight. -->
+                        <Border x:Name="DebugToolsFold"
+                                ClipToBounds="True"
+                                Height="0"
+                                Visibility="Collapsed">
+                        <StackPanel x:Name="DebugToolsBody" Opacity="0">
+                            <!-- Rises the last few pixels into place as it fades, so the content
+                                 arrives from behind the header it came out of rather than simply
+                                 appearing where it will end up. -->
+                            <StackPanel.RenderTransform>
+                                <TranslateTransform x:Name="DebugToolsBodyRise" Y="-8"/>
+                            </StackPanel.RenderTransform>
+                            <Border Style="{StaticResource ToggleRowBorder}" Margin="0,12,0,0">
+                                <StackPanel>
+                                    <!-- No switch of its own: the two boxes below are the feature,
+                                         and neither ticked draws nothing. A master here would only
+                                         be a way to have this on and see nothing. -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="&#xE890;"
+                                                   Style="{StaticResource OptionGlyph}"
+                                                   Margin="0,1,10,0"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{DynamicResource S.Settings.OcrDebug}"
+                                                   Style="{StaticResource OptionTitle}"/>
+                                    </Grid>
+
+                                    <Grid Margin="25,14,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <CheckBox  Grid.Row="0" Grid.Column="0" x:Name="OcrLineBoxesCheckBox"
+                                                   Style="{StaticResource ModernCheckBox}"
+                                                   VerticalAlignment="Top"
+                                                   Checked="OcrDebugBoxes_Toggled"
+                                                   Unchecked="OcrDebugBoxes_Toggled"/>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,12">
+                                            <TextBlock Text="{DynamicResource S.Settings.OcrLineBoxes}"
+                                                       Style="{StaticResource OptionTitle}"/>
+                                            <TextBlock Text="{DynamicResource S.Settings.OcrLineBoxesHint}"
+                                                       Style="{StaticResource OptionDescription}"/>
+                                        </StackPanel>
+                                        <CheckBox  Grid.Row="1" Grid.Column="0" x:Name="TextGroupBoxesCheckBox"
+                                                   Style="{StaticResource ModernCheckBox}"
+                                                   VerticalAlignment="Top"
+                                                   Checked="OcrDebugBoxes_Toggled"
+                                                   Unchecked="OcrDebugBoxes_Toggled"/>
+                                        <StackPanel Grid.Row="1" Grid.Column="1">
+                                            <TextBlock Text="{DynamicResource S.Settings.TextGroupBoxes}"
+                                                       Style="{StaticResource OptionTitle}"/>
+                                            <TextBlock Text="{DynamicResource S.Settings.TextGroupBoxesHint}"
+                                                       Style="{StaticResource OptionDescription}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
             </Grid>
         </ScrollViewer>
 

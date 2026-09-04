@@ -15,6 +15,9 @@
 
         <!-- Translation backgrounds and text are separated so no later bubble background can cover prior text. -->
         <Canvas x:Name="BubbleBackgroundCanvas" IsHitTestVisible="False"/>
+        <!-- OCR geometry, when the debug setting asks for it: above the bubble backgrounds so the
+             boxes are visible against them, below the text so a translation is never obscured. -->
+        <Canvas x:Name="DebugCanvas" IsHitTestVisible="False"/>
         <Canvas x:Name="BubbleTextCanvas" IsHitTestVisible="False"/>
 
         <!-- What a drag inside the selection is drawn onto. A rectangle rather than the canvas

@@ -191,6 +191,7 @@ public class AppSettings
     public string ScreenshotSavePath { get; set; } = "";
     /// <summary>Off by default: Debug records the recognised text, i.e. the user's screen contents.</summary>
     public bool VerboseLogging { get; set; } = false;
+
     /// <summary>
     /// The newest version the user has told us to stop interrupting them about, or empty for none.
     /// </summary>
@@ -215,6 +216,9 @@ public class AppSettings
 
     /// <summary>What 即時翻譯 keeps between sittings, grouped.</summary>
     public RealtimeSettings Realtime { get; set; } = new();
+
+    /// <summary>What the OCR debug overlay draws, grouped.</summary>
+    public OcrDebugSettings OcrDebug { get; set; } = new();
 
     /// <summary>The OpenAI-compatible provider's prompt library, grouped.</summary>
     /// <remarks>

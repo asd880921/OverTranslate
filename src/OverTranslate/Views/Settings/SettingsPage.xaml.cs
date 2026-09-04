@@ -220,9 +220,13 @@ public partial class SettingsPage : UserControl
 
             VerboseLoggingCheckBox.IsChecked = s.VerboseLogging;
 
+            OcrLineBoxesCheckBox.IsChecked = s.OcrDebug.ShowLineBoxes;
+            TextGroupBoxesCheckBox.IsChecked = s.OcrDebug.ShowGroupBoxes;
+
             RefreshServiceTiles();
             UpdateScreenshotPathVisibility();
             UpdateVerboseLoggingAvailability();
+            CollapseDebugTools();
         }
         finally
         {
@@ -406,6 +410,162 @@ public partial class SettingsPage : UserControl
         bool verbose = VerboseLoggingCheckBox.IsChecked == true;
         LogLevelService.Apply(verbose);
         Persist(s => s.VerboseLogging = verbose);
+    }
+
+    /// <summary>How long the 偵錯工具 fold takes, and the shape of it.</summary>
+    /// <remarks>
+    /// Eased out and not elastic: nothing threw this open, so an overshoot would be motion the
+    /// gesture did not ask for. 0.3s is long enough to be followed and short enough that a second
+    /// press never has to wait for a first.
+    /// </remarks>
+    private static readonly Duration DebugFoldDuration = new(TimeSpan.FromMilliseconds(300));
+
+    private static readonly IEasingFunction DebugFoldEasing =
+        new CubicEase { EasingMode = EasingMode.EaseOut };
+
+    /// <summary>How far the fold's content sits above its resting place before it opens.</summary>
+    private const double DebugFoldRise = -8;
+
+    private bool _debugToolsExpanded;
+
+    /// <summary>
+    /// Shuts the 偵錯工具 card, which is how every visit to this page starts.
+    /// </summary>
+    /// <remarks>
+    /// Called from the load rather than left to the markup's initial state, because the page is
+    /// built once and shown again: without this, a card opened in one visit is still open in the
+    /// next. The fold is the one thing on this page that is not remembered — see AppSettings.
+    ///
+    /// Without animating, because this is not the card closing — it is the card being found shut,
+    /// and a page that plays its animations on arrival looks like it is still loading.
+    /// </remarks>
+    private void CollapseDebugTools()
+    {
+        DebugToolsToggle.IsChecked = false;
+        SetDebugToolsExpanded(false, animate: false);
+    }
+
+    private void DebugToolsToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+
+        SetDebugToolsExpanded(DebugToolsToggle.IsChecked == true, animate: true);
+    }
+
+    /// <summary>
+    /// Opens or shuts the fold, carrying the card's height, the content and the chevron together.
+    /// </summary>
+    /// <remarks>
+    /// <para>Every animation is written with a target and no start, which is what makes the fold
+    /// reversible: WPF runs a To-only animation from whatever is on screen at that instant, so a
+    /// fold caught halfway open turns round from halfway rather than snapping to its full height
+    /// and closing from there. Pressing the header repeatedly does what pressing it looks like it
+    /// should do.</para>
+    ///
+    /// <para>The height is animated on the clipping Border rather than left to Auto, because Auto
+    /// cannot be animated — so it is pinned to its measured height for the duration and handed back
+    /// to Auto at the end, where the content is free to reflow again (a longer translation, a
+    /// wrapped line) without this having fixed a stale number to it.</para>
+    /// </remarks>
+    private void SetDebugToolsExpanded(bool expanded, bool animate)
+    {
+        _debugToolsExpanded = expanded;
+        if (expanded) DebugToolsFold.Visibility = Visibility.Visible;
+
+        // The Windows setting for animations inside a window. Off means shown the answer rather
+        // than the motion — the fold still works, it just arrives.
+        if (!animate || !SystemParameters.ClientAreaAnimation)
+        {
+            StopDebugFoldAnimations();
+            DebugToolsFold.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+            DebugToolsFold.Height = expanded ? double.NaN : 0;
+            DebugToolsBody.Opacity = expanded ? 1 : 0;
+            DebugToolsBodyRise.Y = expanded ? 0 : DebugFoldRise;
+            DebugToolsChevronAngle.Angle = expanded ? 180 : 0;
+            return;
+        }
+
+        // Off Auto before animating, at the height it is showing right now.
+        var target = expanded ? MeasuredDebugFoldHeight() : 0;
+        DebugToolsFold.Height = DebugToolsFold.ActualHeight;
+        if (expanded) ScrollDebugToolsIntoView(target);
+
+        var height = DebugFoldAnimation(target);
+        height.Completed += (_, _) =>
+        {
+            // A later press owns the fold now, and its own Completed will finish the job.
+            if (_debugToolsExpanded != expanded) return;
+
+            DebugToolsFold.BeginAnimation(HeightProperty, null);
+            DebugToolsFold.Height = expanded ? double.NaN : 0;
+            if (!expanded) DebugToolsFold.Visibility = Visibility.Collapsed;
+        };
+
+        DebugToolsFold.BeginAnimation(HeightProperty, height);
+        DebugToolsBody.BeginAnimation(OpacityProperty, DebugFoldAnimation(expanded ? 1 : 0));
+        DebugToolsBodyRise.BeginAnimation(
+            TranslateTransform.YProperty, DebugFoldAnimation(expanded ? 0 : DebugFoldRise));
+        DebugToolsChevronAngle.BeginAnimation(
+            RotateTransform.AngleProperty, DebugFoldAnimation(expanded ? 180 : 0));
+    }
+
+    private static DoubleAnimation DebugFoldAnimation(double to) =>
+        new(to, DebugFoldDuration) { EasingFunction = DebugFoldEasing };
+
+    private void StopDebugFoldAnimations()
+    {
+        DebugToolsFold.BeginAnimation(HeightProperty, null);
+        DebugToolsBody.BeginAnimation(OpacityProperty, null);
+        DebugToolsBodyRise.BeginAnimation(TranslateTransform.YProperty, null);
+        DebugToolsChevronAngle.BeginAnimation(RotateTransform.AngleProperty, null);
+    }
+
+    /// <summary>
+    /// Scrolls so the whole card is in view once it has finished opening, rather than leaving the
+    /// user to find the rest of what they just opened.
+    /// </summary>
+    /// <remarks>
+    /// <para>Aimed at where the card's bottom edge <em>will</em> be — its height now plus the fold
+    /// it is about to grow — because scrolling to where it is today would stop short by exactly the
+    /// part that is being revealed. The viewer clamps whatever it cannot reach yet and catches up
+    /// frame by frame as the fold opens, so the two movements finish together.</para>
+    ///
+    /// <para>Does nothing when the card already fits, which is the common case on a tall window.
+    /// Scrolling a page that did not need scrolling is worse than not scrolling one that did.</para>
+    /// </remarks>
+    private void ScrollDebugToolsIntoView(double foldHeight)
+    {
+        if (PresentationSource.FromVisual(DebugToolsCard) is null) return;
+
+        var content = (Visual)CardsScroll.Content;
+        var top = DebugToolsCard.TransformToAncestor(content).Transform(new System.Windows.Point(0, 0)).Y;
+        var bottom = top + DebugToolsCard.ActualHeight + foldHeight;
+
+        var offset = Math.Max(0, bottom - CardsScroll.ViewportHeight);
+        if (offset <= CardsScroll.VerticalOffset) return;
+
+        SmoothScroll.To(CardsScroll, offset, DebugFoldDuration, DebugFoldEasing);
+    }
+
+    /// <summary>How tall the fold's content wants to be at the width the card gives it.</summary>
+    private double MeasuredDebugFoldHeight()
+    {
+        var width = DebugToolsFold.ActualWidth > 0 ? DebugToolsFold.ActualWidth : double.PositiveInfinity;
+        DebugToolsBody.Measure(new System.Windows.Size(width, double.PositiveInfinity));
+        return DebugToolsBody.DesiredSize.Height;
+    }
+
+    private void OcrDebugBoxes_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+
+        bool lines = OcrLineBoxesCheckBox.IsChecked == true;
+        bool groups = TextGroupBoxesCheckBox.IsChecked == true;
+        Persist(s =>
+        {
+            s.OcrDebug.ShowLineBoxes = lines;
+            s.OcrDebug.ShowGroupBoxes = groups;
+        });
     }
 
     /// <summary>
