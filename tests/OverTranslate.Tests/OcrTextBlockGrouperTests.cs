@@ -492,4 +492,64 @@ public class OcrTextBlockGrouperTests
 
         Assert.Equal(4, grouped.Count);
     }
+
+    /// <summary>
+    /// The row rule measures on the detector's box, and this pair is where that changes the answer.
+    /// </summary>
+    /// <remarks>
+    /// Two CJK words 16px apart, in boxes the engine has normalised from 40px down to 32.8. Against
+    /// the detection height the space is 0.40 of a line and they are one line of text; against the
+    /// normalised height it is 0.49 and they are two things side by side. Reading Bounds here would
+    /// put the same picture on either side of the threshold depending on the source language the
+    /// user picked, which is what the whole split of the metrics exists to stop.
+    /// </remarks>
+    [Fact]
+    public void SameLineGap_IsMeasuredOnLayoutBounds_NotTheNormalisedBox()
+    {
+        OcrTextBlock Normalised(string text, double x) =>
+            new OcrTextBlock(text, new Rect(x, 13.6, 40, 32.8))
+            {
+                LayoutBounds = new Rect(x, 10, 40, 40),
+                LayoutScript = OcrLayoutScript.Cjk,
+            };
+
+        var previous = Normalised("今日", 10);
+        var current = Normalised("天気", 66);
+
+        Assert.Equal(16, current.LayoutBounds.X - previous.LayoutBounds.Right);
+        Assert.True(16 / 40.0 < SameLineGapThreshold.Fallback);
+        Assert.True(16 / 32.8 > SameLineGapThreshold.Fallback);
+
+        var grouped = OcrTextBlockGrouper.Group([previous, current]);
+
+        Assert.Equal("今日天気", Assert.Single(grouped).Text);
+    }
+
+    /// <summary>
+    /// And the capture that says its own spacing: eight menu entries set well apart, with one pair
+    /// of them closer than the fixed fallback would have allowed.
+    /// </summary>
+    [Fact]
+    public void SameLineGaps_AreJudgedAgainstTheSpacingOfThisCapture()
+    {
+        // Word spaces of 0.1 of a line and item spaces of 0.6, which the estimator splits between.
+        var boxes = new List<OcrTextBlock>();
+        double x = 0;
+        foreach (var (text, gap) in new (string, double)[]
+        {
+            ("Alpha", 0), ("beta", 4), ("Gamma", 24), ("delta", 4),
+            ("Epsilon", 24), ("zeta", 4), ("Eta", 24), ("theta", 4),
+        })
+        {
+            x += gap;
+            boxes.Add(new OcrTextBlock(text, new Rect(x, 10, 60, 40)).AsDetected());
+            x += 60;
+        }
+
+        var grouped = OcrTextBlockGrouper.Group(boxes);
+
+        Assert.Equal(
+            ["Alpha beta", "Gamma delta", "Epsilon zeta", "Eta theta"],
+            grouped.Select(block => block.Text));
+    }
 }

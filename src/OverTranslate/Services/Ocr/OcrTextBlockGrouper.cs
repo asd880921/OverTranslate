@@ -34,7 +34,7 @@ internal static class OcrTextBlockGrouper
         if (blocks.Count <= 1)
             return blocks.ToList();
 
-        var sameLineMerged = MergeSameLineFragments(blocks);
+        var sameLineMerged = MergeSameLineFragments(blocks, decisions);
         var sorted = sameLineMerged
             .OrderBy(block => block.LayoutBounds.Y)
             .ThenBy(block => block.LayoutBounds.X)
@@ -83,6 +83,7 @@ internal static class OcrTextBlockGrouper
     /// </summary>
     /// <param name="Rule">Which test decided, whether it joined or refused.</param>
     internal readonly record struct NextLineDecision(
+        string Kind,
         string Previous,
         string Current,
         OcrLayoutScript PreviousScript,
@@ -94,99 +95,181 @@ internal static class OcrTextBlockGrouper
         bool Joined,
         string Rule);
 
-    private static List<OcrTextBlock> MergeSameLineFragments(IReadOnlyList<OcrTextBlock> blocks)
+    private static List<OcrTextBlock> MergeSameLineFragments(
+        IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions)
     {
-        // Process left-to-right and append each fragment to whichever open row it continues, rather
-        // than a global Y-then-X sort + "compare only with the previous" merge. Latin word boxes on
-        // one line have tops that vary with ascenders/descenders (e.g. "Send" y=32 vs "to" y=37), so
-        // a Y-primary sort interleaves words from across the line and the sequential merge then
-        // leaves a single line scattered into separately translated words. Sorting by X keeps a
-        // line's fragments in reading order; the vertical-overlap test in CanJoinSameLine routes
-        // each fragment to the correct row when several lines are present.
+        var rows = BuildVisualRows(blocks);
+        var gaps = rows.SelectMany(AdjacentGaps).ToList();
+        var threshold = SameLineGapThreshold.Estimate(gaps);
+
+        return rows.SelectMany(row => SplitRowIntoLines(row, threshold.Value, decisions)).ToList();
+    }
+
+    /// <summary>
+    /// Gathers the boxes that sit on one line of the picture, left to right, whatever the spaces
+    /// between them turn out to mean.
+    /// </summary>
+    /// <remarks>
+    /// Membership only, with no gap test. Which spaces are wide enough to separate things cannot be
+    /// decided one pair at a time, because it depends on the spacing this particular capture uses,
+    /// and that cannot be measured until the rows are known. So the rows are built first and cut
+    /// afterwards.
+    ///
+    /// Sorted by X and not by Y. Latin word boxes on one line have tops that vary with ascenders
+    /// and descenders (a real line gave "Send" at y=32 beside "to" at y=37), so a Y-primary sort
+    /// interleaves words from across the capture and a row built in that order ends up holding
+    /// fragments of several. Reading order keeps a line's own boxes together, and the vertical
+    /// overlap test routes each box to the right row when several are open at once.
+    /// </remarks>
+    private static List<List<OcrTextBlock>> BuildVisualRows(IReadOnlyList<OcrTextBlock> blocks)
+    {
         var ordered = blocks
             .OrderBy(block => block.LayoutBounds.X)
             .ThenBy(block => block.LayoutBounds.Y)
             .ToList();
-        var merged = new List<OcrTextBlock>();
+        var rows = new List<List<OcrTextBlock>>();
 
         foreach (var block in ordered)
         {
-            var targetIndex = FindSameLineTarget(merged, block);
-            if (targetIndex >= 0)
-                merged[targetIndex] = MergeSameLine(merged[targetIndex], block);
-            else
-                merged.Add(block);
-        }
+            var bestRow = -1;
+            var bestOverlap = double.NegativeInfinity;
 
-        return merged;
-    }
-
-    // Among the open row-blocks, returns the one this fragment continues — the candidate to its left
-    // with the most vertical overlap (best row match), or -1 when none qualifies.
-    private static int FindSameLineTarget(List<OcrTextBlock> merged, OcrTextBlock block)
-    {
-        var bestIndex = -1;
-        var bestOverlap = double.NegativeInfinity;
-
-        for (var i = 0; i < merged.Count; i++)
-        {
-            var candidate = merged[i];
-            if (!CanJoinSameLine(candidate, block))
-                continue;
-
-            var overlap = Math.Min(candidate.LayoutBounds.Bottom, block.LayoutBounds.Bottom) -
-                          Math.Max(candidate.LayoutBounds.Top, block.LayoutBounds.Top);
-            if (overlap > bestOverlap)
+            for (var i = 0; i < rows.Count; i++)
             {
+                // Against the rightmost box of the row, which is the one this would follow.
+                var rightmost = rows[i][^1];
+                if (!SharesVisualRow(rightmost, block)) continue;
+
+                var overlap = VerticalOverlapRate(rightmost, block);
+                if (overlap <= bestOverlap) continue;
+
                 bestOverlap = overlap;
-                bestIndex = i;
+                bestRow = i;
             }
+
+            if (bestRow >= 0) rows[bestRow].Add(block);
+            else rows.Add([block]);
         }
 
-        return bestIndex;
+        return rows;
     }
 
-    private static bool CanJoinSameLine(OcrTextBlock previous, OcrTextBlock current)
+    /// <summary>Whether two boxes sit on the same line of the picture. Says nothing about joining.</summary>
+    private static bool SharesVisualRow(OcrTextBlock previous, OcrTextBlock current)
     {
-        var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
-
         // Vertical overlap — NOT height ratio — is what tells an in-line word from a distinct
-        // neighbour. A short mid-line word ("to" h=25 on a h=31 line → heightRatio 0.81) sits on the
-        // same baseline, so its box is fully nested in the line (overlap ≈ 1.0). Two stacked buttons
-        // ("Download…report" h=32 next to a vertically offset "Create key" h=38 → heightRatio 0.84)
-        // overlap only ≈ 0.47. Their height ratios are inverted (0.81 < 0.84), so any single height
-        // threshold either drops "to" or merges the buttons. Keep height tolerant and let the strict
-        // overlap test below do the discriminating.
-        // 0.5 rather than 0.6, measured: a subtitle reading "Let's pay CiRCLE a visit on the way
+        // neighbour. A short mid-line word ("to" h=25 on a h=31 line, heightRatio 0.81) sits on the
+        // same baseline, so its box is fully nested in the line (overlap about 1.0). Two stacked
+        // buttons ("Download…report" h=32 next to a vertically offset "Create key" h=38,
+        // heightRatio 0.84) overlap only about 0.47. Their height ratios are inverted
+        // (0.81 < 0.84), so any single height threshold either drops "to" or merges the buttons.
+        // Keep height tolerant and let the strict overlap test do the discriminating.
+        //
+        // 0.5 rather than 0.6, measured: a subtitle reading "Let us pay CiRCLE a visit on the way
         // home." came back as an 888x88 box and a 141x51 one holding "home", a height ratio of
         // 0.58. They sit 2px apart with the shorter box entirely inside the taller one's rows, and
-        // the guard rejected them anyway — so "home" was translated on its own and appeared as a
+        // the guard rejected them anyway, so "home" was translated on its own and appeared as a
         // stray word to the right of a sentence missing its ending. The word's box is short because
         // the word has no descender, which is a property of the letters, not of whether they belong
-        // to the line. Discriminating between lines is the vertical-overlap test's job below, as the
-        // note above says; this only has to keep out boxes of wildly different size.
+        // to the line.
         var heightRatio = Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height) /
                           Math.Max(previous.LayoutBounds.Height, current.LayoutBounds.Height);
-        if (heightRatio < 0.5)
-            return false;
 
-        var verticalOverlap = Math.Max(
+        return heightRatio >= MinimumRowHeightRatio &&
+               VerticalOverlapRate(previous, current) >= MinimumRowVerticalOverlap;
+    }
+
+    private static double VerticalOverlapRate(OcrTextBlock previous, OcrTextBlock current)
+    {
+        var overlap = Math.Max(
             0,
             Math.Min(previous.LayoutBounds.Bottom, current.LayoutBounds.Bottom) -
             Math.Max(previous.LayoutBounds.Top, current.LayoutBounds.Top));
-        var verticalOverlapRate = verticalOverlap /
-                                  Math.Max(1, Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height));
-        if (verticalOverlapRate < 0.72)
-            return false;
+
+        return overlap /
+               Math.Max(1, Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height));
+    }
+
+    /// <summary>The space before each box in a row, in line heights, neighbour to neighbour.</summary>
+    private static IEnumerable<double> AdjacentGaps(List<OcrTextBlock> row) =>
+        row.Zip(row.Skip(1), NormalizedGap);
+
+    private static double NormalizedGap(OcrTextBlock previous, OcrTextBlock current) =>
+        (current.LayoutBounds.X - previous.LayoutBounds.Right) /
+        Math.Max(1, (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0);
+
+    /// <summary>
+    /// Cuts one row wherever the space between neighbours is too wide to be a space between words,
+    /// and joins what is left.
+    /// </summary>
+    private static IEnumerable<OcrTextBlock> SplitRowIntoLines(
+        List<OcrTextBlock> row, double threshold, List<NextLineDecision>? decisions)
+    {
+        var lines = new List<OcrTextBlock>();
+        var line = row[0];
+
+        for (var i = 1; i < row.Count; i++)
+        {
+            var (joined, rule) = JudgeSameLine(row[i - 1], row[i], threshold);
+            decisions?.Add(SameLineDecision(row[i - 1], row[i], joined, rule));
+
+            if (joined)
+            {
+                line = MergeSameLine(line, row[i]);
+                continue;
+            }
+
+            lines.Add(line);
+            line = row[i];
+        }
+
+        lines.Add(line);
+        return lines;
+    }
+
+    private static (bool Joined, string Rule) JudgeSameLine(
+        OcrTextBlock previous, OcrTextBlock current, double threshold)
+    {
+        var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
 
         // The gap can be negative: on large captures the detector's unclip expansion enlarges big
         // heading word-boxes until adjacent ones overlap horizontally (e.g. "Translate" right=533
-        // vs "your website" left=515 → gap -18), which the old `>= 0` guard rejected, scattering
+        // vs "your website" left=515, a gap of -18), which a non-negative guard rejected, scattering
         // one heading into word-by-word translations. Allow up to a line-height of overlap; the
-        // vertical-overlap and height-ratio checks above already keep stacked/unrelated lines out.
+        // checks in SharesVisualRow already keep stacked lines out.
         var horizontalGap = current.LayoutBounds.X - previous.LayoutBounds.Right;
-        return horizontalGap >= -avgHeight && horizontalGap <= Math.Max(avgHeight * 1.35, 18);
+        if (horizontalGap < -avgHeight)
+            return (false, "overlaps too far");
+
+        // The floor is for text too small for a ratio to mean much. It was 18px, which at the sizes
+        // it applied to was itself wide enough to cross a menu.
+        return horizontalGap <= Math.Max(avgHeight * threshold, MinimumRowGapPixels)
+            ? (true, "same row")
+            : (false, "horizontal gap");
     }
+
+    /// <inheritdoc cref="SharesVisualRow"/>
+    private const double MinimumRowHeightRatio = 0.5;
+
+    /// <inheritdoc cref="SharesVisualRow"/>
+    private const double MinimumRowVerticalOverlap = 0.72;
+
+    /// <inheritdoc cref="JudgeSameLine"/>
+    private const double MinimumRowGapPixels = 6;
+
+    private static NextLineDecision SameLineDecision(
+        OcrTextBlock previous, OcrTextBlock current, bool joined, string rule) =>
+        new("row",
+            previous.Text,
+            current.Text,
+            previous.LayoutScript,
+            current.LayoutScript,
+            NormalizedGap(previous, current),
+            VerticalOverlapRate(previous, current),
+            0,
+            previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
+            joined,
+            rule);
 
     private static OcrTextBlock MergeSameLine(OcrTextBlock previous, OcrTextBlock current)
     {
@@ -229,6 +312,7 @@ internal static class OcrTextBlockGrouper
 
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
         decisions.Add(new NextLineDecision(
+            "next",
             previous.Text,
             current.Text,
             previous.LayoutScript,
@@ -249,7 +333,7 @@ internal static class OcrTextBlockGrouper
         if (TextSizeRatio(previous, current) < 0.88)
             return (false, "text size");
 
-        // The gap can be negative, for exactly the reason it can horizontally in CanJoinSameLine:
+        // The gap can be negative, for exactly the reason it can horizontally in JudgeSameLine:
         // the detector's unclip expansion grows every box a little past its glyphs, so two lines of
         // one wrapped sentence routinely come back overlapping by a few pixels. A `< 0` guard threw
         // those apart, and each half was then translated on its own — which is not a cosmetic
@@ -296,7 +380,7 @@ internal static class OcrTextBlockGrouper
     /// sentence, re-read as the picture moved, gave anything from 0.68 to 1.00 across eight passes:
     /// text that merged or did not depending on the frame.</para>
     ///
-    /// <para>This is the argument <see cref="CanJoinSameLine"/> already makes about its own height
+    /// <para>This is the argument <see cref="SharesVisualRow"/> already makes about its own height
     /// test — box height is a property of the letters, not of whether they belong together — and the
     /// answer there was to keep the test tolerant. Here there is a better one available: the engine
     /// already measures the ink for Latin lines, because both overlays need it to size their font.

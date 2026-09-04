@@ -1086,7 +1086,7 @@ if (args[0] == "--group-explain")
         foreach (var decision in decisions)
         {
             Console.WriteLine(
-                $"  {(decision.Joined ? "JOIN  " : "SPLIT ")} gap={decision.VerticalGap,6:0.00} " +
+                $"  {decision.Kind,-4} {(decision.Joined ? "JOIN  " : "SPLIT ")} gap={decision.VerticalGap,6:0.00} " +
                 $"align={decision.LeftDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
                 $"width={decision.WidthRatio:0.00} " +
                 $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
