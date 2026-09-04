@@ -36,6 +36,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
     Console.Error.WriteLine("       OcrHarness --group-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
+    Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (what the confidence filter drops, and what a line would have reclaimed)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
@@ -1096,6 +1098,34 @@ if (args[0] == "--group-explain")
 
     static string Shorten(string text) =>
         text.Length <= 42 ? text : string.Concat(text.AsSpan(0, 40), "…");
+}
+
+// The vertical pipeline, which nothing else here can reach.
+//
+// Vertical writing is turned anticlockwise for the horizontal detector, grouped in that frame,
+// mapped back, and then merged a second time into columns. Only that second pass decides what a
+// reader of a Japanese page actually gets, and --group-explain never runs it: it calls the grouper
+// directly, which is the horizontal path. So every number this harness has ever printed for
+// vertical-image-ja was the horizontal pipeline's.
+if (args[0] == "--vertical-explain")
+{
+    using var verticalEngine = new OnnxOcrEngine();
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var columns = await OcrService.RecognizeVerticalAsync(
+            verticalEngine, image, harnessLanguage, CancellationToken.None);
+
+        Console.WriteLine(
+            $"VERTICAL	{path}	lang={harnessLanguage}	columns={columns.Count}" +
+            $"	scripts={string.Join(",", columns.Select(c => c.LayoutScript))}" +
+            $"	text={string.Join(" | ", columns.Select(c => c.Text.Trim()))}");
+    }
+
+    return 0;
 }
 
 // Where a change in the user's selection first becomes a change in the answer.
