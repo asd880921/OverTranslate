@@ -1502,15 +1502,76 @@
          stays because none of these icons is standard enough to be read cold — and a toolbar the
          user meets mid-task, over their own screen, is the wrong place to make them hover to find
          out. The icon carries the accent and the label stays plain text, so a row of them reads as
-         one rhythm instead of four coloured words. -->
-    <!-- The icon in front of an action's name on the capture toolbar. A style rather than four
-         copies of the same three properties, so the row cannot end up with one icon a point off. -->
+         one rhythm instead of five coloured words.
+
+         Stacked rather than side by side because the row grew to five: laid out in a line each
+         action was as wide as its own name, and a bar that already carries three pickers and a
+         segmented switch could not absorb another one of those. Over the name the icon costs no
+         width at all, the actions come out near enough the same size as each other to scan as a
+         set, and the bar gets back roughly what the fifth action took. -->
+
+    <!-- The slot an action's icon is drawn into, above its name. Fixed on both axes and identical on
+         every button, which is the entire reason it exists: a typed glyph's line box and a drawn
+         14×14 icon are different heights, and dropped straight into the stack each would put the
+         label under it at its own height — five actions, five baselines, a row that will not sit
+         still. One slot size makes the five labels one line. -->
+    <Style x:Key="ToolbarActionIcon" TargetType="Grid">
+        <Setter Property="Width"               Value="20"/>
+        <Setter Property="Height"              Value="20"/>
+        <Setter Property="Margin"              Value="0,0,0,2"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- A typed icon inside that slot. Centred both ways rather than laid out from the top, because
+         what the slot is holding is the glyph's ink, not its line box. -->
     <Style x:Key="ToolbarActionGlyph" TargetType="TextBlock">
-        <Setter Property="FontFamily"         Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
-        <Setter Property="FontSize"           Value="14"/>
-        <Setter Property="Margin"             Value="0,0,5,0"/>
-        <Setter Property="VerticalAlignment"  Value="Center"/>
-        <Setter Property="Foreground"         Value="{DynamicResource AppAccent}"/>
+        <Setter Property="FontFamily"          Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize"            Value="16"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment"   Value="Center"/>
+        <Setter Property="Foreground"          Value="{DynamicResource AppAccent}"/>
+    </Style>
+
+    <!-- The canvas every action icon is drawn on: 18×18, centred in the 20 slot. The paths are
+         written against it in absolute coordinates and left at Path's default Stretch of None —
+         scaling a 1.4px stroke is what turns a crisp icon soft — so they need a box of exactly the
+         size they were drawn for.
+
+         One canvas for all five, which is the point of it: an icon set is read as a set, and a set
+         is what a row stops being the moment one mark is a third larger than its neighbour. The
+         four typed glyphs this row used to carry could not be held to that — a font's ink fills its
+         em box by its own rules, and a shared FontSize only makes the boxes equal, not the marks
+         inside them. -->
+    <Style x:Key="ToolbarActionDrawing" TargetType="Grid">
+        <Setter Property="Width"               Value="18"/>
+        <Setter Property="Height"              Value="18"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment"   Value="Center"/>
+    </Style>
+
+    <!-- The one pen every one of those icons is drawn with. Outlines rather than solids, and one
+         weight across the row: five marks at one thickness read as one family, and the accent is
+         carried by the strokes alone so the labels under them can stay plain text. -->
+    <Style x:Key="ToolbarActionStroke" TargetType="Path">
+        <Setter Property="Stroke"              Value="{DynamicResource AppAccent}"/>
+        <Setter Property="StrokeThickness"     Value="1.4"/>
+        <Setter Property="StrokeLineJoin"      Value="Round"/>
+        <Setter Property="StrokeStartLineCap"  Value="Round"/>
+        <Setter Property="StrokeEndLineCap"    Value="Round"/>
+    </Style>
+
+    <!-- The same pen again, for an icon that stands for a tool rather than for an action: it takes
+         the colour of the button it is drawn on, which means neutral while the tool is on the shelf
+         and accent while it is the one in hand.
+
+         Why the two differ. On the capture bar every icon is something to do, all six are equally
+         available, and painting them all accent makes the row read as one set of actions. In the
+         標記 panel one of the three is being held — that is the panel's whole state — and a row of
+         identically accented tools would leave the outlined plate to say it on its own. Colour is
+         the stronger signal of the two, so it goes to the tool that is in hand. -->
+    <Style x:Key="ToolbarToolStroke" TargetType="Path" BasedOn="{StaticResource ToolbarActionStroke}">
+        <Setter Property="Stroke"
+                Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ButtonBase}}"/>
     </Style>
 
     <Style x:Key="ToolbarStackButton" TargetType="Button">
@@ -1519,10 +1580,17 @@
         <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
         <Setter Property="Background"      Value="Transparent"/>
         <Setter Property="BorderBrush"     Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="MinWidth"        Value="0"/>
-        <Setter Property="Height"          Value="32"/>
-        <Setter Property="Padding"         Value="9,0"/>
+        <!-- An edge that is there but invisible, so the one action in this row that can be
+             switched on — 標記, which shows its state as an outline — is not a hair wider than
+             the four beside it that cannot. -->
+        <Setter Property="BorderThickness" Value="1"/>
+        <!-- Wide enough that a two-character name still leaves the icon above it room to breathe.
+             The height is the stack's 37 — a 20 icon slot, 2 of gap and one 11px line — plus a
+             margin of its own, so the surface that appears on hover reads as a button around the
+             two lines rather than as a box drawn tight against them. -->
+        <Setter Property="MinWidth"        Value="50"/>
+        <Setter Property="Height"          Value="46"/>
+        <Setter Property="Padding"         Value="8,0"/>
         <Setter Property="Cursor"          Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -1531,7 +1599,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="10"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"/>
@@ -1554,14 +1622,120 @@
         </Setter>
     </Style>
 
-    <!-- The same shape on a raised surface, for the one secondary action that ends the capture
-         session rather than acting inside it. Given an edge of its own so that leaving is not one
-         more thing in the row of things that stay. -->
-    <Style x:Key="ToolbarStackRaisedButton" TargetType="Button" BasedOn="{StaticResource ToolbarStackButton}">
+    <!-- The same shape again for an action that is either on or off — 標記 on the capture bar, and
+         the three tools inside its panel. Checked it takes an outlined, tinted plate: the row it
+         sits in is otherwise flat, so an outline is the one thing in it that cannot be mistaken for
+         a hover. The label goes accent along with the icon, which is the only place on these bars
+         where that happens and is exactly why it reads as a state rather than as emphasis. -->
+    <Style x:Key="ToolbarStackToggleButton" TargetType="ToggleButton">
+        <Setter Property="FontFamily"      Value="{DynamicResource AppFont}"/>
+        <Setter Property="FontSize"        Value="11"/>
+        <Setter Property="Foreground"      Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderBrush"     Value="Transparent"/>
+        <Setter Property="MinWidth"        Value="50"/>
+        <Setter Property="Height"          Value="46"/>
+        <Setter Property="Padding"         Value="8,0"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- Hover is for the unchecked state only: over the checked plate it would be
+                             a second surface laid on the one already there. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked"   Value="False"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonHoverBg}"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppButtonPressedBg}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background"
+                                    Value="{DynamicResource AppAccentSubtle}"/>
+                            <Setter TargetName="Root" Property="BorderBrush"
+                                    Value="{DynamicResource AppAccent}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Cursor"  Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- One colour in the 標記 palette. The mark of the chosen one is a ring drawn outside the disc,
+         not a tick laid over it: a tick has to be a colour, and any colour it could be is one of the
+         eight underneath it — white on white, black on black. A ring set off the edge stays legible
+         against every swatch because it never touches one. -->
+    <Style x:Key="AnnotationSwatchButton" TargetType="ToggleButton">
+        <Setter Property="Width"   Value="30"/>
+        <Setter Property="Height"  Value="30"/>
+        <Setter Property="Margin"  Value="3,0"/>
+        <Setter Property="Cursor"  Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid Background="Transparent">
+                        <Ellipse x:Name="Ring"
+                                 Stroke="{DynamicResource AppAccent}"
+                                 StrokeThickness="2"
+                                 Visibility="Collapsed"/>
+                        <!-- The hairline is what keeps the white swatch on a light bar and the black
+                             one on a dark bar from disappearing into it. -->
+                        <Ellipse x:Name="Disc"
+                                 Margin="5"
+                                 Fill="{TemplateBinding Background}"
+                                 Stroke="{DynamicResource ToolbarSwatchEdge}"
+                                 StrokeThickness="1"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked"   Value="False"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Disc" Property="Margin" Value="3.5"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Ring" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A square raised tile for the one control on the bar that carries no name: the speaker at
+         the head of it. Everything else in the action row says what it is in a word underneath, so a
+         bare glyph sitting among them would read as a name that failed to load. Given a surface and
+         an edge instead, it reads as its own thing — which is what it is: it belongs to the source
+         picker beside it, not to the row of actions at the far end. -->
+    <Style x:Key="ToolbarTileButton" TargetType="Button" BasedOn="{StaticResource ToolbarStackButton}">
         <Setter Property="Background"      Value="{DynamicResource ToolbarGroupBg}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource ToolbarBorder}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding"         Value="12,0"/>
+        <Setter Property="MinWidth"        Value="0"/>
+        <Setter Property="Width"           Value="38"/>
+        <Setter Property="Height"          Value="38"/>
+        <Setter Property="Padding"         Value="0"/>
         <!-- Its own template, for the same reason ToastIconButton has one: BasedOn cannot reach the
              hover and pressed brushes named inside the inherited one, and the bar's steps are
              measured against the bar — against this raised surface the light theme's would be a
@@ -1573,7 +1747,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="10"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"/>
@@ -2611,6 +2785,34 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- A slider on the 標記 panel, with its name over it and its two ends named underneath. Three
+         styles rather than three copies of the same properties, because the panel now carries two of
+         these side by side and they have to be the same object twice, not two similar ones. -->
+    <Style x:Key="AnnotationSliderTitle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
+        <Setter Property="FontSize"   Value="11.5"/>
+        <Setter Property="Margin"     Value="1,0,0,2"/>
+    </Style>
+
+    <Style x:Key="AnnotationSlider" TargetType="Slider" BasedOn="{StaticResource AppSlider}">
+        <Setter Property="Width"      Value="118"/>
+        <Setter Property="Minimum"    Value="0"/>
+        <Setter Property="Maximum"    Value="1"/>
+        <Setter Property="SmallChange" Value="0.1"/>
+        <Setter Property="LargeChange" Value="0.25"/>
+    </Style>
+
+    <!-- Dimmer and a size down from the name above: these two are read once, to learn which way the
+         slider runs, and never again. At the same weight as the name they would compete with it for
+         a control that only has one thing to say. -->
+    <Style x:Key="AnnotationSliderEnd" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
+        <Setter Property="FontSize"   Value="10.5"/>
+        <Setter Property="Margin"     Value="1,1,1,0"/>
     </Style>
 
 </ResourceDictionary>

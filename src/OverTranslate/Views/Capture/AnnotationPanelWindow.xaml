@@ -1,0 +1,243 @@
+<Window x:Class="OverTranslate.Views.Capture.AnnotationPanelWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        Topmost="True"
+        ShowInTaskbar="False"
+        AllowsTransparency="True"
+        Background="Transparent"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <!-- The same margin the capture toolbar leaves, and for the same reason: a blur still carrying
+         opacity at the window's edge is cut off by a straight line, which reads as a stray border
+         around the bar. -->
+    <Border Margin="12,10,12,14">
+        <Grid>
+            <Grid>
+                <!-- Shadow on an empty twin rather than on the bar: an Effect rasterises the element
+                     it is set on, and ClearType cannot run over a surface that may be transparent —
+                     which at 11px CJK is the difference between a label that reads and one that
+                     looks thin. Same trick the capture toolbar uses, for the same reason. -->
+                <Border Background="{DynamicResource ToolbarBg}"
+                        Margin="2"
+                        CornerRadius="14">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
+                                          Opacity="0.20" Color="#000000"/>
+                    </Border.Effect>
+                </Border>
+
+                <!-- Named because the window is bigger than the bar: the margin above holds the
+                     shadow, so where this panel sits relative to the toolbar has to be measured from
+                     the surface the user can see, not from the window's edge. See PlaceNear. -->
+                <Border x:Name="PanelSurface"
+                        Background="{DynamicResource ToolbarBg}"
+                        BorderBrush="{DynamicResource ToolbarBorder}"
+                        BorderThickness="1"
+                        CornerRadius="16"
+                        Padding="8,8"
+                        RenderOptions.ClearTypeHint="Enabled">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                        <!-- What a drag inside the box does. Three states of one control, so they are
+                             one radio group: picking a tool is picking, not switching three things on
+                             and off. -->
+                        <ToggleButton x:Name="PenTool"
+                                      Style="{StaticResource ToolbarStackToggleButton}"
+                                      Click="ToolBtn_Click">
+                            <StackPanel>
+                                <Grid Style="{StaticResource ToolbarActionIcon}">
+                                  <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                    <!-- The same pen the 標記 button on the bar above wears, to the
+                                         point. The panel is that button opened up, and the tool it
+                                         defaults to had better be the thing the button showed. -->
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M2.5,16.3 L3,11.85 L10.9,1.35 L14.55,4.1 L6.65,14.55 Z"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M3,11.85 L6.65,14.55"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M2.5,16.3 H15.5"/>
+                                  </Grid>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource S.Annotate.Pen}"/>
+                            </StackPanel>
+                        </ToggleButton>
+
+                        <ToggleButton x:Name="HighlighterTool"
+                                      Style="{StaticResource ToolbarStackToggleButton}"
+                                      Click="ToolBtn_Click">
+                            <StackPanel>
+                                <Grid Style="{StaticResource ToolbarActionIcon}">
+                                  <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                    <!-- Head-on and standing upright, not the pen tilted and fattened.
+                                         A highlighter is held square to the page and its whole
+                                         character is the chisel across the bottom, which is a shape
+                                         you can only see from the front — turned to the same angle as
+                                         the pen it becomes the pen with a thick line under it, and
+                                         the two tools stop being distinguishable at 18px.
+
+                                         Barrel, then the shoulders tapering to the felt, then a
+                                         window across the taper. -->
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M4.4,0.8 H13.6 A1.3,1.3 0 0 1 14.9,2.1 V7 L11.3,12.6
+                                                H6.7 L3.1,7 V2.1 A1.3,1.3 0 0 1 4.4,0.8 Z"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M7.2,9 H10.8"/>
+
+                                    <!-- The felt and the band it has just laid down, in the one colour
+                                         that names this tool without a label. Fixed rather than the
+                                         colour currently in hand: the icon says which tool this is,
+                                         and a tool whose picture changed with the palette would be a
+                                         different picture every time the user looked for it. -->
+                                    <Path Fill="{DynamicResource ToolbarHighlighterInk}"
+                                          Stroke="{DynamicResource ToolbarHighlighterInk}"
+                                          StrokeThickness="1.4"
+                                          StrokeLineJoin="Round"
+                                          Data="M6.7,12.6 L7.5,14.6 H10.5 L11.3,12.6 Z"/>
+                                    <Path Stroke="{DynamicResource ToolbarHighlighterInk}"
+                                          StrokeThickness="2.2"
+                                          StrokeStartLineCap="Flat"
+                                          StrokeEndLineCap="Flat"
+                                          Data="M1.7,16.5 H16.3"/>
+                                  </Grid>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource S.Annotate.Highlighter}"/>
+                            </StackPanel>
+                        </ToggleButton>
+
+                        <ToggleButton x:Name="EraserTool"
+                                      Style="{StaticResource ToolbarStackToggleButton}"
+                                      Click="ToolBtn_Click">
+                            <StackPanel>
+                                <Grid Style="{StaticResource ToolbarActionIcon}">
+                                  <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                    <!-- A block tipped onto its corner and cut off flat where it meets
+                                         the surface, with the crease between the rubber and its sleeve
+                                         running across it. The flat cut and the line it rests on are
+                                         the whole idea: an eraser is the one tool here that is pushed
+                                         against something, and a block floating free is just a
+                                         rhombus. -->
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M1.15,11.35 L10.05,2.4 A1.5,1.5 0 0 1 12.15,2.4
+                                                L15.85,6.05 A1.5,1.5 0 0 1 15.85,8.15 L7.6,16.4 H6.15 Z"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M4.25,8.9 L9.3,14"/>
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M6.15,16.4 H16.6"/>
+                                  </Grid>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource S.Annotate.Eraser}"/>
+                            </StackPanel>
+                        </ToggleButton>
+
+                        <Button x:Name="UndoBtn"
+                                Style="{StaticResource ToolbarStackButton}"
+                                Click="UndoBtn_Click">
+                            <StackPanel>
+                                <Grid Style="{StaticResource ToolbarActionIcon}">
+                                  <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M7,2.6 L2.6,7 L7,11.4 M2.6,7 H11 A4.4,4.4 0 0 1 11,15.8 H4.3"/>
+                                  </Grid>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource S.Annotate.Undo}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="RedoBtn"
+                                Style="{StaticResource ToolbarStackButton}"
+                                Click="RedoBtn_Click">
+                            <StackPanel>
+                                <Grid Style="{StaticResource ToolbarActionIcon}">
+                                  <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                    <!-- 復原 mirrored about the middle of the canvas, arc sweep and
+                                         all. Two arrows that are not each other's reflection is the
+                                         sort of thing nobody can name and everybody sees. -->
+                                    <Path Style="{StaticResource ToolbarToolStroke}"
+                                          Data="M11,2.6 L15.4,7 L11,11.4 M15.4,7 H7 A4.4,4.4 0 0 0 7,15.8 H13.7"/>
+                                  </Grid>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource S.Annotate.Redo}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Rectangle Width="1"
+                                   Margin="14,9,10,9"
+                                   Fill="{DynamicResource ToolbarDivider}"/>
+
+                        <!-- Filled from code so the palette is one list in one place rather than
+                             eight near-identical blocks of markup — see BuildPalette. -->
+                        <StackPanel x:Name="Palette"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"/>
+
+                        <Rectangle Width="1"
+                                   Margin="12,9,12,9"
+                                   Fill="{DynamicResource ToolbarDivider}"/>
+
+                        <!-- Named above, and its two ends named underneath. The name alone says what
+                             is being adjusted but not which way, so the user has to move the thing
+                             to find out — and on a control whose entire answer is a position, that
+                             is worth two characters. No number beside it, deliberately: what the
+                             user is choosing is how the mark looks against what is underneath it,
+                             and there is no number that answers that. They can see the stroke.
+
+                             One slider for all three tools, mapped onto each one's own range — see
+                             RangeFor. A slider per tool would be three controls the user has to
+                             discover are three, on a panel whose whole point is that it is small. -->
+                        <!-- The three labels are filled from code rather than bound, because the
+                             eraser renames them: what it has is not a stroke width but a reach, so
+                             it reads 大小 / 小 / 大 while the two pens read 粗細 / 細 / 粗. Same
+                             control, same position, same value — a second slider that appeared in
+                             its place would be a different control in the same spot. -->
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,4,0">
+                            <TextBlock x:Name="ThicknessTitle"
+                                       Style="{StaticResource AnnotationSliderTitle}"/>
+                            <Slider x:Name="ThicknessSlider"
+                                    Style="{StaticResource AnnotationSlider}"
+                                    ValueChanged="ThicknessSlider_ValueChanged"/>
+                            <Grid>
+                                <TextBlock x:Name="ThicknessMinLabel"
+                                           HorizontalAlignment="Left"
+                                           Style="{StaticResource AnnotationSliderEnd}"/>
+                                <TextBlock x:Name="ThicknessMaxLabel"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource AnnotationSliderEnd}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- How much of the page still shows through, for the one tool the question
+                             applies to. Shown only in 螢光筆 mode rather than greyed out beside the
+                             pen: a highlighter's whole character is that it is see-through, so this
+                             is not an extra setting the tool happens to have — it is half of what
+                             the tool is, and it belongs on screen exactly when the tool is. -->
+                        <Rectangle x:Name="OpacityDivider"
+                                   Width="1"
+                                   Margin="12,6,12,6"
+                                   Fill="{DynamicResource ToolbarDivider}"/>
+
+                        <StackPanel x:Name="OpacityBlock" VerticalAlignment="Center" Margin="0,0,4,0">
+                            <TextBlock Text="{DynamicResource S.Annotate.Opacity}"
+                                       Style="{StaticResource AnnotationSliderTitle}"/>
+                            <Slider x:Name="OpacitySlider"
+                                    Style="{StaticResource AnnotationSlider}"
+                                    AutomationProperties.Name="{DynamicResource S.Annotate.Opacity}"
+                                    ValueChanged="OpacitySlider_ValueChanged"/>
+                            <Grid>
+                                <TextBlock Text="{DynamicResource S.Annotate.Faint}"
+                                           HorizontalAlignment="Left"
+                                           Style="{StaticResource AnnotationSliderEnd}"/>
+                                <TextBlock Text="{DynamicResource S.Annotate.Strong}"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource AnnotationSliderEnd}"/>
+                            </Grid>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

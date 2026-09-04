@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Windows.Threading;
 using NLog;
 
 namespace OverTranslate.Services;
@@ -10,6 +11,14 @@ namespace OverTranslate.Services;
 // that window holds the keyboard focus — which it cannot count on (the tray menu closing right
 // after it opens, full-screen games, elevated foreground windows). Owning the hook for the whole
 // session is what makes Esc behave identically before and after the selection is drawn.
+//
+// The hook lives on its own message-pumping thread (see HookThread), and that is what makes Esc
+// an escape hatch rather than one more thing that stops working. The capture layers are Topmost
+// and cover the whole virtual desktop, so nothing — Task Manager included — can be raised over
+// them; Esc is the way out. Installed from the dispatcher, the callback would be delivered to the
+// dispatcher too, so any UI thread that stopped pumping would take Esc down with it at exactly the
+// moment it was needed, and would stall the entire desktop's keyboard until LowLevelHooksTimeout
+// on every key besides.
 internal sealed class GlobalEscapeHook : IDisposable
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -36,6 +45,7 @@ internal sealed class GlobalEscapeHook : IDisposable
     // would corrupt the hook chain.
     private readonly LowLevelKeyboardProc _proc;
     private readonly Action _onEscape;
+    private readonly HookThread _thread = new("OverTranslate escape hook");
     private IntPtr _hookId;
 
     private GlobalEscapeHook(Action onEscape)
@@ -48,19 +58,29 @@ internal sealed class GlobalEscapeHook : IDisposable
     {
         var hook = new GlobalEscapeHook(onEscape);
 
+        hook._thread.Start();
+
+        // Invoke rather than BeginInvoke: the caller is entitled to have Esc live by the time this
+        // returns, and installing a hook is a single syscall.
+        hook._thread.Invoke(hook.InstallOnHookThread);
+
+        return hook;
+    }
+
+    /// <summary>Runs on the hook thread, which is the only thread the hook can be installed from.</summary>
+    private void InstallOnHookThread()
+    {
         // GetModuleHandle(null) returns this process's own module handle directly. Resolving it via
         // Process.GetCurrentProcess().MainModule enumerates the process module list and costs
         // milliseconds on a path that runs while the capture window is being presented.
-        hook._hookId = SetWindowsHookEx(WH_KEYBOARD_LL, hook._proc, GetModuleHandle(null), 0);
+        _hookId = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(null), 0);
 
-        if (hook._hookId == IntPtr.Zero)
+        if (_hookId == IntPtr.Zero)
         {
             int error = Marshal.GetLastWin32Error();
             Log.Warn("Esc hook install failed (win32 error {Error}) — Esc will only cancel while the capture window has focus",
                 error);
         }
-
-        return hook;
     }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -70,7 +90,12 @@ internal sealed class GlobalEscapeHook : IDisposable
             // Post, never wait. A low-level hook callback that runs longer than
             // LowLevelHooksTimeout (5s by default) gets silently dropped from the hook chain by
             // Windows, and from then on Esc would stop cancelling for the rest of the session.
-            System.Windows.Application.Current?.Dispatcher.BeginInvoke(_onEscape);
+            //
+            // Send priority, not the default: a UI thread busy enough to be worth escaping from
+            // has a queue of pointer events behind it, and cancelling has to jump that queue
+            // rather than take its place at the back of it. Everything the interface queues for
+            // itself is Normal or below.
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(DispatcherPriority.Send, _onEscape);
             return (IntPtr)1; // swallow, so Esc does not also reach the app being translated
         }
 
@@ -79,8 +104,12 @@ internal sealed class GlobalEscapeHook : IDisposable
 
     public void Dispose()
     {
-        if (_hookId == IntPtr.Zero) return;
-        UnhookWindowsHookEx(_hookId);
-        _hookId = IntPtr.Zero;
+        // On the hook thread: a hook can only be removed from the thread that installed it.
+        _thread.Stop(() =>
+        {
+            if (_hookId == IntPtr.Zero) return;
+            UnhookWindowsHookEx(_hookId);
+            _hookId = IntPtr.Zero;
+        });
     }
 }

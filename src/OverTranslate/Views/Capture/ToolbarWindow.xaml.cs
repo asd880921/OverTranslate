@@ -14,18 +14,6 @@ public partial class ToolbarWindow : Window
     private const string SpeakGlyph = Controls.TtsGlyphs.Speak;
     private const string StopGlyph = Controls.TtsGlyphs.Stop;
 
-    /// <summary>
-    /// The eye the toggle shows while the translation is on screen, and the struck-through one it
-    /// shows while the original is.
-    /// </summary>
-    /// <remarks>
-    /// Both are the action, like the label beside them: pressing the first reveals the original,
-    /// pressing the second puts it away again. A fixed eye under a label that changed was the icon
-    /// disagreeing with the word next to it every second press.
-    /// </remarks>
-    private const string RevealGlyph = "\uE890";
-    private const string HideGlyph = "\uED1A";
-
     public event EventHandler<TranslateRequest>? TranslateRequested;
     public event EventHandler? OpenWindowRequested;
     public event EventHandler<CopyTextRequest>? CopyTextRequested;
@@ -35,6 +23,9 @@ public partial class ToolbarWindow : Window
 
     /// <summary>The speak button was pressed: start reading, or stop if already reading.</summary>
     public event EventHandler? SpeakToggleRequested;
+
+    /// <summary>標記 was switched on or off.</summary>
+    public event EventHandler<bool>? AnnotateModeChanged;
 
     /// <summary>
     /// Raised when the button that stops playback is about to stop being usable, so whoever owns the
@@ -168,8 +159,8 @@ public partial class ToolbarWindow : Window
         double scale = ScreenGeometry.ScaleAt(centreX, centreY);
 
         // WPF lays out in DIP regardless of DPI, so the DIP size scales straight to target pixels.
-        double tbW = (ActualWidth  > 0 ? ActualWidth  : 490) * scale;
-        double tbH = (ActualHeight > 0 ? ActualHeight : 38)  * scale;
+        double tbW = (ActualWidth  > 0 ? ActualWidth  : 1090) * scale;
+        double tbH = (ActualHeight > 0 ? ActualHeight : 88)   * scale;
 
         var wa = System.Windows.Forms.Screen
             .FromPoint(new System.Drawing.Point(centreX, centreY)).WorkingArea;
@@ -360,9 +351,15 @@ public partial class ToolbarWindow : Window
         => SpeakToggleRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Puts the toggle's icon and label on the same side of what pressing it would do.</summary>
+    /// <remarks>
+    /// The eye is the action, like the label beside it: plain while the translation is on
+    /// screen, because pressing reveals the original; struck through while the original is,
+    /// because pressing puts it away again. A fixed eye under a label that changed was the
+    /// icon disagreeing with the word next to it every second press.
+    /// </remarks>
     private void RenderToggleButton()
     {
-        ToggleGlyph.Text = _bubblesVisible ? RevealGlyph : HideGlyph;
+        ToggleHideSlash.Visibility = _bubblesVisible ? Visibility.Collapsed : Visibility.Visible;
         ToggleLabel.Text = LocalizationService.Get(
             _bubblesVisible ? "S.Toolbar.ShowSource" : "S.Toolbar.ShowTranslation");
         RenderCopyTextButton();
@@ -376,6 +373,50 @@ public partial class ToolbarWindow : Window
 
     private void CopyShotBtn_Click(object sender, RoutedEventArgs e)
         => CopyScreenshotRequested?.Invoke(this, EventArgs.Empty);
+
+    private void AnnotateBtn_Click(object sender, RoutedEventArgs e)
+        => AnnotateModeChanged?.Invoke(this, IsAnnotating);
+
+    /// <summary>Whether 標記 is on, so a drag inside the box draws rather than moves it.</summary>
+    public bool IsAnnotating => AnnotateBtn.IsChecked == true;
+
+    /// <summary>
+    /// Switches 標記 off from outside — the session ending, or another action taking the box back.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately silent: every caller is already doing the thing the event would have told it to
+    /// do, and raising it here would have them undo their own work.
+    /// </remarks>
+    public void ExitAnnotateMode()
+    {
+        if (!IsAnnotating) return;
+        AnnotateBtn.IsChecked = false;
+    }
+
+    /// <summary>
+    /// The bar as it appears on screen, in physical pixels, for the 標記 panel to sit against.
+    /// </summary>
+    /// <remarks>
+    /// The visible bar, not the window: the window is larger on every side by the margin the shadow
+    /// fades out in, and anything placed against its edge would end up that margin away from the bar
+    /// the user is actually looking at. Read from the live visual rather than by subtracting the
+    /// numbers in the markup, so it cannot drift when those change.
+    /// </remarks>
+    public (Rect Visible, double Scale) VisiblePhysicalBounds()
+    {
+        double scale = ScreenGeometry.ScaleAt(
+            (int)(_selPhysLeft + _selPhysWidth / 2), (int)(_selPhysTop + _selPhysHeight / 2));
+
+        var topLeft = BarSurface.TranslatePoint(new System.Windows.Point(0, 0), this);
+        var bounds  = ScreenGeometry.PhysicalBounds(this);
+
+        return (new Rect(
+                    bounds.Left + topLeft.X * scale,
+                    bounds.Top  + topLeft.Y * scale,
+                    BarSurface.ActualWidth  * scale,
+                    BarSurface.ActualHeight * scale),
+                scale);
+    }
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e)
         => CloseAllRequested?.Invoke(this, EventArgs.Empty);
