@@ -216,7 +216,7 @@ public partial class OverlayWindow : Window
 
         bool hasBubbles = BubbleBackgroundCanvas.Visibility == Visibility.Visible
             && (BubbleBackgroundCanvas.Children.Count > 0 || BubbleTextCanvas.Children.Count > 0);
-        bool hasMarks = AnnotationCanvas.Children.Count > 0;
+        bool hasMarks = AnnotationCanvas.Children.Count > 0 || HasInk;
         if (!hasBubbles && !hasMarks) return null;
 
         int fullW = Math.Max(1, _physBounds.Width);
@@ -228,6 +228,20 @@ public partial class OverlayWindow : Window
             fullW, fullH, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
         full.Render(BubbleBackgroundCanvas);
         full.Render(BubbleTextCanvas);
+
+        // Drawn here rather than left to a canvas, because the finished marks are shown by the
+        // capture window and are not in this window's tree at all — see InkLayer. Clipped to the box
+        // for the same reason the layer is on screen: what the box does not let through was never
+        // part of the picture.
+        var marks = new System.Windows.Media.DrawingVisual();
+        using (var dc = marks.RenderOpen())
+        {
+            dc.PushClip(new System.Windows.Media.RectangleGeometry(InkClip));
+            if (InkSource is { } source) dc.DrawImage(source, InkBounds);
+            dc.Pop();
+        }
+        full.Render(marks);
+
         full.Render(AnnotationCanvas);
 
         // The overlay window spans the whole virtual screen; the selection sits at this physical

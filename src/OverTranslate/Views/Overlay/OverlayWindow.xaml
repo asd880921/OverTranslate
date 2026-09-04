@@ -42,15 +42,18 @@
                        MouseLeave="AnnotationSurface_MouseLeave"/>
         </Canvas>
 
-        <!-- The marks themselves, above the translation: someone annotating after a translation is
-             marking up what they can see, and half of what they can see is the bubbles. Clipped to
-             the selection — see SetAnnotationBounds. -->
+        <!-- The stroke being drawn, above the translation: someone annotating after a translation
+             is marking up what they can see, and half of what they can see is the bubbles. Clipped
+             to the selection — see SetAnnotationBounds. Shown by the capture window, not here — it
+             changes on every mouse move, and see CaptureHostedLayers for what that costs in a
+             window this one's size. -->
         <Canvas x:Name="AnnotationCanvas" IsHitTestVisible="False"/>
 
         <!-- The eraser's own pointer: a ring the size of the circle it will rub out, so what is
-             about to go is visible before it goes. Its own layer above the ink, and deliberately not
-             one of the layers 截圖 renders — see RenderOverlayForSelection — because it is a pointer,
-             not a mark. -->
+             about to go is visible before it goes. Shown by the capture window above the ink, not
+             here — see CaptureHostedLayers; it follows the pointer, and this window cannot afford
+             anything that does. Deliberately not one of the layers 截圖 renders — see
+             RenderOverlayForSelection — because it is a pointer, not a mark. -->
         <Canvas x:Name="AnnotationCursorCanvas" IsHitTestVisible="False">
             <Ellipse x:Name="EraserRing"
                      Visibility="Collapsed"

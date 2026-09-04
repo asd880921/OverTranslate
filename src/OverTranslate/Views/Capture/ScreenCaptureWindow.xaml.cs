@@ -6,6 +6,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Controls.Primitives;
 using OverTranslate.Services;
 using WPoint = System.Windows.Point;
+using WRect = System.Windows.Rect;
 using Key = System.Windows.Input.Key;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
@@ -475,6 +476,37 @@ public partial class ScreenCaptureWindow : Window
         // Movable exactly as long as it is resizable: once translation has started the window goes
         // click-through and the box is no longer the user's to rearrange.
         SelectionBody.Visibility = handleVisibility;
+    }
+
+    /// <summary>
+    /// Hangs the overlay's own layers in this window, bottom first, clipped to the box.
+    /// </summary>
+    /// <remarks>
+    /// The elements come from the overlay and keep belonging to it — this window only gives them
+    /// somewhere opaque to be drawn. Both windows are pinned to the same physical bounds, so a point
+    /// means the same thing in either and nothing needs converting on the way across.
+    /// </remarks>
+    public void ShowOverlayContent(IReadOnlyList<UIElement> layers)
+    {
+        bool same = OverlayContentHost.Children.Count == layers.Count;
+        if (same)
+        {
+            for (int i = 0; i < layers.Count; i++)
+                if (!ReferenceEquals(OverlayContentHost.Children[i], layers[i])) { same = false; break; }
+        }
+        if (same) return;
+
+        OverlayContentHost.Children.Clear();
+
+        foreach (var layer in layers)
+        {
+            // An element belongs to one parent, and these start out in the overlay's own tree.
+            // UseWindowsForms puts System.Drawing and System.Windows.Forms in the implicit usings,
+            // so Panel here has to say which one it means.
+            if (layer is FrameworkElement { Parent: System.Windows.Controls.Panel owner })
+                owner.Children.Remove(layer);
+            OverlayContentHost.Children.Add(layer);
+        }
     }
 
     /// <summary>

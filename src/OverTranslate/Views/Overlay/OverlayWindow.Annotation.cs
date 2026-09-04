@@ -124,6 +124,12 @@ public partial class OverlayWindow
         AnnotationCanvas.Clip = new RectangleGeometry(_annotationBounds);
         AnnotationCursorCanvas.Clip = new RectangleGeometry(_annotationBounds);
 
+        // The finished marks are shown in another window, so their clip goes with them rather than
+        // being put on whatever ends up hosting them — the bubbles travel the same way and are not
+        // confined to the box at all.
+        _inkClip.Clip = new RectangleGeometry(_annotationBounds);
+        InkLayerChanged?.Invoke(this, EventArgs.Empty);
+
         Canvas.SetLeft(AnnotationSurface, _annotationBounds.X);
         Canvas.SetTop(AnnotationSurface,  _annotationBounds.Y);
         AnnotationSurface.Width  = _annotationBounds.Width;
@@ -254,7 +260,7 @@ public partial class OverlayWindow
     {
         if (!_isAnnotating) return;
         AnnotationSurface.CaptureMouse();
-        var point = e.GetPosition(AnnotationCanvas);
+        var point = e.GetPosition(AnnotationInputCanvas);
 
         if (_annotationTool == AnnotationTool.Eraser)
         {
@@ -278,7 +284,7 @@ public partial class OverlayWindow
     {
         if (!_isAnnotating) return;
 
-        var point = e.GetPosition(AnnotationCanvas);
+        var point = e.GetPosition(AnnotationInputCanvas);
 
         // Tracked on every move, button or no button: the ring has to follow the pointer before the
         // user commits to rubbing anything out. That is the whole point of it.
@@ -425,17 +431,76 @@ public partial class OverlayWindow
     /// <remarks>
     /// Grown to the selection rather than made the size of the window — see <see cref="InkSurface"/>.
     /// Anything drawn outside the box is clipped away unseen, so the box is all the picture has to
-    /// hold; a box that is moved or stretched takes the picture with it. Put in at the bottom of the
-    /// canvas so the wet stroke, which is added and removed around it, stays on top.
+    /// hold; a box that is moved or stretched takes the picture with it.
     /// </remarks>
     private void EnsureInkSurface()
     {
         if (_annotationBounds.Width > 0 && _annotationBounds.Height > 0)
             _ink.Ensure(_annotationBounds, _dpiX);
 
-        if (!AnnotationCanvas.Children.Contains(_ink.Element))
-            AnnotationCanvas.Children.Insert(0, _ink.Element);
+        InkLayerChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>The marks, in a holder of their own that keeps them inside the box.</summary>
+    /// <remarks>
+    /// Shown by the capture window rather than by this one. This window has to be transparent — the
+    /// bubbles float over what was on screen — and a transparent window is presented by copying all
+    /// of its content out of video memory and back whenever any of it changes. For a window the size
+    /// of the desktop that measured 2.38ms per change against 0.035ms opaque, which is what an
+    /// eraser dropping frames was made of. Anything that changes while the pointer is moving pays
+    /// that price on every move, so anything that does has to be somewhere else. The wet stroke
+    /// stays: it is a small vector shape, and it only changes while a stroke is being drawn, which
+    /// is a state the marks are being uploaded in anyway.
+    /// </remarks>
+    private readonly Canvas _inkClip = new() { IsHitTestVisible = false };
+
+    /// <summary>
+    /// Everything of this window's that the capture window shows instead, bottom first.
+    /// </summary>
+    /// <remarks>
+    /// The bubbles go across with the marks rather than staying behind, because the two have to keep
+    /// their order and the order is marks on top: a mark is drawn over a translation the user is
+    /// looking at. Left here they would be above the marks on screen and below them in the saved
+    /// picture, which is the same disagreement between what is aimed at and what comes out that
+    /// putting the marks under the selection tint caused. They cost nothing to move — they change
+    /// when a translation arrives, not while a rub is going on.
+    ///
+    /// The stroke being drawn and the eraser ring go across because they are what follows the
+    /// pointer, and repainting anything at all in a transparent window costs a whole-desktop
+    /// upload — which is charged per mouse move whether or not the move did any work. The ring is
+    /// the plainest case: it made the whole screen stutter the moment the eraser was picked up,
+    /// before a rub had even started. Nothing that moves is left behind now; what stays in that
+    /// window is the input surface, which is a fixed rectangle, and the indicator.
+    ///
+    /// Both stay out of the saved picture exactly as they did before the move — the ring because
+    /// RenderOverlayForSelection names the layers it draws and the ring is not one of them, the wet
+    /// stroke because by the time anything is saved it has been baked into the marks and taken off
+    /// its canvas again.
+    /// </remarks>
+    public IReadOnlyList<UIElement> CaptureHostedLayers
+    {
+        get
+        {
+            if (!_inkClip.Children.Contains(_ink.Element)) _inkClip.Children.Add(_ink.Element);
+            return [
+                BubbleBackgroundCanvas, BubbleTextCanvas, _inkClip, AnnotationCanvas,
+                AnnotationCursorCanvas];
+        }
+    }
+
+    /// <summary>How much of the ink layer the selection lets through.</summary>
+    public Rect InkClip => _annotationBounds;
+
+    /// <summary>The picture the marks are in, and where it sits — what the capture has to include.</summary>
+    internal ImageSource? InkSource => _ink.Source;
+
+    internal Rect InkBounds => _ink.Bounds;
+
+    /// <summary>Whether anything has been drawn at all.</summary>
+    internal bool HasInk => CurrentStrokes.Count > 0;
+
+    /// <summary>Raised when the ink layer, or how much of it shows, has changed.</summary>
+    public event EventHandler? InkLayerChanged;
 
 
 

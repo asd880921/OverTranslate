@@ -52,7 +52,13 @@ public sealed class InkSurface
     // this is how often it is allowed to happen.
     private readonly System.Diagnostics.Stopwatch _sinceFlush = System.Diagnostics.Stopwatch.StartNew();
 
-    /// <summary>The element that shows the marks. Added to the ink canvas once and left there.</summary>
+    /// <summary>The picture itself, for whatever has to include it without going through the tree.</summary>
+    public ImageSource? Source => _bitmap;
+
+    /// <summary>Where the picture sits, in the overlay's own DIP coordinates.</summary>
+    public Rect Bounds => _bounds;
+
+    /// <summary>The element that shows the marks. Hung in the capture window — see OverlayWindow.InkLayer.</summary>
     public Image Element { get; } = new() { IsHitTestVisible = false };
 
     /// <summary>Makes the surface cover <paramref name="bounds"/> as well as whatever it covers now.</summary>

@@ -785,6 +785,15 @@ public partial class MainWindow : Window
         _overlayWindow.AnnotationsChanged += (_, _) =>
             _annotationPanel?.SetHistoryState(
                 _overlayWindow?.CanUndoAnnotation == true, _overlayWindow?.CanRedoAnnotation == true);
+
+        // The marks are drawn by the overlay and shown by the capture window — see
+        // OverlayWindow.InkLayer for why they are not shown where they are drawn.
+        _overlayWindow.InkLayerChanged += (_, _) =>
+        {
+            if (_overlayWindow is { } overlay)
+                _captureWindow?.ShowOverlayContent(overlay.CaptureHostedLayers);
+        };
+
         _overlayWindow.Show();
     }
 

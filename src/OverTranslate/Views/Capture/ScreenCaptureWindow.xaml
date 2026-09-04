@@ -25,6 +25,19 @@
                        Visibility="Collapsed"
                        Fill="#1C99C8F0"/>
 
+            <!-- Where the 標記 marks are shown. They belong to the overlay, which owns and draws
+                 them; they are hung here because this window is opaque and that one is not. A
+                 transparent window is presented by copying all of its content out of video memory
+                 and back whenever any of it changes, which for a window the size of the desktop
+                 measured 2.38ms each time against 0.035ms here, and was what an eraser dropping
+                 frames was made of.
+
+                 Above the tint and below the frame. Under the tint the marks came out washed out on
+                 screen while the saved picture — which has no selection furniture in it at all —
+                 showed them at full strength, so what the user was aiming with and what they got
+                 were two different colours. -->
+            <Canvas x:Name="OverlayContentHost" IsHitTestVisible="False"/>
+
             <!-- Same frame the realtime edit layer draws: a solid edge with a shadow under it, so it
                  stays legible over a bright screenshot as well as a dark one. Carries no fill of its
                  own, deliberately — an Effect shadows whatever silhouette its element has, and a
