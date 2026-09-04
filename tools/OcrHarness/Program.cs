@@ -36,7 +36,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
     Console.Error.WriteLine("       OcrHarness --group-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
-    Console.Error.WriteLine("                  (add --realtime for the live pipeline's confidence filter)");
+    Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
     Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
@@ -52,6 +52,31 @@ if (args.Length == 0)
 // dump as a panel would report the wrong half of RealtimeDetectorSize.
 var harnessMode = args.Contains("--panel") ? RealtimeBlockMode.Panel : RealtimeBlockMode.Subtitle;
 args = [.. args.Where(argument => argument != "--panel")];
+
+// WHICH FLOW --group-explain IS ASKED ABOUT, and it has to be asked because grouping serves two of
+// them at two different detector sizes:
+//
+//   截圖翻譯  OcrService.RecognizeAsync    ImgResize = 2048, which below 2048 is no downscale at all
+//   即時翻譯  OcrService.TryRecognizeAsync RealtimeDetectorSize.For(w, h, mode), which downscales
+//
+// That is not a detail. The detector's boxes are not stable across input scales — measured on the
+// old branch's corpus, reading the same 22 captures at the realtime sizes instead of the screenshot
+// one moves 37 of 78 multi-line groups and invents 34 others — so a verdict read at the wrong size
+// is a verdict about a layout the flow under test never sees. Measured again here on one framed
+// nav bar, the boundary is sharp to the pixel: a 2040px-wide frame comes back with three UI labels
+// fused into two boxes and a 2048px one with every label separate, the pixels being identical.
+//
+// This mode was written for the screenshot flow (the corpus is framed selections, and 截圖翻譯 is
+// what the grouping work serves), but it took RealtimeDetectorSize from --reject-audit next door,
+// where it is right: that mode is about a filter which runs on the realtime path only. So the
+// default moves to the screenshot flow and --realtime asks for the other, which --panel implies —
+// mode is a realtime concept and naming one is how you say which half of RealtimeDetectorSize.
+//
+// BASELINES TAKEN BEFORE THIS FLAG WERE REALTIME-SIZED. Anything compared against them has to be
+// regenerated rather than read across. --vertical-explain never had the problem: it goes through
+// OcrService.RecognizeVerticalAsync, which is the screenshot entry point already.
+var harnessRealtime = args.Contains("--realtime") || args.Contains("--panel");
+args = [.. args.Where(argument => argument != "--realtime")];
 
 // Which language to read as. It picks the recognition model, and that is not a detail on a Korean
 // dump: the general model carries no Hangul at all, so a Korean frame read as EN comes back as
@@ -1052,7 +1077,6 @@ if (args[0] == "--reject-audit")
 if (args[0] == "--group-explain")
 {
     using var explainEngine = new OnnxOcrEngine();
-    var explainRealtime = args.Contains("--realtime");
 
     foreach (var path in args.Skip(1))
     {
@@ -1062,15 +1086,32 @@ if (args[0] == "--group-explain")
         Console.WriteLine($"IMAGE: {path}");
 
         using var image = new Bitmap(path);
-        var size = harnessSize
-            ?? RealtimeDetectorSize.For(image.Width, image.Height, harnessMode).Primary;
-        var raw = await explainEngine.TryRecognizeAsync(image, harnessLanguage, size);
+
+        // Named on every image rather than once at the top, because these outputs get saved and
+        // diffed against each other months apart, and a file that does not say which flow it is
+        // about is a file that will eventually be compared with one about the other.
+        List<OcrTextBlock>? raw;
+        if (harnessRealtime || harnessSize is not null)
+        {
+            var size = harnessSize
+                ?? RealtimeDetectorSize.For(image.Width, image.Height, harnessMode).Primary;
+            Console.WriteLine($"FLOW: 即時翻譯 (detect={size})");
+            raw = await explainEngine.TryRecognizeAsync(image, harnessLanguage, size);
+        }
+        else
+        {
+            // The screenshot flow's own entry point, so the size comes from the same place the app
+            // gets it rather than from a number repeated here.
+            Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+            raw = await explainEngine.RecognizeAsync(image, harnessLanguage);
+        }
+
         if (raw is null || raw.Count == 0) { Console.WriteLine("  (nothing read)"); continue; }
 
-        // The detector size here is already the realtime one. What --realtime adds is the other
-        // half of that pipeline: the confidence floor OcrService applies before grouping, which the
-        // screenshot path deliberately does not have.
-        if (explainRealtime)
+        // The confidence floor OcrService applies before grouping on the realtime path only; the
+        // screenshot path deliberately keeps everything. A size named on its own asks for realtime
+        // sizing without claiming to be that pipeline, so it does not get the filter.
+        if (harnessRealtime)
         {
             var kept = OcrService.RejectUnconvincingBlocks(raw);
             Console.WriteLine($"  realtime confidence filter: {raw.Count} -> {kept.Count} lines");
