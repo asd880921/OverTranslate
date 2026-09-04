@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private ScreenCaptureWindow? _captureWindow;
     private ToolbarWindow? _toolbarWindow;
     private GlobalEscapeHook? _escapeHook; // lives for the whole capture session, see CloseAll
+    private SystemRecoveryYield? _recoveryYield; // same lifetime; lets Task Manager out from under the layers
     private CancellationTokenSource? _sessionCts; // cancelled on teardown so abandoned work stops
     private EventHandler? _overlayClosedHandler; // tracked so we can detach before re-translate
     // Recognition and translation are not owned here — see AppServices. This window is one of two
@@ -610,8 +611,12 @@ public partial class MainWindow : Window
             // Release any previous one first — this hook swallows Esc process-wide, so an
             // orphaned instance would break Esc across the entire desktop, which is far worse
             // than the stuck overlay it exists to prevent.
-            DisposeEscapeHook();
+            DisposeSessionHooks();
             _escapeHook = GlobalEscapeHook.Install(CloseAll);
+
+            // Paired with the Esc hook and for the same reason: these windows cover the screen, so
+            // both ways out of a session that has gone wrong have to be set up before it can.
+            _recoveryYield = SystemRecoveryYield.Install(ApplyCaptureTopmost);
 
             CancelSession();
             _sessionCts = new CancellationTokenSource();
@@ -621,7 +626,7 @@ public partial class MainWindow : Window
             {
                 // Also reached when the capture window cancelled itself (its own Esc fallback),
                 // which never goes through CloseAll — so the session is torn down here too.
-                DisposeEscapeHook();
+                DisposeSessionHooks();
                 CancelSession();
                 captureWindow.Close();
                 _captureWindow = null;
@@ -693,6 +698,8 @@ public partial class MainWindow : Window
         toolbar.SetToggleEnabled(blocks.Count > 0);
         toolbar.SetSpeakableText(SourceTextForSpeech().Length > 0);
         toolbar.Show();
+
+        ApplyCaptureTopmost();
     }
 
     // On re-translate: update the existing overlay in-place to avoid z-order fights with
@@ -739,7 +746,7 @@ public partial class MainWindow : Window
         _overlayClosedHandler = (_, _) =>
         {
             _selectionSessionId++;
-            DisposeEscapeHook();
+            DisposeSessionHooks();
             CancelSession();
             ToastWindow.Dismiss();
             CloseWindow(_toolbarWindow, w => w.Close(), nameof(ToolbarWindow));
@@ -1252,7 +1259,7 @@ public partial class MainWindow : Window
         Log.Info("Tearing down capture session (overlay={Overlay}, toolbar={Toolbar}, capture={Capture})",
             _overlayWindow != null, _toolbarWindow != null, _captureWindow != null);
         _selectionSessionId++;
-        DisposeEscapeHook();
+        DisposeSessionHooks();
         CancelSession();
 
         // A voice reading a selection that is no longer on screen has nothing left to be about, and
@@ -1287,11 +1294,38 @@ public partial class MainWindow : Window
         RestoreShellAfterCapture();
     }
 
-    // The hook is process-wide and swallows Esc, so it must never outlive the session that owns it.
-    private void DisposeEscapeHook()
+    // The Esc hook is process-wide and swallows Esc, so it must never outlive the session that owns
+    // it; the recovery watch goes with it because there is nothing left to yield the top to.
+    private void DisposeSessionHooks()
     {
         _escapeHook?.Dispose();
         _escapeHook = null;
+
+        _recoveryYield?.Dispose();
+        _recoveryYield = null;
+    }
+
+    // Puts the session's windows where the recovery watch says they belong. Called both when it
+    // changes its mind and after a window is created, since the overlay and the toolbar are built
+    // after the selection is drawn and would otherwise come up on top of a Task Manager already out.
+    private void ApplyCaptureTopmost()
+    {
+        bool onTop = _recoveryYield?.HasYielded != true;
+
+        // Bottom of the stack first: each one steps in directly behind the recovery window, so the
+        // last one placed ends up highest and the layers keep their own order among themselves.
+        foreach (var window in new Window?[] { _captureWindow, _overlayWindow, _toolbarWindow })
+        {
+            if (window is null) continue;
+
+            window.Topmost = onTop;
+
+            // Both halves or neither. A step-aside that could not be completed — Task Manager gone
+            // between the event and here — would otherwise leave the layer out of the topmost band
+            // and still in front of it, which is worse than never having moved.
+            if (!onTop && !AlwaysOnTop.PlaceBehind(window, _recoveryYield!.RecoveryWindow))
+                window.Topmost = true;
+        }
     }
 
     // Signals recognition/translation started by this session to stop. The source is not disposed
@@ -1389,7 +1423,7 @@ public partial class MainWindow : Window
         // Its overlays are Topmost and click-through; left behind by a shutdown they would be
         // painted onto the desktop with no process left to close them.
         RealtimeSessionController.Instance.Stop();
-        DisposeEscapeHook();
+        DisposeSessionHooks();
         _hotkey?.Dispose();
         _windowHotkey?.Dispose();
         _realtimePauseHotkey?.Dispose();
