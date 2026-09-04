@@ -1112,7 +1112,6 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         foreach (var block in blocks)
         {
             var isCjk = UsesCjkLayoutForText(block.Text);
-
             normalized.Add(NormalizeBlock(block, isCjk, AutomaticGlyphHeightFromPitch));
         }
 
