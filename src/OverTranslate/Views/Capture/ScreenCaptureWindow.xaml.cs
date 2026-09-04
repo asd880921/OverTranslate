@@ -6,6 +6,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Controls.Primitives;
 using OverTranslate.Services;
 using WPoint = System.Windows.Point;
+using WRect = System.Windows.Rect;
 using Key = System.Windows.Input.Key;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
@@ -41,6 +42,17 @@ public partial class ScreenCaptureWindow : Window
     private bool _isDragging;
     private bool _processingStarted;
     private bool _hasSelection;
+
+    /// <summary>
+    /// Whether 標記 has the box, so its handles and its move area are out of the way.
+    /// </summary>
+    /// <remarks>
+    /// The same withdrawal a running translation causes, for the same reason and by a separate flag:
+    /// both mean the box is not the user's to rearrange right now, but they start and end
+    /// independently — a translation can finish while the pen is still in hand, and the handles must
+    /// not come back underneath it.
+    /// </remarks>
+    private bool _annotationHoldsSelection;
 
     public Rect Selection { get; private set; }
     public Bitmap? CroppedBitmap { get; private set; }
@@ -239,6 +251,23 @@ public partial class ScreenCaptureWindow : Window
     }
 
     /// <summary>
+    /// Hands the box to 標記, or takes it back.
+    /// </summary>
+    /// <remarks>
+    /// While the pen is in hand a drag inside the box is a stroke, so the thumb that would otherwise
+    /// read that drag as "move the whole selection" has to go — one gesture cannot mean two things.
+    /// The corner handles go with it rather than staying live: they sit on the edge, which is exactly
+    /// where someone drawing to the boundary of the box puts the pointer, and a resize triggered by
+    /// an over-run stroke is a worse outcome than having to leave the mode to resize.
+    /// </remarks>
+    public void SetAnnotationHold(bool held)
+    {
+        if (_annotationHoldsSelection == held) return;
+        _annotationHoldsSelection = held;
+        if (!_processingStarted) UpdateSelectionVisuals();
+    }
+
+    /// <summary>
     /// Crops the selection and locks the frame so the caller can work on a fixed region.
     /// </summary>
     /// <param name="lockedByThisCall">
@@ -433,7 +462,7 @@ public partial class ScreenCaptureWindow : Window
         System.Windows.Controls.Canvas.SetLeft(BottomRightHandle, _selectionWpfRect.Right - halfHandle);
         System.Windows.Controls.Canvas.SetTop(BottomRightHandle, _selectionWpfRect.Bottom - halfHandle);
 
-        SetHandlesVisibility(_hasSelection && !_processingStarted);
+        SetHandlesVisibility(_hasSelection && !_processingStarted && !_annotationHoldsSelection);
         UpdateDimLayer();
     }
 
@@ -450,12 +479,43 @@ public partial class ScreenCaptureWindow : Window
     }
 
     /// <summary>
+    /// Hangs the overlay's own layers in this window, bottom first, clipped to the box.
+    /// </summary>
+    /// <remarks>
+    /// The elements come from the overlay and keep belonging to it — this window only gives them
+    /// somewhere opaque to be drawn. Both windows are pinned to the same physical bounds, so a point
+    /// means the same thing in either and nothing needs converting on the way across.
+    /// </remarks>
+    public void ShowOverlayContent(IReadOnlyList<UIElement> layers)
+    {
+        bool same = OverlayContentHost.Children.Count == layers.Count;
+        if (same)
+        {
+            for (int i = 0; i < layers.Count; i++)
+                if (!ReferenceEquals(OverlayContentHost.Children[i], layers[i])) { same = false; break; }
+        }
+        if (same) return;
+
+        OverlayContentHost.Children.Clear();
+
+        foreach (var layer in layers)
+        {
+            // An element belongs to one parent, and these start out in the overlay's own tree.
+            // UseWindowsForms puts System.Drawing and System.Windows.Forms in the implicit usings,
+            // so Panel here has to say which one it means.
+            if (layer is FrameworkElement { Parent: System.Windows.Controls.Panel owner })
+                owner.Children.Remove(layer);
+            OverlayContentHost.Children.Add(layer);
+        }
+    }
+
+    /// <summary>
     /// Moves the whole selection, clamped to the desktop rather than rubber-banded — a part hanging
     /// off the edge would be a region the crop cannot include.
     /// </summary>
     private void SelectionBody_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        if (_processingStarted || !_hasSelection) return;
+        if (_processingStarted || _annotationHoldsSelection || !_hasSelection) return;
 
         double x = Math.Clamp(
             _selectionWpfRect.X + e.HorizontalChange, 0, Math.Max(0, ActualWidth - _selectionWpfRect.Width));
@@ -490,7 +550,7 @@ public partial class ScreenCaptureWindow : Window
 
     private void ResizeSelectionCorner(WPoint fixedPoint, WPoint movingPoint)
     {
-        if (_processingStarted || !_hasSelection) return;
+        if (_processingStarted || _annotationHoldsSelection || !_hasSelection) return;
 
         movingPoint.X = Math.Clamp(movingPoint.X, 0, ActualWidth);
         movingPoint.Y = Math.Clamp(movingPoint.Y, 0, ActualHeight);

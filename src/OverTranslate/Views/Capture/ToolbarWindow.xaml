@@ -40,7 +40,8 @@
             <!-- ClearTypeHint on top of an opaque background: the window itself is layered
                  (AllowsTransparency), which is the other thing that turns ClearType off. The hint is
                  how WPF is told this particular surface really is opaque. -->
-            <Border Background="{DynamicResource ToolbarBg}"
+            <Border x:Name="BarSurface"
+                    Background="{DynamicResource ToolbarBg}"
                     BorderBrush="{DynamicResource ToolbarBorder}"
                     BorderThickness="1"
                     CornerRadius="16"
@@ -71,16 +72,17 @@
                          spells all of it out, and so does the name assistive technology reads —
                          see RenderSpeakButton. -->
                     <Button x:Name="TtsBtn"
-                            Style="{StaticResource ToolbarStackButton}"
+                            Style="{StaticResource ToolbarTileButton}"
                             IsEnabled="False"
-                            Margin="0,0,4,0"
+                            Margin="0,0,6,0"
                             Click="TtsBtn_Click">
-                        <!-- Margin cleared: the style's own is the gap to a label that is no longer
-                             there, and left alone it pushes the glyph off the button's centre. -->
+                        <!-- Two points larger than the glyphs in the action row, because this one has
+                             no name under it to carry half the weight: at the row's size it read as a
+                             small mark rattling around inside its tile. -->
                         <TextBlock x:Name="TtsGlyph"
                                    Text="&#xE767;"
                                    Style="{StaticResource ToolbarActionGlyph}"
-                                   Margin="0"/>
+                                   FontSize="18"/>
                     </Button>
 
                     <!-- Source language. Width comes from SizeSelectorsToClosedLabels, not from here:
@@ -147,10 +149,16 @@
                          The tray is the realtime bar's tray, for the same reason it has one: two
                          things the user chooses between are one control, not two more objects on a
                          crowded bar. -->
+                    <!-- Centred rather than stretched. A child of a horizontal StackPanel defaults
+                         to filling the panel's height, and the panel is now as tall as the stacked
+                         actions at the far end - so this tray, which holds one 26px row, was being
+                         pulled to 46 and reading as the tallest object on a bar where nothing beside
+                         it is tall. -->
                     <Border Background="{DynamicResource ToolbarGroupBg}"
                             CornerRadius="10"
                             Padding="3"
                             Margin="10,0,0,0"
+                            VerticalAlignment="Center"
                             Grid.IsSharedSizeScope="True"
                             AutomationProperties.Name="{DynamicResource S.Toolbar.Direction}">
                         <Grid>
@@ -213,13 +221,10 @@
                         </Grid>
                     </Border>
 
-                    <!-- No rule between the settings and the actions: the gap says it, and a bar this
-                         wide floating over the user's own screen does not need more lines drawn on it. -->
-
                     <!-- Translate -->
                     <Button x:Name="TranslateBtn"
                             Style="{StaticResource ToolbarPrimaryButton}"
-                            Margin="10,0,6,0"
+                            Margin="10,0,0,0"
                             Click="TranslateBtn_Click">
                         <StackPanel Orientation="Horizontal">
                             <!-- Drawn rather than typed: there is no sparkle in Segoe MDL2, which is all
@@ -237,17 +242,42 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- The bar is two halves and this is where they meet: everything left of the
+                         rule is what the translation will be run with, everything right of it is
+                         something to do once it has been. The gap alone used to say that, and it
+                         stopped saying it once the right-hand half grew to five stacked actions -
+                         against a run of five evenly spaced things, one wider gap is not a boundary,
+                         it is a wider gap. Inset top and bottom so it reads as a mark on the bar
+                         rather than as the bar being cut in two. -->
+                    <Rectangle Width="1"
+                               Margin="14,9,10,9"
+                               Fill="{DynamicResource ToolbarDivider}"/>
+
                     <!-- Toggle original / translated bubbles -->
                     <Button x:Name="ToggleBtn"
                             Style="{StaticResource ToolbarStackButton}"
                             IsEnabled="False"
                             Click="ToggleBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="ToggleGlyph"
-                                       Text="&#xE890;"
-                                       Style="{StaticResource ToolbarActionGlyph}"/>
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                <!-- A whole eye, both lids. Segoe's E890 draws the upper lid and the
+                                     pupil and nothing under them, which at 16px reads as an eyebrow
+                                     over a dot rather than as an eye. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M0.9,9 C3.3,5.1 5.9,3.2 9,3.2 C12.1,3.2 14.7,5.1 17.1,9
+                                            C14.7,12.9 12.1,14.8 9,14.8 C5.9,14.8 3.3,12.9 0.9,9 Z"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M11.5,9 A2.5,2.5 0 1 1 6.5,9 A2.5,2.5 0 1 1 11.5,9 Z"/>
+                                <!-- The stroke through it, for while the original is the thing on
+                                     screen: pressing then puts it away again. -->
+                                <Path x:Name="ToggleHideSlash"
+                                      Visibility="Collapsed"
+                                      Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M2.4,15.6 L15.6,2.4"/>
+                              </Grid>
+                            </Grid>
                             <TextBlock x:Name="ToggleLabel"
-                                       VerticalAlignment="Center"
                                        Text="{DynamicResource S.Toolbar.ShowSource}"/>
                         </StackPanel>
                     </Button>
@@ -258,46 +288,92 @@
                     <Button x:Name="CopyTextBtn"
                             Style="{StaticResource ToolbarStackButton}"
                             Click="CopyTextBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <Grid Width="14" Height="14"
-                                  Margin="0,0,5,0"
-                                  VerticalAlignment="Center">
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
                                 <!-- The double-page outline stays fixed so both states still read
                                      as copy actions; only the meaning of the copied content changes. -->
-                                <Path Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.25"
-                                      StrokeLineJoin="Round"
-                                      Data="M4.5,3.5 H11.5 A1,1 0 0 1 12.5,4.5 V12.5 A1,1 0 0 1 11.5,13.5 H4.5 A1,1 0 0 1 3.5,12.5 V4.5 A1,1 0 0 1 4.5,3.5 Z M3.5,10.5 H2.5 A1,1 0 0 1 1.5,9.5 V2.5 A1,1 0 0 1 2.5,1.5 H9.5 A1,1 0 0 1 10.5,2.5 V3.5"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M6,4.7 H14.5 A1.5,1.5 0 0 1 16,6.2 V14.6 A1.5,1.5 0 0 1 14.5,16.1
+                                            H6 A1.5,1.5 0 0 1 4.5,14.6 V6.2 A1.5,1.5 0 0 1 6,4.7 Z
+                                            M4.5,13.3 H3.5 A1.5,1.5 0 0 1 2,11.8 V3.4 A1.5,1.5 0 0 1 3.5,1.9
+                                            H12 A1.5,1.5 0 0 1 13.5,3.4 V4.7"/>
                                 <Path x:Name="CopySourceMark"
-                                      Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.15"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Data="M5.75,6.25 H10.25 M5.75,8.5 H10.25 M5.75,10.75 H8.75"/>
+                                      Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M7,8.2 H13.5 M7,10.6 H13.5 M7,13 H11.4"/>
                                 <Path x:Name="CopyTranslationMark"
                                       Visibility="Collapsed"
-                                      Stroke="{DynamicResource AppAccent}"
-                                      StrokeThickness="1.15"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round"
-                                      Data="M5.25,11.25 L8,5.5 L10.75,11.25 M6.45,8.8 H9.55"/>
+                                      Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M6.9,14 L10.25,7 L13.6,14 M8.35,11 H12.15"/>
+                              </Grid>
                             </Grid>
                             <TextBlock x:Name="CopyTextLabel"
-                                       VerticalAlignment="Center"
                                        Text="{DynamicResource S.Toolbar.CopyText}"/>
                         </StackPanel>
                     </Button>
+
+                    <!-- Draw on the selection. Between the two copies because that is the order
+                         these are reached for: read the result, take the words, mark up what is left,
+                         take the picture. Marking before the picture is also the only order that
+                         makes sense of the picture - a screenshot taken after the marks has the
+                         marks in it. -->
+                    <ToggleButton x:Name="AnnotateBtn"
+                            Style="{StaticResource ToolbarStackToggleButton}"
+                            ToolTip="{DynamicResource S.Toolbar.AnnotateHint}"
+                            Click="AnnotateBtn_Click">
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                <!-- A pen, nib down to the left, over the stroke it has just left
+                                     behind. The mark matters as much as the pen does: a pen on its
+                                     own is what every 編輯 button in the app already draws, and this
+                                     one does not edit anything - it draws on top of what is there. -->
+                                <!-- Held at 53°, not 45°, and about four times as long as it is
+                                     wide. Lying at exactly 45 it read as a bar set on the
+                                     diagonal — the one angle in the drawing that is also the
+                                     angle of everything else in it, so nothing said which line
+                                     was the tool. Standing it up a few degrees is what makes it
+                                     a pen resting on the stroke rather than a shape parallel to
+                                     one. Sharpened to a point at the lower left, with the cross
+                                     line where that point begins: the short end is the nib, and
+                                     the line put at the other end instead reads as a cap. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M2.5,16.3 L3,11.85 L10.9,1.35 L14.55,4.1 L6.65,14.55 Z"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M3,11.85 L6.65,14.55"/>
+                                <!-- Level, and starting at the point itself rather than floating
+                                     below it. Drawn on the pen's own diagonal it was a second pen;
+                                     set down clear of it, it was an underline the pen happened to
+                                     be above. Leaving the nib is the only placement that says the
+                                     pen made it. Same weight as the barrel, too — at this size a
+                                     heavier line does not read as more ink, it reads as a
+                                     different drawing. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M2.5,16.3 H15.5"/>
+                              </Grid>
+                            </Grid>
+                            <TextBlock Text="{DynamicResource S.Toolbar.Annotate}"/>
+                        </StackPanel>
+                    </ToggleButton>
 
                     <!-- Copy current selection screenshot to clipboard -->
                     <Button x:Name="CopyShotBtn"
                             Style="{StaticResource ToolbarStackButton}"
                             Click="CopyShotBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE8FF;"
-                                       Style="{StaticResource ToolbarActionGlyph}"/>
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{DynamicResource S.Toolbar.Screenshot}"/>
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                <!-- Crop marks, not the copy glyph this used to wear. E8FF is two
+                                     stacked pages, which is the same thing the copy button draws two
+                                     places away - one row, two actions, one picture, and the only way
+                                     to tell them apart was to read the words. A cropped frame says
+                                     the one thing this action does that the other does not: it takes
+                                     the rectangle, not the words inside it. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M5.2,1.2 V12.8 H16.8 M1.2,5.2 H12.8 V16.8"/>
+                              </Grid>
+                            </Grid>
+                            <TextBlock Text="{DynamicResource S.Toolbar.Screenshot}"/>
                         </StackPanel>
                     </Button>
 
@@ -306,15 +382,25 @@
                          on the one thing the user already knows, and it cost the bar the width of two
                          characters. The tooltip still says the whole sentence for anyone who wants it. -->
                     <Button x:Name="OpenWindowBtn"
-                            Style="{StaticResource ToolbarStackRaisedButton}"
-                            Margin="6,0,0,0"
+                            Style="{StaticResource ToolbarStackButton}"
                             ToolTip="{DynamicResource S.Toolbar.OpenWindowHint}"
                             Click="OpenWindowBtn_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE8A7;"
-                                       Style="{StaticResource ToolbarActionGlyph}"/>
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{DynamicResource S.Toolbar.OpenWindow}"/>
+                        <StackPanel>
+                            <Grid Style="{StaticResource ToolbarActionIcon}">
+                              <Grid Style="{StaticResource ToolbarActionDrawing}">
+                                <!-- Drawn like the other four rather than typed as E8A7, so the row
+                                     is one set of strokes at one weight and one size. The glyph was
+                                     the largest mark in the row and the drawn ones the smallest,
+                                     which is the sort of difference nobody can name and everybody
+                                     sees. -->
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M16,9.6 V14.4 A1.6,1.6 0 0 1 14.4,16 H3.6 A1.6,1.6 0 0 1 2,14.4
+                                            V3.6 A1.6,1.6 0 0 1 3.6,2 H8.4"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M9.4,8.6 L15.7,2.3 M11,2.2 H15.8 V7"/>
+                              </Grid>
+                            </Grid>
+                            <TextBlock Text="{DynamicResource S.Toolbar.OpenWindow}"/>
                         </StackPanel>
                     </Button>
 
@@ -322,7 +408,7 @@
                     <Button Content="&#x2715;"
                             Style="{StaticResource ToolbarIconButton}"
                             Width="30" Height="30"
-                            Margin="8,0,0,0"
+                            Margin="10,0,0,0"
                             ToolTip="{DynamicResource S.Toolbar.Close}"
                             AutomationProperties.Name="{DynamicResource S.Toolbar.Close}"
                             Click="CloseBtn_Click"/>

@@ -80,6 +80,22 @@
     <!-- Toolbar specific -->
     <SolidColorBrush x:Key="ToolbarBg"         Color="#2A2A2A"/>
     <SolidColorBrush x:Key="ToolbarBorder"     Color="#484848"/>
+    <!-- The rule between the bar's settings and its actions. Dimmer than the bar's own edge on
+         purpose: an edge separates the bar from the desktop, this only separates one half of
+         the bar from the other, and drawn at the same weight it reads as the bar being cut in
+         two. -->
+    <SolidColorBrush x:Key="ToolbarDivider"    Color="#3D3D3D"/>
+
+    <!-- The hairline around a colour swatch in the 標記 palette. One neutral edge for all
+         eight, so the two that would otherwise vanish into the bar — white here, black in the
+         other theme — are the same object as the six that would not. -->
+    <SolidColorBrush x:Key="ToolbarSwatchEdge" Color="#5A5A5A"/>
+
+    <!-- The ink in the 螢光筆 icon, which is yellow in the way a trash can is a trash can:
+         not the colour currently chosen on the palette, but the one that says at a glance which
+         of the three tools this is. Darker in the light theme because the bar there is nearly
+         white, and the yellow that reads on a dark bar disappears into a pale one. -->
+    <SolidColorBrush x:Key="ToolbarHighlighterInk" Color="#FACC15"/>
 
     <!-- The primary action on a floating toolbar. Its own blue rather than AppAccent, for the one
          place the accent cannot serve: this bar is dark in the dark theme, and there AppAccent is a
