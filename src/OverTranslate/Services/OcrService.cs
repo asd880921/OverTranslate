@@ -109,7 +109,7 @@ public class OcrService : IDisposable
     // of the failure this ordering exists to prevent, so "no noise admitted" is an absence of the
     // test case, not a pass. Left alone deliberately. What would reopen it is a corpus with scenery
     // sitting on a subtitle's own row.
-    private static List<OcrTextBlock> RejectUnconvincingBlocks(List<OcrTextBlock> blocks)
+    internal static List<OcrTextBlock> RejectUnconvincingBlocks(List<OcrTextBlock> blocks)
     {
         List<OcrTextBlock>? kept = null;
 

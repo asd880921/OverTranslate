@@ -36,6 +36,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
     Console.Error.WriteLine("       OcrHarness --group-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
+    Console.Error.WriteLine("                  (add --realtime for the live pipeline's confidence filter)");
     Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
@@ -1051,6 +1052,7 @@ if (args[0] == "--reject-audit")
 if (args[0] == "--group-explain")
 {
     using var explainEngine = new OnnxOcrEngine();
+    var explainRealtime = args.Contains("--realtime");
 
     foreach (var path in args.Skip(1))
     {
@@ -1064,6 +1066,17 @@ if (args[0] == "--group-explain")
             ?? RealtimeDetectorSize.For(image.Width, image.Height, harnessMode).Primary;
         var raw = await explainEngine.TryRecognizeAsync(image, harnessLanguage, size);
         if (raw is null || raw.Count == 0) { Console.WriteLine("  (nothing read)"); continue; }
+
+        // The detector size here is already the realtime one. What --realtime adds is the other
+        // half of that pipeline: the confidence floor OcrService applies before grouping, which the
+        // screenshot path deliberately does not have.
+        if (explainRealtime)
+        {
+            var kept = OcrService.RejectUnconvincingBlocks(raw);
+            Console.WriteLine($"  realtime confidence filter: {raw.Count} -> {kept.Count} lines");
+            raw = kept;
+            if (raw.Count == 0) { Console.WriteLine("  (nothing survived)"); continue; }
+        }
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
         var grouped = OcrTextBlockGrouper.Group(raw, decisions);
