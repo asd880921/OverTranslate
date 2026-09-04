@@ -19,11 +19,8 @@ namespace OverTranslate.Services;
 ///
 /// Running the action inside the callback is what made that reachable rather than theoretical: the
 /// realtime shortcut builds a control bar and one overlay window per region before it returns.
-/// Posting the action to the dispatcher answers that, but a hook installed FROM the dispatcher is
-/// only serviced while the interface is idle — so a busy UI thread would go on delaying the whole
-/// system's mouse for as long as it was busy, which is exactly the moment this feature exists for.
-/// Its own thread is what decouples the two, and the controller poll comes off the dispatcher with
-/// it.
+/// Posting the action to the dispatcher answers that; keeping the hook itself off the dispatcher is
+/// <see cref="HookThread"/>'s job, and the controller poll comes off the dispatcher with it.
 /// </remarks>
 internal sealed class GlobalAuxiliaryHotkeys : IDisposable
 {
@@ -41,10 +38,6 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
     // game. On the hook thread, so it neither waits for the interface nor holds it up.
     private static readonly TimeSpan GamepadPollInterval = TimeSpan.FromMilliseconds(35);
 
-    // How long Dispose waits for the hook thread to finish pumping. Bounded rather than infinite: a
-    // shortcut listener is not worth hanging the application's close on.
-    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
-
     // Replaced wholesale rather than mutated, so the hook thread can read it without a lock while
     // the interface is saving new settings.
     private Dictionary<ShortcutTrigger, HotkeyAction> _bindings = [];
@@ -55,8 +48,7 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
     private LowLevelMouseProc? _mouseProc;
     private IntPtr _mouseHook;
 
-    private Thread? _hookThread;
-    private Dispatcher? _hookDispatcher;
+    private readonly HookThread _hookThread = new("OverTranslate auxiliary shortcuts");
 
     public event Action<HotkeyAction>? ShortcutPressed;
 
@@ -83,11 +75,11 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
             return;
         }
 
-        StartHookThread();
+        _hookThread.Start();
 
         // Invoke rather than BeginInvoke: this runs when settings are saved, at human pace, and the
         // caller is entitled to have the shortcuts live by the time it returns.
-        _hookDispatcher?.Invoke(() => ApplyOnHookThread(needsMouse, needsGamepad));
+        _hookThread.Invoke(() => ApplyOnHookThread(needsMouse, needsGamepad));
     }
 
     public void Dispose()
@@ -96,58 +88,15 @@ internal sealed class GlobalAuxiliaryHotkeys : IDisposable
         Volatile.Write(ref _bindings, []);
     }
 
-    private void StartHookThread()
-    {
-        if (_hookDispatcher is { HasShutdownStarted: false }) return;
-
-        // Waited on rather than assumed: the dispatcher belongs to the new thread and does not exist
-        // until that thread reaches for it, and Register goes on to post work to it immediately.
-        using var ready = new ManualResetEventSlim();
-
-        var thread = new Thread(() =>
-        {
-            _hookDispatcher = Dispatcher.CurrentDispatcher;
-            ready.Set();
-
-            // The message loop the hook needs. A low-level hook is delivered to the thread that
-            // installed it, and only while that thread is pumping messages — without this the
-            // callback would simply never be called.
-            Dispatcher.Run();
-        })
-        {
-            IsBackground = true,
-            Name = "OverTranslate auxiliary shortcuts",
-        };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        ready.Wait();
-
-        _hookThread = thread;
-    }
-
     private void StopHookThread()
     {
-        if (_hookDispatcher is not { } dispatcher) return;
-
-        if (!dispatcher.HasShutdownStarted)
+        _hookThread.Stop(() =>
         {
-            // On the hook thread, because that is where the hook was installed and where the timer
-            // belongs.
-            dispatcher.Invoke(() =>
-            {
-                UninstallMouseHook();
-                _gamepadTimer?.Stop();
-                _gamepadTimer = null;
-                Array.Clear(_previousGamepadButtons, 0, _previousGamepadButtons.Length);
-            });
-
-            dispatcher.InvokeShutdown();
-        }
-
-        _hookThread?.Join(ShutdownTimeout);
-        _hookThread = null;
-        _hookDispatcher = null;
+            UninstallMouseHook();
+            _gamepadTimer?.Stop();
+            _gamepadTimer = null;
+            Array.Clear(_previousGamepadButtons, 0, _previousGamepadButtons.Length);
+        });
     }
 
     /// <summary>Brings the hooks into line with the bindings. Runs on the hook thread.</summary>
