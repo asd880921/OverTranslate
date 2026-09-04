@@ -45,10 +45,7 @@ public class LayoutScriptDetectionTests
         [
             new("OPTIONS", bounds),
             new("ゲーム設定", bounds),
-            // 文A日本語 rather than 甲Glossaries: the icon-noise rule still runs on the
-            // automatic path today and strips the leading Han off both, which only changes the
-            // answer for the one that has no other CJK left. Step 7 turns that rule off and
-            // 甲Glossaries belongs back here then.
+            new("甲Glossaries", bounds),
             new("文A日本語", bounds),
             new("攻", bounds),
         ];
@@ -62,6 +59,7 @@ public class LayoutScriptDetectionTests
         [
             OcrLayoutScript.Latin,
             OcrLayoutScript.Cjk,
+            OcrLayoutScript.Mixed,
             OcrLayoutScript.Mixed,
             OcrLayoutScript.Cjk,
         ];
@@ -80,5 +78,52 @@ public class LayoutScriptDetectionTests
         Assert.Equal(OcrLayoutScript.Mixed, OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false)[0].LayoutScript);
         Assert.Equal(OcrLayoutScript.Mixed, OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true)[0].LayoutScript);
         Assert.Equal(OcrLayoutScript.Mixed, OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks())[0].LayoutScript);
+    }
+
+    /// <summary>
+    /// Nothing rewrites a block's text on the way to layout any more, so the classification is of
+    /// what was actually read.
+    /// </summary>
+    /// <remarks>
+    /// The lone-ideograph cleanup used to run on the Latin and automatic paths and not on the CJK
+    /// one, which took the leading Han off each of these under 英文 and 自動 and left it under 日文.
+    /// For 甲Glossaries that changed the answer outright — Mixed became Latin — and for the other two
+    /// it changed the text a reader would be shown. See 本Wikiについて, which is a heading, not noise.
+    /// </remarks>
+    [Theory]
+    [InlineData("甲Glossaries")]
+    [InlineData("文A日本語")]
+    [InlineData("本Wikiについて")]
+    public void MixedScriptText_IsKeptVerbatim_OnEverySourceLanguage(string text)
+    {
+        var bounds = new System.Windows.Rect(0, 0, 240, 30);
+        List<OcrTextBlock> Blocks() => [new(text, bounds)];
+
+        foreach (var normalized in new[]
+        {
+            OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: false),
+            OnnxOcrEngine.NormalizeBlocks(Blocks(), isCjk: true),
+            OnnxOcrEngine.NormalizeAutomaticBlocks(Blocks()),
+        })
+        {
+            var block = Assert.Single(normalized);
+            Assert.Equal(text, block.Text);
+            Assert.Equal(OcrLayoutScript.Mixed, block.LayoutScript);
+        }
+    }
+
+    /// <summary>
+    /// The rule itself stays, unreferenced by the product, as the starting point for whatever
+    /// replaces it: 904 blocks measured, four hits, all four real icon noise.
+    /// </summary>
+    [Fact]
+    public void TheLoneIdeographRule_StillExists_ButNoLongerRunsOnAnyPath()
+    {
+        Assert.Equal("Glossaries", OnnxOcrEngine.StripLoneIdeographs("甲Glossaries"));
+
+        var bounds = new System.Windows.Rect(0, 0, 240, 30);
+        Assert.Equal(
+            "甲Glossaries",
+            OnnxOcrEngine.NormalizeAutomaticBlocks([new("甲Glossaries", bounds)])[0].Text);
     }
 }

@@ -276,8 +276,9 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             // Latin-script ones. English UI captures very often contain embedded Chinese (chrome,
             // labels, ratings), which a Latin-only model dropped or garbled; this reads Latin AND
             // those CJK glyphs in one pass. The text is still Latin, so source-language routing
-            // (UsesCjkOnnx) keeps EN on the Latin layout path. Lone-ideograph icon misreads are
-            // stripped by RemoveIconIdeographNoise.
+            // (UsesCjkOnnx) keeps EN on the Latin layout path. Lone-ideograph icon misreads that
+            // come with reading both scripts at once are no longer stripped — see
+            // <see cref="StripLoneIdeographs"/>.
             //
             // Korean stays on its own model above because v6 carries no Hangul at all — measured
             // on its dictionary, 0 of 18,708 characters — so the one model cannot cover KO.
@@ -916,11 +917,11 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // it, and it costs the whole line its translation rather than just one character.
         converted = FoldBlockDiacritics(converted);
 
-        // On a non-CJK (Latin) page the shared general model occasionally misreads icons
-        // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
-        if (!isCjk && !usesAutomaticLayout)
-            converted = RemoveIconIdeographNoise(converted);
-
+        // The lone-ideograph icon filter used to run here, on Latin pages only. It is off — see
+        // StripLoneIdeographs, which is kept for whatever replaces it — because a cleanup that
+        // deletes text on some source languages and not others is the one thing that cannot be
+        // reconciled with reading the same picture the same way whatever the user picked.
+        //
         // After normalisation, because that is where a CJK box is pulled in onto its glyphs and
         // the shape being judged becomes the real one. Before grouping, which happens further
         // out, so a stray box is never joined to the line beside it.
@@ -970,9 +971,9 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// Drops boxes that cannot be holding the text read out of them — see <see cref="BoxShapeNoise"/>.
     /// </summary>
     /// <remarks>
-    /// Applies to every language, unlike <see cref="RemoveIconIdeographNoise"/>, which is a rule
-    /// about Latin pages. A Japanese or Korean capture had no noise filter at all before this, and
-    /// the lone □ that a detector returns for a strip of interface is not a script-specific problem.
+    /// Applies to every language, which the lone-ideograph rule that used to sit beside it did not.
+    /// A Japanese or Korean capture had no noise filter at all before this, and the lone □ that a
+    /// detector returns for a strip of interface is not a script-specific problem.
     /// </remarks>
     internal static List<OcrTextBlock> RemoveMisshapenBlocks(List<OcrTextBlock> blocks, string language)
     {
@@ -995,23 +996,6 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         }
 
         return kept ?? blocks;
-    }
-
-    // Removes lone-Han-ideograph icon misreads from a Latin page's blocks. English never contains
-    // a Han ideograph and real embedded Chinese labels are runs of >= 2 ideographs, so this leaves
-    // genuine text untouched while dropping graphic/icon noise the general model reads as e.g. 白.
-    private static List<OcrTextBlock> RemoveIconIdeographNoise(List<OcrTextBlock> blocks)
-    {
-        var cleaned = new List<OcrTextBlock>(blocks.Count);
-        foreach (var block in blocks)
-        {
-            var text = StripLoneIdeographs(block.Text);
-            if (text.Length == 0)
-                continue; // nothing but the stripped ideograph and whitespace was there
-            cleaned.Add(text == block.Text ? block : block with { Text = text });
-        }
-
-        return cleaned;
     }
 
     private static List<OcrTextBlock> FoldBlockDiacritics(List<OcrTextBlock> blocks)
@@ -1128,19 +1112,8 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         foreach (var block in blocks)
         {
             var isCjk = UsesCjkLayoutForText(block.Text);
-            var candidate = block;
 
-            if (!isCjk)
-            {
-                var cleanedText = StripLoneIdeographs(block.Text);
-                if (cleanedText.Length == 0)
-                    continue;
-
-                if (cleanedText != block.Text)
-                    candidate = block with { Text = cleanedText };
-            }
-
-            normalized.Add(NormalizeBlock(candidate, isCjk, AutomaticGlyphHeightFromPitch));
+            normalized.Add(NormalizeBlock(block, isCjk, AutomaticGlyphHeightFromPitch));
         }
 
         return normalized;
