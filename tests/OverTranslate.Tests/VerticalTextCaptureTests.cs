@@ -22,7 +22,7 @@ public class VerticalTextCaptureTests
         Assert.Equal(new Size(60, 100), engine.RecognizedSize);
         var block = Assert.Single(result);
         Assert.Equal(new System.Windows.Rect(72, 10, 8, 30), block.Bounds);
-        Assert.Equal(8, block.SourceGlyphHeight);
+        Assert.Equal(8, block.RenderGlyphHeight);
         Assert.Equal(0.75, block.Confidence);
         Assert.Equal(4, block.Lines.Count);
     }

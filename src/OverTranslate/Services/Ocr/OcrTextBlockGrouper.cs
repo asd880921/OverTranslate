@@ -133,7 +133,7 @@ internal static class OcrTextBlockGrouper
         return new OcrTextBlock(
             text,
             new Rect(left, top, right - left, bottom - top),
-            SourceGlyphHeight: CombineGlyphHeight(previous.SourceGlyphHeight, current.SourceGlyphHeight),
+            RenderGlyphHeight: CombineGlyphHeight(previous.RenderGlyphHeight, current.RenderGlyphHeight),
             Confidence: CombineConfidence([previous, current]));
     }
 
@@ -215,8 +215,8 @@ internal static class OcrTextBlockGrouper
     /// </remarks>
     private static double TextSizeRatio(OcrTextBlock previous, OcrTextBlock current)
     {
-        if (previous.SourceGlyphHeight is { } previousGlyph and > 0 &&
-            current.SourceGlyphHeight is { } currentGlyph and > 0)
+        if (previous.RenderGlyphHeight is { } previousGlyph and > 0 &&
+            current.RenderGlyphHeight is { } currentGlyph and > 0)
             return Math.Min(previousGlyph, currentGlyph) / Math.Max(previousGlyph, currentGlyph);
 
         return Math.Min(previous.Bounds.Height, current.Bounds.Height) /
@@ -305,8 +305,8 @@ internal static class OcrTextBlockGrouper
         // Aggregate the per-line glyph heights (Latin only; null for CJK) so the group's overlay
         // font is sized from the real glyph height, while Bounds remains the full coverage area.
         var glyphHeights = blocks
-            .Where(block => block.SourceGlyphHeight.HasValue)
-            .Select(block => block.SourceGlyphHeight!.Value)
+            .Where(block => block.RenderGlyphHeight.HasValue)
+            .Select(block => block.RenderGlyphHeight!.Value)
             .OrderBy(height => height)
             .ToList();
         double? groupGlyphHeight = glyphHeights.Count > 0 ? glyphHeights[glyphHeights.Count / 2] : null;

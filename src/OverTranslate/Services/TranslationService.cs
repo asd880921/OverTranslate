@@ -10,7 +10,7 @@ public record TranslatedBlock(
     string TranslatedText,
     System.Windows.Rect Bounds,
     IReadOnlyList<System.Windows.Rect>? SourceLineBounds = null,
-    double? SourceGlyphHeight = null,
+    double? RenderGlyphHeight = null,
     System.Windows.Media.Color BackgroundColor = default,
     System.Windows.Media.Color TextColor = default);
 

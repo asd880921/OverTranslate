@@ -12,7 +12,7 @@ public record OcrTextBlock(
     // Bounds. For Latin source the detection box is much taller than the rendered CJK font,
     // so Bounds stays full (for background coverage) while this drives only the font size.
     // Null for CJK, where Bounds already matches the glyph height.
-    double? SourceGlyphHeight = null,
+    double? RenderGlyphHeight = null,
     // Mean per-character recognition confidence, 0–1. Reading the same unchanged text twice
     // gives two slightly different answers, and this is what says which to believe; null when
     // the engine reported no scores.
@@ -169,7 +169,7 @@ public class OcrService : IDisposable
             SourceLineBounds = null,
             // After mapping back, a column is tall and narrow. The rotated row height is the
             // original glyph width and is the useful reference for a square vertical cell.
-            SourceGlyphHeight = block.Bounds.Height,
+            RenderGlyphHeight = block.Bounds.Height,
         }).ToList();
 
         return MergeVerticalColumns(columns);

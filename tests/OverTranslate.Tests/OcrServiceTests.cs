@@ -78,10 +78,10 @@ public class OcrServiceTests
 
         Assert.Equal(3, normalized.Count);
         Assert.Equal("Settings", normalized[0].Text);
-        Assert.NotNull(normalized[0].SourceGlyphHeight);
+        Assert.NotNull(normalized[0].RenderGlyphHeight);
         Assert.Equal(bounds.Height, normalized[0].Bounds.Height);
         Assert.Equal("設定", normalized[1].Text);
-        Assert.Null(normalized[1].SourceGlyphHeight);
+        Assert.Null(normalized[1].RenderGlyphHeight);
         Assert.True(normalized[1].Bounds.Height < bounds.Height);
 
         // Kept, where it used to be deleted. It is still measured on the Latin path — one Han
@@ -89,7 +89,7 @@ public class OcrServiceTests
         // and is pinned here so the geometry work that fixes it has to come past this test rather
         // than change it by accident. Wrong geometry is a smaller fault than a missing label.
         Assert.Equal("白", normalized[2].Text);
-        Assert.NotNull(normalized[2].SourceGlyphHeight);
+        Assert.NotNull(normalized[2].RenderGlyphHeight);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class OcrServiceTests
             new("設定設定設定設定", bounds),
         ]);
 
-        var latinGlyphHeight = normalized[0].SourceGlyphHeight;
+        var latinGlyphHeight = normalized[0].RenderGlyphHeight;
         var cjkGlyphHeight = normalized[1].Bounds.Height;
 
         Assert.NotNull(latinGlyphHeight);

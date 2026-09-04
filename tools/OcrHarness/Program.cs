@@ -634,10 +634,10 @@ if (args[0] == "--margin-scale-grid")
 
                 var chars = kept.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c)));
 
-                // SourceGlyphHeight is the ink height and is null for CJK, where the box already is
+                // RenderGlyphHeight is the ink height and is null for CJK, where the box already is
                 // the glyph — taking one or the other rather than both is the #35 mistake, and it is
                 // worth a factor of two on Latin.
-                var glyphRegion = Median(kept.Select(b => b.SourceGlyphHeight ?? b.Bounds.Height).ToList());
+                var glyphRegion = Median(kept.Select(b => b.RenderGlyphHeight ?? b.Bounds.Height).ToList());
                 var glyphDetector = native > 0 ? glyphRegion * size / native : 0;
 
                 var textUnion = UnionOf(kept, 0, 0);

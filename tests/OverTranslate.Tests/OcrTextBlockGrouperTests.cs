@@ -315,8 +315,8 @@ public class OcrTextBlockGrouperTests
         var blocks = new List<OcrTextBlock>
         {
             new("Shots deal more damage for each bullet remaining in the",
-                new Rect(111, 78, 566, 30), SourceGlyphHeight: 16),
-            new("magazine", new Rect(112, 108, 105, 26), SourceGlyphHeight: 15),
+                new Rect(111, 78, 566, 30), RenderGlyphHeight: 16),
+            new("magazine", new Rect(112, 108, 105, 26), RenderGlyphHeight: 15),
         };
 
         var grouped = OcrTextBlockGrouper.Group(blocks);
@@ -336,8 +336,8 @@ public class OcrTextBlockGrouperTests
     {
         var blocks = new List<OcrTextBlock>
         {
-            new("2026/07/24 23:29 AUTO SAVE", new Rect(40, 40, 300, 35), SourceGlyphHeight: 20),
-            new("Narmaya", new Rect(41, 79, 90, 29), SourceGlyphHeight: 11.6),
+            new("2026/07/24 23:29 AUTO SAVE", new Rect(40, 40, 300, 35), RenderGlyphHeight: 20),
+            new("Narmaya", new Rect(41, 79, 90, 29), RenderGlyphHeight: 11.6),
         };
 
         var grouped = OcrTextBlockGrouper.Group(blocks);

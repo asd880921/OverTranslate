@@ -1208,7 +1208,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // enormously. See ShortTextGlyphHeight for the measurements.
         return block with
         {
-            SourceGlyphHeight = ShortTextGlyphHeight.For(glyphHeight, bounds.Height, glyphCount)
+            RenderGlyphHeight = ShortTextGlyphHeight.For(glyphHeight, bounds.Height, glyphCount)
         };
     }
 

@@ -690,7 +690,7 @@ public partial class RealtimeBlockWindow : Window
         // Latin sources carry the real glyph height separately: their detection box is much taller
         // than the text in it, and sizing the font from the box would render the translation far
         // larger than what it replaces.
-        if (line.SourceGlyphHeight is { } glyphHeight && glyphHeight > 0)
+        if (line.RenderGlyphHeight is { } glyphHeight && glyphHeight > 0)
             return glyphHeight / _dpiY;
 
         if (line.SourceLineBounds is not { Count: > 0 } lineBounds)

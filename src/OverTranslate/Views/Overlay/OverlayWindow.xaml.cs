@@ -845,7 +845,7 @@ public partial class OverlayWindow : Window
     {
         // Latin blocks carry the reduced glyph height separately so the font is not sized from
         // the (much taller) full coverage box. This takes priority over the line-bounds median.
-        if (block.SourceGlyphHeight is { } glyphHeight && glyphHeight > 0)
+        if (block.RenderGlyphHeight is { } glyphHeight && glyphHeight > 0)
             return glyphHeight / _dpiY;
 
         if (block.SourceLineBounds is not { Count: > 0 })

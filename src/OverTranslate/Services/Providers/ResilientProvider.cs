@@ -83,7 +83,7 @@ public class ResilientProvider : ITranslationProvider
             if (!string.IsNullOrEmpty(detLang))
                 langVotes[detLang] = langVotes.GetValueOrDefault(detLang) + 1;
             engineVotes[engine] = engineVotes.GetValueOrDefault(engine) + 1;
-            translated.Add(new TranslatedBlock(blocks[i].Text, translation, blocks[i].Bounds, blocks[i].Lines, blocks[i].SourceGlyphHeight));
+            translated.Add(new TranslatedBlock(blocks[i].Text, translation, blocks[i].Bounds, blocks[i].Lines, blocks[i].RenderGlyphHeight));
         }
 
         string primary   = _engines[0].Name;
