@@ -1718,6 +1718,393 @@ if (args[0] == "--roi-snap")
     }
 }
 
+// Candidate 2, measured but not shipped: fix what the DETECTOR is shown to the whole source image,
+// and let the user's selection decide only which of its boxes go any further.
+//
+//   Logical ROI    what the user dragged. Still what the answer is about.
+//   Analysis frame the whole source image, every time. It does not move when the selection does.
+//
+// Candidate 1 (--roi-snap) made the detector's input identical only while the selection stayed
+// inside one grid cell, and paid for it three ways: a bigger jump when a line was crossed, text
+// truncated at the Analysis ROI's edge, and unrelated content inside it changing how the rest was
+// grouped. This shape has no cell to cross — the frame is the same frame for every selection on the
+// image — and nothing is truncated, because nothing is cropped. The selection is applied AFTER
+// detection, so recognition and grouping still see only what the user framed, which is what keeps
+// the unrelated content out.
+//
+// Deliberately NOT what this measures: recognising the whole screen. Only detection is full-frame.
+//
+// The risk it has instead is resolution. ImgResize is a cap on the detector's long side, so a small
+// ROI is usually handed over at 1.0 while a whole 4K screen cannot be — and a box found on a
+// downscaled page is a different box. That is question B, and it is the one that decides this.
+//
+//   A  stability: does the full-frame arm stop moving when the selection grows?
+//   B  cost:      what does the same ROI lose against today's crop-the-ROI-and-detect baseline,
+//                 and what does it cost in time and memory?
+if (args[0] == "--roi-fullframe")
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine(
+            "usage: --roi-fullframe <image> [--roi X,Y,W,H] [--grow up,down,left,right,all] [--steps 1,2,4,8,16,32]");
+        return 1;
+    }
+
+    var ffPath = args[1];
+    if (!File.Exists(ffPath)) { Console.Error.WriteLine($"(missing) {ffPath}"); return 1; }
+
+    using var ffSource = new Bitmap(ffPath);
+
+    var ffRect = new System.Drawing.Rectangle(
+        ffSource.Width / 8, ffSource.Height / 8,
+        ffSource.Width * 3 / 4, ffSource.Height * 3 / 4);
+
+    var ffRoiFlag = Array.IndexOf(args, "--roi");
+    if (ffRoiFlag >= 0 && ffRoiFlag + 1 < args.Length)
+    {
+        var parts = args[ffRoiFlag + 1].Split(',');
+        if (parts.Length != 4 || !parts.All(part => int.TryParse(part, out _)))
+        {
+            Console.Error.WriteLine("usage: --roi X,Y,W,H");
+            return 1;
+        }
+
+        ffRect = new System.Drawing.Rectangle(
+            int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]), int.Parse(parts[3]));
+    }
+
+    var ffGrowFlag = Array.IndexOf(args, "--grow");
+    var ffGrowSides = ffGrowFlag >= 0 && ffGrowFlag + 1 < args.Length
+        ? args[ffGrowFlag + 1].Split(',').Select(side => side.Trim().ToLowerInvariant()).ToArray()
+        : new[] { "down", "right", "all" };
+
+    // The corpus has no screen wide enough for ImgResize to shrink, and that shrink is the whole of
+    // question B's risk. This forces the full-frame arm's detection to a smaller cap — 1024 on a
+    // 1900px screen is the 0.53 a 4K screen would get — WITHOUT touching the baseline arm, which is
+    // what makes the two comparable.
+    var ffSizeFlag = Array.IndexOf(args, "--ff-size");
+    int? ffSize = ffSizeFlag >= 0 && ffSizeFlag + 1 < args.Length
+        ? int.Parse(args[ffSizeFlag + 1])
+        : null;
+
+    var ffExplain = args.Contains("--explain");
+
+    var ffStepFlag = Array.IndexOf(args, "--steps");
+    var ffSteps = ffStepFlag >= 0 && ffStepFlag + 1 < args.Length
+        ? args[ffStepFlag + 1].Split(',').Select(int.Parse).ToArray()
+        : new[] { 1, 2, 4, 8, 16, 32 };
+
+    using var ffEngine = new OnnxOcrEngine();
+
+    Console.WriteLine($"IMAGE: {ffPath}  ({ffSource.Width}x{ffSource.Height})");
+    Console.WriteLine($"BASE ROI: {ffRect.X},{ffRect.Y} {ffRect.Width}x{ffRect.Height}");
+    Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+    Console.WriteLine();
+
+    // Nothing below means anything unless recognition over supplied boxes is the same recognition
+    // the app runs. Checked here rather than asserted in a comment: the detector's own boxes on the
+    // ROI crop, read back through the seam, against what RecognizeAsync makes of the same crop.
+    using (var seamCrop = ffSource.Clone(ffRect, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+    {
+        using var seamSession = ffEngine.BeginDetection(seamCrop, harnessLanguage);
+        var viaSeam = seamSession.Recognize(Enumerable.Range(0, seamSession.Boxes.Count).ToList());
+        var viaApp = await ffEngine.RecognizeAsync(seamCrop, harnessLanguage);
+
+        var seamText = string.Join(" | ", viaSeam.Select(block => block.Text));
+        var appText = string.Join(" | ", viaApp.Select(block => block.Text));
+        Console.WriteLine(
+            $"SEAM CHECK  boxes={seamSession.Boxes.Count}  seam={viaSeam.Count} app={viaApp.Count}  " +
+            (seamText == appText ? "text IDENTICAL" : "text DIFFERS"));
+        if (seamText != appText)
+        {
+            Console.WriteLine($"   seam: {seamText}");
+            Console.WriteLine($"   app : {appText}");
+        }
+
+        Console.WriteLine();
+    }
+
+    // The one detection the whole mode is built on. Timed and measured alone, because in a shipped
+    // version of this it would run once per capture no matter how the selection then moved.
+    GC.Collect();
+    GC.WaitForPendingFinalizers();
+    var ffBeforeMemory = Environment.WorkingSet;
+    var ffDetectWatch = System.Diagnostics.Stopwatch.StartNew();
+    using var ffSession = ffEngine.BeginDetection(ffSource, harnessLanguage, ffSize);
+    var ffAllBoxes = ffSession.Boxes;
+    ffDetectWatch.Stop();
+    var ffAfterMemory = Environment.WorkingSet;
+
+    var ffOptions = OnnxOcrEngine.CreateOptions(ffSize);
+    using (var ffSk = OnnxOcrEngine.ConvertToSkBitmap(ffSource))
+    using (var ffAligned = OnnxOcrEngine.AlignForDetector(ffSk, ffOptions.Padding))
+    {
+        // The same reading of ImgResize as --roi-stability's: a cap on the padded long side, not a
+        // target, so the scale is 1.0 whenever the page already fits. This is the line that says
+        // whether question B has anything to answer on this image.
+        var paddedWidth = ffAligned.Width + 2 * ffOptions.Padding;
+        var paddedHeight = ffAligned.Height + 2 * ffOptions.Padding;
+        using var ffPadded = new SkiaSharp.SKBitmap(paddedWidth, paddedHeight);
+        var ffScale = RapidOcrNet.ScaleParam.GetScaleParam(
+            ffPadded, Math.Min(ffOptions.ImgResize, Math.Max(paddedWidth, paddedHeight)));
+
+        Console.WriteLine(
+            $"FULL FRAME DETECT  canvas={ffAligned.Width}x{ffAligned.Height}  " +
+            $"scale={ffScale.ScaleWidth:0.0000}x{ffScale.ScaleHeight:0.0000}  boxes={ffAllBoxes.Count}  " +
+            $"{ffDetectWatch.ElapsedMilliseconds}ms  workingSet {(ffAfterMemory - ffBeforeMemory) / 1024 / 1024:+0;-0;0}MB");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("A. STABILITY — the full-frame arm against its own base ROI");
+    Console.WriteLine(
+        "grow  step  size        kept  strad  det =/+/-      dH% 50/90/max   rec =/x/0     groups");
+    Console.WriteLine(new string('-', 104));
+
+    var ffBase = await FullFrameProbe(ffRect);
+    Console.WriteLine(
+        $"BASE  -     {ffBase.Roi.Width}x{ffBase.Roi.Height,-7} {ffBase.Boxes.Count,-5} {ffBase.Straddling,-6} " +
+        $"-              -               -             {ffBase.Groups}");
+
+    var ffVariants = new List<(string Side, int Step, FullFrameProbed Probe)>();
+    foreach (var side in ffGrowSides)
+    {
+        foreach (var step in ffSteps)
+        {
+            var grown = FullFrameGrow(ffRect, side, step);
+            if (grown == ffRect)
+            {
+                Console.WriteLine($"{side,-5} +{step,-4} (no room left in the source image)");
+                continue;
+            }
+
+            var probe = await FullFrameProbe(grown);
+            ffVariants.Add((side, step, probe));
+            FullFrameStabilityReport(side, step, ffBase, probe);
+        }
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("B. COST & ACCURACY — the full-frame arm against today's crop-the-ROI baseline");
+    Console.WriteLine("   det ff/roi is how many boxes each arm has INSIDE the logical ROI; the rest");
+    Console.WriteLine("   compares the full-frame arm's answer to the baseline's on the same ROI.");
+    Console.WriteLine(
+        "roi                canvas(roi)  scale(roi)    det ff/roi  =/+/-        dH% 50/90/max   rec =/x/0     chars ff/roi   ff rec ms  roi det+rec ms");
+    Console.WriteLine(new string('-', 152));
+
+    FullFrameCostReport(ffBase);
+    foreach (var (_, _, probe) in ffVariants) FullFrameCostReport(probe);
+
+    return 0;
+
+    System.Drawing.Rectangle FullFrameGrow(System.Drawing.Rectangle rect, string side, int by)
+    {
+        var grow = side switch
+        {
+            "up" => (L: 0, T: by, R: 0, B: 0),
+            "down" => (L: 0, T: 0, R: 0, B: by),
+            "left" => (L: by, T: 0, R: 0, B: 0),
+            "right" => (L: 0, T: 0, R: by, B: 0),
+            _ => (L: by, T: by, R: by, B: by),
+        };
+
+        var x = Math.Max(0, rect.X - grow.L);
+        var y = Math.Max(0, rect.Y - grow.T);
+        var right = Math.Min(ffSource.Width, rect.Right + grow.R);
+        var bottom = Math.Min(ffSource.Height, rect.Bottom + grow.B);
+
+        return new System.Drawing.Rectangle(x, y, right - x, bottom - y);
+    }
+
+    // The candidate itself: filter the one full-frame detection down to the selection, then read and
+    // group only what is left. Everything is already in source-image coordinates, because the
+    // detection was run on the source image.
+    async Task<FullFrameProbed> FullFrameProbe(System.Drawing.Rectangle logical)
+    {
+        var logicalRect = new System.Windows.Rect(
+            logical.X, logical.Y, logical.Width, logical.Height);
+
+        // Centre-inside, the same rule --roi-snap filters with, so the two candidates' numbers can
+        // be read against each other.
+        var kept = Enumerable.Range(0, ffAllBoxes.Count)
+            .Where(index => logicalRect.Contains(
+                new System.Windows.Point(
+                    ffAllBoxes[index].Bounds.X + ffAllBoxes[index].Bounds.Width / 2,
+                    ffAllBoxes[index].Bounds.Y + ffAllBoxes[index].Bounds.Height / 2)))
+            .ToList();
+
+        // Boxes the selection cuts through. Under this shape they arrive WHOLE — the detector saw
+        // the entire line — which is exactly what --roi-snap could not do, so the count is here to
+        // show how often that difference is in play rather than to flag a problem.
+        var straddling = ffAllBoxes.Count(box =>
+            box.Bounds.IntersectsWith(logicalRect) && !logicalRect.Contains(box.Bounds));
+
+        var recognitionWatch = System.Diagnostics.Stopwatch.StartNew();
+        var read = ffSession.Recognize(kept);
+        recognitionWatch.Stop();
+
+        var groups = OcrTextBlockGrouper.Group(
+            read, null, BitmapBlockAppearance.Sample(ffSource, read), harnessComicMode).Count;
+
+        // Today's behaviour, for the same selection: crop, detect on the crop, recognise, group.
+        using var crop = ffSource.Clone(logical, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        var baselineWatch = System.Diagnostics.Stopwatch.StartNew();
+        var baselineBoxes = ffEngine.DetectBoxesOnly(crop, harnessLanguage)
+            .Select(box => new System.Windows.Rect(
+                box.Bounds.X + logical.X, box.Bounds.Y + logical.Y, box.Bounds.Width, box.Bounds.Height))
+            .ToList();
+        var baselineRead = await ffEngine.RecognizeAsync(crop, harnessLanguage);
+        baselineWatch.Stop();
+
+        var baselineBlocks = baselineRead
+            .Select(block => (
+                Bounds: new System.Windows.Rect(
+                    block.Bounds.X + logical.X, block.Bounds.Y + logical.Y,
+                    block.Bounds.Width, block.Bounds.Height),
+                block.Text))
+            .ToList();
+
+        var baselineOptions = OnnxOcrEngine.CreateOptions(null);
+        using var baselineSk = OnnxOcrEngine.ConvertToSkBitmap(crop);
+        using var baselineAligned = OnnxOcrEngine.AlignForDetector(baselineSk, baselineOptions.Padding);
+        var baselinePaddedWidth = baselineAligned.Width + 2 * baselineOptions.Padding;
+        var baselinePaddedHeight = baselineAligned.Height + 2 * baselineOptions.Padding;
+        using var baselinePadded = new SkiaSharp.SKBitmap(baselinePaddedWidth, baselinePaddedHeight);
+        var baselineScale = RapidOcrNet.ScaleParam.GetScaleParam(
+            baselinePadded,
+            Math.Min(baselineOptions.ImgResize, Math.Max(baselinePaddedWidth, baselinePaddedHeight)));
+
+        return new FullFrameProbed(
+            logical,
+            kept.Select(index => ffAllBoxes[index].Bounds).ToList(),
+            straddling,
+            read.Select(block => (block.Bounds, block.Text)).ToList(),
+            groups,
+            recognitionWatch.ElapsedMilliseconds,
+            baselineBoxes,
+            baselineBlocks,
+            baselineWatch.ElapsedMilliseconds,
+            $"{baselineAligned.Width}x{baselineAligned.Height}",
+            $"{baselineScale.ScaleWidth:0.0000}x{baselineScale.ScaleHeight:0.0000}");
+    }
+
+    void FullFrameStabilityReport(string side, int step, FullFrameProbed b, FullFrameProbed v)
+    {
+        var (matched, added, missing, heightDeltas) = FullFrameMatchBoxes(
+            b.Boxes,
+            v.Boxes);
+        var (same, changed, lost) = FullFrameMatchText(b.Blocks, v.Blocks);
+
+        Console.WriteLine(
+            $"{side,-5} +{step,-4} {v.Roi.Width}x{v.Roi.Height,-7} {v.Boxes.Count,-5} {v.Straddling,-6} " +
+            $"{matched}/{added}/{missing,-10} " +
+            $"{RoiPct(heightDeltas, 0.5),4:0.0}/{RoiPct(heightDeltas, 0.9),4:0.0}/{RoiPct(heightDeltas, 1.0),4:0.0}   " +
+            $"{same}/{changed}/{lost,-9} {v.Groups}{(v.Groups == b.Groups ? "" : "  <- changed")}");
+    }
+
+    void FullFrameCostReport(FullFrameProbed p)
+    {
+        // The baseline's boxes are already only inside the ROI — it never saw anything else — so the
+        // comparison is the full-frame arm's kept boxes against all of them.
+        var (matched, added, missing, heightDeltas) = FullFrameMatchBoxes(
+            p.BaselineBoxes,
+            p.Boxes);
+        var (same, changed, lost) = FullFrameMatchText(p.BaselineBlocks, p.Blocks);
+
+        Console.WriteLine(
+            $"{p.Roi.X},{p.Roi.Y} {p.Roi.Width}x{p.Roi.Height,-8} {p.BaselineCanvas,-12} {p.BaselineScale,-13} " +
+            $"{p.Boxes.Count}/{p.BaselineBoxes.Count,-9} " +
+            $"{matched}/{added}/{missing,-11} " +
+            $"{RoiPct(heightDeltas, 0.5),4:0.0}/{RoiPct(heightDeltas, 0.9),4:0.0}/{RoiPct(heightDeltas, 1.0),4:0.0}   " +
+            $"{same}/{changed}/{lost,-9} " +
+            $"{FullFrameChars(p.Blocks)}/{FullFrameChars(p.BaselineBlocks),-9} " +
+            $"{p.RecognitionMs,-10} {p.BaselineMs}");
+
+        if (!ffExplain) return;
+
+        // Every block the two arms disagree about, so the counts above can be read rather than
+        // trusted. Baseline first, because it is what ships today.
+        foreach (var block in p.BaselineBlocks)
+        {
+            var hit = p.Blocks
+                .Select(other => (other, iou: RoiIou(block.Bounds, other.Bounds)))
+                .Where(pair => pair.iou > 0.35)
+                .OrderByDescending(pair => pair.iou)
+                .Select(pair => (string?)pair.other.Text)
+                .FirstOrDefault();
+
+            if (hit is null) Console.WriteLine($"      roi only : {block.Text}");
+            else if (hit.Trim() != block.Text.Trim())
+            {
+                Console.WriteLine($"      roi      : {block.Text}");
+                Console.WriteLine($"      fullframe: {hit}");
+            }
+        }
+
+        foreach (var block in p.Blocks)
+        {
+            var matchedByBaseline = p.BaselineBlocks.Any(other => RoiIou(block.Bounds, other.Bounds) > 0.35);
+            if (!matchedByBaseline) Console.WriteLine($"      ff only  : {block.Text}");
+        }
+    }
+
+    static int FullFrameChars(IReadOnlyList<(System.Windows.Rect Bounds, string Text)> blocks) =>
+        blocks.Sum(block => block.Text.Count(character => !char.IsWhiteSpace(character)));
+
+    // Greedy IoU pairing, the same 0.35 the other two ROI modes use, so "matched" means the same
+    // thing in all three tables.
+    static (int Matched, int Added, int Missing, List<double> HeightDeltas) FullFrameMatchBoxes(
+        IReadOnlyList<System.Windows.Rect> reference, IReadOnlyList<System.Windows.Rect> candidate)
+    {
+        var used = new bool[candidate.Count];
+        var heightDeltas = new List<double>();
+        var matched = 0;
+
+        foreach (var box in reference)
+        {
+            var best = -1;
+            var bestIou = 0.35;
+            for (var i = 0; i < candidate.Count; i++)
+            {
+                if (used[i]) continue;
+                var iou = RoiIou(box, candidate[i]);
+                if (iou <= bestIou) continue;
+                bestIou = iou;
+                best = i;
+            }
+
+            if (best < 0) continue;
+            used[best] = true;
+            matched++;
+            heightDeltas.Add(Math.Abs(candidate[best].Height - box.Height) / Math.Max(1, box.Height) * 100);
+        }
+
+        heightDeltas.Sort();
+        return (matched, candidate.Count - matched, reference.Count - matched, heightDeltas);
+    }
+
+    static (int Same, int Changed, int Lost) FullFrameMatchText(
+        IReadOnlyList<(System.Windows.Rect Bounds, string Text)> reference,
+        IReadOnlyList<(System.Windows.Rect Bounds, string Text)> candidate)
+    {
+        int same = 0, changed = 0, lost = 0;
+        foreach (var block in reference)
+        {
+            var hit = candidate
+                .Select(other => (other, iou: RoiIou(block.Bounds, other.Bounds)))
+                .Where(pair => pair.iou > 0.35)
+                .OrderByDescending(pair => pair.iou)
+                .Select(pair => (string?)pair.other.Text)
+                .FirstOrDefault();
+
+            if (hit is null) lost++;
+            else if (hit.Trim() == block.Text.Trim()) same++;
+            else changed++;
+        }
+
+        return (same, changed, lost);
+    }
+}
+
 if (args[0] == "--scale-sweep")
 {
     var sweepArgs = args.Skip(1).ToList();
@@ -1866,6 +2253,23 @@ static double RoiIou(System.Windows.Rect a, System.Windows.Rect b)
 }
 
 return 0;
+
+/// <summary>
+/// One Logical ROI answered under both arms, in source-image coordinates. The full-frame arm boxes
+/// are a filtered view of ONE detection shared by every ROI; the baseline has its own.
+/// </summary>
+internal sealed record FullFrameProbed(
+    System.Drawing.Rectangle Roi,
+    IReadOnlyList<System.Windows.Rect> Boxes,
+    int Straddling,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> Blocks,
+    int Groups,
+    long RecognitionMs,
+    IReadOnlyList<System.Windows.Rect> BaselineBoxes,
+    IReadOnlyList<(System.Windows.Rect Bounds, string Text)> BaselineBlocks,
+    long BaselineMs,
+    string BaselineCanvas,
+    string BaselineScale);
 
 /// <summary>
 /// One (Logical, Analysis) pair's answer, in source-image coordinates. <c>All</c> is everything the
