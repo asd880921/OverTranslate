@@ -293,17 +293,26 @@ internal static class OcrTextBlockGrouper
     /// above and one more wrapped English line — and separates none that were already joined. The
     /// threshold does not move; it was never the problem. See issue #79.</para>
     ///
-    /// <para>CJK reports no glyph height because its box already sits on the glyphs, so those keep
-    /// comparing boxes and are unaffected.</para>
+    /// <para>Glyph heights are compared only within one script. A Latin box carries ascender and
+    /// descender room a CJK one does not, so the two numbers do not mean the same thing, and no
+    /// constant converts between them — that was measured, and the ratio turned out to be a
+    /// property of the particular words rather than of the scripts.</para>
+    ///
+    /// <para>Everything else falls back to the raw detection boxes, which is coarse but at least
+    /// impartial: one detector, one procedure, whatever the text is. It is what the old code did
+    /// too, except that it compared the *normalised* boxes — and those are 0.820 of each other
+    /// across scripts before a single letter is read, so every Latin line beside a CJK one was
+    /// refused by a size test it could not have passed. That is issue #164's 「OPTIONS／ゲーム設定」.</para>
     /// </remarks>
-    private static double TextSizeRatio(OcrTextBlock previous, OcrTextBlock current)
+    internal static double TextSizeRatio(OcrTextBlock previous, OcrTextBlock current)
     {
-        if (previous.RenderGlyphHeight is { } previousGlyph and > 0 &&
-            current.RenderGlyphHeight is { } currentGlyph and > 0)
+        if (previous.LayoutScript == current.LayoutScript &&
+            previous.LayoutGlyphHeight is { } previousGlyph and > 0 &&
+            current.LayoutGlyphHeight is { } currentGlyph and > 0)
             return Math.Min(previousGlyph, currentGlyph) / Math.Max(previousGlyph, currentGlyph);
 
-        return Math.Min(previous.Bounds.Height, current.Bounds.Height) /
-               Math.Max(previous.Bounds.Height, current.Bounds.Height);
+        return Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height) /
+               Math.Max(previous.LayoutBounds.Height, current.LayoutBounds.Height);
     }
 
     private static (bool Joined, string Rule) SentenceContinuationEvidence(

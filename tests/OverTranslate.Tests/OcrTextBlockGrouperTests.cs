@@ -331,13 +331,20 @@ public class OcrTextBlockGrouperTests
     /// holding text of visibly different sizes. A save-slot stamp over a character name did this —
     /// boxes 0.83 apart, letters 0.58. Reading the glyphs is what tells them apart.
     /// </summary>
+    /// <remarks>
+    /// The widths are what make the glyph heights come out at the measured 20 and 11.7: the engine
+    /// does not measure ink, it estimates it from the average glyph pitch, so a box has to be as
+    /// wide as the text in it was. They were 300 and 90 while this fixture set the glyph heights by
+    /// hand, and those boxes yield 16.96 and 11.70 — a ratio of 0.98, which is to say the pair the
+    /// test is built on would have merged in the app whatever this assertion said.
+    /// </remarks>
     [Fact]
     public void KeepsLinesOfDifferentTextSizesApartEvenWhenTheirBoxesMatch()
     {
         var blocks = new List<OcrTextBlock>
         {
-            new("2026/07/24 23:29 AUTO SAVE", new Rect(40, 40, 300, 35), RenderGlyphHeight: 20),
-            new("Narmaya", new Rect(41, 79, 90, 29), RenderGlyphHeight: 11.6),
+            new("2026/07/24 23:29 AUTO SAVE", new Rect(40, 40, 354, 35), RenderGlyphHeight: 20),
+            new("Narmaya", new Rect(41, 79, 63, 29), RenderGlyphHeight: 11.7),
         };
 
         var grouped = GroupDetected(blocks);
@@ -406,4 +413,83 @@ public class OcrTextBlockGrouperTests
 
     private static List<OcrTextBlock> GroupDetected(IReadOnlyList<OcrTextBlock> blocks) =>
         OcrTextBlockGrouper.Group(blocks.AsDetected());
+
+    /// <summary>
+    /// Symptom B: two lines whose detection boxes are exactly the same size, one Latin and one CJK.
+    /// </summary>
+    /// <remarks>
+    /// The size test used to compare normalised boxes, and a CJK one is pulled in to 0.82 of its
+    /// detection box while a Latin one is left whole — so this pair read 0.820 against a 0.88 gate
+    /// and was refused before anything about the text, the spacing or the alignment was consulted.
+    /// No mixed-script pair could ever pass it.
+    /// </remarks>
+    [Fact]
+    public void CrossScriptPair_WithEqualDetectionBoxes_IsNotRefusedBySizeTest()
+    {
+        var latin = new OcrTextBlock("OPTIONS", new Rect(10, 10, 240, 30)).AsDetected();
+        var cjk = new OcrTextBlock("ゲーム設定", new Rect(10, 10, 240, 30)).AsDetected();
+
+        Assert.Equal(OcrLayoutScript.Latin, latin.LayoutScript);
+        Assert.Equal(OcrLayoutScript.Cjk, cjk.LayoutScript);
+        Assert.Equal(1.0, OcrTextBlockGrouper.TextSizeRatio(latin, cjk), precision: 9);
+
+        // What it used to be: normalisation makes the same box 0.82 as tall on the CJK side.
+        var normalizedCjk = OnnxOcrEngine.NormalizeBlocks([new("ゲーム設定", new Rect(10, 10, 240, 30))], isCjk: true)[0];
+        Assert.True(normalizedCjk.Bounds.Height / latin.Bounds.Height < 0.88);
+    }
+
+    /// <summary>
+    /// A block that is itself both scripts has no single glyph body to measure, so it compares on
+    /// the detection box like any other cross-script pairing.
+    /// </summary>
+    [Fact]
+    public void MixedScriptBlock_UsesLayoutBoundsForSizeComparison()
+    {
+        var mixed = new OcrTextBlock("甲Glossaries", new Rect(10, 10, 240, 30)).AsDetected();
+        var latin = new OcrTextBlock("Glossaries", new Rect(10, 50, 200, 30)).AsDetected();
+
+        Assert.Equal(OcrLayoutScript.Mixed, mixed.LayoutScript);
+        Assert.Null(mixed.LayoutGlyphHeight);
+        Assert.Equal(1.0, OcrTextBlockGrouper.TextSizeRatio(mixed, latin), precision: 9);
+    }
+
+    /// <summary>
+    /// The Latin-dominant case the same rule covers: a line of Japanese prose carrying Western
+    /// terms must not be sized as though every glyph in it were full-width.
+    /// </summary>
+    [Fact]
+    public void MixedScriptBlock_DoesNotUseCjkGlyphMetricForLatinDominantText()
+    {
+        var box = new Rect(10, 10, 600, 30);
+        var mixed = new OcrTextBlock(
+            "2005 年から CSS, HTML, JavaScript のドキュメントを作成しています。", box).AsDetected();
+        var cjk = new OcrTextBlock("技術文書を書いています", box).AsDetected();
+
+        Assert.Null(mixed.LayoutGlyphHeight);
+        Assert.NotNull(cjk.LayoutGlyphHeight);
+        Assert.NotEqual(cjk.LayoutGlyphHeight, mixed.LayoutGlyphHeight);
+
+        // Same box, so the comparison is 1.0 — not the CJK glyph estimate measured off one of them.
+        Assert.Equal(1.0, OcrTextBlockGrouper.TextSizeRatio(mixed, cjk), precision: 9);
+    }
+
+    /// <summary>
+    /// 「OPTIONS／ゲーム設定」and 「Back／戻る」: each label is joined to its own translation
+    /// candidate line, and the two pairs stay apart from each other.
+    /// </summary>
+    [Fact]
+    public void Mixed_EnglishJapanese_DoesNotCrossMergeParagraphs()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("OPTIONS", new Rect(10, 10, 240, 30)),
+            new("ゲーム設定", new Rect(10, 190, 240, 30)),
+            new("Back", new Rect(10, 370, 140, 30)),
+            new("戻る", new Rect(10, 550, 140, 30)),
+        };
+
+        var grouped = GroupDetected(blocks);
+
+        Assert.Equal(4, grouped.Count);
+    }
 }
