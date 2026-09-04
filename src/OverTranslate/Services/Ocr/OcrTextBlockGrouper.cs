@@ -129,14 +129,16 @@ internal static class OcrTextBlockGrouper
         var right = Math.Max(previous.Bounds.Right, current.Bounds.Right);
         var bottom = Math.Max(previous.Bounds.Bottom, current.Bounds.Bottom);
         var text = JoinInlineText(previous.Text, current.Text);
+        var layoutScript = LayoutScriptDetection.For(text);
 
         return new OcrTextBlock(
             text,
             new Rect(left, top, right - left, bottom - top),
             RenderGlyphHeight: CombineGlyphHeight(previous.RenderGlyphHeight, current.RenderGlyphHeight),
             Confidence: CombineConfidence([previous, current]),
-            LayoutScript: LayoutScriptDetection.For(text),
-            LayoutBounds: Rect.Union(previous.LayoutBounds, current.LayoutBounds));
+            LayoutScript: layoutScript,
+            LayoutBounds: Rect.Union(previous.LayoutBounds, current.LayoutBounds),
+            LayoutGlyphHeight: CombineLayoutGlyphHeight(layoutScript, [previous, current]));
     }
 
     private static string JoinInlineText(string left, string right)
@@ -313,6 +315,8 @@ internal static class OcrTextBlockGrouper
             .ToList();
         double? groupGlyphHeight = glyphHeights.Count > 0 ? glyphHeights[glyphHeights.Count / 2] : null;
 
+        var layoutScript = LayoutScriptDetection.For(text);
+
         return new OcrTextBlock(
             text,
             new Rect(x, y, right - x, bottom - y),
@@ -322,8 +326,9 @@ internal static class OcrTextBlockGrouper
             // Re-read rather than folded together: the field's contract is "the script of this
             // block's own text", and a group whose lines are Latin and CJK is exactly the Mixed
             // that the joined text reports.
-            LayoutScriptDetection.For(text),
-            blocks.Select(block => block.LayoutBounds).Aggregate(Rect.Union));
+            layoutScript,
+            blocks.Select(block => block.LayoutBounds).Aggregate(Rect.Union),
+            CombineLayoutGlyphHeight(layoutScript, blocks));
     }
 
     /// <summary>
@@ -349,6 +354,24 @@ internal static class OcrTextBlockGrouper
         }
 
         return weight > 0 ? weighted / weight : null;
+    }
+
+    /// <summary>
+    /// One layout glyph height for several lines: the median of theirs, and nothing at all once
+    /// the joined text is no longer of a single script.
+    /// </summary>
+    private static double? CombineLayoutGlyphHeight(OcrLayoutScript script, IReadOnlyList<OcrTextBlock> blocks)
+    {
+        if (script is not (OcrLayoutScript.Latin or OcrLayoutScript.Cjk))
+            return null;
+
+        var heights = blocks
+            .Where(block => block.LayoutGlyphHeight is > 0)
+            .Select(block => block.LayoutGlyphHeight!.Value)
+            .OrderBy(height => height)
+            .ToList();
+
+        return heights.Count > 0 ? heights[heights.Count / 2] : null;
     }
 
     private static double? CombineGlyphHeight(double? a, double? b) =>

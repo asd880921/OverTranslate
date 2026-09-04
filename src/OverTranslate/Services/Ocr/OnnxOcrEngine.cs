@@ -1149,13 +1149,58 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     internal static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool isCjk)
         => blocks.Select(block => NormalizeBlock(block, isCjk)).ToList();
 
+    /// <summary>
+    /// Glyph body height estimated from a detection box: 0.82 of it, clamped against the average
+    /// glyph pitch on wide lines where unclip leaves the box vertically loose.
+    /// </summary>
+    /// <remarks>
+    /// ONNX/unclip can return vertically loose boxes on wide single lines. The average glyph pitch
+    /// is a better proxy for the real line height than an over-tall detection rectangle.
+    /// </remarks>
+    private static double EstimateGlyphHeight(System.Windows.Rect box, int glyphCount, double glyphHeightFromPitch)
+    {
+        const double verticalScale = 0.82;
+
+        var glyphHeight = box.Height * verticalScale;
+
+        if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
+            box.Width > box.Height * 2)
+        {
+            var estimatedGlyphPitch = box.Width / glyphCount;
+            glyphHeight = Math.Min(glyphHeight, estimatedGlyphPitch * glyphHeightFromPitch);
+        }
+
+        return Math.Max(1, glyphHeight);
+    }
+
+    /// <summary>
+    /// The same estimate keyed on the block's own script rather than on the language the user
+    /// picked, so it reads the same under 自動 as under 日文.
+    /// </summary>
+    /// <remarks>
+    /// Mixed and Unknown get nothing: there is no single glyph body to estimate, and grouping
+    /// falls back to the raw detection box for them. Latin carries the short-line correction the
+    /// overlay's own height carries, because too few glyphs for the pitch clamp leaves 0.82 of the
+    /// box standing, which is 1.7x the truth. CJK does not, matching how its box is normalised.
+    /// </remarks>
+    internal static double? LayoutGlyphHeightFor(OcrLayoutScript script, System.Windows.Rect box, string text)
+    {
+        if (script is not (OcrLayoutScript.Latin or OcrLayoutScript.Cjk))
+            return null;
+
+        var glyphCount = text.Count(c => !char.IsWhiteSpace(c));
+        var glyphHeight = EstimateGlyphHeight(box, glyphCount, script == OcrLayoutScript.Cjk ? 1.18 : 1.3);
+
+        return script == OcrLayoutScript.Cjk
+            ? glyphHeight
+            : ShortTextGlyphHeight.For(glyphHeight, box.Height, glyphCount);
+    }
+
     private static OcrTextBlock NormalizeBlock(
         OcrTextBlock block,
         bool isCjk,
         double? glyphHeightFromPitchOverride = null)
     {
-        const double verticalScale = 0.82;
-
         // Convert the average source-glyph pitch (width / glyphCount) into the line height that
         // drives the overlay font size, clamping the unclipped (loose) detection box so text is
         // not rendered far too large. The multiplier is keyed on the *rendered* script, which is
@@ -1168,28 +1213,17 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // Per block, from its own text, and the box exactly as the detector drew it. Both callers
         // reach here, and this runs before the CJK branch below rewrites Bounds, so it is the one
         // place the layout side gets told what it is looking at.
+        var layoutScript = LayoutScriptDetection.For(block.Text);
         block = block with
         {
-            LayoutScript = LayoutScriptDetection.For(block.Text),
+            LayoutScript = layoutScript,
             LayoutBounds = block.Bounds,
+            LayoutGlyphHeight = LayoutGlyphHeightFor(layoutScript, block.Bounds, block.Text),
         };
 
         var bounds = block.Bounds;
-        var glyphHeight = bounds.Height * verticalScale;
         var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
-
-        // ONNX/unclip can return vertically loose boxes on wide single lines.
-        // The average glyph pitch is a better proxy for the real line height than
-        // an over-tall detection rectangle.
-        if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
-            bounds.Width > bounds.Height * 2)
-        {
-            var estimatedGlyphPitch = bounds.Width / glyphCount;
-            var maxExpectedHeight = estimatedGlyphPitch * glyphHeightFromPitch;
-            glyphHeight = Math.Min(glyphHeight, maxExpectedHeight);
-        }
-
-        glyphHeight = Math.Max(1, glyphHeight);
+        var glyphHeight = EstimateGlyphHeight(bounds, glyphCount, glyphHeightFromPitch);
 
         if (isCjk)
         {

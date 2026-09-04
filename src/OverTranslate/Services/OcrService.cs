@@ -24,7 +24,12 @@ public record OcrTextBlock(
     // across scripts — a CJK one is pulled in onto its glyphs and a Latin one is not, a ratio of
     // 0.820 that refused every mixed-script pair on size alone. This is what grouping measures
     // with: one detector, one procedure, whatever the text turns out to be.
-    System.Windows.Rect LayoutBounds = default)
+    System.Windows.Rect LayoutBounds = default,
+    // Estimated glyph body height for LayoutScript, from LayoutBounds. Comparable within one
+    // script only: a Latin box carries ascender and descender room a CJK one does not, and no
+    // constant converts between them — that was measured, and it is a property of the text
+    // rather than of the scripts. Null for Mixed and Unknown, which have no single answer.
+    double? LayoutGlyphHeight = null)
 {
     public IReadOnlyList<System.Windows.Rect> Lines => SourceLineBounds ?? [Bounds];
 }
