@@ -1067,6 +1067,16 @@ if (args[0] == "--group-explain")
         var grouped = OcrTextBlockGrouper.Group(raw, decisions);
 
         Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
+
+        // One aggregatable line per image, so a whole corpus can be summed without re-reading the
+        // verdicts. The script census is on the lines as read, not on the groups, because that is
+        // the population the size test pairs off against each other.
+        int Census(OcrLayoutScript script) => raw.Count(block => block.LayoutScript == script);
+        Console.WriteLine(
+            $"SUMMARY	{path}	lang={harnessLanguage}	lines={raw.Count}	groups={grouped.Count}" +
+            $"	latin={Census(OcrLayoutScript.Latin)}	cjk={Census(OcrLayoutScript.Cjk)}" +
+            $"	mixed={Census(OcrLayoutScript.Mixed)}	unknown={Census(OcrLayoutScript.Unknown)}" +
+            $"	text={string.Join(" | ", grouped.Select(block => block.Text.Trim()))}");
         for (var i = 0; i < grouped.Count; i++)
             Console.WriteLine($"  [{i}] lines={grouped[i].Lines.Count}  {grouped[i].Text}");
 
