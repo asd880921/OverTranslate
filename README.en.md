@@ -221,7 +221,7 @@ The following translation services require some extra setup:
 
 OverTranslate is a free Windows translation tool.
 
-If you find this project useful, you can support its continued development and maintenance by [buying me a coffee](https://buymeacoffee.com/asd880921g).
+If you find this project useful, you can support its continued development and maintenance by [buying me a coffee](https://buymeacoffee.com/hon.lu).
 
 ---
 
