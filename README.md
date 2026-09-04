@@ -224,7 +224,7 @@ OCR 全程於本機 CPU 執行，不會將圖片上傳至外部服務。
 
 OverTranslate 是免費提供的 Windows 翻譯工具。
 
-如果這個專案對你有幫助，歡迎透過 [Buy Me a Coffee](https://buymeacoffee.com/asd880921g) 請我喝杯咖啡，支持後續開發與維護。
+如果這個專案對你有幫助，歡迎透過 [Buy Me a Coffee](https://buymeacoffee.com/hon.lu) 請我喝杯咖啡，支持後續開發與維護。
 
 ---
 
