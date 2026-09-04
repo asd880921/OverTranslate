@@ -1868,7 +1868,41 @@ if (args[0] == "--roi-fullframe")
                 .Select(pair => (string?)pair.other.Text)
                 .FirstOrDefault();
 
-            if (hit is null) Console.WriteLine($"      roi only : {block.Text}");
+            if (hit is null)
+            {
+                // Not just that the baseline had it and the full-frame arm did not, but WHY. Three
+                // different things look identical in a "roi only" line and want different answers:
+                // the selection edge cut across the line's width, it cut through the line's height
+                // (every glyph sliced), or the full frame merged the fragment into a longer line
+                // whose centre then fell outside. The box that overlaps it, and where its centre is,
+                // says which.
+                var overlapping = ffAllBoxes
+                    .Select((box, index) => (box, index, iou: RoiIou(block.Bounds, box.Bounds)))
+                    .Where(candidate => candidate.box.Bounds.IntersectsWith(block.Bounds))
+                    .OrderByDescending(candidate => candidate.iou)
+                    .FirstOrDefault();
+
+                var logical = new System.Windows.Rect(p.Roi.X, p.Roi.Y, p.Roi.Width, p.Roi.Height);
+                var why = "no full-frame box overlaps it";
+                if (overlapping.box.Bounds.Width > 0)
+                {
+                    var ffBox = overlapping.box.Bounds;
+                    var centre = new System.Windows.Point(
+                        ffBox.X + ffBox.Width / 2, ffBox.Y + ffBox.Height / 2);
+                    var horizontallyOut = centre.X < logical.X || centre.X > logical.Right;
+                    var verticallyOut = centre.Y < logical.Y || centre.Y > logical.Bottom;
+                    why =
+                        $"ff box {ffBox.X:0},{ffBox.Y:0} {ffBox.Width:0}x{ffBox.Height:0} " +
+                        $"centre {centre.X:0},{centre.Y:0} out={(horizontallyOut ? "L/R" : "")}{(verticallyOut ? "T/B" : "")}" +
+                        $" wider={(ffBox.Width > block.Bounds.Width * 1.2 ? "yes" : "no")}";
+                }
+
+                Console.WriteLine(
+                    $"      roi only : {block.Text}");
+                Console.WriteLine(
+                    $"                 roi box {block.Bounds.X:0},{block.Bounds.Y:0} " +
+                    $"{block.Bounds.Width:0}x{block.Bounds.Height:0}  |  {why}");
+            }
             else if (hit.Trim() != block.Text.Trim())
             {
                 Console.WriteLine($"      roi      : {block.Text}");
