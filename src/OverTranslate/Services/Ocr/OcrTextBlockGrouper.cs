@@ -135,7 +135,8 @@ internal static class OcrTextBlockGrouper
             new Rect(left, top, right - left, bottom - top),
             RenderGlyphHeight: CombineGlyphHeight(previous.RenderGlyphHeight, current.RenderGlyphHeight),
             Confidence: CombineConfidence([previous, current]),
-            LayoutScript: LayoutScriptDetection.For(text));
+            LayoutScript: LayoutScriptDetection.For(text),
+            LayoutBounds: Rect.Union(previous.LayoutBounds, current.LayoutBounds));
     }
 
     private static string JoinInlineText(string left, string right)
@@ -321,7 +322,8 @@ internal static class OcrTextBlockGrouper
             // Re-read rather than folded together: the field's contract is "the script of this
             // block's own text", and a group whose lines are Latin and CJK is exactly the Mixed
             // that the joined text reports.
-            LayoutScriptDetection.For(text));
+            LayoutScriptDetection.For(text),
+            blocks.Select(block => block.LayoutBounds).Aggregate(Rect.Union));
     }
 
     /// <summary>

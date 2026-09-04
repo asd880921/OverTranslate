@@ -1165,9 +1165,14 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // it in line, leaving English just slightly larger than CJK.
         var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (isCjk ? 1.18 : 1.3);
 
-        // Per block, from its own text. Both callers reach here, so this is the single place the
-        // layout side is told what script it is looking at.
-        block = block with { LayoutScript = LayoutScriptDetection.For(block.Text) };
+        // Per block, from its own text, and the box exactly as the detector drew it. Both callers
+        // reach here, and this runs before the CJK branch below rewrites Bounds, so it is the one
+        // place the layout side gets told what it is looking at.
+        block = block with
+        {
+            LayoutScript = LayoutScriptDetection.For(block.Text),
+            LayoutBounds = block.Bounds,
+        };
 
         var bounds = block.Bounds;
         var glyphHeight = bounds.Height * verticalScale;

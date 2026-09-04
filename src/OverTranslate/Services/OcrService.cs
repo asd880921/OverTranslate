@@ -19,7 +19,12 @@ public record OcrTextBlock(
     double? Confidence = null,
     // Writing system of this block's own text, for the grouping geometry to reason about. Never
     // derived from the source language the user picked — that is the whole point of it existing.
-    OcrLayoutScript LayoutScript = OcrLayoutScript.Unknown)
+    OcrLayoutScript LayoutScript = OcrLayoutScript.Unknown,
+    // The detector's own box, before any script-specific normalisation. Bounds is not comparable
+    // across scripts — a CJK one is pulled in onto its glyphs and a Latin one is not, a ratio of
+    // 0.820 that refused every mixed-script pair on size alone. This is what grouping measures
+    // with: one detector, one procedure, whatever the text turns out to be.
+    System.Windows.Rect LayoutBounds = default)
 {
     public IReadOnlyList<System.Windows.Rect> Lines => SourceLineBounds ?? [Bounds];
 }
