@@ -1152,7 +1152,9 @@ if (args[0] == "--group-explain")
         // are the same misalignment measured on the centres and on the right edges, and only a
         // "next" verdict has them. bar is the advance a shorter final line is allowed before the
         // leading rule refuses it. All four are line heights, and none of them exist for "row".
-        Console.WriteLine("  --- next: align=left alignC=centre alignR=right, bar=leading limit ---");
+        Console.WriteLine(
+            "  --- next: align=left alignC=centre alignR=right alignMin=what the gate read, " +
+            "bar=leading limit ---");
         foreach (var decision in decisions)
         {
             var verdict = decision.Joined ? "JOIN  " : "SPLIT ";
@@ -1162,7 +1164,8 @@ if (args[0] == "--group-explain")
                   $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]"
                 : $"  next {verdict} vgap={decision.VerticalGap,6:0.00} " +
                   $"align={decision.LeftDelta,6:0.00} alignC={decision.CenterDelta,6:0.00} " +
-                  $"alignR={decision.RightDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
+                  $"alignR={decision.RightDelta,6:0.00} alignMin={decision.AlignmentDelta,6:0.00} " +
+                  $"size={decision.TextSizeRatio:0.00} " +
                   $"width={decision.WidthRatio:0.00} adv={decision.LineAdvance,5:0.00} " +
                   $"bar={decision.LeadingBar:0.00} " +
                   $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");

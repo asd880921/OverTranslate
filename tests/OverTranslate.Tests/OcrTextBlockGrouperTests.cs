@@ -620,6 +620,92 @@ public class OcrTextBlockGrouperTests
         ((previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0);
 
     /// <summary>
+    /// Centred speech is no longer refused as misaligned because its left edges disagree.
+    /// </summary>
+    /// <remarks>
+    /// The real boxes from comic-en.png: "WHY ARE" centred over "YOU PICKING ON", 1.49 line heights
+    /// apart on the left and 0.03 on the centre. Twenty-one of the ten comic pages' fifty-five
+    /// verdicts were refused on the left edge like this one.
+    /// </remarks>
+    [Fact]
+    public void CentredLines_AreNoLongerRefusedByTheAlignmentGate()
+    {
+        var previous = Line("WHY ARE", x: 320, y: 305, width: 201, height: 52);
+        var current = Line("YOU PICKING ON", x: 244, y: 358, width: 356, height: 50);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.NotEqual("alignment", verdict.Rule);
+        Assert.True(verdict.LeftDelta > 1.2, $"left delta {verdict.LeftDelta:0.00} should be over the gate");
+        Assert.Equal(verdict.CenterDelta, verdict.AlignmentDelta, precision: 6);
+    }
+
+    /// <summary>
+    /// Body text set flush right is no longer refused because its left edges disagree either.
+    /// </summary>
+    /// <remarks>
+    /// The stat panels in the comic corpus set their body flush right, so consecutive lines of one
+    /// sentence read 6.35 line heights apart on the left and 0.00 on the right. Dropping the right
+    /// edge from the comparison — which was considered — would leave those pairs permanently apart,
+    /// and the hand-marked grouping says they belong together.
+    /// </remarks>
+    [Fact]
+    public void FlushRightLines_AreNoLongerRefusedByTheAlignmentGate()
+    {
+        var previous = Line("EXPEDITION'S REAR, CONTRIBUTED TO", x: 100, y: 10, width: 600, height: 40);
+        var current = Line("SLAYING BLUE MANE", x: 340, y: 56, width: 360, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.NotEqual("alignment", verdict.Rule);
+        Assert.Equal(0, verdict.AlignmentDelta, precision: 6);
+        Assert.True(verdict.LeftDelta > 1.2, $"left delta {verdict.LeftDelta:0.00} should be over the gate");
+    }
+
+    /// <summary>
+    /// A short label over a body of text is still refused, because it is out of line on every edge.
+    /// </summary>
+    /// <remarks>
+    /// This is what the alignment gate is really for, and the reason taking the smallest of three
+    /// deltas is safe: the label/body pairs in the corpus read 3.18 / 6.33 / 9.49 line heights, so
+    /// the smallest of them is still far outside a gate set at 1.2. Refusing on the left edge alone
+    /// was never what kept them apart.
+    /// </remarks>
+    [Fact]
+    public void ALabelOverABodyOfText_IsStillRefusedByTheAlignmentGate()
+    {
+        var previous = Line("MERIT", x: 100, y: 10, width: 120, height: 40);
+        var current = Line("SERVED AS THE EXPEDITION'S", x: 300, y: 56, width: 400, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("alignment", verdict.Rule);
+        Assert.False(verdict.Joined);
+    }
+
+    /// <summary>One line with its layout geometry stated, so a fixture cannot be re-derived from its text.</summary>
+    private static OcrTextBlock Line(string text, double x, double y, double width, double height)
+    {
+        var bounds = new Rect(x, y, width, height);
+        return new OcrTextBlock(
+            text,
+            bounds,
+            LayoutScript: OcrLayoutScript.Latin,
+            LayoutBounds: bounds,
+            // Stated rather than estimated from the letters: these fixtures are about alignment,
+            // and a glyph height that moved with the wording would let the size gate answer first.
+            LayoutGlyphHeight: height * 0.7);
+    }
+
+    private static OcrTextBlockGrouper.NextLineDecision NextLineVerdict(
+        OcrTextBlock previous, OcrTextBlock current)
+    {
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard, decisions);
+        return Assert.Single(decisions, decision => decision.Kind == "next");
+    }
+
+    /// <summary>
     /// The next-line diagnostic reports the misalignment on all three edges, not just the left one.
     /// </summary>
     /// <remarks>

@@ -106,6 +106,8 @@ internal static class OcrTextBlockGrouper
     ///   LeftDelta       left-edge misalignment          vertical overlap rate, 0..1
     ///   CenterDelta     centre misalignment             unused, 0
     ///   RightDelta      right-edge misalignment         unused, 0
+    ///   AlignmentDelta  the smallest of those three,    unused, 0
+    ///                   which is what the gate read
     ///   TextSizeRatio   glyph or box height ratio       unused, 0
     ///   LineAdvance     baseline advance                unused, 0
     ///   LeadingBar      the advance bar it was judged   unused, 0
@@ -130,6 +132,7 @@ internal static class OcrTextBlockGrouper
         double LeftDelta,
         double CenterDelta,
         double RightDelta,
+        double AlignmentDelta,
         double TextSizeRatio,
         double WidthRatio,
         double LineAdvance,
@@ -318,9 +321,10 @@ internal static class OcrTextBlockGrouper
             current.LayoutScript,
             NormalizedGap(previous, current),
             VerticalOverlapRate(previous, current),
-            // Centre, right, size, advance and the leading bar are vertical quantities. A same-line
-            // verdict has no such thing to report, so they stay at zero and the harness does not
-            // print them for this kind.
+            // Centre, right, the alignment figure taken from them, size, advance and the leading
+            // bar are vertical quantities. A same-line verdict has no such thing to report, so they
+            // stay at zero and the harness does not print them for this kind.
+            0,
             0,
             0,
             0,
@@ -380,6 +384,9 @@ internal static class OcrTextBlockGrouper
             Math.Abs(previous.LayoutBounds.X - current.LayoutBounds.X) / Math.Max(1, avgHeight),
             Math.Abs(CenterX(previous) - CenterX(current)) / Math.Max(1, avgHeight),
             Math.Abs(previous.LayoutBounds.Right - current.LayoutBounds.Right) / Math.Max(1, avgHeight),
+            // From the same function the rule read, not recomputed here: a trace that works out the
+            // verdict a second way is a trace that can disagree with the verdict.
+            AlignmentDelta(previous, current) / Math.Max(1, avgHeight),
             TextSizeRatio(previous, current),
             previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
             LineAdvanceRatio(previous, current),
@@ -410,10 +417,38 @@ internal static class OcrTextBlockGrouper
     }
 
     /// <summary>
-    /// The horizontal centre of a line's detection box, for the centred-text alignment diagnostic.
+    /// The horizontal centre of a line's detection box.
     /// </summary>
     private static double CenterX(OcrTextBlock line) =>
         line.LayoutBounds.X + line.LayoutBounds.Width / 2.0;
+
+    /// <summary>
+    /// How far out of line two lines are, in pixels: the closest of their left edges, their right
+    /// edges and their centres.
+    /// </summary>
+    /// <remarks>
+    /// <para>This used to read the left edges and nothing else, which is a test for text set flush
+    /// left and a coin toss for anything else. Centred speech moves its left edge by half the
+    /// difference in line length, so across the ten comic pages twenty-one pairs were refused as
+    /// misaligned while their centres sat within a twentieth of a line of each other — including
+    /// every bubble that opens on a short line, which is most of them.</para>
+    ///
+    /// <para>The right edge earns its place separately, and it is not symmetry for its own sake: a
+    /// stat panel's body text is set flush right, so its consecutive lines read 6.35 and 7.60 line
+    /// heights apart on the left and 0.00 on the right. Those pairs are ones the hand-marked
+    /// grouping says belong together. What must stay apart there — a short label above that body —
+    /// is far out on all three edges (3.18 / 6.33 / 9.49), so taking the smallest does not put it
+    /// at risk.</para>
+    ///
+    /// <para>The thresholds this feeds do not move. The measurement was wrong for anything not set
+    /// flush left; the limits on it were never the problem.</para>
+    /// </remarks>
+    private static double AlignmentDelta(OcrTextBlock previous, OcrTextBlock current) =>
+        Math.Min(
+            Math.Abs(previous.LayoutBounds.X - current.LayoutBounds.X),
+            Math.Min(
+                Math.Abs(previous.LayoutBounds.Right - current.LayoutBounds.Right),
+                Math.Abs(CenterX(previous) - CenterX(current))));
 
     private static (bool Joined, string Rule) JudgeNextLine(OcrTextBlock previous, OcrTextBlock current)
     {
@@ -439,8 +474,8 @@ internal static class OcrTextBlockGrouper
         if (verticalGap < -avgHeight * 0.5 || verticalGap > Math.Max(avgHeight * 0.8, 10))
             return (false, "vertical gap");
 
-        var leftDelta = Math.Abs(previous.LayoutBounds.X - current.LayoutBounds.X);
-        if (leftDelta > Math.Max(avgHeight * 1.2, 18))
+        var alignmentDelta = AlignmentDelta(previous, current);
+        if (alignmentDelta > Math.Max(avgHeight * 1.2, 18))
             return (false, "alignment");
 
         var overlap = Math.Max(
@@ -449,7 +484,7 @@ internal static class OcrTextBlockGrouper
             Math.Max(previous.LayoutBounds.Left, current.LayoutBounds.Left));
         var overlapRate = overlap / Math.Max(1, Math.Min(previous.LayoutBounds.Width, current.LayoutBounds.Width));
         var isAlignedContinuation =
-            overlapRate >= 0.35 || leftDelta <= Math.Max(avgHeight * 0.7, 12);
+            overlapRate >= 0.35 || alignmentDelta <= Math.Max(avgHeight * 0.7, 12);
         if (!isAlignedContinuation)
             return (false, "not aligned enough to continue");
 
