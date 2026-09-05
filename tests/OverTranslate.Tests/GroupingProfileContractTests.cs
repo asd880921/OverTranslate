@@ -71,6 +71,40 @@ public class GroupingProfileContractTests
     }
 
     /// <summary>
+    /// The vertical profile is reachable from no capture mode either.
+    /// </summary>
+    /// <remarks>
+    /// Vertical text is turned 270° before it is read, so its grouping pass is comparing column
+    /// against column — not the geometry any capture mode's thresholds were measured on. Pointing
+    /// the relaxed profile at it was measured and it joined speech balloons rather than the lines
+    /// inside them, which is what waiving a length test does when the "lines" are whole balloons.
+    /// </remarks>
+    [Fact]
+    public void TheVerticalProfile_IsNotWhatAnyCaptureModeSelects()
+    {
+        foreach (var mode in Enum.GetValues<CaptureLayoutMode>())
+            Assert.NotSame(GroupingProfile.Vertical, GroupingProfile.For(mode));
+    }
+
+    /// <summary>
+    /// The vertical profile holds its own figures, written out rather than referred to.
+    /// </summary>
+    /// <remarks>
+    /// The same guard <see cref="TheRealtimeProfile_HoldsItsOwnNumber_EvenWhenItMatchesTheScreenshotSide"/>
+    /// is: tightening the interface mode is a step of its own, and borrowing that profile here would
+    /// carry vertical text along with it silently, on figures never measured on vertical material.
+    /// The literals are not a claim that these must never change — they are there so that changing
+    /// them needs somebody to come and answer whether vertical changes too.
+    /// </remarks>
+    [Fact]
+    public void TheVerticalProfile_HoldsItsOwnNumbers_EvenWhenTheyMatchTheInterfaceMode()
+    {
+        Assert.Equal(0.88, GroupingProfile.Vertical.TightlySetMinTextSizeRatio);
+        Assert.False(GroupingProfile.Vertical.WaiveLengthTestWhenSetSolid);
+        Assert.NotSame(GroupingProfile.Interface, GroupingProfile.Vertical);
+    }
+
+    /// <summary>
     /// The profile carries two thresholds, and a third one arriving has to be a decision rather
     /// than a habit.
     /// </summary>

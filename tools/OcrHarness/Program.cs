@@ -38,7 +38,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (every same-line and next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
     Console.Error.WriteLine("                  (一般 mode by default, as the app is; --interface for the other one)");
-    Console.Error.WriteLine("       OcrHarness --vertical-explain [--interface] <image.png> [more.png ...]");
+    Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (the vertical pipeline's columns and their text, which --group-explain never runs)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (what the confidence filter drops, and what a line would have reclaimed)");
@@ -1217,16 +1217,13 @@ if (args[0] == "--vertical-explain")
         if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
 
         using var image = new Bitmap(path);
-        // The mode flag reaches this the way it reaches the app. It used to be pinned to the
-        // conservative profile here, which made --vertical-explain answer the same whatever mode it
-        // was asked about — and a Step 9 report read that silence as "the corpus has no pair in the
-        // band between the two profiles". It could not have had one: the flag never arrived.
+        // No mode flag, because the pipeline has no parameter for one: vertical text runs on its
+        // own profile whatever the toolbar says. This was briefly wired to the flag, between
+        // discovering that it had been pinned to one profile by accident and measuring what the
+        // other profile actually did to vertical material — which was join balloons rather than the
+        // lines inside them. --interface is accepted and ignored here.
         var columns = await OcrService.RecognizeVerticalAsync(
-            verticalEngine,
-            image,
-            harnessLanguage,
-            GroupingProfile.For(harnessLayoutMode),
-            CancellationToken.None);
+            verticalEngine, image, harnessLanguage, CancellationToken.None);
 
         Console.WriteLine(
             $"VERTICAL	{path}	lang={harnessLanguage}	columns={columns.Count}" +

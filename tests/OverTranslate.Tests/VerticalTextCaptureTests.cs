@@ -18,7 +18,7 @@ public class VerticalTextCaptureTests
             new OcrTextBlock("縦", new System.Windows.Rect(10, 20, 30, 8), Confidence: 0.75));
 
         var result = await OcrService.RecognizeVerticalAsync(
-            engine, source, "JA", GroupingProfile.Interface, CancellationToken.None);
+            engine, source, "JA", CancellationToken.None);
 
         Assert.Equal(new Size(60, 100), engine.RecognizedSize);
         var block = Assert.Single(result);
@@ -173,7 +173,7 @@ public class VerticalTextCaptureTests
         using var engine = new RecordingOcrEngine(recognized);
 
         var result = await OcrService.RecognizeVerticalAsync(
-            engine, source, "JA", GroupingProfile.Interface, CancellationToken.None);
+            engine, source, "JA", CancellationToken.None);
 
         var block = Assert.Single(result);
         Assert.Equal(OcrService.MapVerticalBoundsBack(recognized.Bounds, source.Width), block.Bounds);
@@ -201,7 +201,7 @@ public class VerticalTextCaptureTests
             new OcrTextBlock(text, new System.Windows.Rect(10, 20, 30, 10)));
 
         var result = await OcrService.RecognizeVerticalAsync(
-            engine, source, "JA", GroupingProfile.Interface, CancellationToken.None);
+            engine, source, "JA", CancellationToken.None);
 
         Assert.Equal(expected, Assert.Single(result).LayoutScript);
     }
@@ -249,60 +249,69 @@ public class VerticalTextCaptureTests
         Assert.NotNull(merged.LayoutGlyphHeight);
     }
 
-    // ---- design.md §8.5.1 #4: how far into the vertical pipeline the capture mode reaches ----
+    // ---- design.md §8.5.1 #4 (v2.1, reversed): the capture mode reaches none of this ----
 
     /// <summary>
-    /// The mode's profile steers the grouping that runs on the rotated frame, which is the same
-    /// horizontal grouper the screenshot path uses and the one place a mode is allowed to speak.
+    /// A capture mode cannot change how vertical text is grouped, and the relaxed profile that
+    /// would have changed it is here to prove the test is asking a real question.
     /// </summary>
     /// <remarks>
-    /// The pair is the set-solid one from <c>OcrTextBlockGrouperTests</c>, standing here in the
-    /// rotated frame. What it is read through afterwards is what makes the difference visible:
-    /// two columns that survive the first pass are re-assembled into a block whose lines are those
-    /// two columns, while a pair the comic profile has already joined arrives as one column and is
-    /// split into character cells. Same text either way — the difference is only ever in how the
-    /// first pass grouped it, which is the thing under test.
+    /// <para>v1.1 wired the mode's profile into the first pass on the grounds that it is "the same
+    /// horizontal grouper". It is the same grouper, and that turned out to be the wrong reason: the
+    /// picture has been turned 270° before it gets there, so each column of the original arrives as
+    /// a row, and the first pass's "does this line continue on the next one" is being asked of
+    /// column against column — the very geometry the column merge was denied a profile over.</para>
+    ///
+    /// <para>The pair below is the set-solid one from <c>OcrTextBlockGrouperTests</c>, chosen
+    /// because the two profiles are known to disagree about it. The first two assertions establish
+    /// that disagreement rather than assume it: without them, a pipeline that ignored the profile
+    /// and a pair that no profile would have joined look exactly alike, which is the mistake the
+    /// harness made for two steps.</para>
     /// </remarks>
     [Fact]
-    public async Task TheProfile_ReachesTheGroupingThatRunsOnTheRotatedFrame()
+    public async Task TheRelaxedProfile_DoesNotReachTheGroupingThatRunsOnTheRotatedFrame()
     {
+        OcrTextBlock[] pair =
+        [
+            SetSolidLine("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0),
+            SetSolidLine("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0),
+        ];
+
+        // The two profiles really do answer this pair differently.
+        Assert.Equal(2, OcrTextBlockGrouper.Group([.. pair], GroupingProfile.Interface).Count);
+        Assert.Single(OcrTextBlockGrouper.Group([.. pair], GroupingProfile.General));
+
         using var source = new Bitmap(900, 900);
+        using var engine = new RecordingOcrEngine(pair);
 
-        var standard = await RecognizeVerticalWith(GroupingProfile.Interface, source);
-        var comic = await RecognizeVerticalWith(GroupingProfile.General, source);
+        var result = await OcrService.RecognizeVerticalAsync(
+            engine, source, "EN", CancellationToken.None);
 
-        Assert.Equal(2, Assert.Single(standard).Lines.Count);
-        Assert.True(
-            Assert.Single(comic).Lines.Count > 2,
-            "The comic profile joined the two lines in the first pass, so what reached the column "
-            + "merge was a lone column and it was split into character cells.");
+        // Two columns survived the first pass and were re-assembled into one block whose lines are
+        // those two columns. Had the relaxed profile reached it, the pair would have arrived at the
+        // column merge as a single column and come back split into character cells.
+        Assert.Equal(2, Assert.Single(result).Lines.Count);
     }
 
     /// <summary>
-    /// The column merge takes no profile, and this is the guard on it staying that way.
+    /// Neither vertical pass takes a profile, and this is the guard on it staying that way.
     /// </summary>
     /// <remarks>
-    /// It compares column against column. None of the thresholds a capture mode relaxes were
-    /// measured on that geometry, so handing it one would be relaxing something nobody has
-    /// measured — which is exactly the kind of change that reads as tidying up a signature.
+    /// Both compare column against column. None of the thresholds a capture mode moves were
+    /// measured on that geometry, so handing either of them one would be relaxing something nobody
+    /// has measured — which is exactly the kind of change that reads as tidying up a signature. The
+    /// absence of the parameter is what makes it impossible rather than merely unintended.
     /// </remarks>
-    [Fact]
-    public void TheColumnMerge_TakesNoProfile()
+    [Theory]
+    [InlineData(nameof(OcrService.RecognizeVerticalAsync))]
+    [InlineData(nameof(OcrService.MergeVerticalColumns))]
+    public void TheVerticalPipeline_TakesNoProfile(string method)
     {
         var parameters = typeof(OcrService)
-            .GetMethod(nameof(OcrService.MergeVerticalColumns), BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetMethod(method, BindingFlags.NonPublic | BindingFlags.Static)!
             .GetParameters();
 
         Assert.DoesNotContain(parameters, parameter => parameter.ParameterType == typeof(GroupingProfile));
-    }
-
-    private static Task<List<OcrTextBlock>> RecognizeVerticalWith(GroupingProfile profile, Bitmap source)
-    {
-        using var engine = new RecordingOcrEngine(
-            SetSolidLine("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0),
-            SetSolidLine("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0));
-
-        return OcrService.RecognizeVerticalAsync(engine, source, "EN", profile, CancellationToken.None);
     }
 
     private static OcrTextBlock SetSolidLine(

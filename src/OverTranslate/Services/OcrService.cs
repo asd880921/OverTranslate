@@ -54,10 +54,12 @@ public class OcrService : IDisposable
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
 
         var language = OcrLanguageRouter.Normalize(sourceLanguage);
-        var profile = GroupingProfile.For(layoutMode);
+
+        // The mode picks the thresholds for horizontal text only. Vertical has its own profile and
+        // does not take a parameter for one — see RecognizeVerticalAsync.
         return verticalText
-            ? RecognizeVerticalAsync(_engine, bitmap, language, profile, cancellationToken)
-            : RecognizeAndGroupAsync(_engine, bitmap, language, profile, cancellationToken);
+            ? RecognizeVerticalAsync(_engine, bitmap, language, cancellationToken)
+            : RecognizeAndGroupAsync(_engine, bitmap, language, GroupingProfile.For(layoutMode), cancellationToken);
     }
 
     /// <summary>
@@ -180,23 +182,28 @@ public class OcrService : IDisposable
     /// row, preserving Japanese reading order.
     /// </summary>
     /// <remarks>
-    /// The profile reaches the first pass — that is the horizontal grouper, running on the turned
-    /// picture, so the same rules and the same thresholds apply to it. It stops there: the column
-    /// merge below compares column against column, which is not the geometry any of those
-    /// thresholds were measured on, and handing it a relaxed number would be relaxing something
-    /// nobody has measured.
+    /// <para>Takes no profile, and that absence is the contract. Neither pass here is judging what
+    /// the capture modes were measured on: the column merge compares column against column, and so
+    /// — once the picture has been turned 270° — does the first pass, because every column of the
+    /// original reaches the detector as a row. Handing either of them a relaxed threshold would be
+    /// relaxing something nobody has measured, and the measurement says what that buys: the relaxed
+    /// profile joined balloons rather than the lines inside them.</para>
+    ///
+    /// <para>Both passes therefore run on <see cref="GroupingProfile.Vertical"/>, which holds the
+    /// conservative figures under its own name so that tightening the interface mode later cannot
+    /// move vertical text with it.</para>
     /// </remarks>
     internal static async Task<List<OcrTextBlock>> RecognizeVerticalAsync(
         IOcrEngine engine,
         Bitmap bitmap,
         string sourceLanguage,
-        GroupingProfile profile,
         CancellationToken cancellationToken)
     {
         using var rotated = new Bitmap(bitmap);
         rotated.RotateFlip(RotateFlipType.Rotate270FlipNone);
 
-        var blocks = await RecognizeAndGroupAsync(engine, rotated, sourceLanguage, profile, cancellationToken);
+        var blocks = await RecognizeAndGroupAsync(
+            engine, rotated, sourceLanguage, GroupingProfile.Vertical, cancellationToken);
         var columns = blocks.Select(block => block with
         {
             Bounds = MapVerticalBoundsBack(block.Bounds, bitmap.Width),
