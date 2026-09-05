@@ -905,6 +905,91 @@ public class OcrTextBlockGrouperTests
         Assert.False(verdict.Joined);
     }
 
+    /// <summary>
+    /// A line continues the column it belongs to, not whichever group happened to open last.
+    /// </summary>
+    /// <remarks>
+    /// The shape from the Japanese event page: a title wrapping onto a second line, with a heading
+    /// from the next column sorted between the two halves because it starts a few pixels lower.
+    /// Before every open group was asked, this pair was not refused — it was never put.
+    /// </remarks>
+    [Fact]
+    public void AWrappedTitle_JoinsAcrossALineFromAnotherColumn()
+    {
+        var titleTop = Line("TVアニメ「バンドリ」放送記念フリーライブ", x: 1340, y: 612, width: 449, height: 32);
+        var otherColumn = Line("RoseliaのRADIO SHOUT! -Prost-", x: 1912, y: 615, width: 366, height: 27);
+        var titleBottom = Line("「新宿着陸計画」DAY2 チケット受付中", x: 1339, y: 650, width: 405, height: 33);
+
+        var grouped = OcrTextBlockGrouper.Group(
+            [titleTop, otherColumn, titleBottom], GroupingProfile.Standard);
+
+        Assert.Equal(2, grouped.Count);
+        Assert.Contains(grouped, block => block.Lines.Count == 2);
+        Assert.Contains(grouped, block => block.Text == "RoseliaのRADIO SHOUT! -Prost-");
+    }
+
+    /// <summary>
+    /// A third line standing in the column between two others stops them being neighbours.
+    /// </summary>
+    /// <remarks>
+    /// The failure this guards is a news front page: headline, a small kicker, next headline, one
+    /// column, all aligned. With every open group asked, the two headlines are within reach of each
+    /// other and read as a plausible continuation; the kicker between them is what says they are
+    /// not.
+    /// </remarks>
+    [Fact]
+    public void ALineStandingBetweenTwoOthers_StopsThemBeingContinuations()
+    {
+        // The line in the middle is a small one — a kicker set over the headline under it. It has
+        // to be small: two full-height lines cannot have a third of their own height between them
+        // and still be within reach of each other, so the case this rule exists for is always an
+        // intervening line shorter than the gap it sits in.
+        var headline = Line("Council approves the new transport plan", x: 100, y: 0, width: 600, height: 40);
+        var kicker = Line("TRANSPORT", x: 100, y: 42, width: 160, height: 12);
+        var nextHeadline = Line("Ferry services resume", x: 100, y: 54, width: 400, height: 40);
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group(
+            [headline, kicker, nextHeadline], GroupingProfile.Standard, decisions);
+
+        // The pair that skips the standfirst is never judged at all: it is refused before any rule
+        // is asked, which is what "nothing lies between" means.
+        Assert.DoesNotContain(
+            decisions,
+            decision => decision.Kind == "next" &&
+                        decision.Previous == headline.Text &&
+                        decision.Current == nextHeadline.Text);
+    }
+
+    /// <summary>
+    /// The same three lines, with the middle one moved out of the column, do reach each other.
+    /// </summary>
+    /// <remarks>
+    /// The positive half of the pair above. Without it, the test above would still pass if the rule
+    /// refused every distant pair for some other reason — say a reach filter set too tight — and
+    /// nobody would know the column test was doing nothing.
+    /// </remarks>
+    [Fact]
+    public void ALineBesideTheColumn_DoesNotStopTwoLinesBeingContinuations()
+    {
+        // The same three boxes as the test above, with the middle one moved out of the column.
+        var first = Line("Council approves the new transport plan", x: 100, y: 0, width: 600, height: 40);
+        var beside = Line("TRANSPORT", x: 900, y: 42, width: 160, height: 12);
+        var second = Line("after a long delay", x: 100, y: 54, width: 400, height: 40);
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        var grouped = OcrTextBlockGrouper.Group(
+            [first, beside, second], GroupingProfile.Standard, decisions);
+
+        Assert.Contains(
+            decisions,
+            decision => decision.Kind == "next" &&
+                        decision.Previous == first.Text &&
+                        decision.Current == second.Text);
+        Assert.Equal(2, grouped.Count);
+        Assert.Contains(grouped, block => block.Lines.Count == 2);
+    }
+
     /// <summary>One line with its layout geometry stated, so a fixture cannot be re-derived from its text.</summary>
     private static OcrTextBlock Line(string text, double x, double y, double width, double height)
     {

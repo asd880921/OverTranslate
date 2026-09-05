@@ -52,9 +52,9 @@ internal static class OcrTextBlockGrouper
         var groups = new List<List<OcrTextBlock>>();
         foreach (var block in sorted)
         {
-            var previousGroup = groups.LastOrDefault();
-            if (previousGroup is not null && CanJoinNextLine(previousGroup, block, profile, decisions))
-                previousGroup.Add(block);
+            var target = GroupThisLineContinues(groups, block, sorted, profile, decisions);
+            if (target is not null)
+                target.Add(block);
             else
                 groups.Add([block]);
         }
@@ -363,6 +363,148 @@ internal static class OcrTextBlockGrouper
 
         var needsSpace = char.IsAsciiLetterOrDigit(left[^1]) && char.IsAsciiLetterOrDigit(right[0]);
         return needsSpace ? $"{left} {right}" : $"{left}{right}";
+    }
+
+    /// <summary>
+    /// Which of the groups opened so far this line carries on, or null if it starts a new one.
+    /// </summary>
+    /// <remarks>
+    /// <para>This used to ask only the group opened last, which is the right question for a single
+    /// column and the wrong one for anything else. Reading order down a two-column page alternates
+    /// between the columns, so a line's own previous line is often not the one immediately before it
+    /// in this list — a Japanese event page has a title whose two halves sit at (1340,612) and
+    /// (1339,650), one pixel apart on the left and about one line advance down, with a heading from
+    /// the next column at (1912,615) sorted between them. That pair was never refused: it was never
+    /// asked about at all.</para>
+    ///
+    /// <para>Asking every open group means several may answer yes, so the choice between them is
+    /// fixed here rather than left to whichever the loop happened to see first. The order is part of
+    /// the rule: closest alignment wins; a tie inside a hundredth of a line height goes to the
+    /// vertically nearer; a tie there goes to the more recently opened group, which is the scan
+    /// order. The last of those settles nothing on the evidence — it is there so that the same
+    /// input always produces the same grouping.</para>
+    ///
+    /// <para>Only the group opened last is asked unconditionally. The rest have to be within reach
+    /// vertically first, which changes no verdict — the reach test is the same vertical gap the
+    /// judgement applies — and keeps the trace from filling with every pair of lines on the page.
+    /// </para>
+    /// </remarks>
+    private static List<OcrTextBlock>? GroupThisLineContinues(
+        List<List<OcrTextBlock>> groups,
+        OcrTextBlock current,
+        IReadOnlyList<OcrTextBlock> lines,
+        GroupingProfile profile,
+        List<NextLineDecision>? decisions)
+    {
+        List<OcrTextBlock>? best = null;
+        var bestAlignment = double.PositiveInfinity;
+        var bestDistance = double.PositiveInfinity;
+
+        // Back to front, so the group opened last is the first one seen and keeps a tie by having
+        // been chosen already.
+        for (var i = groups.Count - 1; i >= 0; i--)
+        {
+            var group = groups[i];
+            var previous = group[^1];
+
+            var isNearestGroup = i == groups.Count - 1;
+            if (!isNearestGroup && !IsWithinContinuationReach(previous, current))
+                continue;
+
+            if (!NothingLiesBetween(previous, current, lines))
+                continue;
+
+            if (!CanJoinNextLine(group, current, profile, decisions))
+                continue;
+
+            var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
+            var alignment = AlignmentDelta(previous, current) / Math.Max(1, avgHeight);
+            var distance = (current.LayoutBounds.Y - previous.LayoutBounds.Y) / Math.Max(1, avgHeight);
+
+            if (best is null ||
+                alignment < bestAlignment - AlignmentTieBand ||
+                (Math.Abs(alignment - bestAlignment) <= AlignmentTieBand && distance < bestDistance))
+            {
+                best = group;
+                bestAlignment = alignment;
+                bestDistance = distance;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// How close two alignment figures have to be before they count as the same, in line heights.
+    /// </summary>
+    /// <remarks>
+    /// A hundredth of a line height is well under a pixel at the sizes this runs at, so two groups
+    /// separated by less than it are not really being told apart by alignment and the next test
+    /// should decide instead. If the later tie-breaks turn out to be doing much of the work, that is
+    /// a sign the alignment figure is too coarse to choose on, and worth reporting rather than
+    /// accepting.
+    /// </remarks>
+    private const double AlignmentTieBand = 0.01;
+
+    /// <summary>
+    /// Whether a group is close enough vertically to be worth judging at all.
+    /// </summary>
+    /// <remarks>
+    /// The same limits <see cref="JudgeNextLine"/> applies, so a group filtered out here would have
+    /// been refused there for the same reason. Its only job is to stop the work — and the trace —
+    /// growing with every pair of lines on a page rather than with the lines themselves.
+    /// </remarks>
+    private static bool IsWithinContinuationReach(OcrTextBlock previous, OcrTextBlock current)
+    {
+        var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
+        var verticalGap = current.LayoutBounds.Y - previous.LayoutBounds.Bottom;
+
+        return verticalGap >= -avgHeight * 0.5 && verticalGap <= Math.Max(avgHeight * 0.8, 10);
+    }
+
+    /// <summary>
+    /// Whether the space between two lines, in the column they share, is empty.
+    /// </summary>
+    /// <remarks>
+    /// <para>Now that every open group is asked, two lines can be judged as neighbours with a third
+    /// line sitting between them on the page. A news front page is the shape this is for: a
+    /// headline, its standfirst, then the next headline, all in one column and all aligned. Without
+    /// this the first and third read as a plausible continuation of each other and get strung
+    /// together with the standfirst left out of the middle of them.</para>
+    ///
+    /// <para>Only the horizontal span the two lines actually share is examined, and a third line
+    /// counts as being in the way when its own middle falls in the gap. A line beside the column, or
+    /// one clipping into it by a few pixels of unclipped detection box, is not in the way of
+    /// anything.</para>
+    /// </remarks>
+    private static bool NothingLiesBetween(
+        OcrTextBlock previous, OcrTextBlock current, IReadOnlyList<OcrTextBlock> lines)
+    {
+        var left = Math.Max(previous.LayoutBounds.Left, current.LayoutBounds.Left);
+        var right = Math.Min(previous.LayoutBounds.Right, current.LayoutBounds.Right);
+        if (right <= left)
+            return true;
+
+        var top = previous.LayoutBounds.Bottom;
+        var bottom = current.LayoutBounds.Top;
+        if (bottom <= top)
+            return true;
+
+        foreach (var line in lines)
+        {
+            if (ReferenceEquals(line, previous) || ReferenceEquals(line, current))
+                continue;
+
+            var box = line.LayoutBounds;
+            if (box.Right <= left || box.Left >= right)
+                continue;
+
+            var middle = box.Y + box.Height / 2.0;
+            if (middle > top && middle < bottom)
+                return false;
+        }
+
+        return true;
     }
 
     private static bool CanJoinNextLine(
