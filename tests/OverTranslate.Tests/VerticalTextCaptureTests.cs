@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Controls;
 using OverTranslate.Services;
 using OverTranslate.Services.Ocr;
@@ -246,6 +247,74 @@ public class VerticalTextCaptureTests
         Assert.Equal(OcrLayoutScript.Cjk, merged.LayoutScript);
         Assert.Equal(new System.Windows.Rect(68, 10, 22, 62), merged.LayoutBounds);
         Assert.NotNull(merged.LayoutGlyphHeight);
+    }
+
+    // ---- design.md §8.5.1 #4: how far into the vertical pipeline the capture mode reaches ----
+
+    /// <summary>
+    /// The mode's profile steers the grouping that runs on the rotated frame, which is the same
+    /// horizontal grouper the screenshot path uses and the one place a mode is allowed to speak.
+    /// </summary>
+    /// <remarks>
+    /// The pair is the set-solid one from <c>OcrTextBlockGrouperTests</c>, standing here in the
+    /// rotated frame. What it is read through afterwards is what makes the difference visible:
+    /// two columns that survive the first pass are re-assembled into a block whose lines are those
+    /// two columns, while a pair the comic profile has already joined arrives as one column and is
+    /// split into character cells. Same text either way — the difference is only ever in how the
+    /// first pass grouped it, which is the thing under test.
+    /// </remarks>
+    [Fact]
+    public async Task TheProfile_ReachesTheGroupingThatRunsOnTheRotatedFrame()
+    {
+        using var source = new Bitmap(900, 900);
+
+        var standard = await RecognizeVerticalWith(GroupingProfile.Standard, source);
+        var comic = await RecognizeVerticalWith(GroupingProfile.ComicArticle, source);
+
+        Assert.Equal(2, Assert.Single(standard).Lines.Count);
+        Assert.True(
+            Assert.Single(comic).Lines.Count > 2,
+            "The comic profile joined the two lines in the first pass, so what reached the column "
+            + "merge was a lone column and it was split into character cells.");
+    }
+
+    /// <summary>
+    /// The column merge takes no profile, and this is the guard on it staying that way.
+    /// </summary>
+    /// <remarks>
+    /// It compares column against column. None of the thresholds a capture mode relaxes were
+    /// measured on that geometry, so handing it one would be relaxing something nobody has
+    /// measured — which is exactly the kind of change that reads as tidying up a signature.
+    /// </remarks>
+    [Fact]
+    public void TheColumnMerge_TakesNoProfile()
+    {
+        var parameters = typeof(OcrService)
+            .GetMethod(nameof(OcrService.MergeVerticalColumns), BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetParameters();
+
+        Assert.DoesNotContain(parameters, parameter => parameter.ParameterType == typeof(GroupingProfile));
+    }
+
+    private static Task<List<OcrTextBlock>> RecognizeVerticalWith(GroupingProfile profile, Bitmap source)
+    {
+        using var engine = new RecordingOcrEngine(
+            SetSolidLine("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0),
+            SetSolidLine("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0));
+
+        return OcrService.RecognizeVerticalAsync(engine, source, "EN", profile, CancellationToken.None);
+    }
+
+    private static OcrTextBlock SetSolidLine(
+        string text, double x, double y, double width, double height, double glyph)
+    {
+        var bounds = new System.Windows.Rect(x, y, width, height);
+        return new OcrTextBlock(
+            text,
+            bounds,
+            LayoutScript: OcrLayoutScript.Latin,
+            LayoutBounds: bounds,
+            LayoutGlyphHeight: glyph);
     }
 
     private sealed class RecordingOcrEngine(params OcrTextBlock[] blocks) : IOcrEngine

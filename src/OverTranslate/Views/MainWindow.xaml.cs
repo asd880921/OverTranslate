@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
 using NLog;
+using OverTranslate.Layout;
 using OverTranslate.Services;
 using OverTranslate.Views.Capture;
 using OverTranslate.Views.Overlay;
@@ -57,6 +58,15 @@ public partial class MainWindow : Window
 
     // Kept alive so toolbar translate can re-run OCR/translation on the current selection
     private List<OcrTextBlock> _lastOcrBlocks = [];
+
+    // What the translator answered, one entry per group. Copying, the translation window and the
+    // toolbar read this, and they must keep reading it: placement below may cut a group up so that
+    // each source line gets its own share on screen, and a sentence handed back to the user in
+    // pieces is a worse answer than the one it was translated as.
+    private List<TranslatedBlock> _lastTranslatedBlocks = [];
+
+    // The same translation after placement, with the colours sampled from underneath each of these
+    // boxes. This is what the overlay draws, and the only list whose indices line up with it.
     private List<TranslatedBlock> _lastColoredBlocks = [];
     private double _lastSelPhysLeft;
     private double _lastSelPhysTop;
@@ -685,6 +695,7 @@ public partial class MainWindow : Window
     {
         _selectionSessionId++;
         _lastOcrBlocks     = ocrBlocks;
+        _lastTranslatedBlocks = blocks;
         _lastColoredBlocks = blocks;
         _lastSelPhysLeft   = selection.Left;
         _lastSelPhysTop    = selection.Top;
@@ -906,22 +917,35 @@ public partial class MainWindow : Window
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
+            _lastTranslatedBlocks = [.. translated];
+
+            // Between the translation and the colour sampling, and it has to be exactly here.
+            // Placement is what decides the boxes the overlay will draw, and a colour sampled from
+            // a box that is about to be cut into four is the average of four backgrounds — the
+            // group box of a wrapped paragraph spans whatever the page put between its lines.
+            var placed = OverlayPlacement.Place(translated, req.LayoutMode, req.IsVerticalText);
+
             var croppedBitmap = workBitmap;
             var bmpData = croppedBitmap.LockBits(
                 new Rectangle(0, 0, croppedBitmap.Width, croppedBitmap.Height),
                 ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
-            // Re-use sampled colors from the previous overlay when available.
-            // _lastColoredBlocks may be shorter than translated (e.g. the first
-            // translation attempt failed and left _lastColoredBlocks empty), so
-            // fall back to defaults rather than throwing IndexOutOfRangeException.
+            // Re-use sampled colours from the previous overlay, but only where the block at that
+            // index is recognisably the same block. Re-translating after switching capture mode,
+            // re-drawing the selection, or simply letting the detector wobble all change how many
+            // boxes there are and where they sit, and a colour re-used across that lands a bubble
+            // in the colours of whatever used to be at its index — quietly, with nothing on screen
+            // to say the picture underneath was never looked at. Re-sampling costs a pass over the
+            // crop, next to nothing beside the OCR and the translation that just ran.
+            var previousVerticalText = _lastVerticalText;
             List<TranslatedBlock> coloredTranslated;
             try
             {
-                coloredTranslated = translated
+                coloredTranslated = placed
                     .Select((b, i) =>
                     {
-                        if (i < _lastColoredBlocks.Count)
+                        if (SampledColorReuse.CanReuse(
+                                _lastColoredBlocks, i, b, req.IsVerticalText, previousVerticalText))
                         {
                             return b with
                             {
@@ -1039,7 +1063,7 @@ public partial class MainWindow : Window
             try
             {
                 var cachedText = req.Kind == CopyTextKind.Translation
-                    ? JoinWithoutLineBreaks(_lastColoredBlocks.Select(block => block.TranslatedText))
+                    ? JoinWithoutLineBreaks(_lastTranslatedBlocks.Select(block => block.TranslatedText))
                     : JoinWithoutLineBreaks(_lastOcrBlocks.Select(block => block.Text));
                 CopyCaptureText(cachedText, req.Kind, selRect);
             }
@@ -1295,7 +1319,7 @@ public partial class MainWindow : Window
     private void OnOpenWindowRequested(object? sender, EventArgs e)
     {
         var srcText = JoinWithoutLineBreaks(_lastOcrBlocks.Select(b => b.Text));
-        var tgtText = JoinWithoutLineBreaks(_lastColoredBlocks.Select(b => b.TranslatedText));
+        var tgtText = JoinWithoutLineBreaks(_lastTranslatedBlocks.Select(b => b.TranslatedText));
         var srcLang = _toolbarWindow?.CurrentSourceLang ?? SettingsService.Instance.Current.SourceLanguage;
         var tgtLang = _toolbarWindow?.CurrentTargetLang ?? SettingsService.Instance.Current.TargetLanguage;
 

@@ -364,6 +364,7 @@ public partial class OverlayWindow : Window
 
             bool isSingleLineSource = IsSingleLineSource(block.OriginalText, sourceFontReferenceHeight);
             bool isGroupedMultiLineSource = block.SourceLineBounds is { Count: > 1 };
+            bool reflowGroup = block.LayoutIntent == OverlayLayoutIntent.GroupReflow;
             double minFontSize = SourceFontScale.MinFontSize(sourceFontReferenceHeight);
             double fontSize = SourceFontScale.Calculate(sourceFontReferenceHeight, IsLatinSourceToCjkTarget());
             var typeface = new Typeface(
@@ -383,19 +384,29 @@ public partial class OverlayWindow : Window
                 var sourceLineCount = block.SourceLineBounds!.Count;
                 var hasLowerBlock = HasLowerOverlappingBlock(block, blocks);
                 var maxLineCount = hasLowerBlock ? sourceLineCount : sourceLineCount + 1;
-                var rightAvailableW = GetRightExpansionWidth(
-                    block,
-                    blocks,
-                    canvasX,
-                    canvasY,
-                    wpfH,
-                    selScreenX,
-                    selScreenWidth,
-                    canvasWidth);
-                var preferredGroupedWidth = Math.Min(
-                    availableWidth,
-                    Math.Max(borderW, Math.Min(measured.Width + BubbleHorizontalPadding, rightAvailableW)));
-                targetBorderW = preferredGroupedWidth;
+                // A balloon does not grow. What is to the right of it is the drawing, not room the
+                // text may have, so the group's own box is the whole budget and anything that does
+                // not fit comes off the font size below.
+                if (reflowGroup)
+                {
+                    targetBorderW = borderW;
+                }
+                else
+                {
+                    var rightAvailableW = GetRightExpansionWidth(
+                        block,
+                        blocks,
+                        canvasX,
+                        canvasY,
+                        wpfH,
+                        selScreenX,
+                        selScreenWidth,
+                        canvasWidth);
+                    targetBorderW = Math.Min(
+                        availableWidth,
+                        Math.Max(borderW, Math.Min(measured.Width + BubbleHorizontalPadding, rightAvailableW)));
+                }
+
                 preferRightExpansion = targetBorderW > borderW;
                 var maxBorderHeight = GetBottomAvailableHeight(
                     block,
@@ -586,7 +597,10 @@ public partial class OverlayWindow : Window
                     // reaching here without wrap means it already fits; leaving CharacterEllipsis on
                     // would only mean that a measurement being a pixel out costs the user a word.
                     TextTrimming = TextTrimming.None,
-                    VerticalAlignment = VerticalAlignment.Center,
+                    // Top for a re-set group: the translation is shorter than the source more
+                    // often than not, and centring what is left inside a balloon leaves it
+                    // floating away from the line the reader's eye starts on.
+                    VerticalAlignment = reflowGroup ? VerticalAlignment.Top : VerticalAlignment.Center,
                     FontFamily = new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 }
             };
