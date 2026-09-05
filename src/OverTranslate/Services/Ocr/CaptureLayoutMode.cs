@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace OverTranslate.Services.Ocr;
 
 /// <summary>
@@ -14,6 +16,12 @@ namespace OverTranslate.Services.Ocr;
 /// comic — the capture is. Putting it there is how one field ends up meaning four things, which is
 /// what the layout-metric split was spent undoing.</para>
 /// </remarks>
+/// <remarks>
+/// Persisted by name, so that a third mode can be added without changing what the settings file
+/// looks like — see <see cref="Models.CaptureSettings.LayoutMode"/>. A name this build does not know
+/// fails to deserialize, which is what makes the reader keep the property's default.
+/// </remarks>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CaptureLayoutMode
 {
     /// <summary>Interface, game UI, multi-column content: leave the arrangement as it is.</summary>

@@ -47,6 +47,7 @@ public partial class ToolbarWindow : Window
     private bool _bubblesVisible = true;
     private bool _hasTranslated;
     private bool _initializingDirection = true;
+    private bool _initializingLayoutMode = true;
 
     // Whether there is recognised text to read, and whether it is being read right now. The voice
     // itself lives with the capture session, not here: this window only shows its state.
@@ -66,6 +67,18 @@ public partial class ToolbarWindow : Window
     /// </remarks>
     public bool IsVerticalText => VerticalSeg.IsChecked == true;
 
+    /// <summary>
+    /// What the user says the framed capture holds: an ordinary interface, or a comic or article to
+    /// be read in order.
+    /// </summary>
+    /// <remarks>
+    /// Restored from <see cref="AppSettings.Capture"/> when the toolbar opens and saved on each
+    /// explicit switch. Someone reading a comic is reading a comic for more than one capture.
+    /// </remarks>
+    public CaptureLayoutMode CurrentLayoutMode => ComicModeSeg.IsChecked == true
+        ? CaptureLayoutMode.ComicArticle
+        : CaptureLayoutMode.Standard;
+
     public ToolbarWindow(
         double selPhysLeft, double selPhysTop,
         double selPhysWidth, double selPhysHeight,
@@ -83,6 +96,16 @@ public partial class ToolbarWindow : Window
         VerticalSeg.IsChecked = verticalText;
         _initializingDirection = false;
 
+        // A mode this build does not know — a file written by a later release — has already become
+        // Standard by the time it gets here: the settings reader keeps the property's default when a
+        // value will not read, and CaptureLayoutMode.Standard is that default. Nothing to guard
+        // against a second time; see SettingsService.Apply.
+        bool comicMode =
+            SettingsService.Instance.Current.Capture.LayoutMode == CaptureLayoutMode.ComicArticle;
+        StandardModeSeg.IsChecked = !comicMode;
+        ComicModeSeg.IsChecked = comicMode;
+        _initializingLayoutMode = false;
+
         InitializeSelectors(sourceLang, targetLang);
         SizeSelectorsToClosedLabels();
 
@@ -93,7 +116,11 @@ public partial class ToolbarWindow : Window
 
         // The shared columns do not have a width until layout. A remembered vertical choice already
         // checks the right half above; this places the thumb under it on the first rendered frame.
-        Loaded += (_, _) => RenderDirectionThumb(animate: false);
+        Loaded += (_, _) =>
+        {
+            RenderDirectionThumb(animate: false);
+            RenderLayoutModeThumb(animate: false);
+        };
 
         RenderSpeakButton();
     }
@@ -252,6 +279,45 @@ public partial class ToolbarWindow : Window
         RenderDirectionThumb(animate: IsLoaded);
     }
 
+    /// <inheritdoc cref="DirectionSegment_PreviewMouseLeftButtonDown"/>
+    private void LayoutModeSegment_PreviewMouseLeftButtonDown(
+        object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.RadioButton segment) segment.IsChecked = true;
+    }
+
+    /// <inheritdoc cref="DirectionSegment_Checked"/>
+    private void LayoutModeSegment_Checked(object sender, RoutedEventArgs e)
+    {
+        if (LayoutModeThumb is null || LayoutModeThumbShift is null || ComicModeSeg is null) return;
+
+        if (!_initializingLayoutMode)
+            SaveLayoutModeSelection();
+
+        RenderLayoutModeThumb(animate: IsLoaded);
+    }
+
+    private void RenderLayoutModeThumb(bool animate)
+    {
+        double target = CurrentLayoutMode == CaptureLayoutMode.ComicArticle
+            ? LayoutModeThumb.ActualWidth
+            : 0;
+
+        if (!animate || LayoutModeThumb.ActualWidth <= 0)
+        {
+            LayoutModeThumbShift.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+            LayoutModeThumbShift.X = target;
+            return;
+        }
+
+        LayoutModeThumbShift.BeginAnimation(
+            System.Windows.Media.TranslateTransform.XProperty,
+            new DoubleAnimation(target, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            });
+    }
+
     private void RenderDirectionThumb(bool animate)
     {
         double target = IsVerticalText ? DirectionThumb.ActualWidth : 0;
@@ -285,7 +351,7 @@ public partial class ToolbarWindow : Window
     {
         if (_isBusy) return;
         TranslateRequested?.Invoke(this, new TranslateRequest(
-            CurrentSourceLang, CurrentTargetLang, IsVerticalText));
+            CurrentSourceLang, CurrentTargetLang, IsVerticalText, CurrentLayoutMode));
     }
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
@@ -313,7 +379,8 @@ public partial class ToolbarWindow : Window
         => CopyTextRequested?.Invoke(this, new CopyTextRequest(
             ResolveCopyTextKind(_hasTranslated, _bubblesVisible),
             CurrentSourceLang,
-            IsVerticalText));
+            IsVerticalText,
+            CurrentLayoutMode));
 
     private void CopyShotBtn_Click(object sender, RoutedEventArgs e)
         => CopyScreenshotRequested?.Invoke(this, EventArgs.Empty);
@@ -596,18 +663,29 @@ public partial class ToolbarWindow : Window
         settings.Capture.VerticalText = IsVerticalText;
         SettingsService.Instance.Save();
     }
+
+    private void SaveLayoutModeSelection()
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.Capture.LayoutMode = CurrentLayoutMode;
+        SettingsService.Instance.Save();
+    }
 }
 
 /// <param name="LayoutMode">
-/// What the user says the framed capture holds. Standard until the toolbar grows the control that
-/// asks — the seam is wired first so that the step which changes what grouping does can be measured
-/// on its own.
+/// What the user says the framed capture holds, read off the 標準 / 漫畫・文章 switch.
 /// </param>
+/// <remarks>
+/// No default. It carried one while the switch did not exist yet, so that the seam could be wired
+/// and measured a step before anything could choose; now that something can, a default would mean
+/// a call site added later quietly translating a comic as though it were a game menu — with no
+/// compiler complaint and nothing on screen to say which mode answered.
+/// </remarks>
 public record TranslateRequest(
     string SourceLang,
     string TargetLang,
     bool IsVerticalText,
-    CaptureLayoutMode LayoutMode = CaptureLayoutMode.Standard);
+    CaptureLayoutMode LayoutMode);
 
 /// <inheritdoc cref="TranslateRequest" path="/param[@name='LayoutMode']"/>
 /// <remarks>
@@ -619,7 +697,7 @@ public record CopyTextRequest(
     CopyTextKind Kind,
     string SourceLang,
     bool IsVerticalText,
-    CaptureLayoutMode LayoutMode = CaptureLayoutMode.Standard);
+    CaptureLayoutMode LayoutMode);
 
 public enum CopyTextKind
 {

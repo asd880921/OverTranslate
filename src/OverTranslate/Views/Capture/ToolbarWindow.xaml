@@ -133,6 +133,103 @@
                                    VerticalAlignment="Center"/>
                     </Border>
 
+                    <!-- What kind of material the selection holds, which is a different question
+                         from the one beside it: 橫排／直排 says how the source is written, this says
+                         what it is. They are adjacent because they are asked of the same rectangle at
+                         the same moment — the user looks at a page of a comic, sets both, presses
+                         翻譯 — and this one comes first because it is the coarser of the two: it
+                         decides whether the translation is laid back onto the source lines at all,
+                         while the direction only decides which way those lines run.
+
+                         Remembered between sessions for the reason the direction is: someone reading
+                         a comic is reading a comic for more than one capture. A settings file from
+                         before this switch, and one holding a mode a later build named and this one
+                         does not know, both start on 標準.
+
+                         Built exactly like the direction tray beside it — shared columns, a pill that
+                         slides, the click taken on press. -->
+                    <Border Background="{DynamicResource ToolbarGroupBg}"
+                            CornerRadius="10"
+                            Padding="3"
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Center"
+                            Grid.IsSharedSizeScope="True"
+                            AutomationProperties.Name="{DynamicResource S.Toolbar.LayoutMode}">
+                        <Grid>
+                            <!-- Shared for the reason the direction tray's are: an even split is what
+                                 lets the pill travel one fixed distance. -->
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="CaptureLayoutSegment"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="CaptureLayoutSegment"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border x:Name="LayoutModeThumb"
+                                    Grid.Column="0"
+                                    CornerRadius="7"
+                                    Background="{DynamicResource ToolbarSegmentThumbBg}"
+                                    BorderBrush="{DynamicResource ToolbarSegmentThumbBorder}"
+                                    BorderThickness="1">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="LayoutModeThumbShift"/>
+                                </Border.RenderTransform>
+                            </Border>
+
+                            <RadioButton x:Name="StandardModeSeg"
+                                         Grid.Column="0"
+                                         GroupName="CaptureContentMode"
+                                         IsChecked="True"
+                                         Style="{StaticResource ToolbarSegmentButton}"
+                                         ToolTip="{DynamicResource S.Toolbar.LayoutModeStandardHint}"
+                                         PreviewMouseLeftButtonDown="LayoutModeSegment_PreviewMouseLeftButtonDown"
+                                         Checked="LayoutModeSegment_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- A page of ruled text with its corner turned. Three rules, the
+                                         top one short because the fold has taken its room, which is
+                                         also what a first line under a heading looks like. Thinner
+                                         than the 1.5 the tray's other glyphs take and drawn on a page
+                                         grown to the full 14: at 1.5 on a smaller page the lower two
+                                         rules close up into one bar, and it is exactly three rules
+                                         that says "text" rather than "shape". Round joins so the
+                                         fold's 45° corner does not spike. -->
+                                    <Path Style="{StaticResource ToolbarSegmentGlyph}"
+                                          StrokeThickness="1.4"
+                                          StrokeLineJoin="Round"
+                                          Data="M2.5,1.5 H8 L11.5,5 V12.5 H2.5 Z M8,1.5 V5 H11.5 M4.6,6.6 H6.6 M4.6,8.8 H9.4 M4.6,11 H9.4"/>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{DynamicResource S.Toolbar.LayoutModeStandard}"/>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton x:Name="ComicModeSeg"
+                                         Grid.Column="1"
+                                         GroupName="CaptureContentMode"
+                                         Style="{StaticResource ToolbarSegmentButton}"
+                                         ToolTip="{DynamicResource S.Toolbar.LayoutModeComicHint}"
+                                         PreviewMouseLeftButtonDown="LayoutModeSegment_PreviewMouseLeftButtonDown"
+                                         Checked="LayoutModeSegment_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- A speech balloon with three dots in it, which is what the mode
+                                         is really about: the unit it groups and lays out is a balloon,
+                                         not a page. Rounded against the page's square corners, so the
+                                         pair is told apart by silhouette before either drawing is
+                                         read, and the tail hangs from the middle rather than a corner
+                                         — the balloon then reads the same whichever half of the switch
+                                         it sits on.
+
+                                         The dots are degenerate segments taking the round cap as their
+                                         whole shape, so they scale with the stroke instead of being
+                                         three more radii to keep in step with it. -->
+                                    <Path Style="{StaticResource ToolbarSegmentGlyph}"
+                                          StrokeThickness="1.4"
+                                          StrokeLineJoin="Round"
+                                          Data="M4,2 H10 A2.2,2.2 0 0 1 12.2,4.2 V7.2 A2.2,2.2 0 0 1 10,9.4 H8.4 L7,11.6 L5.6,9.4 H4 A2.2,2.2 0 0 1 1.8,7.2 V4.2 A2.2,2.2 0 0 1 4,2 Z M4.7,5.7 L4.71,5.7 M7,5.7 L7.01,5.7 M9.3,5.7 L9.31,5.7"/>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{DynamicResource S.Toolbar.LayoutModeComic}"/>
+                                </StackPanel>
+                            </RadioButton>
+                        </Grid>
+                    </Border>
+
                     <!-- Which way the text in the selection is written. Last of the settings and hard
                          against the button that consumes it, because that is the order it is used in:
                          the user looks at a page of vertical Japanese, flips this, presses 翻譯. It is

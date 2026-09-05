@@ -1,5 +1,6 @@
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Services.Ocr;
 using Xunit;
 
 namespace OverTranslate.Tests;
@@ -59,6 +60,68 @@ public class SettingsParsingTests
             """{"Capture":{"VerticalText":true}}""");
 
         Assert.True(settings.Capture.VerticalText);
+    }
+
+    [Fact]
+    public void CaptureLayoutMode_IsReadFromItsOwnGroup()
+    {
+        var settings = SettingsService.Parse(
+            """{"Capture":{"LayoutMode":"ComicArticle"}}""");
+
+        Assert.Equal(CaptureLayoutMode.ComicArticle, settings.Capture.LayoutMode);
+    }
+
+    /// <summary>
+    /// Every settings file written before this switch existed, and every first run, opens on 標準.
+    /// </summary>
+    [Fact]
+    public void ASettingsFileWithoutALayoutMode_OpensOnStandard()
+    {
+        var settings = SettingsService.Parse("""{"Capture":{"VerticalText":true}}""");
+
+        Assert.Equal(CaptureLayoutMode.Standard, settings.Capture.LayoutMode);
+        Assert.True(settings.Capture.VerticalText);
+    }
+
+    /// <summary>
+    /// A mode a later release named and this build does not know falls back to 標準, and takes
+    /// nothing else with it.
+    /// </summary>
+    /// <remarks>
+    /// This is the whole of design.md §10's "unknown enum fallback". It is not code of its own:
+    /// the mode is stored by name, an unknown name will not deserialize, and the settings reader
+    /// already keeps a property's default when a value will not read. The test is here to say that
+    /// the chain actually closes, because the day it stops closing is a day nobody looks.
+    /// </remarks>
+    [Fact]
+    public void ALayoutModeThisBuildDoesNotKnow_OpensOnStandardAndCostsNothingElse()
+    {
+        var settings = SettingsService.Parse(
+            """{"ApiKey":"secret","Capture":{"LayoutMode":"Webtoon","VerticalText":true}}""");
+
+        Assert.Equal(CaptureLayoutMode.Standard, settings.Capture.LayoutMode);
+        Assert.True(settings.Capture.VerticalText);
+        Assert.Equal("secret", settings.ApiKey);
+    }
+
+    /// <summary>
+    /// Written as the name, not as a number or a flag.
+    /// </summary>
+    /// <remarks>
+    /// 標準 and 漫畫・文章 are unlikely to be the last two answers — realtime already has more than
+    /// two — and a bool, or an ordinal, would have to change data format the day a third arrives.
+    /// A round trip through the file is what proves the choice actually survives.
+    /// </remarks>
+    [Fact]
+    public void TheLayoutModeIsStoredByName()
+    {
+        var written = new AppSettings();
+        written.Capture.LayoutMode = CaptureLayoutMode.ComicArticle;
+
+        var json = SettingsService.Serialize(written);
+
+        Assert.Contains("\"LayoutMode\": \"ComicArticle\"", json);
+        Assert.Equal(CaptureLayoutMode.ComicArticle, SettingsService.Parse(json).Capture.LayoutMode);
     }
 
     [Fact]

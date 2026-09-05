@@ -188,6 +188,11 @@
     <sys:String x:Key="S.Toolbar.DirectionVertical">竖排</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">原文是横着写的，从左到右</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVerticalHint">原文是竖着写的，从上到下、从右到左</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutMode">框选内容的类型</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeStandard">标准</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeComic">漫画・文章</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeStandardHint">保留原有排列，适合一般界面、游戏 UI 与多栏内容。</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeComicHint">按阅读顺序重新排列文字，并适度放宽文字合并判断，适合漫画、文章与连续内容。</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">朗读</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">停止</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">朗读识别到的原文</sys:String>
