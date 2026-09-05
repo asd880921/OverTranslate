@@ -683,6 +683,52 @@ public class OcrTextBlockGrouperTests
         Assert.False(verdict.Joined);
     }
 
+    /// <summary>
+    /// A line opening with a bullet is not a continuation, however it is spaced.
+    /// </summary>
+    /// <remarks>
+    /// The spacing a news portal uses between headlines in a list is the spacing it uses inside a
+    /// paragraph, so this pair is set as tightly as a real wrap and every geometric test passes it.
+    /// Only the mark says otherwise.
+    /// </remarks>
+    [Fact]
+    public void ALineOpeningWithABullet_IsNeverAContinuation()
+    {
+        var previous = Line("Government announces new transport policy", x: 100, y: 10, width: 600, height: 30);
+        var current = Line("· Opposition responds within the hour", x: 100, y: 47, width: 520, height: 30);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("list bullet", verdict.Rule);
+        Assert.False(verdict.Joined);
+        Assert.True(verdict.LineAdvance < 1.38, $"advance {verdict.LineAdvance:0.00} is inside the wrap limit");
+    }
+
+    /// <summary>
+    /// A colon joins the line below only when the two are set as closely as a wrapped sentence is.
+    /// </summary>
+    /// <remarks>
+    /// The colon is read as a clause carrying on, which is one of its two meanings. The other is a
+    /// form label over its value, and the corpus has one: a settings dialog's "Column type:" over
+    /// "Standard", 1.79 line heights apart, joined into a single string for the translator.
+    /// </remarks>
+    [Fact]
+    public void ALineEndingOnAColon_ContinuesOnlyWhenTheNextLineIsSetCloseUnderIt()
+    {
+        var label = Line("Column type:", x: 100, y: 10, width: 200, height: 30);
+        var farBelow = Line("Standard", x: 100, y: 64, width: 160, height: 30);
+        var setClose = Line("Standard", x: 100, y: 44, width: 160, height: 30);
+
+        var refused = NextLineVerdict(label, farBelow);
+        Assert.Equal("label colon", refused.Rule);
+        Assert.False(refused.Joined);
+        Assert.True(refused.LineAdvance > 1.38, $"advance {refused.LineAdvance:0.00} should be past the limit");
+
+        var joined = NextLineVerdict(label, setClose);
+        Assert.Equal("punctuation", joined.Rule);
+        Assert.True(joined.Joined);
+    }
+
     /// <summary>One line with its layout geometry stated, so a fixture cannot be re-derived from its text.</summary>
     private static OcrTextBlock Line(string text, double x, double y, double width, double height)
     {

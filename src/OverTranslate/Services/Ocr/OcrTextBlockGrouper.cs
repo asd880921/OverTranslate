@@ -543,6 +543,17 @@ internal static class OcrTextBlockGrouper
         if (previousText.Length == 0 || currentText.Length == 0)
             return (false, "empty text");
 
+        // The two refusals below are asked before any evidence for joining, because both of the
+        // shapes they describe also look like evidence. Asked afterwards they would never be
+        // reached: a colon is already read as a clause carrying on, and a bulleted line under a
+        // longer one is already the shape of a paragraph's last line.
+        if (StartsWithListBullet(currentText))
+            return (false, "list bullet");
+
+        if (EndsWithLabelColon(previousText) &&
+            LineAdvanceRatio(previous, current) > WrappedFinalLineAdvance)
+            return (false, "label colon");
+
         if (HasUnclosedDelimiter(previousText) ||
             EndsWithContinuationPunctuation(previousText) ||
             StartsWithContinuationPunctuation(currentText))
@@ -635,6 +646,37 @@ internal static class OcrTextBlockGrouper
 
     private static bool EndsWithSentenceTerminator(string text) =>
         text[^1] is '。' or '！' or '？' or '!' or '?' or '.';
+
+    /// <summary>
+    /// Whether a line opens with the mark that makes it an item in a list.
+    /// </summary>
+    /// <remarks>
+    /// News portals set their headline lists at the same leading as running prose — 1.22 and 1.23
+    /// line heights on the pages measured, against a paragraph's 1.30 to 1.40 — so no spacing rule
+    /// can tell one from the other. The mark can: nothing writes a bullet in the middle of a
+    /// sentence it is continuing. This refuses whatever the geometry says, which is the point of
+    /// it — the geometry has already been asked and had nothing to offer.
+    /// </remarks>
+    private static bool StartsWithListBullet(string text) =>
+        text[0] is '·' or '・' or '•' or '‧' or '●' or '○' or '▪' or '◆' or '※';
+
+    /// <summary>
+    /// Whether a line ends on a colon, which reads two ways and cannot be told apart by the
+    /// punctuation alone.
+    /// </summary>
+    /// <remarks>
+    /// <para>A colon at the end of a line is either a clause that has not finished — "as follows:"
+    /// — or a form label standing over its value. Both are common, and the continuation rule reads
+    /// every one of them as the first. A settings dialog gave "Column type:" over "Standard" a line
+    /// and three quarters below, which is a label and its value on two rows of a form, and it was
+    /// joined into one string for the translator.</para>
+    ///
+    /// <para>So the colon stops being evidence on its own and becomes evidence only when the two
+    /// lines are set as close as a wrapped sentence is. The limit is the same one a paragraph's
+    /// last line is held to today; the step that measures a leading of its own will move this onto
+    /// it.</para>
+    /// </remarks>
+    private static bool EndsWithLabelColon(string text) => text[^1] is ':' or '：';
 
     private static OcrTextBlock BuildGroup(List<OcrTextBlock> blocks)
     {
