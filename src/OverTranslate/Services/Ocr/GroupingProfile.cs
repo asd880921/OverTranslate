@@ -42,14 +42,18 @@ internal sealed record GroupingProfile(
     /// Comics and prose. Relaxed only where a pair has already passed the set-solid geometry.
     /// </summary>
     /// <remarks>
-    /// <see cref="TightlySetMinTextSizeRatio"/> still holds the ordinary figure. The relaxed one is
-    /// a threshold, and every threshold this round has to be re-measured on the detector's own box
-    /// before it is written down — the numbers the earlier branch used were tuned on a geometry
-    /// that no longer exists. It moves in the step that measures it, not before.
+    /// <para>Equal to <see cref="Standard"/> today, field for field, and that is deliberate. Both
+    /// relaxations arrive in their own step with their own corpus run: a rule and the loosening of
+    /// that rule landing in one commit is a result nobody can attribute, and a mode that was
+    /// already relaxed before its step would do exactly that — the waiver would take effect the
+    /// moment the rule that reads it is written.</para>
+    ///
+    /// <para>Value-identical is not the same as shared. These are three separately named instances
+    /// and the seam is real; what is deferred is the numbers on it, not the ownership.</para>
     /// </remarks>
     public static GroupingProfile ComicArticle { get; } = new(
         TightlySetMinTextSizeRatio: OrdinaryMinTextSizeRatio,
-        WaiveLengthTestWhenSetSolid: true);
+        WaiveLengthTestWhenSetSolid: false);
 
     /// <summary>
     /// The live-screen path's own profile. It is not <see cref="Standard"/>, it merely holds the

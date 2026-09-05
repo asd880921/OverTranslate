@@ -20,9 +20,10 @@ public class GroupingProfileContractTests
         Assert.Same(GroupingProfile.Standard, GroupingProfile.For(CaptureLayoutMode.Standard));
         Assert.Same(GroupingProfile.ComicArticle, GroupingProfile.For(CaptureLayoutMode.ComicArticle));
 
-        // Not the same profile under two names: a mode that maps to the standard thresholds is a
-        // mode that does nothing, and every later step would measure zero and conclude wrongly.
-        Assert.NotEqual(
+        // Not one profile under two names. The two hold the same figures until the steps that
+        // relax them land, so this is about identity rather than value: what must hold throughout
+        // is that each mode owns its own instance, so that moving one never moves the other.
+        Assert.NotSame(
             GroupingProfile.For(CaptureLayoutMode.Standard),
             GroupingProfile.For(CaptureLayoutMode.ComicArticle));
     }
@@ -73,6 +74,23 @@ public class GroupingProfileContractTests
             [nameof(GroupingProfile.TightlySetMinTextSizeRatio),
              nameof(GroupingProfile.WaiveLengthTestWhenSetSolid)],
             fields);
+    }
+
+    /// <summary>
+    /// The live-screen profile holds its own figure, written out rather than referred to.
+    /// </summary>
+    /// <remarks>
+    /// The three profiles quote one constant today, so lowering that constant — which the design
+    /// allows as a shared improvement to the screenshot side — would move the live-screen path with
+    /// it, silently, while every identity assertion above stayed green. The literal here is not a
+    /// claim that this number must never change: it is there so that changing it needs someone to
+    /// come and answer whether realtime changes too.
+    /// </remarks>
+    [Fact]
+    public void TheRealtimeProfile_HoldsItsOwnNumber_EvenWhenItMatchesTheScreenshotSide()
+    {
+        Assert.Equal(0.88, GroupingProfile.Realtime.TightlySetMinTextSizeRatio);
+        Assert.False(GroupingProfile.Realtime.WaiveLengthTestWhenSetSolid);
     }
 
     /// <summary>
