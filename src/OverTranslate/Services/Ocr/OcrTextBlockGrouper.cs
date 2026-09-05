@@ -514,8 +514,7 @@ internal static class OcrTextBlockGrouper
         List<NextLineDecision>? decisions)
     {
         var previous = group[^1];
-        var solidBar = SolidBarFor(group);
-        var (joined, rule) = JudgeNextLine(previous, current, profile, solidBar);
+        var (joined, rule) = JudgeNextLine(previous, current, profile);
         if (decisions is null)
             return joined;
 
@@ -537,7 +536,7 @@ internal static class OcrTextBlockGrouper
             previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
             LineAdvanceRatio(previous, current),
             WrappedFinalLineAdvance,
-            solidBar,
+            SolidLineAdvance,
             joined,
             rule));
 
@@ -598,7 +597,7 @@ internal static class OcrTextBlockGrouper
                 Math.Abs(CenterX(previous) - CenterX(current))));
 
     private static (bool Joined, string Rule) JudgeNextLine(
-        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile, double solidBar)
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
     {
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
         if (TextSizeRatio(previous, current) < MinTextSizeRatio)
@@ -636,7 +635,7 @@ internal static class OcrTextBlockGrouper
         if (!isAlignedContinuation)
             return (false, "not aligned enough to continue");
 
-        return SentenceContinuationEvidence(previous, current, profile, solidBar);
+        return SentenceContinuationEvidence(previous, current, profile);
     }
 
     /// <summary>
@@ -684,7 +683,7 @@ internal static class OcrTextBlockGrouper
     }
 
     private static (bool Joined, string Rule) SentenceContinuationEvidence(
-        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile, double solidBar)
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
     {
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
@@ -699,7 +698,7 @@ internal static class OcrTextBlockGrouper
             return (false, "list bullet");
 
         if (EndsWithLabelColon(previousText) &&
-            LineAdvanceRatio(previous, current) > solidBar)
+            LineAdvanceRatio(previous, current) > SolidLineAdvance)
             return (false, "label colon");
 
         if (HasUnclosedDelimiter(previousText) ||
@@ -714,7 +713,7 @@ internal static class OcrTextBlockGrouper
         // Asked before the shape test below because the shape test cannot see them — a paragraph's
         // middle lines are all about as wide as each other, which is the one thing that rule takes
         // as proof that nothing wrapped.
-        if (IsSetSolidUnder(previous, current, profile, solidBar))
+        if (IsSetSolidUnder(previous, current, profile))
             return (true, "set solid");
 
         // A much shorter following line is a common natural wrap shape.
@@ -804,71 +803,14 @@ internal static class OcrTextBlockGrouper
     /// the mode where the user has said the capture is speech, and only there.</para>
     /// </remarks>
     private static bool IsSetSolidUnder(
-        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile, double solidBar)
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
     {
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
 
-        return LineAdvanceRatio(previous, current) <= solidBar &&
+        return LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
                AlignmentDelta(previous, current) <= Math.Max(avgHeight * SetSolidMaxAlignment, 6) &&
                (IsLongEnoughToHaveWrapped(previous) || profile.WaiveLengthTestWhenSetSolid);
     }
-
-    /// <summary>
-    /// The leading limit this particular group is held to: the fixed one, or its own leading if it
-    /// has already established a tighter one.
-    /// </summary>
-    /// <remarks>
-    /// <para>A fixed limit has to serve a browser's paragraphs and a game panel's list at once, and
-    /// the measurement that came with the rule above says it cannot: the two populations overlap
-    /// from 0.86 to 1.58 with no gap anywhere. What is left is to stop asking one number to
-    /// describe every layout and let a group answer for itself — text set at one leading goes on
-    /// being set at that leading, and a list cannot exploit this because a list never gets a second
-    /// line to establish anything with.</para>
-    ///
-    /// <para>It only ever loosens. A group whose own leading is tighter than the fixed limit keeps
-    /// the fixed limit, because tightening on the evidence of one or two lines would throw away
-    /// pairs the corpus says belong together.</para>
-    /// </remarks>
-    private static double SolidBarFor(IReadOnlyList<OcrTextBlock> group) =>
-        EstablishedLeading(group) is { } leading
-            ? Math.Max(SolidLineAdvance, leading * LeadingNoise)
-            : SolidLineAdvance;
-
-    /// <summary>
-    /// The leading this group has actually been set at, or null if it has not shown one.
-    /// </summary>
-    /// <remarks>
-    /// The median rather than the last advance or the mean: one line whose detection box came back
-    /// a few pixels tall is enough to drag either of those, and the group is usually two or three
-    /// lines, so there is no room for an outlier to be averaged away. A median over a looser limit
-    /// is not a leading this rule will believe — a group that got that far did so on some other
-    /// evidence, and letting it then widen its own limit would compound the first join into a
-    /// second.
-    /// </remarks>
-    private static double? EstablishedLeading(IReadOnlyList<OcrTextBlock> group)
-    {
-        if (group.Count < 2)
-            return null;
-
-        var advances = group
-            .Zip(group.Skip(1), LineAdvanceRatio)
-            .OrderBy(advance => advance)
-            .ToList();
-        var median = advances[advances.Count / 2];
-
-        return median <= SolidLineAdvance ? median : null;
-    }
-
-    /// <summary>
-    /// How much looser than its own established leading a group will still take as set solid.
-    /// </summary>
-    /// <remarks>
-    /// Room for the detector's boxes to wobble, not room for a different layout. Ten per cent puts
-    /// the ceiling at 1.32 line heights, against the 1.47 where the measured population of stacked
-    /// independent rows begins — a margin of 0.15, which is the number to watch if this is ever
-    /// raised.
-    /// </remarks>
-    private const double LeadingNoise = 1.10;
 
     /// <summary>
     /// The most leading two lines can have and still read as set solid, one under the other.
@@ -891,6 +833,15 @@ internal static class OcrTextBlockGrouper
     /// correct ones, among them three Japanese Wikipedia paragraphs and a game's tutorial text. The
     /// three it cannot remove at any setting are a game's character rows, which sit at 0.86 to 1.03,
     /// below every candidate.</para>
+    ///
+    /// <para>It is one number for every layout, and an adaptive version was tried: let a group that
+    /// has already been set at some leading be judged against its own. It was measured over the
+    /// whole corpus and changed exactly one verdict, which was a wrong one — two unrelated news
+    /// headlines strung together — so it was taken out again. The reason it bought nothing is worth
+    /// keeping: a group's own leading only exists once it has two lines, so the earliest it can
+    /// apply is a third line, while nearly every pair that needs the limit relaxed is a second one.
+    /// A list of stacked rows cannot exploit such a rule either, for the same reason — its entries
+    /// never join, so its groups never reach a second line to establish anything with.</para>
     ///
     /// <para>The ceiling is not from the corpus. A fixture written before any of this — a Chinese
     /// heading over its byline, one line apart, similar widths — is set at 1.25, and it is there to
