@@ -42,18 +42,25 @@ internal sealed record GroupingProfile(
     /// Comics and prose. Relaxed only where a pair has already passed the set-solid geometry.
     /// </summary>
     /// <remarks>
-    /// <para>Equal to <see cref="Standard"/> today, field for field, and that is deliberate. Both
-    /// relaxations arrive in their own step with their own corpus run: a rule and the loosening of
-    /// that rule landing in one commit is a result nobody can attribute, and a mode that was
-    /// already relaxed before its step would do exactly that — the waiver would take effect the
-    /// moment the rule that reads it is written.</para>
+    /// <para>Waives the length test, and only that. A speech bubble opens on one or two words —
+    /// "WHY ARE", "HOW", "THE" — and no length test can call those a wrap, because as a statement
+    /// about text in general it is right: a line that short did not run out of room. What makes it
+    /// wrong here is the container. Inside a bubble the line ends where the bubble does, so a short
+    /// opening line is the normal shape of speech rather than evidence that nothing follows.</para>
     ///
-    /// <para>Value-identical is not the same as shared. These are three separately named instances
-    /// and the seam is real; what is deferred is the numbers on it, not the ownership.</para>
+    /// <para>The user is the one who knows a bubble is a bubble, which is why this hangs off their
+    /// declaration rather than off anything measured. It stays on the strictest path in the file —
+    /// the pair must already be set solid, sharing an edge to within a third of a line height — so
+    /// what is waived is one piece of evidence, never the geometry.</para>
+    ///
+    /// <para>Halving the length test for everyone was measured as the alternative and rejected: it
+    /// buys the same eight comic pairs and charges ten wrong joins to game panels for them, which
+    /// is precisely the cost a declared mode exists to avoid. See
+    /// <c>OcrTextBlockGrouper.IsSetSolidUnder</c>.</para>
     /// </remarks>
     public static GroupingProfile ComicArticle { get; } = new(
         TightlySetMinTextSizeRatio: OrdinaryMinTextSizeRatio,
-        WaiveLengthTestWhenSetSolid: false);
+        WaiveLengthTestWhenSetSolid: true);
 
     /// <summary>
     /// The live-screen path's own profile. It is not <see cref="Standard"/>, it merely holds the

@@ -34,7 +34,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --margin-scale-grid <wholescreen.png> [more.png ...]");
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
-    Console.Error.WriteLine("       OcrHarness --group-explain <image.png> [more.png ...]");
+    Console.Error.WriteLine("       OcrHarness --group-explain [--comic] <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (every same-line and next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
     Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
@@ -76,6 +76,13 @@ args = [.. args.Where(argument => argument != "--panel")];
 // regenerated rather than read across. --vertical-explain never had the problem: it goes through
 // OcrService.RecognizeVerticalAsync, which is the screenshot entry point already.
 var harnessRealtime = args.Contains("--realtime") || args.Contains("--panel");
+
+// Which capture mode the screenshot flow is asked about. The app's toolbar is what sets this, so
+// without the flag every run reproduces what a user gets before touching anything.
+var harnessLayoutMode = args.Contains("--comic")
+    ? CaptureLayoutMode.ComicArticle
+    : CaptureLayoutMode.Standard;
+args = [.. args.Where(argument => argument != "--comic")];
 args = [.. args.Where(argument => argument != "--realtime")];
 
 // Which language to read as. It picks the recognition model, and that is not a detail on a Korean
@@ -1102,7 +1109,11 @@ if (args[0] == "--group-explain")
         {
             // The screenshot flow's own entry point, so the size comes from the same place the app
             // gets it rather than from a number repeated here.
-            Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+            // The mode is named only when it is not the default, so that a standard run's output
+            // stays comparable byte for byte with every one saved before modes existed.
+            Console.WriteLine(harnessLayoutMode == CaptureLayoutMode.Standard
+                ? "FLOW: 截圖翻譯 (detect=screenshot)"
+                : $"FLOW: 截圖翻譯 (detect=screenshot, mode={harnessLayoutMode})");
             raw = await explainEngine.RecognizeAsync(image, harnessLanguage);
         }
 
@@ -1122,7 +1133,9 @@ if (args[0] == "--group-explain")
         // The profile the flow named above would really have used. Realtime has its own and never
         // takes the screenshot side's, so printing verdicts from the wrong one would be tuning
         // against thresholds the app does not run.
-        var explainProfile = harnessRealtime ? GroupingProfile.Realtime : GroupingProfile.Standard;
+        var explainProfile = harnessRealtime
+            ? GroupingProfile.Realtime
+            : GroupingProfile.For(harnessLayoutMode);
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
         var grouped = OcrTextBlockGrouper.Group(raw, explainProfile, decisions);
 

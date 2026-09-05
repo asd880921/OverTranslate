@@ -954,6 +954,47 @@ public class OcrTextBlockGrouperTests
         Assert.True(verdict.Joined);
     }
 
+    /// <summary>
+    /// The comic mode joins a bubble's short opening line to the line under it; the standard mode
+    /// does not.
+    /// </summary>
+    /// <remarks>
+    /// The real boxes from comic-en.png. "WHY ARE" is 201px over a 52px line — under four times its
+    /// own height, so no length test can call it a wrap — and the line under it is set solid at
+    /// 1.04 line advances with their centres a hundredth of a line apart. Everything except the
+    /// length is already evidence; the mode is what says the length does not apply here.
+    /// </remarks>
+    [Fact]
+    public void AShortBubbleOpening_JoinsInComicMode_AndNotInStandard()
+    {
+        var previous = Line("WHY ARE", x: 320, y: 305, width: 201, height: 52);
+        var current = Line("YOU PICKING ON", x: 244, y: 358, width: 356, height: 50);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard).Count);
+
+        var comic = OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle);
+        Assert.Single(comic);
+        Assert.Equal("WHY ARE YOU PICKING ON", comic[0].Text);
+    }
+
+    /// <summary>
+    /// The comic mode waives the length test and nothing else: the geometry still has to hold.
+    /// </summary>
+    /// <remarks>
+    /// The boundary the modes are allowed to move, stated as a test. A short line over one that is
+    /// out of line with it — 0.6 line heights, inside the ordinary alignment gate and outside the
+    /// set-solid one — must stay apart in both modes. If this ever passes in comic mode, a mode has
+    /// started relaxing geometry rather than evidence.
+    /// </remarks>
+    [Fact]
+    public void ComicMode_DoesNotWaiveTheSetSolidGeometry()
+    {
+        var previous = Line("WHY ARE", x: 320, y: 305, width: 201, height: 52);
+        var current = Line("YOU PICKING ON", x: 275, y: 358, width: 356, height: 50);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle).Count);
+    }
+
     /// <summary>One line with its layout geometry stated, so a fixture cannot be re-derived from its text.</summary>
     private static OcrTextBlock Line(string text, double x, double y, double width, double height)
     {
