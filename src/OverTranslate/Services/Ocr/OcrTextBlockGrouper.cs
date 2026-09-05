@@ -944,6 +944,19 @@ internal static class OcrTextBlockGrouper
     /// often continues on a figure ("1.81 stabilizes the trait…") and would be refused by the
     /// looser test. A digit somewhere is required too, so that a line of nothing but punctuation —
     /// a stray closing bracket the detector split off — is left to the rules written for it.</para>
+    ///
+    /// <para>Asked BEFORE the colon rule below, and the order matters: a label ending in a colon
+    /// over a date ("Updated:" over "07/24/2026 18:13") satisfies both, and they disagree. Whoever
+    /// reorders these is changing that verdict, so the order is a decision rather than an
+    /// accident — the two are kept apart because the label and the date are better translated
+    /// apart, and the standard mode's placement lays each back on its own source line.</para>
+    ///
+    /// <para>What this refuses is "this line is figures", not "these two lines belong to different
+    /// cards". The second is the real fault — a character card's name row and the row under it are
+    /// two records, and would be even if the second held words — and this rule only happens to
+    /// cover most of its symptoms. A card whose second row carries a letter escapes it, and one
+    /// did: blocking the figures on one card sent the name row off to join the card below. Do not
+    /// read a green corpus here as the card problem being solved.</para>
     /// </remarks>
     private static bool IsNumericRow(string text)
     {
