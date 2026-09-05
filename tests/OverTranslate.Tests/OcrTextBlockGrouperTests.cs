@@ -996,23 +996,102 @@ public class OcrTextBlockGrouperTests
     }
 
     /// <summary>
-    /// Hand lettering's uneven size is accepted in comic mode, on the set-solid path only.
+    /// Hand lettering's uneven size is accepted in the general mode, on the set-solid path only.
     /// </summary>
     /// <remarks>
-    /// The pair from comic-en.png: one sentence across two lines of the same bubble, whose glyphs
-    /// measure 0.86 of each other because they were drawn by hand. The ordinary gate asks 0.88 and
-    /// refuses it. The two lines are set solid — one leading, one edge — which is the only shape a
-    /// mode may relax.
+    /// The pair from comic-en10.png, real geometry and real glyph heights: one sentence across two
+    /// lines of the same balloon, whose glyphs measure 0.83 of each other because they were drawn
+    /// by hand. The ordinary gate asks 0.88 and refuses it. The two lines are set solid — one
+    /// leading, one edge — and the first is centred inside the second, which together are the only
+    /// shape a mode may relax.
     /// </remarks>
     [Fact]
-    public void UnevenHandLettering_JoinsInComicMode_OnTheSetSolidPath()
+    public void UnevenHandLettering_JoinsInTheGeneralMode_OnTheSetSolidPath()
     {
-        var previous = LineWithGlyphHeight("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0);
-        var current = LineWithGlyphHeight("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0);
+        var (previous, current) = CentredBalloonPair();
 
         Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
         Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General));
     }
+
+    /// <summary>
+    /// The waiver reaches centred lines only. A stack of labels aligned down one edge is set solid
+    /// by every other measure, and is refused.
+    /// </summary>
+    /// <remarks>
+    /// This is what the waiver was costing before it had this condition: measured over the seven
+    /// non-comic image sets it joined 75 such pairs, and the wrong ones are all this shape — a game
+    /// panel's control labels, a HUD's readouts, stacked flush left. Sharing an edge is precisely
+    /// what the set-solid geometry is looking for, so nothing earlier in the chain can tell them
+    /// from a balloon; being centred is what a balloon does and a stack cannot.
+    /// </remarks>
+    [Fact]
+    public void AFlushLeftStack_IsRefusedEvenInTheGeneralMode()
+    {
+        // The same leading, the same edge and the same glyph heights as the balloon above — only
+        // the centring is gone, because the second line starts where the first one does.
+        var previous = LineWithGlyphHeight("Move Camera", x: 305, y: 1045, width: 437, height: 66, glyph: 51.65);
+        var current = LineWithGlyphHeight("Open Map (Hold)", x: 305, y: 1104, width: 529, height: 62, glyph: 42.98);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General).Count);
+    }
+
+    /// <summary>
+    /// The centring is read whichever line is the narrower, because a balloon's lines take turns
+    /// being the wide one.
+    /// </summary>
+    /// <remarks>
+    /// <para>comic-en2.png, real boxes and real glyph heights: "YOU THINK THAT'D" over "HURT ME?",
+    /// the wide line first. Only the second line is inset here, so a test that asks whether the
+    /// FIRST line sits inside the second — the shape a balloon's opening line has, and the shape
+    /// design.md §15.3 names — refuses it.</para>
+    ///
+    /// <para>This is the difference measured rather than argued: over the comic corpus, testing one
+    /// direction keeps 12 of the 21 joins the waiver makes and testing the narrower line keeps 19,
+    /// and the nine it loses are all balloon interiors like this one. Neither version admits the
+    /// flush-left stacks above, which is what the condition is for.</para>
+    /// </remarks>
+    [Fact]
+    public void ABalloonInteriorWithTheWideLineFirst_IsStillRead()
+    {
+        var previous = LineWithGlyphHeight("YOU THINK THAT'D", x: 204, y: 580, width: 429, height: 57, glyph: 39.84);
+        var current = LineWithGlyphHeight("HURT ME?", x: 293, y: 634, width: 248, height: 60, glyph: 46.06);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
+        Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General));
+    }
+
+    /// <summary>
+    /// A known and accepted cost: two lines of one balloon that happen to be the same width are not
+    /// centred against each other, so the waiver cannot reach them.
+    /// </summary>
+    /// <remarks>
+    /// The pair from comic-en.png, and the price of deciding this on centring. Its lines are within
+    /// 0.07 of a line height of each other at both ends — flush, as far as any geometry can see —
+    /// so it reads exactly like the label stack above. Two of the comic corpus's twenty-one such
+    /// joins are lost this way and the rest are kept; the user's judgement is that a comic missing
+    /// a couple of joins is worth a general mode that does not glue menus together. This test is
+    /// here so that the cost stays visible and so that removing it is a decision rather than a
+    /// side effect.
+    /// </remarks>
+    [Fact]
+    public void TwoBalloonLinesOfEqualWidth_AreTheAcceptedCostOfDecidingThisOnCentring()
+    {
+        var previous = LineWithGlyphHeight("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0);
+        var current = LineWithGlyphHeight("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General).Count);
+    }
+
+    /// <summary>
+    /// comic-en10.png: "A BARBARIAN A" centred over "HEREDITARY TITLE!", real boxes and real glyph
+    /// heights. Shared with the vertical tests, which use it to establish that the two profiles
+    /// really do disagree about something before asking whether vertical text hears them.
+    /// </summary>
+    internal static (OcrTextBlock Previous, OcrTextBlock Current) CentredBalloonPair() =>
+        (LineWithGlyphHeight("A BARBARIAN A", x: 305, y: 1045, width: 437, height: 66, glyph: 51.65),
+         LineWithGlyphHeight("HEREDITARY TITLE!", x: 263, y: 1104, width: 529, height: 62, glyph: 42.98));
 
     /// <summary>
     /// The relaxed size ratio reaches only pairs that are already set solid.
@@ -1038,7 +1117,7 @@ public class OcrTextBlockGrouperTests
     }
 
     /// <summary>One line whose glyph height is stated, for the tests about the size ratio.</summary>
-    private static OcrTextBlock LineWithGlyphHeight(
+    internal static OcrTextBlock LineWithGlyphHeight(
         string text, double x, double y, double width, double height, double glyph)
     {
         var bounds = new Rect(x, y, width, height);

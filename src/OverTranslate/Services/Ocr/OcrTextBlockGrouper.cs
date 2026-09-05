@@ -837,8 +837,53 @@ internal static class OcrTextBlockGrouper
 
         return LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
                AlignmentDelta(previous, current) <= Math.Max(avgHeight * SetSolidMaxAlignment, 6) &&
-               (IsLongEnoughToHaveWrapped(previous) || profile.WaiveLengthTestWhenSetSolid);
+               (IsLongEnoughToHaveWrapped(previous) ||
+                (profile.WaiveLengthTestWhenSetSolid && IsCentredAgainst(previous, current, avgHeight)));
     }
+
+    /// <summary>
+    /// Whether the narrower of two lines is centred inside the wider one, rather than stacked flush
+    /// against it.
+    /// </summary>
+    /// <remarks>
+    /// <para>What the waived length test was really keeping out. A line too short to have run out of
+    /// room is not wrapping — true of speech, and true of a label sitting over the thing it labels,
+    /// and the profile that waives it for the first was letting the second through as well. Measured
+    /// on the seven non-comic sets, that waiver joined 75 pairs, and the ones that were wrong are all
+    /// one shape: control labels and HUD readouts stacked flush left, "Move Camera" over
+    /// "Open Map (Hold)", "RTX" over "VSR". A stack like that shares an edge, which is exactly what
+    /// the set-solid geometry is looking for, so nothing earlier in the chain can tell it from
+    /// text.</para>
+    ///
+    /// <para>Centring can. Setting text in a balloon centres it, so its lines run past one another
+    /// at both ends; stacking labels aligns one edge, so they cannot. That is the whole test, and it
+    /// is asked of whichever line is the narrower — which is the correction the corpus forced. A
+    /// balloon's opening line is the short one ("WHY ARE" over "YOU PICKING ON"), but its middle
+    /// lines are not: "YOU PICKING ON" over "AN INNOCENT" is the wide line first. Asking only
+    /// whether the first line is inset — the shape the opening line has — refused nine of the comic
+    /// corpus's twenty-one joins, all of them balloon interiors, because it was testing the
+    /// direction rather than the centring.</para>
+    ///
+    /// <para>Both detector sizes read the comic pairs identically: 0.00 and below on two of them,
+    /// then nothing until 0.28, then 0.55 and up. The threshold sits in that gap. It is the figure
+    /// the earlier branch used, re-measured here on LayoutBounds rather than carried over — the
+    /// geometry changed under it, and a number nobody re-measured is a number nobody knows.</para>
+    ///
+    /// <para>The pixel floor is for text small enough that a fifth of a line height is a pixel or
+    /// two, where the detector's own jitter would otherwise decide this.</para>
+    /// </remarks>
+    private static bool IsCentredAgainst(OcrTextBlock previous, OcrTextBlock current, double avgHeight)
+    {
+        var inset = Math.Max(avgHeight * SetSolidMinCentringInset, 4);
+
+        return InsetWithin(previous, current) >= inset || InsetWithin(current, previous) >= inset;
+    }
+
+    /// <summary>How far <paramref name="inner"/> sits inside <paramref name="outer"/> at its nearer end.</summary>
+    private static double InsetWithin(OcrTextBlock inner, OcrTextBlock outer) =>
+        Math.Min(
+            inner.LayoutBounds.Left - outer.LayoutBounds.Left,
+            outer.LayoutBounds.Right - inner.LayoutBounds.Right);
 
     /// <summary>
     /// The most leading two lines can have and still read as set solid, one under the other.
@@ -897,6 +942,25 @@ internal static class OcrTextBlockGrouper
     /// band between those is enormous; this number is in it, not on either edge.
     /// </remarks>
     private const double SetSolidMaxAlignment = 0.35;
+
+    /// <summary>
+    /// How far the narrower line must sit inside the wider one, in line heights, before the two
+    /// count as centred rather than stacked.
+    /// </summary>
+    /// <remarks>
+    /// <para>Measured over the eight image sets at both detector sizes, on the pairs the waiver
+    /// admits and nothing else. The comic pairs read the same at 2048 and 1600 — they are small
+    /// enough not to be resized — and they fall in two groups with a gap between: two at 0.00 and
+    /// below, then nothing at all until 0.28, then 0.55, 0.66, 0.78 and up to 3.50. This sits in
+    /// the gap with room on both sides of it.</para>
+    ///
+    /// <para>The stacked labels have no such gap; they are a continuum from -0.34 up, with more
+    /// than half of them within a hundredth of zero. That is the point — flush left is flush left,
+    /// and what separates them from balloons is not where the threshold goes but that they are on
+    /// the wrong side of any threshold above zero. At this figure the seven non-comic sets keep 17
+    /// of 75 such joins at 2048 and 13 of 93 at 1600, while the comic set keeps 19 of 21.</para>
+    /// </remarks>
+    private const double SetSolidMinCentringInset = 0.20;
 
     private static bool IsLongEnoughToHaveWrapped(OcrTextBlock line) =>
         line.LayoutBounds.Height > 0 &&

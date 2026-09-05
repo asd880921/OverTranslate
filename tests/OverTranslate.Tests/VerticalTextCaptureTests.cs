@@ -271,26 +271,28 @@ public class VerticalTextCaptureTests
     [Fact]
     public async Task TheRelaxedProfile_DoesNotReachTheGroupingThatRunsOnTheRotatedFrame()
     {
-        OcrTextBlock[] pair =
-        [
-            SetSolidLine("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0),
-            SetSolidLine("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0),
-        ];
+        var (previous, current) = OcrTextBlockGrouperTests.CentredBalloonPair();
+        OcrTextBlock[] pair = [previous, current];
 
         // The two profiles really do answer this pair differently.
         Assert.Equal(2, OcrTextBlockGrouper.Group([.. pair], GroupingProfile.Interface).Count);
         Assert.Single(OcrTextBlockGrouper.Group([.. pair], GroupingProfile.General));
 
-        using var source = new Bitmap(900, 900);
+        // Big enough to hold the fixture's boxes: mapping back off the edge of the picture would
+        // make the column merge judge rectangles that never existed.
+        using var source = new Bitmap(1300, 1300);
         using var engine = new RecordingOcrEngine(pair);
 
         var result = await OcrService.RecognizeVerticalAsync(
             engine, source, "EN", CancellationToken.None);
 
-        // Two columns survived the first pass and were re-assembled into one block whose lines are
-        // those two columns. Had the relaxed profile reached it, the pair would have arrived at the
-        // column merge as a single column and come back split into character cells.
-        Assert.Equal(2, Assert.Single(result).Lines.Count);
+        // Two lines in, two blocks out: the first pass judged them on the conservative figures and
+        // kept them apart. Had the relaxed profile reached it they would have been joined there and
+        // come back as one.
+        Assert.Equal(2, result.Count);
+        Assert.DoesNotContain(
+            result,
+            block => block.Text.Contains("A BARBARIAN A") && block.Text.Contains("HEREDITARY TITLE!"));
     }
 
     /// <summary>
@@ -312,18 +314,6 @@ public class VerticalTextCaptureTests
             .GetParameters();
 
         Assert.DoesNotContain(parameters, parameter => parameter.ParameterType == typeof(GroupingProfile));
-    }
-
-    private static OcrTextBlock SetSolidLine(
-        string text, double x, double y, double width, double height, double glyph)
-    {
-        var bounds = new System.Windows.Rect(x, y, width, height);
-        return new OcrTextBlock(
-            text,
-            bounds,
-            LayoutScript: OcrLayoutScript.Latin,
-            LayoutBounds: bounds,
-            LayoutGlyphHeight: glyph);
     }
 
     private sealed class RecordingOcrEngine(params OcrTextBlock[] blocks) : IOcrEngine
