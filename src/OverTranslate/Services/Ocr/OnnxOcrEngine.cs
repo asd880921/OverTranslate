@@ -216,7 +216,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         Bitmap bitmap, string sourceLanguage, int? maxDetectSize = null)
     {
         var normalizedLanguage = OcrLanguageRouter.Normalize(sourceLanguage);
-        var isCjk = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
+        var useCjkRenderMetrics = OcrLanguageRouter.UsesCjkOnnx(normalizedLanguage);
         var usesAutomaticLayout = OcrLanguageRouter.UsesAutomaticLayout(normalizedLanguage);
 
         // Select the runtime and register an in-use reference atomically under _sync, so the
@@ -238,7 +238,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             using var skBitmap = ConvertToSkBitmap(bitmap);
             using var detectorInput = AlignForDetector(skBitmap, options.Padding);
             var result = runtime.Engine.Detect(detectorInput, options);
-            var blocks = ApplyBlockFilters(result.TextBlocks, normalizedLanguage, isCjk, usesAutomaticLayout);
+            var blocks = ApplyBlockFilters(result.TextBlocks, normalizedLanguage, useCjkRenderMetrics, usesAutomaticLayout);
 
             // Counts and lengths only — enough to tell "found nothing" from "found the wrong thing"
             // without the recognised text itself, which LogBlocks keeps at Debug.
@@ -276,8 +276,9 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             // Latin-script ones. English UI captures very often contain embedded Chinese (chrome,
             // labels, ratings), which a Latin-only model dropped or garbled; this reads Latin AND
             // those CJK glyphs in one pass. The text is still Latin, so source-language routing
-            // (UsesCjkOnnx) keeps EN on the Latin layout path. Lone-ideograph icon misreads are
-            // stripped by RemoveIconIdeographNoise.
+            // (UsesCjkOnnx) keeps EN on the Latin layout path. Lone-ideograph icon misreads that
+            // come with reading both scripts at once are stripped only where nothing CJK is left
+            // behind — see <see cref="StripLoneIdeographs"/>.
             //
             // Korean stays on its own model above because v6 carries no Hangul at all — measured
             // on its dictionary, 0 of 18,708 characters — so the one model cannot cover KO.
@@ -907,8 +908,16 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // Everything between the library handing back its raw blocks and the caller getting usable ones.
     // One method rather than a chain repeated at each entry point: the order matters (see the
     // comments inside), and a second copy of it is the kind of thing that drifts a filter at a time.
-    private static List<OcrTextBlock> ApplyBlockFilters(
-        TextBlock[] textBlocks, string normalizedLanguage, bool isCjk, bool usesAutomaticLayout)
+    /// <remarks>
+    /// Internal rather than private so the source-language contract can be tested on the real chain
+    /// instead of one rebuilt in the test. Two rules in here have already drifted into being
+    /// language-dependent by accident — the lone-ideograph cleanup openly, and BoxShapeNoise by
+    /// reading a Bounds that normalisation had rewritten — and neither was caught by the tests that
+    /// covered those rules one at a time. A test that calls this method inherits whatever is added
+    /// to the chain later; one that lists the stages does not.
+    /// </remarks>
+    internal static List<OcrTextBlock> ApplyBlockFilters(
+        TextBlock[] textBlocks, string normalizedLanguage, bool useCjkRenderMetrics, bool usesAutomaticLayout)
     {
         var converted = ConvertBlocks(textBlocks);
 
@@ -916,17 +925,20 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // it, and it costs the whole line its translation rather than just one character.
         converted = FoldBlockDiacritics(converted);
 
-        // On a non-CJK (Latin) page the shared general model occasionally misreads icons
-        // as a lone Han ideograph; strip that noise without touching real embedded Chinese.
-        if (!isCjk && !usesAutomaticLayout)
-            converted = RemoveIconIdeographNoise(converted);
+        // Every language, and that is the change that let this run at all. It used to be a Latin-
+        // pages-only rule, which made the recognised text depend on the source language picked;
+        // narrowed to "only when nothing CJK is left" it is safe to apply to all four alike, so
+        // 田Projects reads as Projects under 自動 and under 日文 and under 中文 identically. Before
+        // normalisation, so the script and glyph height a block is measured with come from the
+        // text that survives. See StripLoneIdeographs for what it will not touch.
+        converted = StripIconIdeographs(converted);
 
         // After normalisation, because that is where a CJK box is pulled in onto its glyphs and
         // the shape being judged becomes the real one. Before grouping, which happens further
         // out, so a stray box is never joined to the line beside it.
         var normalized = usesAutomaticLayout
             ? NormalizeAutomaticBlocks(converted)
-            : NormalizeBlocks(converted, isCjk);
+            : NormalizeBlocks(converted, useCjkRenderMetrics);
 
         return RemoveMisshapenBlocks(normalized, normalizedLanguage);
     }
@@ -970,11 +982,11 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// Drops boxes that cannot be holding the text read out of them — see <see cref="BoxShapeNoise"/>.
     /// </summary>
     /// <remarks>
-    /// Applies to every language, unlike <see cref="RemoveIconIdeographNoise"/>, which is a rule
-    /// about Latin pages. A Japanese or Korean capture had no noise filter at all before this, and
-    /// the lone □ that a detector returns for a strip of interface is not a script-specific problem.
+    /// Applies to every language, as the lone-ideograph rule beside it now does too. A Japanese or
+    /// Korean capture had no noise filter at all before this, and the lone □ that a detector
+    /// returns for a strip of interface is not a script-specific problem.
     /// </remarks>
-    private static List<OcrTextBlock> RemoveMisshapenBlocks(List<OcrTextBlock> blocks, string language)
+    internal static List<OcrTextBlock> RemoveMisshapenBlocks(List<OcrTextBlock> blocks, string language)
     {
         List<OcrTextBlock>? kept = null;
 
@@ -997,21 +1009,51 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         return kept ?? blocks;
     }
 
-    // Removes lone-Han-ideograph icon misreads from a Latin page's blocks. English never contains
-    // a Han ideograph and real embedded Chinese labels are runs of >= 2 ideographs, so this leaves
-    // genuine text untouched while dropping graphic/icon noise the general model reads as e.g. 白.
-    private static List<OcrTextBlock> RemoveIconIdeographNoise(List<OcrTextBlock> blocks)
+    /// <summary>
+    /// Rewrites the text of blocks that begin or end with an icon's ideograph — see
+    /// <see cref="StripLoneIdeographs"/>. Returns as many blocks as it was given.
+    /// </summary>
+    /// <remarks>
+    /// The rule it used to have could empty a block, and the caller then removed it. That cannot
+    /// happen here: a cut needs a Latin letter beside the ideograph to happen at all, so at least
+    /// that letter survives and every block handed in is handed back.
+    ///
+    /// IT CAN STILL COST A BLOCK ITS LIFE FURTHER DOWN, which is the part worth knowing. This runs
+    /// before normalisation and <see cref="RemoveMisshapenBlocks"/> runs after it, and that filter
+    /// judges a box against how many characters are in it — so taking one character off can push a
+    /// box over <see cref="BoxShapeNoise"/>'s ratio and have it dropped there. Measured on the
+    /// screenshot corpus, exactly one capture of 256 loses a block this way: a Korean panel's "早E"
+    /// becomes "E", too little text for a box that wide, and goes. That reading is icon noise and
+    /// the other skill slots on the same screen read "E V+", so the outcome is right — but it is
+    /// the shape filter deleting it, not this, and a redesign of the icon heuristic has to account
+    /// for the coupling rather than assume text cleanup is free.
+    ///
+    /// None of it reintroduces a source-language dependency: neither this rule nor the shape filter
+    /// asks what the user picked, so the same picture still loses the same block on all four.
+    /// </remarks>
+    internal static List<OcrTextBlock> StripIconIdeographs(List<OcrTextBlock> blocks)
     {
-        var cleaned = new List<OcrTextBlock>(blocks.Count);
-        foreach (var block in blocks)
+        List<OcrTextBlock>? cleaned = null;
+
+        for (var index = 0; index < blocks.Count; index++)
         {
-            var text = StripLoneIdeographs(block.Text);
-            if (text.Length == 0)
-                continue; // nothing but the stripped ideograph and whitespace was there
-            cleaned.Add(text == block.Text ? block : block with { Text = text });
+            var text = StripLoneIdeographs(blocks[index].Text);
+            if (text == blocks[index].Text)
+            {
+                cleaned?.Add(blocks[index]);
+                continue;
+            }
+
+            cleaned ??= [.. blocks.Take(index)];
+            cleaned.Add(blocks[index] with { Text = text });
+
+            if (Log.IsDebugEnabled)
+                Log.Debug(
+                    "ONNX OCR stripped an icon ideograph \"{Before}\" -> \"{After}\"",
+                    blocks[index].Text, text);
         }
 
-        return cleaned;
+        return cleaned ?? blocks;
     }
 
     private static List<OcrTextBlock> FoldBlockDiacritics(List<OcrTextBlock> blocks)
@@ -1086,49 +1128,69 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         or >= 'Ḁ' and <= 'ỿ';     // Latin Extended Additional
 
     // Strips a single isolated Han ideograph glued to the start or end of a Latin word, which is
-    // what an icon misread on a Latin page looks like. The letter-adjacency guard preserves date
-    // glyphs like the 年/月/日 in "2026年5月8日" (those sit next to digits), and multi-ideograph runs
-    // (真實中文 such as 翻譯這個網頁 / 免費) are never single, so are kept.
+    // what an icon misread looks like. The letter-adjacency guard preserves date glyphs like the
+    // 年/月/日 in "2026年5月8日" (those sit next to digits), and multi-ideograph runs (真實中文 such
+    // as 翻譯這個網頁 / 免費) are never single, so are kept.
     //
     // A block that is nothing BUT one ideograph is deliberately not touched. It used to be dropped
     // outright, on the reasoning that a lone ideograph on an English page is an icon — and that is
     // sometimes true, but 攻 防 技 火 水 光 闇 標準 are how a Chinese or Japanese interface labels
     // things, and a screenshot is not required to be in one language just because the user named
-    // one. The old rule deleted them under 英文 and under 自動 alike, silently and with nothing in
-    // the log. Keeping a piece of OCR rubbish costs the reader one wrong word; deleting a real
-    // label costs them the one thing they pointed the tool at.
+    // one. Keeping a piece of OCR rubbish costs the reader one wrong word; deleting a real label
+    // costs them the one thing they pointed the tool at.
+    //
+    // The remainder gate is what makes this safe enough to run on every source language, which is
+    // the shape it has to have: a cleanup that rewrites text on some source languages and not
+    // others cannot be reconciled with reading the same picture the same way whatever the user
+    // picked. Strip only when what is left carries no CJK at all — 本Wikiについて keeps its 本
+    // because the rest of it is Japanese, and a line that reads as CJK or Mixed after the cut is
+    // one this rule has no business judging.
+    //
+    // Two known gaps, neither closed by the narrowing:
+    //
+    //   文A日本語 — the remainder A日本語 is Mixed, so the 文 an icon was read as stays. That is the
+    //   price of the gate and it is the right way round: a kept rubbish character is visible to the
+    //   reader, a deleted real one is not.
+    //
+    //   閣Lv100 50 — the remainder is pure Latin so this DOES strip, and on the picture that came
+    //   from it is a real 闇 misread as 閣, not an icon. Narrowing does not solve wrong deletion;
+    //   only a heuristic that looks at the box geometry or the recognition confidence can tell an
+    //   icon's ideograph from a text one, and that is still deferred. Do not read this rule as
+    //   having fixed that.
     internal static string StripLoneIdeographs(string text)
     {
         text = text.Trim();
         if (text.Length == 0)
             return text;
 
-        if (text.Length >= 2 && IsHanIdeograph(text[0]) && !IsHanIdeograph(text[1]) && char.IsAsciiLetter(text[1]))
-            text = text[1..].TrimStart();
+        var stripped = text;
 
-        if (text.Length >= 2 && IsHanIdeograph(text[^1]) && !IsHanIdeograph(text[^2]) && char.IsAsciiLetter(text[^2]))
-            text = text[..^1].TrimEnd();
+        if (stripped.Length >= 2 && LayoutScriptDetection.IsHanIdeograph(stripped[0]) && !LayoutScriptDetection.IsHanIdeograph(stripped[1]) && char.IsAsciiLetter(stripped[1]))
+            stripped = stripped[1..].TrimStart();
 
-        return text;
+        if (stripped.Length >= 2 && LayoutScriptDetection.IsHanIdeograph(stripped[^1]) && !LayoutScriptDetection.IsHanIdeograph(stripped[^2]) && char.IsAsciiLetter(stripped[^2]))
+            stripped = stripped[..^1].TrimEnd();
+
+        // Same reading of "CJK" the grouping side uses, so the two cannot drift apart on what
+        // counts as real text. When in doubt, keep: this returns the original, not the cut.
+        return LayoutScriptDetection.For(stripped) is OcrLayoutScript.Cjk or OcrLayoutScript.Mixed
+            ? text
+            : stripped;
     }
 
-    private static bool IsHanIdeograph(char c) =>
-        c is >= '一' and <= '鿿' || // CJK Unified Ideographs
-        c is >= '㐀' and <= '䶿' || // Extension A
-        c is >= '豈' and <= '﫿';   // Compatibility Ideographs
-
-    private static bool IsKana(char c) =>
-        c is >= 'ぁ' and <= 'ヿ' || // Hiragana + Katakana
-        c is >= 'ㇰ' and <= 'ㇿ';   // Katakana Phonetic Extensions
-
     /// <summary>
-    /// Chooses the layout path from one recognized block when the source language is automatic.
-    /// Kana is unambiguously Japanese. Two Han characters are enough to identify real CJK text,
-    /// while a lone Han character stays on the Latin path so the existing icon-noise filter can
-    /// remove the common one-character misreads found in English interfaces.
+    /// Which of the two render normalisations one recognised block gets when the source language
+    /// is automatic. Kana is unambiguously Japanese, and two Han characters identify real CJK text.
     /// </summary>
-    internal static bool UsesCjkLayoutForText(string text) =>
-        text.Any(IsKana) || text.Count(IsHanIdeograph) >= 2;
+    /// <remarks>
+    /// Not the block's script — that is <see cref="LayoutScriptDetection.For"/>, which counts a
+    /// single Han character and which grouping reads. This is a choice between two ways of sizing
+    /// the overlay's font, and the two answers deliberately differ: the layout side wants to know
+    /// what is written, the render side wants a font scale that does not jump between frames when
+    /// a borderline reading changes. Nothing here reaches grouping.
+    /// </remarks>
+    internal static bool UsesCjkRenderMetricsForText(string text) =>
+        text.Any(LayoutScriptDetection.IsKana) || text.Count(LayoutScriptDetection.IsHanIdeograph) >= 2;
 
     internal static List<OcrTextBlock> NormalizeAutomaticBlocks(List<OcrTextBlock> blocks)
     {
@@ -1136,35 +1198,75 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
         foreach (var block in blocks)
         {
-            var isCjk = UsesCjkLayoutForText(block.Text);
-            var candidate = block;
-
-            if (!isCjk)
-            {
-                var cleanedText = StripLoneIdeographs(block.Text);
-                if (cleanedText.Length == 0)
-                    continue;
-
-                if (cleanedText != block.Text)
-                    candidate = block with { Text = cleanedText };
-            }
-
-            normalized.Add(NormalizeBlock(candidate, isCjk, AutomaticGlyphHeightFromPitch));
+            var useCjkRenderMetrics = UsesCjkRenderMetricsForText(block.Text);
+            normalized.Add(NormalizeBlock(block, useCjkRenderMetrics, AutomaticGlyphHeightFromPitch));
         }
 
         return normalized;
     }
 
-    private static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool isCjk)
-        => blocks.Select(block => NormalizeBlock(block, isCjk)).ToList();
+    internal static List<OcrTextBlock> NormalizeBlocks(List<OcrTextBlock> blocks, bool useCjkRenderMetrics)
+        => blocks.Select(block => NormalizeBlock(block, useCjkRenderMetrics)).ToList();
 
-    private static OcrTextBlock NormalizeBlock(
-        OcrTextBlock block,
-        bool isCjk,
-        double? glyphHeightFromPitchOverride = null)
+    /// <summary>
+    /// Glyph body height estimated from a detection box: 0.82 of it, clamped against the average
+    /// glyph pitch on wide lines where unclip leaves the box vertically loose.
+    /// </summary>
+    /// <remarks>
+    /// ONNX/unclip can return vertically loose boxes on wide single lines. The average glyph pitch
+    /// is a better proxy for the real line height than an over-tall detection rectangle.
+    /// </remarks>
+    private static double EstimateGlyphHeight(System.Windows.Rect box, int glyphCount, double glyphHeightFromPitch)
     {
         const double verticalScale = 0.82;
 
+        var glyphHeight = box.Height * verticalScale;
+
+        if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
+            box.Width > box.Height * 2)
+        {
+            var estimatedGlyphPitch = box.Width / glyphCount;
+            glyphHeight = Math.Min(glyphHeight, estimatedGlyphPitch * glyphHeightFromPitch);
+        }
+
+        return Math.Max(1, glyphHeight);
+    }
+
+    /// <summary>
+    /// The same estimate keyed on the block's own script rather than on the language the user
+    /// picked, so it reads the same under 自動 as under 日文.
+    /// </summary>
+    /// <remarks>
+    /// Mixed and Unknown get nothing: there is no single glyph body to estimate, and grouping
+    /// falls back to the raw detection box for them. Latin carries the short-line correction the
+    /// overlay's own height carries, because too few glyphs for the pitch clamp leaves 0.82 of the
+    /// box standing, which is 1.7x the truth. CJK does not, matching how its box is normalised.
+    /// </remarks>
+    internal static double? LayoutGlyphHeightFor(OcrLayoutScript script, System.Windows.Rect box, string text)
+    {
+        if (script is not (OcrLayoutScript.Latin or OcrLayoutScript.Cjk))
+            return null;
+
+        var glyphCount = text.Count(c => !char.IsWhiteSpace(c));
+        var glyphHeight = EstimateGlyphHeight(box, glyphCount, script == OcrLayoutScript.Cjk ? 1.18 : 1.3);
+
+        return script == OcrLayoutScript.Cjk
+            ? glyphHeight
+            : ShortTextGlyphHeight.For(glyphHeight, box.Height, glyphCount);
+    }
+
+    /// <param name="useCjkRenderMetrics">
+    /// Which overlay-font normalisation to apply. It follows the source language the user picked
+    /// (or, under 自動, one block's own text), and it is render-only: it decides the pitch
+    /// multiplier and whether Bounds is pulled in onto the glyphs. Everything grouping reads is
+    /// filled in below from the block's own text and the detector's own box, so this cannot reach
+    /// it — which is the whole of why the metrics were split.
+    /// </param>
+    private static OcrTextBlock NormalizeBlock(
+        OcrTextBlock block,
+        bool useCjkRenderMetrics,
+        double? glyphHeightFromPitchOverride = null)
+    {
         // Convert the average source-glyph pitch (width / glyphCount) into the line height that
         // drives the overlay font size, clamping the unclipped (loose) detection box so text is
         // not rendered far too large. The multiplier is keyed on the *rendered* script, which is
@@ -1172,26 +1274,25 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // not a Latin one. Measured EN-vs-KO box heights on the same screenshot showed the old
         // Latin value (2.0) rendered English ~1.7x larger than the Korean (CJK) path; 1.3 brings
         // it in line, leaving English just slightly larger than CJK.
-        var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (isCjk ? 1.18 : 1.3);
+        var glyphHeightFromPitch = glyphHeightFromPitchOverride ?? (useCjkRenderMetrics ? 1.18 : 1.3);
+
+        // Per block, from its own text, and the box exactly as the detector drew it — neither of
+        // them touched by useCjkRenderMetrics above. Both callers reach here, and this runs before
+        // the CJK branch below rewrites Bounds, so it is the one place the layout side is told what
+        // it is looking at.
+        var layoutScript = LayoutScriptDetection.For(block.Text);
+        block = block with
+        {
+            LayoutScript = layoutScript,
+            LayoutBounds = block.Bounds,
+            LayoutGlyphHeight = LayoutGlyphHeightFor(layoutScript, block.Bounds, block.Text),
+        };
 
         var bounds = block.Bounds;
-        var glyphHeight = bounds.Height * verticalScale;
         var glyphCount = block.Text.Count(c => !char.IsWhiteSpace(c));
+        var glyphHeight = EstimateGlyphHeight(bounds, glyphCount, glyphHeightFromPitch);
 
-        // ONNX/unclip can return vertically loose boxes on wide single lines.
-        // The average glyph pitch is a better proxy for the real line height than
-        // an over-tall detection rectangle.
-        if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
-            bounds.Width > bounds.Height * 2)
-        {
-            var estimatedGlyphPitch = bounds.Width / glyphCount;
-            var maxExpectedHeight = estimatedGlyphPitch * glyphHeightFromPitch;
-            glyphHeight = Math.Min(glyphHeight, maxExpectedHeight);
-        }
-
-        glyphHeight = Math.Max(1, glyphHeight);
-
-        if (isCjk)
+        if (useCjkRenderMetrics)
         {
             // CJK glyphs ≈ the detection box height, so shrinking + recentering the box
             // drives both the overlay font and its background coverage correctly.
@@ -1208,7 +1309,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         // enormously. See ShortTextGlyphHeight for the measurements.
         return block with
         {
-            SourceGlyphHeight = ShortTextGlyphHeight.For(glyphHeight, bounds.Height, glyphCount)
+            RenderGlyphHeight = ShortTextGlyphHeight.For(glyphHeight, bounds.Height, glyphCount)
         };
     }
 

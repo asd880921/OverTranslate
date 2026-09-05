@@ -16,7 +16,7 @@ public class OcrTextBlockGrouperTests
             new("食尚玩家", new Rect(10, 40, 110, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal(2, grouped[0].Lines.Count);
@@ -32,7 +32,7 @@ public class OcrTextBlockGrouperTests
             new("RIGHT", new Rect(220, 38, 110, 20)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -46,7 +46,7 @@ public class OcrTextBlockGrouperTests
             new("summary", new Rect(10, 48, 180, 16)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -60,7 +60,7 @@ public class OcrTextBlockGrouperTests
             new("body text", new Rect(10, 44, 220, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -75,7 +75,7 @@ public class OcrTextBlockGrouperTests
             new("攻略", new Rect(106, 10, 42, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal("寧夏夜市攻略", grouped[0].Text);
@@ -101,7 +101,7 @@ public class OcrTextBlockGrouperTests
             new("to", new Rect(539, 37, 72, 54)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal("Send this session to the background and free the terminal", grouped[0].Text);
@@ -120,7 +120,7 @@ public class OcrTextBlockGrouperTests
             new("your website", new Rect(515, 71, 565, 102)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal("Translate your website", grouped[0].Text);
@@ -139,7 +139,7 @@ public class OcrTextBlockGrouperTests
             new("the", new Rect(250, 8, 46, 31)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
         Assert.Equal("session to the", grouped[0].Text);
@@ -157,7 +157,7 @@ public class OcrTextBlockGrouperTests
             new("Create key", new Rect(1632, 298, 112, 38)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -171,7 +171,7 @@ public class OcrTextBlockGrouperTests
             new("右側", new Rect(140, 10, 42, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -185,7 +185,7 @@ public class OcrTextBlockGrouperTests
             new("GO ON」のセットリストプレイリストを公開！", new Rect(10, 40, 290, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Single(grouped);
     }
@@ -199,7 +199,7 @@ public class OcrTextBlockGrouperTests
             new("食尚玩家最新整理", new Rect(10, 40, 210, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -213,7 +213,7 @@ public class OcrTextBlockGrouperTests
             new("第二句重新開始", new Rect(10, 40, 110, 24)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -231,7 +231,7 @@ public class OcrTextBlockGrouperTests
             new("home.", new Rect(970, 106, 141, 51)),
         };
 
-        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        var merged = Assert.Single(GroupDetected(blocks));
         Assert.Equal("Let's pay CiRCLE a visit on the way home.", merged.Text);
     }
 
@@ -246,7 +246,7 @@ public class OcrTextBlockGrouperTests
             new("Create key", new Rect(215, 27, 160, 38)),
         };
 
-        Assert.Equal(2, OcrTextBlockGrouper.Group(blocks).Count);
+        Assert.Equal(2, GroupDetected(blocks).Count);
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public class OcrTextBlockGrouperTests
             new("!!", new Rect(266, 10, 20, 24), Confidence: 0.6),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         var merged = Assert.Single(grouped);
         Assert.NotNull(merged.Confidence);
@@ -277,7 +277,7 @@ public class OcrTextBlockGrouperTests
             new("第二段文字", new Rect(112, 10, 100, 24)),
         };
 
-        var merged = Assert.Single(OcrTextBlockGrouper.Group(blocks));
+        var merged = Assert.Single(GroupDetected(blocks));
         Assert.Null(merged.Confidence);
     }
 
@@ -296,7 +296,7 @@ public class OcrTextBlockGrouperTests
             new("magazine", new Rect(698, 311, 109, 31)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         var merged = Assert.Single(grouped);
         Assert.Equal(
@@ -315,11 +315,11 @@ public class OcrTextBlockGrouperTests
         var blocks = new List<OcrTextBlock>
         {
             new("Shots deal more damage for each bullet remaining in the",
-                new Rect(111, 78, 566, 30), SourceGlyphHeight: 16),
-            new("magazine", new Rect(112, 108, 105, 26), SourceGlyphHeight: 15),
+                new Rect(111, 78, 566, 30), RenderGlyphHeight: 16),
+            new("magazine", new Rect(112, 108, 105, 26), RenderGlyphHeight: 15),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         var merged = Assert.Single(grouped);
         Assert.Equal(
@@ -331,16 +331,23 @@ public class OcrTextBlockGrouperTests
     /// holding text of visibly different sizes. A save-slot stamp over a character name did this —
     /// boxes 0.83 apart, letters 0.58. Reading the glyphs is what tells them apart.
     /// </summary>
+    /// <remarks>
+    /// The widths are what make the glyph heights come out at the measured 20 and 11.7: the engine
+    /// does not measure ink, it estimates it from the average glyph pitch, so a box has to be as
+    /// wide as the text in it was. They were 300 and 90 while this fixture set the glyph heights by
+    /// hand, and those boxes yield 16.96 and 11.70 — a ratio of 0.98, which is to say the pair the
+    /// test is built on would have merged in the app whatever this assertion said.
+    /// </remarks>
     [Fact]
     public void KeepsLinesOfDifferentTextSizesApartEvenWhenTheirBoxesMatch()
     {
         var blocks = new List<OcrTextBlock>
         {
-            new("2026/07/24 23:29 AUTO SAVE", new Rect(40, 40, 300, 35), SourceGlyphHeight: 20),
-            new("Narmaya", new Rect(41, 79, 90, 29), SourceGlyphHeight: 11.6),
+            new("2026/07/24 23:29 AUTO SAVE", new Rect(40, 40, 354, 35), RenderGlyphHeight: 20),
+            new("Narmaya", new Rect(41, 79, 63, 29), RenderGlyphHeight: 11.7),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -360,7 +367,7 @@ public class OcrTextBlockGrouperTests
             new("所持品", new Rect(165, 539, 94, 38)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
@@ -369,16 +376,24 @@ public class OcrTextBlockGrouperTests
     /// And what that must not cost: a real wrapped sentence, whose first line is long because it
     /// ran out of room. Real bounds from the same corpus as the menu above.
     /// </summary>
+    /// <remarks>
+    /// The boxes are the detector's, which is not what this fixture used to hold: it carried the
+    /// normalised ones, 30 and 29 tall against the same 51px step, and those put the pair 1.73 line
+    /// advances apart. The capture itself reads 1.33 — the normalisation had taken a quarter off
+    /// the height and left the step, so the leading came back looking half again as loose as it is.
+    /// Re-measured on the capture: gap 0.39 of a line, advance 1.33, heights 0.89 apart, first line
+    /// 2.27 times the width of the second.
+    /// </remarks>
     [Fact]
     public void StillGroupsASentenceLongEnoughToHaveWrapped()
     {
         var blocks = new List<OcrTextBlock>
         {
-            new("그랑 사이퍼의 갑판에 있는 연습용 더미를 조사하면", new Rect(354, 427, 564, 30)),
-            new("플레이할 수 있습니다", new Rect(355, 478, 248, 29)),
+            new("그랑 사이퍼의 갑판에 있는 연습용 더미를 조사하면", new Rect(355, 429, 563, 32.9)),
+            new("플레이할 수 있습니다", new Rect(355, 475.4, 248, 37)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         var merged = Assert.Single(grouped);
         Assert.Equal(2, merged.Lines.Count);
@@ -399,8 +414,208 @@ public class OcrTextBlockGrouperTests
             new("HOLD TO SALVAGE", new Rect(20, 361, 160, 25)),
         };
 
-        var grouped = OcrTextBlockGrouper.Group(blocks);
+        var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
     }
+
+    private static List<OcrTextBlock> GroupDetected(IReadOnlyList<OcrTextBlock> blocks) =>
+        OcrTextBlockGrouper.Group(blocks.AsDetected());
+
+    /// <summary>
+    /// Symptom B: two lines whose detection boxes are exactly the same size, one Latin and one CJK.
+    /// </summary>
+    /// <remarks>
+    /// The size test used to compare normalised boxes, and a CJK one is pulled in to 0.82 of its
+    /// detection box while a Latin one is left whole — so this pair read 0.820 against a 0.88 gate
+    /// and was refused before anything about the text, the spacing or the alignment was consulted.
+    /// No mixed-script pair could ever pass it.
+    /// </remarks>
+    [Fact]
+    public void CrossScriptPair_WithEqualDetectionBoxes_IsNotRefusedBySizeTest()
+    {
+        var latin = new OcrTextBlock("OPTIONS", new Rect(10, 10, 240, 30)).AsDetected();
+        var cjk = new OcrTextBlock("ゲーム設定", new Rect(10, 10, 240, 30)).AsDetected();
+
+        Assert.Equal(OcrLayoutScript.Latin, latin.LayoutScript);
+        Assert.Equal(OcrLayoutScript.Cjk, cjk.LayoutScript);
+        Assert.Equal(1.0, OcrTextBlockGrouper.TextSizeRatio(latin, cjk), precision: 9);
+
+        // What it used to be: normalisation makes the same box 0.82 as tall on the CJK side.
+        var normalizedCjk = OnnxOcrEngine.NormalizeBlocks([new("ゲーム設定", new Rect(10, 10, 240, 30))], useCjkRenderMetrics: true)[0];
+        Assert.True(normalizedCjk.Bounds.Height / latin.Bounds.Height < 0.88);
+    }
+
+    /// <summary>
+    /// A block that is itself both scripts has no single glyph body to measure, so it compares on
+    /// the detection box like any other cross-script pairing.
+    /// </summary>
+    [Fact]
+    public void MixedScriptBlock_UsesLayoutBoundsForSizeComparison()
+    {
+        var mixed = new OcrTextBlock("甲Glossaries", new Rect(10, 10, 240, 30)).AsDetected();
+        var latin = new OcrTextBlock("Glossaries", new Rect(10, 50, 200, 30)).AsDetected();
+
+        Assert.Equal(OcrLayoutScript.Mixed, mixed.LayoutScript);
+        Assert.Null(mixed.LayoutGlyphHeight);
+        Assert.Equal(1.0, OcrTextBlockGrouper.TextSizeRatio(mixed, latin), precision: 9);
+    }
+
+    /// <summary>
+    /// The Latin-dominant case the same rule covers: a line of Japanese prose carrying Western
+    /// terms must not be sized as though every glyph in it were full-width.
+    /// </summary>
+    [Fact]
+    public void MixedScriptBlock_DoesNotUseCjkGlyphMetricForLatinDominantText()
+    {
+        var box = new Rect(10, 10, 600, 30);
+        var mixed = new OcrTextBlock(
+            "2005 年から CSS, HTML, JavaScript のドキュメントを作成しています。", box).AsDetected();
+        var cjk = new OcrTextBlock("技術文書を書いています", box).AsDetected();
+
+        Assert.Null(mixed.LayoutGlyphHeight);
+        Assert.NotNull(cjk.LayoutGlyphHeight);
+        Assert.NotEqual(cjk.LayoutGlyphHeight, mixed.LayoutGlyphHeight);
+
+        // Same box, so the comparison is 1.0 — not the CJK glyph estimate measured off one of them.
+        Assert.Equal(1.0, OcrTextBlockGrouper.TextSizeRatio(mixed, cjk), precision: 9);
+    }
+
+    /// <summary>
+    /// 「OPTIONS／ゲーム設定」and 「Back／戻る」: each label is joined to its own translation
+    /// candidate line, and the two pairs stay apart from each other.
+    /// </summary>
+    [Fact]
+    public void Mixed_EnglishJapanese_DoesNotCrossMergeParagraphs()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("OPTIONS", new Rect(10, 10, 240, 30)),
+            new("ゲーム設定", new Rect(10, 190, 240, 30)),
+            new("Back", new Rect(10, 370, 140, 30)),
+            new("戻る", new Rect(10, 550, 140, 30)),
+        };
+
+        var grouped = GroupDetected(blocks);
+
+        Assert.Equal(4, grouped.Count);
+    }
+
+    /// <summary>
+    /// The row rule measures on the detector's box, and this pair is where that changes the answer.
+    /// </summary>
+    /// <remarks>
+    /// Two CJK words 16px apart, in boxes the engine has normalised from 40px down to 32.8. Against
+    /// the detection height the space is 0.40 of a line and they are one line of text; against the
+    /// normalised height it is 0.49 and they are two things side by side. Reading Bounds here would
+    /// put the same picture on either side of the threshold depending on the source language the
+    /// user picked, which is what the whole split of the metrics exists to stop.
+    /// </remarks>
+    [Fact]
+    public void SameLineGap_IsMeasuredOnLayoutBounds_NotTheNormalisedBox()
+    {
+        OcrTextBlock Normalised(string text, double x) =>
+            new OcrTextBlock(text, new Rect(x, 13.6, 40, 32.8))
+            {
+                LayoutBounds = new Rect(x, 10, 40, 40),
+                LayoutScript = OcrLayoutScript.Cjk,
+            };
+
+        var previous = Normalised("今日", 10);
+        var current = Normalised("天気", 66);
+
+        Assert.Equal(16, current.LayoutBounds.X - previous.LayoutBounds.Right);
+        Assert.True(16 / 40.0 < SameLineGapThreshold.Fallback);
+        Assert.True(16 / 32.8 > SameLineGapThreshold.Fallback);
+
+        var grouped = OcrTextBlockGrouper.Group([previous, current]);
+
+        Assert.Equal("今日天気", Assert.Single(grouped).Text);
+    }
+
+    /// <summary>
+    /// And the capture that says its own spacing: eight menu entries set well apart, with one pair
+    /// of them closer than the fixed fallback would have allowed.
+    /// </summary>
+    [Fact]
+    public void SameLineGaps_AreJudgedAgainstTheSpacingOfThisCapture()
+    {
+        // Word spaces of 0.1 of a line and item spaces of 0.6, which the estimator splits between.
+        var boxes = new List<OcrTextBlock>();
+        double x = 0;
+        foreach (var (text, gap) in new (string, double)[]
+        {
+            ("Alpha", 0), ("beta", 4), ("Gamma", 24), ("delta", 4),
+            ("Epsilon", 24), ("zeta", 4), ("Eta", 24), ("theta", 4),
+        })
+        {
+            x += gap;
+            boxes.Add(new OcrTextBlock(text, new Rect(x, 10, 60, 40)).AsDetected());
+            x += 60;
+        }
+
+        var grouped = OcrTextBlockGrouper.Group(boxes);
+
+        Assert.Equal(
+            ["Alpha beta", "Gamma delta", "Epsilon zeta", "Eta theta"],
+            grouped.Select(block => block.Text));
+    }
+
+    /// <summary>
+    /// A checkbox entry is not the last line of the entry above it, however much shorter it is.
+    /// </summary>
+    /// <remarks>
+    /// Measured from region-panel-en, the corpus set that exists to catch exactly this: three of
+    /// its entries were being joined on the width rule alone, at 1.40 and 1.43 line advances, while
+    /// every pair in the corpus that really is one sentence wrapping stops at 1.33.
+    /// </remarks>
+    [Fact]
+    public void AShorterLineSetTooFarBelow_IsNotTheEndOfTheParagraph()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Reveal all rooms before proceeding to next floor", new Rect(100, 100, 520, 30)),
+            new("Allow automatic pomander use", new Rect(100, 143, 320, 30)),
+        };
+
+        // 43 / 30 = 1.43 line advances, past what a paragraph's own leading reaches.
+        var grouped = GroupDetected(blocks);
+
+        Assert.Equal(2, grouped.Count);
+    }
+
+    /// <summary>
+    /// The leading is measured on the detector's box, and this pair is where that changes the
+    /// answer.
+    /// </summary>
+    /// <remarks>
+    /// A CJK pair stepped 44px apart in boxes the engine normalised from 34 down to 27.9. On the
+    /// detection height that is 1.29 line advances and the second line ends the paragraph; on the
+    /// normalised height it is 1.58 and it does not. Which one the rule reads decides the answer,
+    /// and only one of them is the same on every source language.
+    /// </remarks>
+    [Fact]
+    public void WrappedFinalLineLeading_IsMeasuredOnLayoutBounds_NotTheNormalisedBox()
+    {
+        OcrTextBlock Normalised(string text, double y, double width) =>
+            new OcrTextBlock(text, new Rect(100, y + 3.05, width, 27.9))
+            {
+                LayoutBounds = new Rect(100, y, width, 34),
+                LayoutScript = OcrLayoutScript.Cjk,
+            };
+
+        var previous = Normalised("彾匣內每發子彈的傷害會增加而且", 100, 460);
+        var current = Normalised("更容易觸發", 144, 160);
+
+        Assert.Equal(44 / 34.0, LineAdvanceOf(previous, current), precision: 6);
+        Assert.True(44 / 34.0 < 1.38);
+        Assert.True(44 / 27.9 > 1.38);
+
+        var merged = Assert.Single(OcrTextBlockGrouper.Group([previous, current]));
+        Assert.Equal(2, merged.Lines.Count);
+    }
+
+    private static double LineAdvanceOf(OcrTextBlock previous, OcrTextBlock current) =>
+        (current.LayoutBounds.Y - previous.LayoutBounds.Y) /
+        ((previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0);
 }

@@ -50,7 +50,7 @@ internal static class RealtimeNaturalBackground
         .. blocks
             .Where(block => !string.IsNullOrWhiteSpace(block.TranslatedText))
             .SelectMany(block => (block.SourceLineBounds is { Count: > 0 } lines ? lines : [block.Bounds])
-                .Select(line => GlyphBounds(line, block.SourceGlyphHeight)))
+                .Select(line => GlyphBounds(line, block.RenderGlyphHeight)))
     ];
 
     /// <summary>The part of a line rectangle its glyphs actually occupy.</summary>

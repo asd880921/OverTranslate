@@ -34,6 +34,11 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --margin-scale-grid <wholescreen.png> [more.png ...]");
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
+    Console.Error.WriteLine("       OcrHarness --group-explain <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (every same-line and next-line verdict with the geometry it judged on)");
+    Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
+    Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (the vertical pipeline's columns and their text, which --group-explain never runs)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (what the confidence filter drops, and what a line would have reclaimed)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
@@ -47,6 +52,31 @@ if (args.Length == 0)
 // dump as a panel would report the wrong half of RealtimeDetectorSize.
 var harnessMode = args.Contains("--panel") ? RealtimeBlockMode.Panel : RealtimeBlockMode.Subtitle;
 args = [.. args.Where(argument => argument != "--panel")];
+
+// WHICH FLOW --group-explain IS ASKED ABOUT, and it has to be asked because grouping serves two of
+// them at two different detector sizes:
+//
+//   截圖翻譯  OcrService.RecognizeAsync    ImgResize = 2048, which below 2048 is no downscale at all
+//   即時翻譯  OcrService.TryRecognizeAsync RealtimeDetectorSize.For(w, h, mode), which downscales
+//
+// That is not a detail. The detector's boxes are not stable across input scales — measured on the
+// old branch's corpus, reading the same 22 captures at the realtime sizes instead of the screenshot
+// one moves 37 of 78 multi-line groups and invents 34 others — so a verdict read at the wrong size
+// is a verdict about a layout the flow under test never sees. Measured again here on one framed
+// nav bar, the boundary is sharp to the pixel: a 2040px-wide frame comes back with three UI labels
+// fused into two boxes and a 2048px one with every label separate, the pixels being identical.
+//
+// This mode was written for the screenshot flow (the corpus is framed selections, and 截圖翻譯 is
+// what the grouping work serves), but it took RealtimeDetectorSize from --reject-audit next door,
+// where it is right: that mode is about a filter which runs on the realtime path only. So the
+// default moves to the screenshot flow and --realtime asks for the other, which --panel implies —
+// mode is a realtime concept and naming one is how you say which half of RealtimeDetectorSize.
+//
+// BASELINES TAKEN BEFORE THIS FLAG WERE REALTIME-SIZED. Anything compared against them has to be
+// regenerated rather than read across. --vertical-explain never had the problem: it goes through
+// OcrService.RecognizeVerticalAsync, which is the screenshot entry point already.
+var harnessRealtime = args.Contains("--realtime") || args.Contains("--panel");
+args = [.. args.Where(argument => argument != "--realtime")];
 
 // Which language to read as. It picks the recognition model, and that is not a detail on a Korean
 // dump: the general model carries no Hangul at all, so a Korean frame read as EN comes back as
@@ -634,10 +664,10 @@ if (args[0] == "--margin-scale-grid")
 
                 var chars = kept.Sum(b => b.Text.Count(c => !char.IsWhiteSpace(c)));
 
-                // SourceGlyphHeight is the ink height and is null for CJK, where the box already is
+                // RenderGlyphHeight is the ink height and is null for CJK, where the box already is
                 // the glyph — taking one or the other rather than both is the #35 mistake, and it is
                 // worth a factor of two on Latin.
-                var glyphRegion = Median(kept.Select(b => b.SourceGlyphHeight ?? b.Bounds.Height).ToList());
+                var glyphRegion = Median(kept.Select(b => b.RenderGlyphHeight ?? b.Bounds.Height).ToList());
                 var glyphDetector = native > 0 ? glyphRegion * size / native : 0;
 
                 var textUnion = UnionOf(kept, 0, 0);
@@ -1029,6 +1059,137 @@ if (args[0] == "--reject-audit")
     Console.WriteLine($"fragments dropped       : {droppedTotal}");
     Console.WriteLine($"  would have merged     : {wouldMerge}   <- what a narrowed rule would keep");
     Console.WriteLine($"  isolated              : {isolated}   <- what it would still drop");
+    return 0;
+}
+
+// Every next-line verdict the grouper reached, with the geometry it judged on.
+//
+// The ordinary output shows which lines were joined and no more, so a paragraph that came back as
+// four separate translations says nothing about which threshold refused it, or by how much. These
+// thresholds are the whole of the grouper and they are tuned against real captures, so seeing the
+// near misses is what makes tuning something other than guesswork: a run of pairs refused on
+// "vertical gap" at 0.83 of a line is a different problem from one refused on "no continuation
+// evidence" with the gap at 0.2.
+//
+// Numbers are in line heights, not pixels, so captures of different sizes can be read side by side.
+// Each side's layout script is printed too, because that is what decides whether the size test
+// compared glyph heights or fell back to the raw detection boxes.
+if (args[0] == "--group-explain")
+{
+    using var explainEngine = new OnnxOcrEngine();
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        Console.WriteLine(new string('=', 78));
+        Console.WriteLine($"IMAGE: {path}");
+
+        using var image = new Bitmap(path);
+
+        // Named on every image rather than once at the top, because these outputs get saved and
+        // diffed against each other months apart, and a file that does not say which flow it is
+        // about is a file that will eventually be compared with one about the other.
+        List<OcrTextBlock>? raw;
+        if (harnessRealtime || harnessSize is not null)
+        {
+            var size = harnessSize
+                ?? RealtimeDetectorSize.For(image.Width, image.Height, harnessMode).Primary;
+            Console.WriteLine($"FLOW: 即時翻譯 (detect={size})");
+            raw = await explainEngine.TryRecognizeAsync(image, harnessLanguage, size);
+        }
+        else
+        {
+            // The screenshot flow's own entry point, so the size comes from the same place the app
+            // gets it rather than from a number repeated here.
+            Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+            raw = await explainEngine.RecognizeAsync(image, harnessLanguage);
+        }
+
+        if (raw is null || raw.Count == 0) { Console.WriteLine("  (nothing read)"); continue; }
+
+        // The confidence floor OcrService applies before grouping on the realtime path only; the
+        // screenshot path deliberately keeps everything. A size named on its own asks for realtime
+        // sizing without claiming to be that pipeline, so it does not get the filter.
+        if (harnessRealtime)
+        {
+            var kept = OcrService.RejectUnconvincingBlocks(raw);
+            Console.WriteLine($"  realtime confidence filter: {raw.Count} -> {kept.Count} lines");
+            raw = kept;
+            if (raw.Count == 0) { Console.WriteLine("  (nothing survived)"); continue; }
+        }
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        var grouped = OcrTextBlockGrouper.Group(raw, decisions);
+
+        Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
+
+        // One aggregatable line per image, so a whole corpus can be summed without re-reading the
+        // verdicts. The script census is on the lines as read, not on the groups, because that is
+        // the population the size test pairs off against each other.
+        int Census(OcrLayoutScript script) => raw.Count(block => block.LayoutScript == script);
+        Console.WriteLine(
+            $"SUMMARY	{path}	lang={harnessLanguage}	lines={raw.Count}	groups={grouped.Count}" +
+            $"	latin={Census(OcrLayoutScript.Latin)}	cjk={Census(OcrLayoutScript.Cjk)}" +
+            $"	mixed={Census(OcrLayoutScript.Mixed)}	unknown={Census(OcrLayoutScript.Unknown)}" +
+            $"	text={string.Join(" | ", grouped.Select(block => block.Text.Trim()))}");
+        for (var i = 0; i < grouped.Count; i++)
+            Console.WriteLine($"  [{i}] lines={grouped[i].Lines.Count}  {grouped[i].Text}");
+
+        // Each kind printed with the labels for what it actually measured. The two share a record
+        // (see NextLineDecision) and fill several of its fields with different quantities, so one
+        // format for both would put a horizontal gap under a heading saying "vertical" and print
+        // two columns of zeroes that read as measurements. The threshold work on this branch is
+        // aggregated out of these lines, and a run that has to be split on Kind afterwards should
+        // say so on its face.
+        Console.WriteLine("  --- verdicts: row = same line left to right, next = the line below ---");
+        Console.WriteLine("  --- gaps and advances in line heights ---");
+        foreach (var decision in decisions)
+        {
+            var verdict = decision.Joined ? "JOIN  " : "SPLIT ";
+            Console.WriteLine(decision.Kind == "row"
+                ? $"  row  {verdict} hgap={decision.VerticalGap,6:0.00} " +
+                  $"overlap={decision.LeftDelta,5:0.00} width={decision.WidthRatio:0.00} " +
+                  $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]"
+                : $"  next {verdict} vgap={decision.VerticalGap,6:0.00} " +
+                  $"align={decision.LeftDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
+                  $"width={decision.WidthRatio:0.00} adv={decision.LineAdvance,5:0.00} " +
+                  $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
+            Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
+        }
+    }
+
+    return 0;
+
+    static string Shorten(string text) =>
+        text.Length <= 42 ? text : string.Concat(text.AsSpan(0, 40), "…");
+}
+
+// The vertical pipeline, which nothing else here can reach.
+//
+// Vertical writing is turned anticlockwise for the horizontal detector, grouped in that frame,
+// mapped back, and then merged a second time into columns. Only that second pass decides what a
+// reader of a Japanese page actually gets, and --group-explain never runs it: it calls the grouper
+// directly, which is the horizontal path. So every number this harness has ever printed for
+// vertical-image-ja was the horizontal pipeline's.
+if (args[0] == "--vertical-explain")
+{
+    using var verticalEngine = new OnnxOcrEngine();
+
+    foreach (var path in args.Skip(1))
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
+
+        using var image = new Bitmap(path);
+        var columns = await OcrService.RecognizeVerticalAsync(
+            verticalEngine, image, harnessLanguage, CancellationToken.None);
+
+        Console.WriteLine(
+            $"VERTICAL	{path}	lang={harnessLanguage}	columns={columns.Count}" +
+            $"	scripts={string.Join(",", columns.Select(c => c.LayoutScript))}" +
+            $"	text={string.Join(" | ", columns.Select(c => c.Text.Trim()))}");
+    }
+
     return 0;
 }
 

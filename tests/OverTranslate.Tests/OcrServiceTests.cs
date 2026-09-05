@@ -60,7 +60,7 @@ public class OcrServiceTests
     [InlineData("English 中文", true)]
     public void AutomaticLayout_IsChosenPerRecognizedBlock(string text, bool expectedCjk)
     {
-        Assert.Equal(expectedCjk, OnnxOcrEngine.UsesCjkLayoutForText(text));
+        Assert.Equal(expectedCjk, OnnxOcrEngine.UsesCjkRenderMetricsForText(text));
     }
 
     [Fact]
@@ -78,18 +78,20 @@ public class OcrServiceTests
 
         Assert.Equal(3, normalized.Count);
         Assert.Equal("Settings", normalized[0].Text);
-        Assert.NotNull(normalized[0].SourceGlyphHeight);
+        Assert.NotNull(normalized[0].RenderGlyphHeight);
         Assert.Equal(bounds.Height, normalized[0].Bounds.Height);
         Assert.Equal("設定", normalized[1].Text);
-        Assert.Null(normalized[1].SourceGlyphHeight);
+        Assert.Null(normalized[1].RenderGlyphHeight);
         Assert.True(normalized[1].Bounds.Height < bounds.Height);
 
-        // Kept, where it used to be deleted. It is still measured on the Latin path — one Han
-        // character does not satisfy UsesCjkLayoutForText — which is wrong for a full-width glyph
-        // and is pinned here so the geometry work that fixes it has to come past this test rather
-        // than change it by accident. Wrong geometry is a smaller fault than a missing label.
+        // Kept, where it used to be deleted. The render side still measures it on the Latin path —
+        // one Han character does not satisfy UsesCjkRenderMetricsForText — and that is now a
+        // deliberate difference rather than the open defect this comment used to describe: the
+        // layout side reads a lone Han as Cjk (see LayoutScript below), while the overlay's font
+        // scale stays on the rule that keeps it from jumping between frames.
         Assert.Equal("白", normalized[2].Text);
-        Assert.NotNull(normalized[2].SourceGlyphHeight);
+        Assert.NotNull(normalized[2].RenderGlyphHeight);
+        Assert.Equal(OcrLayoutScript.Cjk, normalized[2].LayoutScript);
     }
 
     [Fact]
@@ -102,7 +104,7 @@ public class OcrServiceTests
             new("設定設定設定設定", bounds),
         ]);
 
-        var latinGlyphHeight = normalized[0].SourceGlyphHeight;
+        var latinGlyphHeight = normalized[0].RenderGlyphHeight;
         var cjkGlyphHeight = normalized[1].Bounds.Height;
 
         Assert.NotNull(latinGlyphHeight);
@@ -120,18 +122,79 @@ public class OcrServiceTests
     [InlineData("技", "技")]
     [InlineData("火", "火")]
     [InlineData("水", "水")]
-    // A lone ideograph glued to the start/end of a Latin word is icon noise -> stripped.
+    // A lone ideograph glued to the start/end of a Latin word is icon noise -> stripped, but only
+    // where what is left carries no CJK at all. All of these came off a real capture.
     [InlineData("甲Glossaries", "Glossaries")]
     [InlineData("业spoken terms", "spoken terms")]
+    [InlineData("文A English (US)", "A English (US)")]  // MDN's language switcher icon
+    [InlineData("田Projects", "Projects")]              // GitHub's ⊞ project icon
+    [InlineData("日Wiki", "Wiki")]                      // GitHub's 📖 wiki icon
+    [InlineData("区Insights Settings", "Insights Settings")]
+    [InlineData("三VOICE", "VOICE")]
+    [InlineData("百LOG", "LOG")]
+    [InlineData("CH是", "CH")]                          // at the end of the line as well
+    [InlineData("ev丘", "ev")]
     // Real text must be preserved untouched:
     [InlineData("2026年5月8日", "2026年5月8日")]   // date glyphs sit next to digits, not letters
     [InlineData("翻譯這個網頁", "翻譯這個網頁")]     // multi-ideograph run = real Chinese
     [InlineData("免費", "免費")]
     [InlineData("Google Translate", "Google Translate")]
     [InlineData("4.3 (82,985)·免費·參考資源", "4.3 (82,985)·免費·參考資源")]
+    // The remainder gate: cutting these would leave Japanese behind, so nothing is cut.
+    [InlineData("本Wikiについて", "本Wikiについて")]
+    [InlineData("文A日本語", "文A日本語")]
     public void StripLoneIdeographs_RemovesIconNoiseButKeepsRealText(string input, string expected)
     {
         Assert.Equal(expected, OnnxOcrEngine.StripLoneIdeographs(input));
+    }
+
+    /// <summary>
+    /// The narrowing did not fix wrong deletion, and this records the case that proves it.
+    /// </summary>
+    /// <remarks>
+    /// On the picture this came from, 閣 is a misread 闇 — the element name on a game panel, real
+    /// text — and the remainder is pure Latin, so the rule cuts it. Nothing about the shape of the
+    /// string separates it from 甲Glossaries two cases up, which is genuine icon noise. Telling
+    /// them apart needs the box geometry or the recognition confidence, and that is still deferred.
+    /// Change this test only alongside a rule that can actually make the distinction.
+    /// </remarks>
+    [Fact]
+    public void StripLoneIdeographs_StillCutsARealLabelItCannotDistinguish()
+    {
+        Assert.Equal("Lv100 50", OnnxOcrEngine.StripLoneIdeographs("閣Lv100 50"));
+    }
+
+    /// <summary>
+    /// The rule rewrites text and hands back every block it was given.
+    /// </summary>
+    /// <remarks>
+    /// The version before it was narrowed could empty a block, and its caller then dropped it, so
+    /// which blocks came back depended on the source language. It cannot now: a cut needs a Latin
+    /// letter beside the ideograph, so that letter always survives.
+    ///
+    /// This is about this stage only, and does not say a stripped block always reaches the caller.
+    /// RemoveMisshapenBlocks runs later and sizes a box against its character count, so a block
+    /// this shortens can still be dropped there — one capture in the screenshot corpus does exactly
+    /// that. See StripIconIdeographs for the measurement.
+    /// </remarks>
+    [Fact]
+    public void StripIconIdeographs_RewritesTextWithoutDroppingBlocks()
+    {
+        var bounds = new System.Windows.Rect(0, 0, 120, 20);
+        List<OcrTextBlock> blocks =
+        [
+            new("田Projects", bounds),
+            new("本Wikiについて", bounds),
+            new("攻", bounds),
+            new("Settings", bounds),
+        ];
+
+        var cleaned = OnnxOcrEngine.StripIconIdeographs(blocks);
+
+        Assert.Equal(
+            ["Projects", "本Wikiについて", "攻", "Settings"],
+            cleaned.Select(block => block.Text));
+        Assert.Equal(blocks.Count, cleaned.Count);
     }
 
     [Theory]
@@ -219,7 +282,7 @@ public class OcrServiceTests
         var blocks = await engine.RecognizeAsync(bitmap, "AUTO");
 
         Assert.NotEmpty(blocks);
-        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkLayoutForText(block.Text));
+        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkRenderMetricsForText(block.Text));
     }
 
     [Fact]
@@ -239,7 +302,7 @@ public class OcrServiceTests
         var text = TextOf(blocks);
 
         Assert.Contains("日本語", text);
-        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkLayoutForText(block.Text));
+        Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkRenderMetricsForText(block.Text));
     }
 
     [Fact]
