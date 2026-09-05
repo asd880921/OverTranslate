@@ -165,12 +165,17 @@ public class OcrServiceTests
     }
 
     /// <summary>
-    /// The rule rewrites text and never decides whether a block exists.
+    /// The rule rewrites text and hands back every block it was given.
     /// </summary>
     /// <remarks>
     /// The version before it was narrowed could empty a block, and its caller then dropped it, so
     /// which blocks came back depended on the source language. It cannot now: a cut needs a Latin
     /// letter beside the ideograph, so that letter always survives.
+    ///
+    /// This is about this stage only, and does not say a stripped block always reaches the caller.
+    /// RemoveMisshapenBlocks runs later and sizes a box against its character count, so a block
+    /// this shortens can still be dropped there — one capture in the screenshot corpus does exactly
+    /// that. See StripIconIdeographs for the measurement.
     /// </remarks>
     [Fact]
     public void StripIconIdeographs_RewritesTextWithoutDroppingBlocks()

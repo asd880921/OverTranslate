@@ -1003,13 +1003,25 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
     /// <summary>
     /// Rewrites the text of blocks that begin or end with an icon's ideograph — see
-    /// <see cref="StripLoneIdeographs"/>. Never drops a block.
+    /// <see cref="StripLoneIdeographs"/>. Returns as many blocks as it was given.
     /// </summary>
     /// <remarks>
-    /// The rule it used to have could empty a block, and the caller then removed it. It cannot any
-    /// more: a cut needs a Latin letter beside the ideograph to happen at all, so at least that
-    /// letter survives. Nothing here decides whether a block exists, which is one less way for the
-    /// same picture to come back with different blocks.
+    /// The rule it used to have could empty a block, and the caller then removed it. That cannot
+    /// happen here: a cut needs a Latin letter beside the ideograph to happen at all, so at least
+    /// that letter survives and every block handed in is handed back.
+    ///
+    /// IT CAN STILL COST A BLOCK ITS LIFE FURTHER DOWN, which is the part worth knowing. This runs
+    /// before normalisation and <see cref="RemoveMisshapenBlocks"/> runs after it, and that filter
+    /// judges a box against how many characters are in it — so taking one character off can push a
+    /// box over <see cref="BoxShapeNoise"/>'s ratio and have it dropped there. Measured on the
+    /// screenshot corpus, exactly one capture of 256 loses a block this way: a Korean panel's "早E"
+    /// becomes "E", too little text for a box that wide, and goes. That reading is icon noise and
+    /// the other skill slots on the same screen read "E V+", so the outcome is right — but it is
+    /// the shape filter deleting it, not this, and a redesign of the icon heuristic has to account
+    /// for the coupling rather than assume text cleanup is free.
+    ///
+    /// None of it reintroduces a source-language dependency: neither this rule nor the shape filter
+    /// asks what the user picked, so the same picture still loses the same block on all four.
     /// </remarks>
     internal static List<OcrTextBlock> StripIconIdeographs(List<OcrTextBlock> blocks)
     {
