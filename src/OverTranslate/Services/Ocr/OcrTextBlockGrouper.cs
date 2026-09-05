@@ -600,7 +600,13 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
     {
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
-        if (TextSizeRatio(previous, current) < MinTextSizeRatio)
+
+        // Two size gates, not one. This is the floor — below it nothing can join on any evidence —
+        // and it is the lower of the ordinary figure and whatever the profile allows a set-solid
+        // pair. Everything between the two is decided further down, once the geometry has said
+        // whether the pair is set solid at all, because that is the only path a profile may relax.
+        var sizeRatio = TextSizeRatio(previous, current);
+        if (sizeRatio < Math.Min(MinTextSizeRatio, profile.TightlySetMinTextSizeRatio))
             return (false, "text size");
 
         // The gap can be negative, for exactly the reason it can horizontally in JudgeSameLine:
@@ -635,7 +641,7 @@ internal static class OcrTextBlockGrouper
         if (!isAlignedContinuation)
             return (false, "not aligned enough to continue");
 
-        return SentenceContinuationEvidence(previous, current, profile);
+        return SentenceContinuationEvidence(previous, current, profile, sizeRatio);
     }
 
     /// <summary>
@@ -683,7 +689,7 @@ internal static class OcrTextBlockGrouper
     }
 
     private static (bool Joined, string Rule) SentenceContinuationEvidence(
-        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile, double sizeRatio)
     {
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
@@ -703,6 +709,15 @@ internal static class OcrTextBlockGrouper
         if (EndsWithLabelColon(previousText) &&
             LineAdvanceRatio(previous, current) > SolidLineAdvance)
             return (false, "label colon");
+
+        // The ordinary size gate, for every pair that is not set solid. A profile may lower what it
+        // asks of lines sharing one leading and one edge; it may not lower what it asks of a pair
+        // that has neither — so a pair below the ordinary ratio only gets past here by being set
+        // solid, and then only the set-solid rule below can join it. Under a profile that lowers
+        // nothing this line never fires: the caller has already refused everything under the
+        // ordinary ratio, which is what keeps the standard mode's verdicts exactly as they were.
+        if (sizeRatio < MinTextSizeRatio && !IsSetSolidUnder(previous, current, profile))
+            return (false, "text size");
 
         if (HasUnclosedDelimiter(previousText) ||
             EndsWithContinuationPunctuation(previousText) ||

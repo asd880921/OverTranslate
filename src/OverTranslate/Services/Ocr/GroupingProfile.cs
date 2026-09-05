@@ -57,9 +57,19 @@ internal sealed record GroupingProfile(
     /// buys the same eight comic pairs and charges ten wrong joins to game panels for them, which
     /// is precisely the cost a declared mode exists to avoid. See
     /// <c>OcrTextBlockGrouper.IsSetSolidUnder</c>.</para>
+    ///
+    /// <para>The size ratio is lowered as well, and 0.80 is where the measurement put it. Hand
+    /// lettering is uneven — the same sentence's lines come back 0.83 to 0.88 of each other across
+    /// the ten comic pages — so the ordinary figure refuses speech that is plainly one size. Going
+    /// further was tried: 0.70 joins the last hand-marked group (a two-line bubble whose lines read
+    /// 0.71) and takes the corpus from 23 groups to the hand-marked 22, but it also adds nineteen
+    /// wrong joins across the other seven image sets when this mode is pointed at them — a
+    /// breadcrumb over its page title, a stat row over the row below it, three pairs of identical
+    /// level labels. One right answer for nineteen wrong ones is the wrong trade, so the last group
+    /// stays apart and 23 is the number this corpus reaches.</para>
     /// </remarks>
     public static GroupingProfile ComicArticle { get; } = new(
-        TightlySetMinTextSizeRatio: OrdinaryMinTextSizeRatio,
+        TightlySetMinTextSizeRatio: 0.80,
         WaiveLengthTestWhenSetSolid: true);
 
     /// <summary>

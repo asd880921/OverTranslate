@@ -995,6 +995,61 @@ public class OcrTextBlockGrouperTests
         Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle).Count);
     }
 
+    /// <summary>
+    /// Hand lettering's uneven size is accepted in comic mode, on the set-solid path only.
+    /// </summary>
+    /// <remarks>
+    /// The pair from comic-en.png: one sentence across two lines of the same bubble, whose glyphs
+    /// measure 0.86 of each other because they were drawn by hand. The ordinary gate asks 0.88 and
+    /// refuses it. The two lines are set solid — one leading, one edge — which is the only shape a
+    /// mode may relax.
+    /// </remarks>
+    [Fact]
+    public void UnevenHandLettering_JoinsInComicMode_OnTheSetSolidPath()
+    {
+        var previous = LineWithGlyphHeight("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0);
+        var current = LineWithGlyphHeight("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard).Count);
+        Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle));
+    }
+
+    /// <summary>
+    /// The relaxed size ratio reaches only pairs that are already set solid.
+    /// </summary>
+    /// <remarks>
+    /// The same two lines, moved out of line with each other by 0.6 line heights — inside the
+    /// ordinary alignment gate, outside the set-solid one. Comic mode must refuse this on the
+    /// ordinary size ratio, because the pair never gets onto the path the mode is allowed to relax.
+    /// This is the guard on "a profile lowers what it asks of set-solid lines, and nothing else".
+    /// </remarks>
+    [Fact]
+    public void TheRelaxedSizeRatio_DoesNotReachPairsThatAreNotSetSolid()
+    {
+        var previous = LineWithGlyphHeight("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0);
+        var current = LineWithGlyphHeight("YOU ENDED UP IN", x: 407, y: 780, width: 415, height: 58, glyph: 31.0);
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle, decisions);
+        var verdict = Assert.Single(decisions, decision => decision.Kind == "next");
+
+        Assert.Equal("text size", verdict.Rule);
+        Assert.InRange(verdict.AlignmentDelta, 0.35, 1.2);
+    }
+
+    /// <summary>One line whose glyph height is stated, for the tests about the size ratio.</summary>
+    private static OcrTextBlock LineWithGlyphHeight(
+        string text, double x, double y, double width, double height, double glyph)
+    {
+        var bounds = new Rect(x, y, width, height);
+        return new OcrTextBlock(
+            text,
+            bounds,
+            LayoutScript: OcrLayoutScript.Latin,
+            LayoutBounds: bounds,
+            LayoutGlyphHeight: glyph);
+    }
+
     /// <summary>One line with its layout geometry stated, so a fixture cannot be re-derived from its text.</summary>
     private static OcrTextBlock Line(string text, double x, double y, double width, double height)
     {
