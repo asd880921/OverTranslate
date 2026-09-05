@@ -908,7 +908,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // Everything between the library handing back its raw blocks and the caller getting usable ones.
     // One method rather than a chain repeated at each entry point: the order matters (see the
     // comments inside), and a second copy of it is the kind of thing that drifts a filter at a time.
-    private static List<OcrTextBlock> ApplyBlockFilters(
+    /// <remarks>
+    /// Internal rather than private so the source-language contract can be tested on the real chain
+    /// instead of one rebuilt in the test. Two rules in here have already drifted into being
+    /// language-dependent by accident — the lone-ideograph cleanup openly, and BoxShapeNoise by
+    /// reading a Bounds that normalisation had rewritten — and neither was caught by the tests that
+    /// covered those rules one at a time. A test that calls this method inherits whatever is added
+    /// to the chain later; one that lists the stages does not.
+    /// </remarks>
+    internal static List<OcrTextBlock> ApplyBlockFilters(
         TextBlock[] textBlocks, string normalizedLanguage, bool useCjkRenderMetrics, bool usesAutomaticLayout)
     {
         var converted = ConvertBlocks(textBlocks);
