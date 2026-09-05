@@ -913,6 +913,47 @@ public class OcrTextBlockGrouperTests
         Assert.Contains(grouped, block => block.Lines.Count == 2);
     }
 
+    /// <summary>
+    /// A row of figures under a label is a row, however closely it is set.
+    /// </summary>
+    /// <remarks>
+    /// The game character card from the corpus: a name and level over a hit-point count, set a line
+    /// apart and sharing a right edge. Every geometric test passes it — the advance here is 1.00 —
+    /// so only the content of the second line can say what it is.
+    /// </remarks>
+    [Fact]
+    public void ALineOfNothingButFigures_IsNotAContinuation()
+    {
+        var previous = Line("Lvl 100 M. Lvl 50 Narmaya", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("57687 199730/199730", x: 200, y: 50, width: 400, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("numeric row", verdict.Rule);
+        Assert.False(verdict.Joined);
+        Assert.True(verdict.LineAdvance <= 1.20, $"advance {verdict.LineAdvance:0.00} is inside the solid limit");
+    }
+
+    /// <summary>
+    /// A sentence that carries on with a figure in it is not a row of figures.
+    /// </summary>
+    /// <remarks>
+    /// The reason the test above asks for no letters rather than for a leading digit. A release note
+    /// wrapping onto "1.81 stabilizes the Error trait…" opens on a number and is still prose; the
+    /// rule must not read the first character and stop.
+    /// </remarks>
+    [Fact]
+    public void ASentenceContinuingOnAFigure_IsStillAContinuation()
+    {
+        var previous = Line("The Rust team is happy to announce a new version", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("1.81 stabilizes the Error trait in core", x: 100, y: 50, width: 500, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.NotEqual("numeric row", verdict.Rule);
+        Assert.True(verdict.Joined);
+    }
+
     /// <summary>One line with its layout geometry stated, so a fixture cannot be re-derived from its text.</summary>
     private static OcrTextBlock Line(string text, double x, double y, double width, double height)
     {

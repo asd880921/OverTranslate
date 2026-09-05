@@ -697,6 +697,9 @@ internal static class OcrTextBlockGrouper
         if (StartsWithListBullet(currentText))
             return (false, "list bullet");
 
+        if (IsNumericRow(currentText))
+            return (false, "numeric row");
+
         if (EndsWithLabelColon(previousText) &&
             LineAdvanceRatio(previous, current) > SolidLineAdvance)
             return (false, "label colon");
@@ -925,6 +928,36 @@ internal static class OcrTextBlockGrouper
     /// it.</para>
     /// </remarks>
     private static bool EndsWithLabelColon(string text) => text[^1] is ':' or '：';
+
+    /// <summary>
+    /// Whether a line is all figures: a row of a table or a card, not the rest of a sentence.
+    /// </summary>
+    /// <remarks>
+    /// <para>A game's character rows are the measured case — a name and level over a hit-point
+    /// count, flush right, one text size, a line apart — and the same shape turns up as a
+    /// spreadsheet's header over its first data row and an invoice's field names over their values.
+    /// Six of the corpus's wrong joins are this, and none of them can be reached by any leading
+    /// limit: they sit at 0.86 to 1.03 line heights, well inside where real wrapped text lives.
+    /// Nothing about the geometry says they are rows; only the content does.</para>
+    ///
+    /// <para>Asks for no letters at all rather than for a leading digit, because a wrapped sentence
+    /// often continues on a figure ("1.81 stabilizes the trait…") and would be refused by the
+    /// looser test. A digit somewhere is required too, so that a line of nothing but punctuation —
+    /// a stray closing bracket the detector split off — is left to the rules written for it.</para>
+    /// </remarks>
+    private static bool IsNumericRow(string text)
+    {
+        var hasDigit = false;
+
+        foreach (var character in text)
+        {
+            if (char.IsLetter(character))
+                return false;
+            hasDigit |= char.IsDigit(character);
+        }
+
+        return hasDigit;
+    }
 
     private static OcrTextBlock BuildGroup(List<OcrTextBlock> blocks)
     {
