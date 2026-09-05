@@ -378,18 +378,18 @@ internal static class OcrTextBlockGrouper
     /// English one read 0.09 — so the two populations overlapped and no threshold separated them.
     /// On the detector's own box they agree.
     /// </remarks>
-    /// <summary>
-    /// The horizontal centre of a line's detection box, for the centred-text alignment diagnostic.
-    /// </summary>
-    private static double CenterX(OcrTextBlock line) =>
-        line.LayoutBounds.X + line.LayoutBounds.Width / 2.0;
-
     private static double LineAdvanceRatio(OcrTextBlock previous, OcrTextBlock current)
     {
         var box = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
 
         return box > 0 ? (current.LayoutBounds.Y - previous.LayoutBounds.Y) / box : -1;
     }
+
+    /// <summary>
+    /// The horizontal centre of a line's detection box, for the centred-text alignment diagnostic.
+    /// </summary>
+    private static double CenterX(OcrTextBlock line) =>
+        line.LayoutBounds.X + line.LayoutBounds.Width / 2.0;
 
     private static (bool Joined, string Rule) JudgeNextLine(OcrTextBlock previous, OcrTextBlock current)
     {
