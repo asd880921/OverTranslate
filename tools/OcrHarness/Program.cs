@@ -1154,7 +1154,7 @@ if (args[0] == "--group-explain")
         // leading rule refuses it. All four are line heights, and none of them exist for "row".
         Console.WriteLine(
             "  --- next: align=left alignC=centre alignR=right alignMin=what the gate read, " +
-            "bar=leading limit ---");
+            "bar=wrapped-final-line limit, solid=this group's set-solid limit ---");
         foreach (var decision in decisions)
         {
             var verdict = decision.Joined ? "JOIN  " : "SPLIT ";
@@ -1167,7 +1167,7 @@ if (args[0] == "--group-explain")
                   $"alignR={decision.RightDelta,6:0.00} alignMin={decision.AlignmentDelta,6:0.00} " +
                   $"size={decision.TextSizeRatio:0.00} " +
                   $"width={decision.WidthRatio:0.00} adv={decision.LineAdvance,5:0.00} " +
-                  $"bar={decision.LeadingBar:0.00} " +
+                  $"bar={decision.LeadingBar:0.00} solid={decision.SolidBar:0.00} " +
                   $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
             Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
         }
