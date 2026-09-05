@@ -618,4 +618,62 @@ public class OcrTextBlockGrouperTests
     private static double LineAdvanceOf(OcrTextBlock previous, OcrTextBlock current) =>
         (current.LayoutBounds.Y - previous.LayoutBounds.Y) /
         ((previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0);
+
+    /// <summary>
+    /// The next-line diagnostic reports the misalignment on all three edges, not just the left one.
+    /// </summary>
+    /// <remarks>
+    /// Centred speech is the case the left-edge figure cannot describe: each line starts at a
+    /// different X because it holds a different number of letters, so the left delta grows with the
+    /// difference in width while the centres stay on top of each other. The verdict here is still
+    /// the one the current rules give — this test is about what the trace says, not about what was
+    /// decided — because the threshold work that follows is done off these numbers and cannot start
+    /// until they are visible.
+    /// </remarks>
+    [Fact]
+    public void NextLineDiagnostic_ReportsCentreAndRightDeltas_NotOnlyTheLeftEdge()
+    {
+        // Same centre (200), same 40px line height, one line half as wide as the other.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("WHY ARE", new Rect(160, 10, 80, 40)),
+            new("YOU PICKING ON", new Rect(120, 52, 160, 40)),
+        }.AsDetected();
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group(blocks, decisions);
+
+        var next = Assert.Single(decisions, decision => decision.Kind == "next");
+        Assert.Equal(1.00, next.LeftDelta, precision: 2);
+        Assert.Equal(0.00, next.CenterDelta, precision: 2);
+        Assert.Equal(1.00, next.RightDelta, precision: 2);
+    }
+
+    /// <summary>
+    /// A same-line verdict leaves the vertical-only fields empty rather than filling them with
+    /// whatever the horizontal case happens to have.
+    /// </summary>
+    /// <remarks>
+    /// The two kinds share one record and several of its fields already mean different things
+    /// (see <c>NextLineDecision</c>). The three added for the alignment work are not among them:
+    /// pooling a row's numbers into a next-line distribution is how a corpus run gets thrown away,
+    /// and it has happened twice.
+    /// </remarks>
+    [Fact]
+    public void SameLineDiagnostic_LeavesTheVerticalOnlyFieldsAtZero()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Send", new Rect(10, 10, 60, 30)),
+            new("to", new Rect(78, 12, 26, 26)),
+        }.AsDetected();
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group(blocks, decisions);
+
+        var row = Assert.Single(decisions, decision => decision.Kind == "row");
+        Assert.Equal(0, row.CenterDelta);
+        Assert.Equal(0, row.RightDelta);
+        Assert.Equal(0, row.LeadingBar);
+    }
 }

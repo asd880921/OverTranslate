@@ -1144,6 +1144,11 @@ if (args[0] == "--group-explain")
         // say so on its face.
         Console.WriteLine("  --- verdicts: row = same line left to right, next = the line below ---");
         Console.WriteLine("  --- gaps and advances in line heights ---");
+        // align is the left-edge delta, the one the alignment gate reads today; alignC and alignR
+        // are the same misalignment measured on the centres and on the right edges, and only a
+        // "next" verdict has them. bar is the advance a shorter final line is allowed before the
+        // leading rule refuses it. All four are line heights, and none of them exist for "row".
+        Console.WriteLine("  --- next: align=left alignC=centre alignR=right, bar=leading limit ---");
         foreach (var decision in decisions)
         {
             var verdict = decision.Joined ? "JOIN  " : "SPLIT ";
@@ -1152,8 +1157,10 @@ if (args[0] == "--group-explain")
                   $"overlap={decision.LeftDelta,5:0.00} width={decision.WidthRatio:0.00} " +
                   $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]"
                 : $"  next {verdict} vgap={decision.VerticalGap,6:0.00} " +
-                  $"align={decision.LeftDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
+                  $"align={decision.LeftDelta,6:0.00} alignC={decision.CenterDelta,6:0.00} " +
+                  $"alignR={decision.RightDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
                   $"width={decision.WidthRatio:0.00} adv={decision.LineAdvance,5:0.00} " +
+                  $"bar={decision.LeadingBar:0.00} " +
                   $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
             Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
         }

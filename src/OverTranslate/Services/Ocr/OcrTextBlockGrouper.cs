@@ -90,8 +90,12 @@ internal static class OcrTextBlockGrouper
     ///   field           Kind "next" (line below)        Kind "row" (same line, left to right)
     ///   VerticalGap     vertical gap between lines      HORIZONTAL gap between neighbours
     ///   LeftDelta       left-edge misalignment          vertical overlap rate, 0..1
+    ///   CenterDelta     centre misalignment             unused, 0
+    ///   RightDelta      right-edge misalignment         unused, 0
     ///   TextSizeRatio   glyph or box height ratio       unused, 0
     ///   LineAdvance     baseline advance                unused, 0
+    ///   LeadingBar      the advance bar it was judged   unused, 0
+    ///                   against                         
     ///   WidthRatio      width ratio                     width ratio
     /// </code>
     ///
@@ -110,9 +114,12 @@ internal static class OcrTextBlockGrouper
         OcrLayoutScript CurrentScript,
         double VerticalGap,
         double LeftDelta,
+        double CenterDelta,
+        double RightDelta,
         double TextSizeRatio,
         double WidthRatio,
         double LineAdvance,
+        double LeadingBar,
         bool Joined,
         string Rule);
 
@@ -287,8 +294,14 @@ internal static class OcrTextBlockGrouper
             current.LayoutScript,
             NormalizedGap(previous, current),
             VerticalOverlapRate(previous, current),
+            // Centre, right, size, advance and the leading bar are vertical quantities. A same-line
+            // verdict has no such thing to report, so they stay at zero and the harness does not
+            // print them for this kind.
+            0,
+            0,
             0,
             previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
+            0,
             0,
             joined,
             rule);
@@ -341,9 +354,12 @@ internal static class OcrTextBlockGrouper
             current.LayoutScript,
             (current.LayoutBounds.Y - previous.LayoutBounds.Bottom) / Math.Max(1, avgHeight),
             Math.Abs(previous.LayoutBounds.X - current.LayoutBounds.X) / Math.Max(1, avgHeight),
+            Math.Abs(CenterX(previous) - CenterX(current)) / Math.Max(1, avgHeight),
+            Math.Abs(previous.LayoutBounds.Right - current.LayoutBounds.Right) / Math.Max(1, avgHeight),
             TextSizeRatio(previous, current),
             previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
             LineAdvanceRatio(previous, current),
+            WrappedFinalLineAdvance,
             joined,
             rule));
 
@@ -362,6 +378,12 @@ internal static class OcrTextBlockGrouper
     /// English one read 0.09 — so the two populations overlapped and no threshold separated them.
     /// On the detector's own box they agree.
     /// </remarks>
+    /// <summary>
+    /// The horizontal centre of a line's detection box, for the centred-text alignment diagnostic.
+    /// </summary>
+    private static double CenterX(OcrTextBlock line) =>
+        line.LayoutBounds.X + line.LayoutBounds.Width / 2.0;
+
     private static double LineAdvanceRatio(OcrTextBlock previous, OcrTextBlock current)
     {
         var box = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
