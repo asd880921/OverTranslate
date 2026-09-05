@@ -597,10 +597,22 @@ public partial class OverlayWindow : Window
                     // reaching here without wrap means it already fits; leaving CharacterEllipsis on
                     // would only mean that a measurement being a pixel out costs the user a word.
                     TextTrimming = TextTrimming.None,
-                    // Top for a re-set group: the translation is shorter than the source more
-                    // often than not, and centring what is left inside a balloon leaves it
-                    // floating away from the line the reader's eye starts on.
-                    VerticalAlignment = reflowGroup ? VerticalAlignment.Top : VerticalAlignment.Center,
+                    // Centred, for a re-set group as much as for anything else. It was top-aligned
+                    // while this layout belonged to a mode the user had to go and choose: a comic
+                    // was the special case, and a translation shorter than the speech it replaces
+                    // reads better pinned to where the eye starts. That mode is now the default —
+                    // most of what anyone frames is prose of some kind — so the balance changed with
+                    // it: what sits in these boxes is ordinary text on an ordinary page far more
+                    // often than it is a balloon, and ordinary text centred in its own box is what
+                    // every other bubble on the overlay does.
+                    //
+                    // Deliberately unconditional. An alignment that depended on how much emptier the
+                    // box is than the text would be a second layout heuristic, and the problem it
+                    // would exist to solve — a stats page's body drifting down until it looks
+                    // attached to the label beneath it — has not been seen since the modes were
+                    // swapped. If it comes back, it gets designed then, on a case somebody has
+                    // actually looked at.
+                    VerticalAlignment = VerticalAlignment.Center,
                     FontFamily = new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 }
             };
