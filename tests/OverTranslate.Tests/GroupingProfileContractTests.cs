@@ -44,6 +44,23 @@ public class GroupingProfileContractTests
     }
 
     /// <summary>
+    /// An unset <see cref="CaptureLayoutMode"/> is 一般, which means the enum's first member is.
+    /// </summary>
+    /// <remarks>
+    /// Nothing in the app relies on this today — the settings property names its default, and the
+    /// toolbar reads the settings — but the member order is what a field, a struct, or a
+    /// <c>default</c> in a signature added later would land on, and landing on 介面 would be the v1
+    /// behaviour coming back through a door nobody was watching. The order is the claim; this is
+    /// what makes it one.
+    /// </remarks>
+    [Fact]
+    public void AnUnsetCaptureMode_IsTheDefaultOne()
+    {
+        Assert.Equal(CaptureLayoutMode.General, default(CaptureLayoutMode));
+        Assert.Same(GroupingProfile.General, GroupingProfile.For(default));
+    }
+
+    /// <summary>
     /// Every capture mode has an entry, including one added later.
     /// </summary>
     [Fact]
