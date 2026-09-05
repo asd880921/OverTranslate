@@ -804,6 +804,16 @@ internal static class OcrTextBlockGrouper
     /// wrapping, whatever its spacing. A speech bubble opening on one or two words is exactly that
     /// shape and exactly not that case, which is what <see cref="GroupingProfile"/> waives — for
     /// the mode where the user has said the capture is speech, and only there.</para>
+    ///
+    /// <para>The full wrap aspect, not the half the earlier branch used here. That was measured on
+    /// this corpus: halving it joins twenty-four more pairs, of which eight are comic speech and
+    /// thirteen are not — and ten of those thirteen are wrong. They are all one shape, a game
+    /// panel's control labels stacked in a column ("Move Camera" over "Open Map (Hold)"), which is
+    /// short, aligned, evenly spaced and not a sentence. The argument for halving it was that a
+    /// script writing eight characters where English writes twenty would be refused unfairly; the
+    /// Japanese and Korean subtitle sets say otherwise — they do not move at all when it is halved.
+    /// The eight comic pairs it would buy are bought instead by the mode that waives this test
+    /// altogether, without charging the panels for them.</para>
     /// </remarks>
     private static bool IsSetSolidUnder(
         OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
