@@ -190,6 +190,18 @@ public class OcrTextBlockGrouperTests
         Assert.Single(grouped);
     }
 
+    /// <summary>
+    /// Similar widths and nothing else is not evidence of a wrap.
+    /// </summary>
+    /// <remarks>
+    /// The 1.25 line advance here is this file's boilerplate — y=10 over y=40 at height 24, the
+    /// same rectangles the test fourteen lines above uses to assert the opposite verdict, where the
+    /// only difference is an unclosed 「 in the text. It is NOT a measured figure for how far apart
+    /// independent lines sit, and it must not be read as a ceiling for any threshold: the measured
+    /// figure for stacked independent rows is a settings panel's list at 1.47 to 1.58 line heights.
+    /// What this test guards is the rule, not the number — similar widths alone stay apart, while
+    /// the set-solid rule asks for tight leading and a shared edge on top of them.
+    /// </remarks>
     [Fact]
     public void KeepsAlignedIndependentLinesSeparateWhenWidthsAreSimilar()
     {
