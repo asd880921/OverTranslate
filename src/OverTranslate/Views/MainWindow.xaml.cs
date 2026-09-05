@@ -871,7 +871,8 @@ public partial class MainWindow : Window
                 workBitmap,
                 req.SourceLang,
                 cancellationToken,
-                req.IsVerticalText);
+                req.IsVerticalText,
+                req.LayoutMode);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -1087,7 +1088,8 @@ public partial class MainWindow : Window
                 workBitmap,
                 req.SourceLang,
                 cancellationToken,
-                req.IsVerticalText);
+                req.IsVerticalText,
+                req.LayoutMode);
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 

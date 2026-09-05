@@ -38,19 +38,26 @@ public class OcrService : IDisposable
 {
     private readonly OnnxOcrEngine _engine = new();
 
+    /// <param name="layoutMode">
+    /// What the user said this capture holds. The only thing it decides here is which thresholds
+    /// grouping runs on; where the translation is then placed is decided by the caller, which is
+    /// the one layer that reads the mode itself.
+    /// </param>
     public Task<List<OcrTextBlock>> RecognizeAsync(
         Bitmap bitmap,
         string sourceLanguage,
         CancellationToken cancellationToken = default,
-        bool verticalText = false)
+        bool verticalText = false,
+        CaptureLayoutMode layoutMode = CaptureLayoutMode.Standard)
     {
         if (!OcrLanguageRouter.IsSupported(sourceLanguage))
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
 
         var language = OcrLanguageRouter.Normalize(sourceLanguage);
+        var profile = GroupingProfile.For(layoutMode);
         return verticalText
-            ? RecognizeVerticalAsync(_engine, bitmap, language, cancellationToken)
-            : RecognizeAndGroupAsync(_engine, bitmap, language, cancellationToken);
+            ? RecognizeVerticalAsync(_engine, bitmap, language, profile, cancellationToken)
+            : RecognizeAndGroupAsync(_engine, bitmap, language, profile, cancellationToken);
     }
 
     /// <summary>
@@ -79,7 +86,12 @@ public class OcrService : IDisposable
         // 136px line "Arisa's a big meanie.", and the merged box — 220px in a 206px block — was
         // then thrown out as a collapse, taking the subtitle with it. Filtered afterwards the
         // subtitle is already tied to the noise and cannot be recovered.
-        return OcrTextBlockGrouper.Group(RejectUnconvincingBlocks(blocks));
+        //
+        // The live-screen path's own profile, and deliberately not the screenshot side's Standard.
+        // There is no toolbar in front of a running video, so there is no CaptureLayoutMode to
+        // honour here; taking one would mean a mode the user chose for a still capture silently
+        // steering frames it was never asked about.
+        return OcrTextBlockGrouper.Group(RejectUnconvincingBlocks(blocks), GroupingProfile.Realtime);
     }
 
     // Scenery the recogniser was not sure about. Only on this path: it is the realtime one, where
@@ -155,10 +167,11 @@ public class OcrService : IDisposable
         IOcrEngine engine,
         Bitmap bitmap,
         string sourceLanguage,
+        GroupingProfile profile,
         CancellationToken cancellationToken)
     {
         var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage, cancellationToken);
-        return OcrTextBlockGrouper.Group(blocks);
+        return OcrTextBlockGrouper.Group(blocks, profile);
     }
 
     /// <summary>
@@ -166,16 +179,24 @@ public class OcrService : IDisposable
     /// results back to the original image. The rightmost source column becomes the first detected
     /// row, preserving Japanese reading order.
     /// </summary>
+    /// <remarks>
+    /// The profile reaches the first pass — that is the horizontal grouper, running on the turned
+    /// picture, so the same rules and the same thresholds apply to it. It stops there: the column
+    /// merge below compares column against column, which is not the geometry any of those
+    /// thresholds were measured on, and handing it a relaxed number would be relaxing something
+    /// nobody has measured.
+    /// </remarks>
     internal static async Task<List<OcrTextBlock>> RecognizeVerticalAsync(
         IOcrEngine engine,
         Bitmap bitmap,
         string sourceLanguage,
+        GroupingProfile profile,
         CancellationToken cancellationToken)
     {
         using var rotated = new Bitmap(bitmap);
         rotated.RotateFlip(RotateFlipType.Rotate270FlipNone);
 
-        var blocks = await RecognizeAndGroupAsync(engine, rotated, sourceLanguage, cancellationToken);
+        var blocks = await RecognizeAndGroupAsync(engine, rotated, sourceLanguage, profile, cancellationToken);
         var columns = blocks.Select(block => block with
         {
             Bounds = MapVerticalBoundsBack(block.Bounds, bitmap.Width),

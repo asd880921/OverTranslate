@@ -61,10 +61,22 @@ public class SourceLanguageContractTests
         Detected("設定はいつでも戻せます", 40, 358, 300, 30),
     ];
 
-    [Fact]
-    public void Auto_English_Japanese_Chinese_ProduceSameGrouping_ForAMixedCapture()
+    /// <summary>Both capture modes. The contract has to hold inside each of them, separately.</summary>
+    /// <remarks>
+    /// A mode changes how far the thresholds are relaxed. If it were ever allowed to change them
+    /// per language as well, this contract would come apart in one mode while staying green in the
+    /// other — so the modes are a dimension of the contract, not a thing tested beside it.
+    /// </remarks>
+    public static TheoryData<CaptureLayoutMode> LayoutModes() =>
+        new() { CaptureLayoutMode.Standard, CaptureLayoutMode.ComicArticle };
+
+    [Theory]
+    [MemberData(nameof(LayoutModes))]
+    public void Auto_English_Japanese_Chinese_ProduceSameGrouping_ForAMixedCapture(
+        CaptureLayoutMode mode)
     {
-        var results = SourceLanguages.ToDictionary(language => language, GroupAs);
+        var results = SourceLanguages.ToDictionary(
+            language => language, language => GroupAs(language, Capture(), mode));
 
         var reference = results["AUTO"];
         foreach (var language in SourceLanguages)
@@ -91,8 +103,10 @@ public class SourceLanguageContractTests
     /// The same contract on a capture whose text is entirely Japanese, where the CJK render
     /// normalisation applies to every block rather than a few.
     /// </summary>
-    [Fact]
-    public void Auto_English_Japanese_Chinese_ProduceSameGrouping_ForAJapaneseParagraph()
+    [Theory]
+    [MemberData(nameof(LayoutModes))]
+    public void Auto_English_Japanese_Chinese_ProduceSameGrouping_ForAJapaneseParagraph(
+        CaptureLayoutMode mode)
     {
         TextBlock[] Paragraph() =>
         [
@@ -103,7 +117,8 @@ public class SourceLanguageContractTests
         ];
 
         var texts = SourceLanguages
-            .Select(language => GroupAs(language, Paragraph()).Select(block => block.Text).ToList())
+            .Select(language => GroupAs(language, Paragraph(), mode)
+                .Select(block => block.Text).ToList())
             .ToList();
 
         Assert.All(texts, actual => Assert.Equal(texts[0], actual));
@@ -134,14 +149,15 @@ public class SourceLanguageContractTests
         Assert.Contains(kept, block => block.Text == "闇");
     }
 
-    private static List<OcrTextBlock> GroupAs(string language) => GroupAs(language, Capture());
-
-    private static List<OcrTextBlock> GroupAs(string language, TextBlock[] capture) =>
-        OcrTextBlockGrouper.Group(OnnxOcrEngine.ApplyBlockFilters(
-            capture,
-            language,
-            OcrLanguageRouter.UsesCjkOnnx(language),
-            OcrLanguageRouter.UsesAutomaticLayout(language)));
+    private static List<OcrTextBlock> GroupAs(
+        string language, TextBlock[] capture, CaptureLayoutMode mode) =>
+        OcrTextBlockGrouper.Group(
+            OnnxOcrEngine.ApplyBlockFilters(
+                capture,
+                language,
+                OcrLanguageRouter.UsesCjkOnnx(language),
+                OcrLanguageRouter.UsesAutomaticLayout(language)),
+            GroupingProfile.For(mode));
 
     /// <summary>One detector box, in the shape the library hands over.</summary>
     private static TextBlock Detected(string text, int x, int y, int width, int height) =>

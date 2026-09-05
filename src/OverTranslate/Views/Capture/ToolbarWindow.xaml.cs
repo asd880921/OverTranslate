@@ -5,6 +5,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Services.Ocr;
 using OverTranslate.Services.Providers;
 
 namespace OverTranslate.Views.Capture;
@@ -597,9 +598,28 @@ public partial class ToolbarWindow : Window
     }
 }
 
-public record TranslateRequest(string SourceLang, string TargetLang, bool IsVerticalText);
+/// <param name="LayoutMode">
+/// What the user says the framed capture holds. Standard until the toolbar grows the control that
+/// asks — the seam is wired first so that the step which changes what grouping does can be measured
+/// on its own.
+/// </param>
+public record TranslateRequest(
+    string SourceLang,
+    string TargetLang,
+    bool IsVerticalText,
+    CaptureLayoutMode LayoutMode = CaptureLayoutMode.Standard);
 
-public record CopyTextRequest(CopyTextKind Kind, string SourceLang, bool IsVerticalText);
+/// <inheritdoc cref="TranslateRequest" path="/param[@name='LayoutMode']"/>
+/// <remarks>
+/// Copying reads the region through the same recogniser and fills the same _lastOcrBlocks the
+/// translation does, so it has to be grouped the same way. Left off, the text a user copies would
+/// come apart differently from the text they just had translated, out of the same capture.
+/// </remarks>
+public record CopyTextRequest(
+    CopyTextKind Kind,
+    string SourceLang,
+    bool IsVerticalText,
+    CaptureLayoutMode LayoutMode = CaptureLayoutMode.Standard);
 
 public enum CopyTextKind
 {

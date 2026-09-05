@@ -1027,7 +1027,7 @@ if (args[0] == "--reject-audit")
         framesLosing++;
         droppedTotal += dropped.Count;
 
-        var groupedUnfiltered = OcrTextBlockGrouper.Group(raw);
+        var groupedUnfiltered = OcrTextBlockGrouper.Group(raw, GroupingProfile.Realtime);
 
         foreach (var block in dropped)
         {
@@ -1119,8 +1119,12 @@ if (args[0] == "--group-explain")
             if (raw.Count == 0) { Console.WriteLine("  (nothing survived)"); continue; }
         }
 
+        // The profile the flow named above would really have used. Realtime has its own and never
+        // takes the screenshot side's, so printing verdicts from the wrong one would be tuning
+        // against thresholds the app does not run.
+        var explainProfile = harnessRealtime ? GroupingProfile.Realtime : GroupingProfile.Standard;
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        var grouped = OcrTextBlockGrouper.Group(raw, decisions);
+        var grouped = OcrTextBlockGrouper.Group(raw, explainProfile, decisions);
 
         Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
 
@@ -1189,7 +1193,7 @@ if (args[0] == "--vertical-explain")
 
         using var image = new Bitmap(path);
         var columns = await OcrService.RecognizeVerticalAsync(
-            verticalEngine, image, harnessLanguage, CancellationToken.None);
+            verticalEngine, image, harnessLanguage, GroupingProfile.Standard, CancellationToken.None);
 
         Console.WriteLine(
             $"VERTICAL	{path}	lang={harnessLanguage}	columns={columns.Count}" +
@@ -1356,7 +1360,7 @@ if (args[0] == "--roi-stability")
             .ToList();
 
         var read = await roiEngine.RecognizeAsync(crop, harnessLanguage);
-        var groups = OcrTextBlockGrouper.Group(read).Count;
+        var groups = OcrTextBlockGrouper.Group(read, GroupingProfile.Standard).Count;
 
         var blocks = read
             .Select(block => (
@@ -1630,7 +1634,7 @@ if (args[0] == "--roi-snap")
         // supposed to see a whole layout. It is also where this design's own risk lives — those
         // rules now see content the user did not frame. Filtering first would trade that for the
         // opposite problem, a layout with holes in it.
-        var grouped = OcrTextBlockGrouper.Group(read);
+        var grouped = OcrTextBlockGrouper.Group(read, GroupingProfile.Standard);
 
         var all = grouped
             .Select(block => (
@@ -1975,7 +1979,7 @@ if (args[0] == "--roi-fullframe")
         var read = ffSession.Recognize(kept);
         recognitionWatch.Stop();
 
-        var groups = OcrTextBlockGrouper.Group(read).Count;
+        var groups = OcrTextBlockGrouper.Group(read, GroupingProfile.Standard).Count;
 
         // Today's behaviour, for the same selection: crop, detect on the crop, recognise, group.
         using var crop = ffSource.Clone(logical, System.Drawing.Imaging.PixelFormat.Format32bppArgb);

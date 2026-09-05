@@ -18,7 +18,13 @@ namespace OverTranslate.Services.Ocr;
 /// </remarks>
 internal static class OcrTextBlockGrouper
 {
-    public static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> blocks) => Group(blocks, null);
+    /// <param name="profile">
+    /// The thresholds this pass runs on. Required rather than defaulted: which profile a call
+    /// means is the one thing about it that must not be inherited by accident, and the screenshot
+    /// and live-screen paths are supposed to be able to diverge (see <see cref="GroupingProfile"/>).
+    /// </param>
+    internal static List<OcrTextBlock> Group(
+        IReadOnlyList<OcrTextBlock> blocks, GroupingProfile profile) => Group(blocks, profile, null);
 
     /// <param name="decisions">
     /// Collects one entry per line pair the next-line test was asked about, with the geometry it
@@ -26,9 +32,17 @@ internal static class OcrTextBlockGrouper
     /// thresholds cannot be tuned from the grouped output alone — it shows what was joined, never
     /// how close the rest came to being.
     /// </param>
+    /// <inheritdoc cref="Group(IReadOnlyList{OcrTextBlock}, GroupingProfile)" path="/param[@name='profile']"/>
     internal static List<OcrTextBlock> Group(
-        IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions)
+        IReadOnlyList<OcrTextBlock> blocks,
+        GroupingProfile profile,
+        List<NextLineDecision>? decisions)
     {
+        // Nothing reads it yet: the two fields belong to rules that arrive in later steps, and this
+        // step is the wiring on its own, so that the step which does change behaviour has a corpus
+        // run behind it that means something. Do not "simplify" it away.
+        _ = profile;
+
         AssertLayoutGeometryFilled(blocks);
 
         if (blocks.Count <= 1)
@@ -276,6 +290,16 @@ internal static class OcrTextBlockGrouper
             : (false, "horizontal gap");
     }
 
+    /// <summary>
+    /// How close in text size two lines have to be before one can be the other wrapping.
+    /// </summary>
+    /// <remarks>
+    /// Named rather than written into the test because <see cref="GroupingProfile"/> quotes it: a
+    /// profile that says "the ordinary figure" has to be equal to the ordinary figure, and two
+    /// copies of 0.88 in two files is one of them being moved on its own eventually.
+    /// </remarks>
+    internal const double MinTextSizeRatio = 0.88;
+
     /// <inheritdoc cref="SharesVisualRow"/>
     private const double MinimumRowHeightRatio = 0.5;
 
@@ -394,7 +418,7 @@ internal static class OcrTextBlockGrouper
     private static (bool Joined, string Rule) JudgeNextLine(OcrTextBlock previous, OcrTextBlock current)
     {
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
-        if (TextSizeRatio(previous, current) < 0.88)
+        if (TextSizeRatio(previous, current) < MinTextSizeRatio)
             return (false, "text size");
 
         // The gap can be negative, for exactly the reason it can horizontally in JudgeSameLine:

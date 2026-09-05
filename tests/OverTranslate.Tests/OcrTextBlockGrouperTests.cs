@@ -420,7 +420,7 @@ public class OcrTextBlockGrouperTests
     }
 
     private static List<OcrTextBlock> GroupDetected(IReadOnlyList<OcrTextBlock> blocks) =>
-        OcrTextBlockGrouper.Group(blocks.AsDetected());
+        OcrTextBlockGrouper.Group(blocks.AsDetected(), GroupingProfile.Standard);
 
     /// <summary>
     /// Symptom B: two lines whose detection boxes are exactly the same size, one Latin and one CJK.
@@ -528,7 +528,7 @@ public class OcrTextBlockGrouperTests
         Assert.True(16 / 40.0 < SameLineGapThreshold.Fallback);
         Assert.True(16 / 32.8 > SameLineGapThreshold.Fallback);
 
-        var grouped = OcrTextBlockGrouper.Group([previous, current]);
+        var grouped = OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard);
 
         Assert.Equal("今日天気", Assert.Single(grouped).Text);
     }
@@ -554,7 +554,7 @@ public class OcrTextBlockGrouperTests
             x += 60;
         }
 
-        var grouped = OcrTextBlockGrouper.Group(boxes);
+        var grouped = OcrTextBlockGrouper.Group(boxes, GroupingProfile.Standard);
 
         Assert.Equal(
             ["Alpha beta", "Gamma delta", "Epsilon zeta", "Eta theta"],
@@ -611,7 +611,7 @@ public class OcrTextBlockGrouperTests
         Assert.True(44 / 34.0 < 1.38);
         Assert.True(44 / 27.9 > 1.38);
 
-        var merged = Assert.Single(OcrTextBlockGrouper.Group([previous, current]));
+        var merged = Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard));
         Assert.Equal(2, merged.Lines.Count);
     }
 
@@ -641,7 +641,7 @@ public class OcrTextBlockGrouperTests
         }.AsDetected();
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        OcrTextBlockGrouper.Group(blocks, decisions);
+        OcrTextBlockGrouper.Group(blocks, GroupingProfile.Standard, decisions);
 
         var next = Assert.Single(decisions, decision => decision.Kind == "next");
         Assert.Equal(1.00, next.LeftDelta, precision: 2);
@@ -669,7 +669,7 @@ public class OcrTextBlockGrouperTests
         }.AsDetected();
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        OcrTextBlockGrouper.Group(blocks, decisions);
+        OcrTextBlockGrouper.Group(blocks, GroupingProfile.Standard, decisions);
 
         var row = Assert.Single(decisions, decision => decision.Kind == "row");
         Assert.Equal(0, row.CenterDelta);
