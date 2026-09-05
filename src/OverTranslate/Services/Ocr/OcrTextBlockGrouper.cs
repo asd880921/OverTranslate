@@ -78,9 +78,29 @@ internal static class OcrTextBlockGrouper
     }
 
     /// <summary>
-    /// One next-line verdict, with its geometry in line heights so numbers from captures of
+    /// One grouping verdict, with its geometry in line heights so numbers from captures of
     /// different sizes can be read side by side.
     /// </summary>
+    /// <remarks>
+    /// TWO KINDS SHARE THESE FIELDS AND DO NOT FILL THEM WITH THE SAME QUANTITIES. Anything
+    /// aggregating a run has to split on <c>Kind</c> first; pooling the two mixes a horizontal
+    /// measurement into a vertical distribution and reads as a pile of zeroes at one end.
+    ///
+    /// <code>
+    ///   field           Kind "next" (line below)        Kind "row" (same line, left to right)
+    ///   VerticalGap     vertical gap between lines      HORIZONTAL gap between neighbours
+    ///   LeftDelta       left-edge misalignment          vertical overlap rate, 0..1
+    ///   TextSizeRatio   glyph or box height ratio       unused, 0
+    ///   LineAdvance     baseline advance                unused, 0
+    ///   WidthRatio      width ratio                     width ratio
+    /// </code>
+    ///
+    /// Renaming the fields per kind means two records and two code paths through the grouper for
+    /// what is one diagnostic; naming them for the vertical case and documenting the reuse is the
+    /// cheaper honest option. <c>OcrHarness --group-explain</c> prints each kind with its own
+    /// labels, and must keep doing so.
+    /// </remarks>
+    /// <param name="Kind">"next" for a line-below verdict, "row" for a same-line one.</param>
     /// <param name="Rule">Which test decided, whether it joined or refused.</param>
     internal readonly record struct NextLineDecision(
         string Kind,

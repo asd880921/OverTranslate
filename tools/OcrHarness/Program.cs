@@ -35,10 +35,10 @@ if (args.Length == 0)
     Console.Error.WriteLine("       OcrHarness --margin-scale-grid <wholescreen.png> [more.png ...]");
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
     Console.Error.WriteLine("       OcrHarness --group-explain <image.png> [more.png ...]");
-    Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
+    Console.Error.WriteLine("                  (every same-line and next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
     Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
-    Console.Error.WriteLine("                  (every next-line verdict with the geometry it judged on)");
+    Console.Error.WriteLine("                  (the vertical pipeline's columns and their text, which --group-explain never runs)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (what the confidence filter drops, and what a line would have reclaimed)");
     Console.Error.WriteLine("       OcrHarness --xlate-test   (network translation/resilience check, no OCR)");
@@ -1136,14 +1136,25 @@ if (args[0] == "--group-explain")
         for (var i = 0; i < grouped.Count; i++)
             Console.WriteLine($"  [{i}] lines={grouped[i].Lines.Count}  {grouped[i].Text}");
 
-        Console.WriteLine("  --- next-line verdicts (gap/align in line heights) ---");
+        // Each kind printed with the labels for what it actually measured. The two share a record
+        // (see NextLineDecision) and fill several of its fields with different quantities, so one
+        // format for both would put a horizontal gap under a heading saying "vertical" and print
+        // two columns of zeroes that read as measurements. The threshold work on this branch is
+        // aggregated out of these lines, and a run that has to be split on Kind afterwards should
+        // say so on its face.
+        Console.WriteLine("  --- verdicts: row = same line left to right, next = the line below ---");
+        Console.WriteLine("  --- gaps and advances in line heights ---");
         foreach (var decision in decisions)
         {
-            Console.WriteLine(
-                $"  {decision.Kind,-4} {(decision.Joined ? "JOIN  " : "SPLIT ")} gap={decision.VerticalGap,6:0.00} " +
-                $"align={decision.LeftDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
-                $"width={decision.WidthRatio:0.00} adv={decision.LineAdvance,5:0.00} " +
-                $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
+            var verdict = decision.Joined ? "JOIN  " : "SPLIT ";
+            Console.WriteLine(decision.Kind == "row"
+                ? $"  row  {verdict} hgap={decision.VerticalGap,6:0.00} " +
+                  $"overlap={decision.LeftDelta,5:0.00} width={decision.WidthRatio:0.00} " +
+                  $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]"
+                : $"  next {verdict} vgap={decision.VerticalGap,6:0.00} " +
+                  $"align={decision.LeftDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
+                  $"width={decision.WidthRatio:0.00} adv={decision.LineAdvance,5:0.00} " +
+                  $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
             Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
         }
     }
