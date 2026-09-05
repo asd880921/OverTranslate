@@ -45,13 +45,25 @@ public class OverlayPlacementTests
         Assert.Equal(OverlayLayoutIntent.Default, Assert.Single(placed).LayoutIntent);
     }
 
+    /// <summary>
+    /// design.md §11.1 #3 — after placement, a horizontal standard capture holds nothing that
+    /// still needs re-setting as a group: each source line is back in its own box.
+    /// </summary>
+    /// <remarks>
+    /// What the translator was asked is unaffected, and that is the point of doing this here.
+    /// The group went to the engine whole and is still whole in the list the toolbar copies from;
+    /// only the drawing is per line.
+    /// </remarks>
     [Fact]
-    public void StandardMode_DrawsEveryBlockTheWayItAlwaysWas()
+    public void StandardMode_PutsEachSourceLineBackInItsOwnBox()
     {
         var placed = OverlayPlacement.Place(
             [Group(TwoLines)], CaptureLayoutMode.Standard, verticalText: false);
 
-        Assert.Equal(OverlayLayoutIntent.Default, Assert.Single(placed).LayoutIntent);
+        Assert.Equal(2, placed.Count);
+        Assert.Equal(TwoLines, placed.Select(block => block.Bounds));
+        Assert.All(placed, block => Assert.Equal(OverlayLayoutIntent.Default, block.LayoutIntent));
+        Assert.All(placed, block => Assert.Null(block.SourceLineBounds));
     }
 
     /// <summary>
@@ -64,7 +76,8 @@ public class OverlayPlacementTests
         var placed = OverlayPlacement.Place(
             [Group(TwoLines)], (CaptureLayoutMode)99, verticalText: false);
 
-        Assert.Equal(OverlayLayoutIntent.Default, Assert.Single(placed).LayoutIntent);
+        Assert.Equal(2, placed.Count);
+        Assert.All(placed, block => Assert.Equal(OverlayLayoutIntent.Default, block.LayoutIntent));
     }
 
     // ---- design.md §8.5.1: what vertical text is not allowed to be put through ----

@@ -31,9 +31,12 @@ internal static class OverlayPlacement
         {
             CaptureLayoutMode.ComicArticle => [.. blocks.Select(AsGroupReflow)],
 
-            // Standard, and anything a future release adds that this build does not know: leaving a
-            // capture drawn the way it has always been drawn is the safe answer to an unknown mode.
-            _ => [.. blocks],
+            // Standard, and anything a future release adds that this build does not know. Grouping
+            // exists so that a wrapped sentence reaches the translator whole; drawing it whole is a
+            // separate question and the answer here is no — the lines go back where the page had
+            // them. An unknown mode gets the same treatment, which is the one that leaves an
+            // ordinary screenful of text looking like the screenful it was.
+            _ => GroupedTranslationLines.SplitOntoSourceLines(blocks),
         };
     }
 
