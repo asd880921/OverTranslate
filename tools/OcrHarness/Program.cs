@@ -91,6 +91,25 @@ args = [.. args.Where(argument =>
     argument is not ("--interface" or "--general" or "--comic"))];
 args = [.. args.Where(argument => argument != "--realtime")];
 
+// The thresholds the ROI sweeps group on, written out here rather than borrowed from the product.
+//
+// Those sweeps are about the detector — where the box lands, how stable it is across scales, what a
+// full frame costs — and they group only so that a "groups sent to translation" figure can sit
+// beside the detection numbers as a coarse sanity check. Grouping is not what they are measuring.
+//
+// They used to quote the interface mode's profile, which was fine while nobody moved it. The step
+// that tightens that mode is what makes it not fine: a sweep run before it and a sweep run after it
+// would differ for a reason that has nothing to do with the detector, and neither run says which.
+// A diagnostic tool's baseline belongs in the diagnostic tool.
+//
+// Not GroupingProfile.Vertical either, though its figures happen to match today: the name would say
+// these sweeps read vertical text, and ten minutes of somebody's confusion is a worse price than
+// two literals. Positional, so that a profile growing a field stops compiling here and somebody has
+// to decide what this baseline should say about it.
+var harnessGroupingBaseline = new GroupingProfile(
+    TightlySetMinTextSizeRatio: 0.88,
+    WaiveLengthTestWhenSetSolid: false);
+
 // Which language to read as. It picks the recognition model, and that is not a detail on a Korean
 // dump: the general model carries no Hangul at all, so a Korean frame read as EN comes back as
 // whatever Latin and Han the recogniser can force onto the shapes. The detector is shared, so this
@@ -1390,7 +1409,7 @@ if (args[0] == "--roi-stability")
             .ToList();
 
         var read = await roiEngine.RecognizeAsync(crop, harnessLanguage);
-        var groups = OcrTextBlockGrouper.Group(read, GroupingProfile.Interface).Count;
+        var groups = OcrTextBlockGrouper.Group(read, harnessGroupingBaseline).Count;
 
         var blocks = read
             .Select(block => (
@@ -1664,7 +1683,7 @@ if (args[0] == "--roi-snap")
         // supposed to see a whole layout. It is also where this design's own risk lives — those
         // rules now see content the user did not frame. Filtering first would trade that for the
         // opposite problem, a layout with holes in it.
-        var grouped = OcrTextBlockGrouper.Group(read, GroupingProfile.Interface);
+        var grouped = OcrTextBlockGrouper.Group(read, harnessGroupingBaseline);
 
         var all = grouped
             .Select(block => (
@@ -2009,7 +2028,7 @@ if (args[0] == "--roi-fullframe")
         var read = ffSession.Recognize(kept);
         recognitionWatch.Stop();
 
-        var groups = OcrTextBlockGrouper.Group(read, GroupingProfile.Interface).Count;
+        var groups = OcrTextBlockGrouper.Group(read, harnessGroupingBaseline).Count;
 
         // Today's behaviour, for the same selection: crop, detect on the crop, recognise, group.
         using var crop = ffSource.Clone(logical, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
