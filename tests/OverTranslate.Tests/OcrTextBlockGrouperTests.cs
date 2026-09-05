@@ -432,7 +432,7 @@ public class OcrTextBlockGrouperTests
     }
 
     private static List<OcrTextBlock> GroupDetected(IReadOnlyList<OcrTextBlock> blocks) =>
-        OcrTextBlockGrouper.Group(blocks.AsDetected(), GroupingProfile.Standard);
+        OcrTextBlockGrouper.Group(blocks.AsDetected(), GroupingProfile.Interface);
 
     /// <summary>
     /// Symptom B: two lines whose detection boxes are exactly the same size, one Latin and one CJK.
@@ -540,7 +540,7 @@ public class OcrTextBlockGrouperTests
         Assert.True(16 / 40.0 < SameLineGapThreshold.Fallback);
         Assert.True(16 / 32.8 > SameLineGapThreshold.Fallback);
 
-        var grouped = OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard);
+        var grouped = OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface);
 
         Assert.Equal("今日天気", Assert.Single(grouped).Text);
     }
@@ -566,7 +566,7 @@ public class OcrTextBlockGrouperTests
             x += 60;
         }
 
-        var grouped = OcrTextBlockGrouper.Group(boxes, GroupingProfile.Standard);
+        var grouped = OcrTextBlockGrouper.Group(boxes, GroupingProfile.Interface);
 
         Assert.Equal(
             ["Alpha beta", "Gamma delta", "Epsilon zeta", "Eta theta"],
@@ -623,7 +623,7 @@ public class OcrTextBlockGrouperTests
         Assert.True(44 / 34.0 < 1.38);
         Assert.True(44 / 27.9 > 1.38);
 
-        var merged = Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard));
+        var merged = Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface));
         Assert.Equal(2, merged.Lines.Count);
     }
 
@@ -821,7 +821,7 @@ public class OcrTextBlockGrouperTests
         var current = Line("YOU PICKING ON THE GOBLIN", x: 100, y: 50, width: 400, height: 40);
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard, decisions);
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface, decisions);
         var verdict = Assert.Single(decisions, decision => decision.Kind == "next");
 
         Assert.NotEqual("set solid", verdict.Rule);
@@ -844,7 +844,7 @@ public class OcrTextBlockGrouperTests
         var titleBottom = Line("「新宿着陸計画」DAY2 チケット受付中", x: 1339, y: 650, width: 405, height: 33);
 
         var grouped = OcrTextBlockGrouper.Group(
-            [titleTop, otherColumn, titleBottom], GroupingProfile.Standard);
+            [titleTop, otherColumn, titleBottom], GroupingProfile.Interface);
 
         Assert.Equal(2, grouped.Count);
         Assert.Contains(grouped, block => block.Lines.Count == 2);
@@ -873,7 +873,7 @@ public class OcrTextBlockGrouperTests
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
         OcrTextBlockGrouper.Group(
-            [headline, kicker, nextHeadline], GroupingProfile.Standard, decisions);
+            [headline, kicker, nextHeadline], GroupingProfile.Interface, decisions);
 
         // The pair that skips the standfirst is never judged at all: it is refused before any rule
         // is asked, which is what "nothing lies between" means.
@@ -902,7 +902,7 @@ public class OcrTextBlockGrouperTests
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
         var grouped = OcrTextBlockGrouper.Group(
-            [first, beside, second], GroupingProfile.Standard, decisions);
+            [first, beside, second], GroupingProfile.Interface, decisions);
 
         Assert.Contains(
             decisions,
@@ -970,9 +970,9 @@ public class OcrTextBlockGrouperTests
         var previous = Line("WHY ARE", x: 320, y: 305, width: 201, height: 52);
         var current = Line("YOU PICKING ON", x: 244, y: 358, width: 356, height: 50);
 
-        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard).Count);
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
 
-        var comic = OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle);
+        var comic = OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General);
         Assert.Single(comic);
         Assert.Equal("WHY ARE YOU PICKING ON", comic[0].Text);
     }
@@ -992,7 +992,7 @@ public class OcrTextBlockGrouperTests
         var previous = Line("WHY ARE", x: 320, y: 305, width: 201, height: 52);
         var current = Line("YOU PICKING ON", x: 275, y: 358, width: 356, height: 50);
 
-        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle).Count);
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General).Count);
     }
 
     /// <summary>
@@ -1010,8 +1010,8 @@ public class OcrTextBlockGrouperTests
         var previous = LineWithGlyphHeight("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0);
         var current = LineWithGlyphHeight("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0);
 
-        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard).Count);
-        Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle));
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
+        Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General));
     }
 
     /// <summary>
@@ -1030,7 +1030,7 @@ public class OcrTextBlockGrouperTests
         var current = LineWithGlyphHeight("YOU ENDED UP IN", x: 407, y: 780, width: 415, height: 58, glyph: 31.0);
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.ComicArticle, decisions);
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General, decisions);
         var verdict = Assert.Single(decisions, decision => decision.Kind == "next");
 
         Assert.Equal("text size", verdict.Rule);
@@ -1068,7 +1068,7 @@ public class OcrTextBlockGrouperTests
         OcrTextBlock previous, OcrTextBlock current)
     {
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard, decisions);
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface, decisions);
         return Assert.Single(decisions, decision => decision.Kind == "next");
     }
 
@@ -1094,7 +1094,7 @@ public class OcrTextBlockGrouperTests
         }.AsDetected();
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        OcrTextBlockGrouper.Group(blocks, GroupingProfile.Standard, decisions);
+        OcrTextBlockGrouper.Group(blocks, GroupingProfile.Interface, decisions);
 
         var next = Assert.Single(decisions, decision => decision.Kind == "next");
         Assert.Equal(1.00, next.LeftDelta, precision: 2);
@@ -1122,7 +1122,7 @@ public class OcrTextBlockGrouperTests
         }.AsDetected();
 
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        OcrTextBlockGrouper.Group(blocks, GroupingProfile.Standard, decisions);
+        OcrTextBlockGrouper.Group(blocks, GroupingProfile.Interface, decisions);
 
         var row = Assert.Single(decisions, decision => decision.Kind == "row");
         Assert.Equal(0, row.CenterDelta);

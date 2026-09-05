@@ -48,7 +48,7 @@ public class OcrService : IDisposable
         string sourceLanguage,
         CancellationToken cancellationToken = default,
         bool verticalText = false,
-        CaptureLayoutMode layoutMode = CaptureLayoutMode.Standard)
+        CaptureLayoutMode layoutMode = CaptureLayoutMode.General)
     {
         if (!OcrLanguageRouter.IsSupported(sourceLanguage))
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));

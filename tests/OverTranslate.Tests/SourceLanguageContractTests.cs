@@ -68,7 +68,7 @@ public class SourceLanguageContractTests
     /// other — so the modes are a dimension of the contract, not a thing tested beside it.
     /// </remarks>
     public static TheoryData<CaptureLayoutMode> LayoutModes() =>
-        new() { CaptureLayoutMode.Standard, CaptureLayoutMode.ComicArticle };
+        new() { CaptureLayoutMode.Interface, CaptureLayoutMode.General };
 
     [Theory]
     [MemberData(nameof(LayoutModes))]

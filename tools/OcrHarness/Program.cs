@@ -34,10 +34,11 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --margin-scale-grid <wholescreen.png> [more.png ...]");
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
-    Console.Error.WriteLine("       OcrHarness --group-explain [--comic] <image.png> [more.png ...]");
+    Console.Error.WriteLine("       OcrHarness --group-explain [--interface] <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (every same-line and next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
-    Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
+    Console.Error.WriteLine("                  (一般 mode by default, as the app is; --interface for the other one)");
+    Console.Error.WriteLine("       OcrHarness --vertical-explain [--interface] <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (the vertical pipeline's columns and their text, which --group-explain never runs)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (what the confidence filter drops, and what a line would have reclaimed)");
@@ -78,11 +79,16 @@ args = [.. args.Where(argument => argument != "--panel")];
 var harnessRealtime = args.Contains("--realtime") || args.Contains("--panel");
 
 // Which capture mode the screenshot flow is asked about. The app's toolbar is what sets this, so
-// without the flag every run reproduces what a user gets before touching anything.
-var harnessLayoutMode = args.Contains("--comic")
-    ? CaptureLayoutMode.ComicArticle
-    : CaptureLayoutMode.Standard;
-args = [.. args.Where(argument => argument != "--comic")];
+// without a flag every run reproduces what a user gets before touching anything — which since the
+// v2 swap means General, the mode that is now the default.
+//
+// --comic is kept as a spelling of --general: a dozen saved corpus runs and the reports written
+// around them name it, and a flag that stops working is a flag that makes those unreproducible.
+var harnessLayoutMode = args.Contains("--interface")
+    ? CaptureLayoutMode.Interface
+    : CaptureLayoutMode.General;
+args = [.. args.Where(argument =>
+    argument is not ("--interface" or "--general" or "--comic"))];
 args = [.. args.Where(argument => argument != "--realtime")];
 
 // Which language to read as. It picks the recognition model, and that is not a detail on a Korean
@@ -1109,9 +1115,12 @@ if (args[0] == "--group-explain")
         {
             // The screenshot flow's own entry point, so the size comes from the same place the app
             // gets it rather than from a number repeated here.
-            // The mode is named only when it is not the default, so that a standard run's output
-            // stays comparable byte for byte with every one saved before modes existed.
-            Console.WriteLine(harnessLayoutMode == CaptureLayoutMode.Standard
+            // The mode is named except on the conservative one, whose thresholds are the ones every
+            // capture was grouped on before modes existed — so an Interface run's output stays
+            // comparable byte for byte with every file saved back then. Tied to which behaviour it
+            // is rather than to which mode is default: the default moved in v2 and this rule did
+            // not, because what it is protecting is the comparison, not the setting.
+            Console.WriteLine(harnessLayoutMode == CaptureLayoutMode.Interface
                 ? "FLOW: 截圖翻譯 (detect=screenshot)"
                 : $"FLOW: 截圖翻譯 (detect=screenshot, mode={harnessLayoutMode})");
             raw = await explainEngine.RecognizeAsync(image, harnessLanguage);
@@ -1208,8 +1217,16 @@ if (args[0] == "--vertical-explain")
         if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
 
         using var image = new Bitmap(path);
+        // The mode flag reaches this the way it reaches the app. It used to be pinned to the
+        // conservative profile here, which made --vertical-explain answer the same whatever mode it
+        // was asked about — and a Step 9 report read that silence as "the corpus has no pair in the
+        // band between the two profiles". It could not have had one: the flag never arrived.
         var columns = await OcrService.RecognizeVerticalAsync(
-            verticalEngine, image, harnessLanguage, GroupingProfile.Standard, CancellationToken.None);
+            verticalEngine,
+            image,
+            harnessLanguage,
+            GroupingProfile.For(harnessLayoutMode),
+            CancellationToken.None);
 
         Console.WriteLine(
             $"VERTICAL	{path}	lang={harnessLanguage}	columns={columns.Count}" +
@@ -1376,7 +1393,7 @@ if (args[0] == "--roi-stability")
             .ToList();
 
         var read = await roiEngine.RecognizeAsync(crop, harnessLanguage);
-        var groups = OcrTextBlockGrouper.Group(read, GroupingProfile.Standard).Count;
+        var groups = OcrTextBlockGrouper.Group(read, GroupingProfile.Interface).Count;
 
         var blocks = read
             .Select(block => (
@@ -1650,7 +1667,7 @@ if (args[0] == "--roi-snap")
         // supposed to see a whole layout. It is also where this design's own risk lives — those
         // rules now see content the user did not frame. Filtering first would trade that for the
         // opposite problem, a layout with holes in it.
-        var grouped = OcrTextBlockGrouper.Group(read, GroupingProfile.Standard);
+        var grouped = OcrTextBlockGrouper.Group(read, GroupingProfile.Interface);
 
         var all = grouped
             .Select(block => (
@@ -1995,7 +2012,7 @@ if (args[0] == "--roi-fullframe")
         var read = ffSession.Recognize(kept);
         recognitionWatch.Stop();
 
-        var groups = OcrTextBlockGrouper.Group(read, GroupingProfile.Standard).Count;
+        var groups = OcrTextBlockGrouper.Group(read, GroupingProfile.Interface).Count;
 
         // Today's behaviour, for the same selection: crop, detect on the crop, recognise, group.
         using var crop = ffSource.Clone(logical, System.Drawing.Imaging.PixelFormat.Format32bppArgb);

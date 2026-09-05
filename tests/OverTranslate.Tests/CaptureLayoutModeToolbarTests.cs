@@ -72,8 +72,8 @@ public class CaptureLayoutModeToolbarTests
                 element => (string)element.Attribute(X + "Name")!,
                 element => (string)element.Attribute("GroupName")!);
 
-        Assert.Equal(groups["StandardModeSeg"], groups["ComicModeSeg"]);
+        Assert.Equal(groups["InterfaceModeSeg"], groups["GeneralModeSeg"]);
         Assert.Equal(groups["HorizontalSeg"], groups["VerticalSeg"]);
-        Assert.NotEqual(groups["StandardModeSeg"], groups["HorizontalSeg"]);
+        Assert.NotEqual(groups["InterfaceModeSeg"], groups["HorizontalSeg"]);
     }
 }

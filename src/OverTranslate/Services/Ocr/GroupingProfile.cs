@@ -33,13 +33,23 @@ internal sealed record GroupingProfile(
     double TightlySetMinTextSizeRatio,
     bool WaiveLengthTestWhenSetSolid)
 {
-    /// <summary>Today's thresholds, unchanged: what every capture was grouped on before modes.</summary>
-    public static GroupingProfile Standard { get; } = new(
+    /// <summary>
+    /// Interfaces: game UI, menus, multi-column panels. The conservative half of the pair, and what
+    /// every capture was grouped on before modes existed.
+    /// </summary>
+    /// <remarks>
+    /// This was called Standard while it was the default. It is neither standard nor the default in
+    /// v2 — the material people actually point this at is prose — but the figures have not moved,
+    /// which is what makes the swap provable: an Interface run reproduces every corpus output saved
+    /// under the old name byte for byte.
+    /// </remarks>
+    public static GroupingProfile Interface { get; } = new(
         TightlySetMinTextSizeRatio: OrdinaryMinTextSizeRatio,
         WaiveLengthTestWhenSetSolid: false);
 
     /// <summary>
-    /// Comics and prose. Relaxed only where a pair has already passed the set-solid geometry.
+    /// The default: articles, comics, dialogue, and most of what anyone frames. Relaxed only where a
+    /// pair has already passed the set-solid geometry.
     /// </summary>
     /// <remarks>
     /// <para>Waives the length test, and only that. A speech bubble opens on one or two words —
@@ -68,19 +78,19 @@ internal sealed record GroupingProfile(
     /// level labels. One right answer for nineteen wrong ones is the wrong trade, so the last group
     /// stays apart and 23 is the number this corpus reaches.</para>
     /// </remarks>
-    public static GroupingProfile ComicArticle { get; } = new(
+    public static GroupingProfile General { get; } = new(
         TightlySetMinTextSizeRatio: 0.80,
         WaiveLengthTestWhenSetSolid: true);
 
     /// <summary>
-    /// The live-screen path's own profile. It is not <see cref="Standard"/>, it merely holds the
+    /// The live-screen path's own profile. It is not <see cref="Interface"/>, it merely holds the
     /// same figures today.
     /// </summary>
     /// <remarks>
     /// Realtime has no <see cref="CaptureLayoutMode"/>: there is no toolbar in front of a running
     /// video and nobody to answer for a frame that arrives every quarter second. It gets its own
     /// named profile so that the day it is tuned for speech versus interface, the screenshot side
-    /// is not tuned with it by accident — which is what sharing <see cref="Standard"/> would set
+    /// is not tuned with it by accident — which is what sharing <see cref="Interface"/> would set
     /// up, silently, the first time either number moved.
     /// </remarks>
     public static GroupingProfile Realtime { get; } = new(
@@ -94,8 +104,13 @@ internal sealed record GroupingProfile(
     /// </remarks>
     public static GroupingProfile For(CaptureLayoutMode mode) => mode switch
     {
-        CaptureLayoutMode.ComicArticle => ComicArticle,
-        _ => Standard,
+        CaptureLayoutMode.Interface => Interface,
+
+        // General, and any mode a later release adds that this build does not know. The default
+        // catches the unknown one deliberately: a settings file naming a mode this build cannot
+        // read has already fallen back to General by the time it reaches here, and answering the
+        // same way twice is cheaper than a second table that can disagree with the first.
+        _ => General,
     };
 
     /// <summary>

@@ -22,10 +22,10 @@ public class OverlayPlacementTests
         [new Rect(10, 10, 200, 28), new Rect(10, 40, 180, 28)];
 
     [Fact]
-    public void ComicMode_AsksForTheWholeGroupToBeReset()
+    public void GeneralMode_AsksForTheWholeGroupToBeReset()
     {
         var placed = OverlayPlacement.Place(
-            [Group(TwoLines)], CaptureLayoutMode.ComicArticle, verticalText: false);
+            [Group(TwoLines)], CaptureLayoutMode.General, verticalText: false);
 
         Assert.Equal(OverlayLayoutIntent.GroupReflow, Assert.Single(placed).LayoutIntent);
     }
@@ -35,18 +35,18 @@ public class OverlayPlacementTests
     /// room — which is what a caption wants and what a balloon must never do.
     /// </summary>
     [Fact]
-    public void ComicMode_LeavesASingleLineOnTheOrdinaryPath()
+    public void GeneralMode_LeavesASingleLineOnTheOrdinaryPath()
     {
         var line = new TranslatedBlock("SOURCE", "譯文", new Rect(10, 10, 200, 28));
 
         var placed = OverlayPlacement.Place(
-            [line], CaptureLayoutMode.ComicArticle, verticalText: false);
+            [line], CaptureLayoutMode.General, verticalText: false);
 
         Assert.Equal(OverlayLayoutIntent.Default, Assert.Single(placed).LayoutIntent);
     }
 
     /// <summary>
-    /// design.md §11.1 #3 — after placement, a horizontal standard capture holds nothing that
+    /// design.md §11.1 #3 — after placement, a horizontal interface capture holds nothing that
     /// still needs re-setting as a group: each source line is back in its own box.
     /// </summary>
     /// <remarks>
@@ -55,10 +55,10 @@ public class OverlayPlacementTests
     /// only the drawing is per line.
     /// </remarks>
     [Fact]
-    public void StandardMode_PutsEachSourceLineBackInItsOwnBox()
+    public void InterfaceMode_PutsEachSourceLineBackInItsOwnBox()
     {
         var placed = OverlayPlacement.Place(
-            [Group(TwoLines)], CaptureLayoutMode.Standard, verticalText: false);
+            [Group(TwoLines)], CaptureLayoutMode.Interface, verticalText: false);
 
         Assert.Equal(2, placed.Count);
         Assert.Equal(TwoLines, placed.Select(block => block.Bounds));
@@ -68,16 +68,24 @@ public class OverlayPlacementTests
 
     /// <summary>
     /// A mode this build does not know — a setting written by a later release — is drawn the way
-    /// captures have always been drawn rather than guessed at.
+    /// the default is.
     /// </summary>
+    /// <remarks>
+    /// It answers the same as General because that is where such a value has already landed: a name
+    /// the settings reader cannot deserialize leaves the property on its default, and the default is
+    /// General. This is the second half of that same answer rather than a separate policy — see
+    /// GroupingProfile.For, which falls the same way for the same reason.
+    /// </remarks>
     [Fact]
-    public void AModeThisBuildDoesNotKnow_FallsBackToTheOrdinaryLayout()
+    public void AModeThisBuildDoesNotKnow_IsDrawnTheWayTheDefaultIs()
     {
         var placed = OverlayPlacement.Place(
             [Group(TwoLines)], (CaptureLayoutMode)99, verticalText: false);
 
-        Assert.Equal(2, placed.Count);
-        Assert.All(placed, block => Assert.Equal(OverlayLayoutIntent.Default, block.LayoutIntent));
+        Assert.Equal(
+            OverlayPlacement.Place([Group(TwoLines)], CaptureLayoutMode.General, verticalText: false),
+            placed);
+        Assert.Equal(OverlayLayoutIntent.GroupReflow, Assert.Single(placed).LayoutIntent);
     }
 
     // ---- design.md §8.5.1: what vertical text is not allowed to be put through ----
@@ -92,8 +100,8 @@ public class OverlayPlacementTests
     /// character cell, and a "group" to re-set inside its box is not what the list describes.
     /// </remarks>
     [Theory]
-    [InlineData(CaptureLayoutMode.Standard)]
-    [InlineData(CaptureLayoutMode.ComicArticle)]
+    [InlineData(CaptureLayoutMode.Interface)]
+    [InlineData(CaptureLayoutMode.General)]
     public void VerticalText_ReachesTheVerticalRendererExactlyAsItArrived(CaptureLayoutMode mode)
     {
         // The shape CombineVerticalColumns produces for a lone column: one cell per character.

@@ -18,7 +18,7 @@ public class VerticalTextCaptureTests
             new OcrTextBlock("縦", new System.Windows.Rect(10, 20, 30, 8), Confidence: 0.75));
 
         var result = await OcrService.RecognizeVerticalAsync(
-            engine, source, "JA", GroupingProfile.Standard, CancellationToken.None);
+            engine, source, "JA", GroupingProfile.Interface, CancellationToken.None);
 
         Assert.Equal(new Size(60, 100), engine.RecognizedSize);
         var block = Assert.Single(result);
@@ -173,7 +173,7 @@ public class VerticalTextCaptureTests
         using var engine = new RecordingOcrEngine(recognized);
 
         var result = await OcrService.RecognizeVerticalAsync(
-            engine, source, "JA", GroupingProfile.Standard, CancellationToken.None);
+            engine, source, "JA", GroupingProfile.Interface, CancellationToken.None);
 
         var block = Assert.Single(result);
         Assert.Equal(OcrService.MapVerticalBoundsBack(recognized.Bounds, source.Width), block.Bounds);
@@ -201,7 +201,7 @@ public class VerticalTextCaptureTests
             new OcrTextBlock(text, new System.Windows.Rect(10, 20, 30, 10)));
 
         var result = await OcrService.RecognizeVerticalAsync(
-            engine, source, "JA", GroupingProfile.Standard, CancellationToken.None);
+            engine, source, "JA", GroupingProfile.Interface, CancellationToken.None);
 
         Assert.Equal(expected, Assert.Single(result).LayoutScript);
     }
@@ -268,8 +268,8 @@ public class VerticalTextCaptureTests
     {
         using var source = new Bitmap(900, 900);
 
-        var standard = await RecognizeVerticalWith(GroupingProfile.Standard, source);
-        var comic = await RecognizeVerticalWith(GroupingProfile.ComicArticle, source);
+        var standard = await RecognizeVerticalWith(GroupingProfile.Interface, source);
+        var comic = await RecognizeVerticalWith(GroupingProfile.General, source);
 
         Assert.Equal(2, Assert.Single(standard).Lines.Count);
         Assert.True(

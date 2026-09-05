@@ -17,15 +17,15 @@ public class GroupingProfileContractTests
     [Fact]
     public void EachCaptureMode_MapsToItsOwnProfile()
     {
-        Assert.Same(GroupingProfile.Standard, GroupingProfile.For(CaptureLayoutMode.Standard));
-        Assert.Same(GroupingProfile.ComicArticle, GroupingProfile.For(CaptureLayoutMode.ComicArticle));
+        Assert.Same(GroupingProfile.Interface, GroupingProfile.For(CaptureLayoutMode.Interface));
+        Assert.Same(GroupingProfile.General, GroupingProfile.For(CaptureLayoutMode.General));
 
         // Not one profile under two names. The two hold the same figures until the steps that
         // relax them land, so this is about identity rather than value: what must hold throughout
         // is that each mode owns its own instance, so that moving one never moves the other.
         Assert.NotSame(
-            GroupingProfile.For(CaptureLayoutMode.Standard),
-            GroupingProfile.For(CaptureLayoutMode.ComicArticle));
+            GroupingProfile.For(CaptureLayoutMode.Interface),
+            GroupingProfile.For(CaptureLayoutMode.General));
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public class GroupingProfileContractTests
     {
         Assert.Equal(
             OcrTextBlockGrouper.MinTextSizeRatio,
-            GroupingProfile.Standard.TightlySetMinTextSizeRatio);
-        Assert.False(GroupingProfile.Standard.WaiveLengthTestWhenSetSolid);
+            GroupingProfile.Interface.TightlySetMinTextSizeRatio);
+        Assert.False(GroupingProfile.Interface.WaiveLengthTestWhenSetSolid);
     }
 }

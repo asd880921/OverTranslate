@@ -27,7 +27,7 @@ public class CaptureSettings
     /// the whole of the unknown-value handling, and it belongs there rather than here — every enum
     /// in the file gets it for free.</para>
     /// </remarks>
-    public CaptureLayoutMode LayoutMode { get; set; } = CaptureLayoutMode.Standard;
+    public CaptureLayoutMode LayoutMode { get; set; } = CaptureLayoutMode.General;
 
     // 標記 deliberately keeps nothing here. Which pen is in hand lasts exactly as long as the
     // capture it was picked up for: every new capture starts on the black pen at the middle width,

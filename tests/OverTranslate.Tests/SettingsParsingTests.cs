@@ -66,40 +66,50 @@ public class SettingsParsingTests
     public void CaptureLayoutMode_IsReadFromItsOwnGroup()
     {
         var settings = SettingsService.Parse(
-            """{"Capture":{"LayoutMode":"ComicArticle"}}""");
+            """{"Capture":{"LayoutMode":"Interface"}}""");
 
-        Assert.Equal(CaptureLayoutMode.ComicArticle, settings.Capture.LayoutMode);
+        Assert.Equal(CaptureLayoutMode.Interface, settings.Capture.LayoutMode);
     }
 
     /// <summary>
-    /// Every settings file written before this switch existed, and every first run, opens on 標準.
+    /// Every settings file written before this switch existed, and every first run, opens on 一般.
     /// </summary>
     [Fact]
-    public void ASettingsFileWithoutALayoutMode_OpensOnStandard()
+    public void ASettingsFileWithoutALayoutMode_OpensOnTheDefault()
     {
         var settings = SettingsService.Parse("""{"Capture":{"VerticalText":true}}""");
 
-        Assert.Equal(CaptureLayoutMode.Standard, settings.Capture.LayoutMode);
+        Assert.Equal(CaptureLayoutMode.General, settings.Capture.LayoutMode);
         Assert.True(settings.Capture.VerticalText);
     }
 
     /// <summary>
-    /// A mode a later release named and this build does not know falls back to 標準, and takes
-    /// nothing else with it.
+    /// A mode name this build cannot read falls back to 一般, and takes nothing else with it.
     /// </summary>
     /// <remarks>
-    /// This is the whole of design.md §10's "unknown enum fallback". It is not code of its own:
-    /// the mode is stored by name, an unknown name will not deserialize, and the settings reader
-    /// already keeps a property's default when a value will not read. The test is here to say that
-    /// the chain actually closes, because the day it stops closing is a day nobody looks.
+    /// <para>This is the whole of design.md §15.5's fallback. It is not code of its own: the mode is
+    /// stored by name, a name that is not a member will not deserialize, and the settings reader
+    /// already keeps a property's default when a value will not read. The test is here to say the
+    /// chain actually closes, because the day it stops closing is a day nobody looks.</para>
+    ///
+    /// <para>The v1 names go through the same door, which is why the theory carries them: a file
+    /// still saying ComicArticle or Standard is not a hypothetical, it is on the disk of everyone
+    /// who ran the previous build. Standard landing on 一般 rather than on 介面 is deliberate and
+    /// is the one case worth arguing about — Standard was the old default, so somebody storing it
+    /// most likely never opened the switch at all, and what that means is "no opinion", not
+    /// "keep me conservative". No opinion gets the new default. The remaining pair of cases —
+    /// General and Interface written by this build — round-trip below.</para>
     /// </remarks>
-    [Fact]
-    public void ALayoutModeThisBuildDoesNotKnow_OpensOnStandardAndCostsNothingElse()
+    [Theory]
+    [InlineData("Webtoon")]      // a mode a later release named
+    [InlineData("ComicArticle")] // v1: the mode that became General
+    [InlineData("Standard")]     // v1: the old default
+    public void ALayoutModeNameThisBuildCannotRead_OpensOnTheDefaultAndCostsNothingElse(string stored)
     {
         var settings = SettingsService.Parse(
-            """{"ApiKey":"secret","Capture":{"LayoutMode":"Webtoon","VerticalText":true}}""");
+            "{\"ApiKey\":\"secret\",\"Capture\":{\"LayoutMode\":\"" + stored + "\",\"VerticalText\":true}}");
 
-        Assert.Equal(CaptureLayoutMode.Standard, settings.Capture.LayoutMode);
+        Assert.Equal(CaptureLayoutMode.General, settings.Capture.LayoutMode);
         Assert.True(settings.Capture.VerticalText);
         Assert.Equal("secret", settings.ApiKey);
     }
@@ -108,20 +118,24 @@ public class SettingsParsingTests
     /// Written as the name, not as a number or a flag.
     /// </summary>
     /// <remarks>
-    /// 標準 and 漫畫・文章 are unlikely to be the last two answers — realtime already has more than
-    /// two — and a bool, or an ordinal, would have to change data format the day a third arrives.
+    /// 一般 and 介面 are unlikely to be the last two answers — realtime already has more than two —
+    /// and a bool, or an ordinal, would have to change data format the day a third arrives. An
+    /// ordinal would have been worse than useless through the v2 swap in particular: the two modes
+    /// exchanged positions, so every stored 0 and 1 would have quietly come back as the other mode.
     /// A round trip through the file is what proves the choice actually survives.
     /// </remarks>
-    [Fact]
-    public void TheLayoutModeIsStoredByName()
+    [Theory]
+    [InlineData(CaptureLayoutMode.General, "General")]
+    [InlineData(CaptureLayoutMode.Interface, "Interface")]
+    public void TheLayoutModeIsStoredByName(CaptureLayoutMode mode, string expectedName)
     {
         var written = new AppSettings();
-        written.Capture.LayoutMode = CaptureLayoutMode.ComicArticle;
+        written.Capture.LayoutMode = mode;
 
         var json = SettingsService.Serialize(written);
 
-        Assert.Contains("\"LayoutMode\": \"ComicArticle\"", json);
-        Assert.Equal(CaptureLayoutMode.ComicArticle, SettingsService.Parse(json).Capture.LayoutMode);
+        Assert.Contains($"\"LayoutMode\": \"{expectedName}\"", json);
+        Assert.Equal(mode, SettingsService.Parse(json).Capture.LayoutMode);
     }
 
     [Fact]

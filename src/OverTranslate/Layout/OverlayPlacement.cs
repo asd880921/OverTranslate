@@ -29,14 +29,17 @@ internal static class OverlayPlacement
 
         return mode switch
         {
-            CaptureLayoutMode.ComicArticle => [.. blocks.Select(AsGroupReflow)],
+            // Interfaces keep the arrangement they were framed in. Grouping exists so that a
+            // wrapped sentence reaches the translator whole; drawing it whole is a separate
+            // question, and over a menu the answer is no — the lines go back where the panel had
+            // them.
+            CaptureLayoutMode.Interface => GroupedTranslationLines.SplitOntoSourceLines(blocks),
 
-            // Standard, and anything a future release adds that this build does not know. Grouping
-            // exists so that a wrapped sentence reaches the translator whole; drawing it whole is a
-            // separate question and the answer here is no — the lines go back where the page had
-            // them. An unknown mode gets the same treatment, which is the one that leaves an
-            // ordinary screenful of text looking like the screenful it was.
-            _ => GroupedTranslationLines.SplitOntoSourceLines(blocks),
+            // General, and anything a later release adds that this build does not know. The default
+            // catches the unknown one on purpose: a mode nobody here can read has already become
+            // General on its way out of the settings file, and answering it the same way twice
+            // beats a second table that can drift away from the first.
+            _ => [.. blocks.Select(AsGroupReflow)],
         };
     }
 

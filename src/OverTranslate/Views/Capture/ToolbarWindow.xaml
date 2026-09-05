@@ -174,10 +174,9 @@
                                 </Border.RenderTransform>
                             </Border>
 
-                            <RadioButton x:Name="StandardModeSeg"
+                            <RadioButton x:Name="InterfaceModeSeg"
                                          Grid.Column="0"
                                          GroupName="CaptureContentMode"
-                                         IsChecked="True"
                                          Style="{StaticResource ToolbarSegmentButton}"
                                          ToolTip="{DynamicResource S.Toolbar.LayoutModeStandardHint}"
                                          PreviewMouseLeftButtonDown="LayoutModeSegment_PreviewMouseLeftButtonDown"
@@ -200,9 +199,13 @@
                                 </StackPanel>
                             </RadioButton>
 
-                            <RadioButton x:Name="ComicModeSeg"
+                            <!-- Checked in the markup as well as from the settings, because this
+                                 half is the default now: 一般 is what an install with no stored
+                                 answer opens on. -->
+                            <RadioButton x:Name="GeneralModeSeg"
                                          Grid.Column="1"
                                          GroupName="CaptureContentMode"
+                                         IsChecked="True"
                                          Style="{StaticResource ToolbarSegmentButton}"
                                          ToolTip="{DynamicResource S.Toolbar.LayoutModeComicHint}"
                                          PreviewMouseLeftButtonDown="LayoutModeSegment_PreviewMouseLeftButtonDown"

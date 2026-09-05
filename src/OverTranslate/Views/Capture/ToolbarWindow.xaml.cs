@@ -75,9 +75,9 @@ public partial class ToolbarWindow : Window
     /// Restored from <see cref="AppSettings.Capture"/> when the toolbar opens and saved on each
     /// explicit switch. Someone reading a comic is reading a comic for more than one capture.
     /// </remarks>
-    public CaptureLayoutMode CurrentLayoutMode => ComicModeSeg.IsChecked == true
-        ? CaptureLayoutMode.ComicArticle
-        : CaptureLayoutMode.Standard;
+    public CaptureLayoutMode CurrentLayoutMode => InterfaceModeSeg.IsChecked == true
+        ? CaptureLayoutMode.Interface
+        : CaptureLayoutMode.General;
 
     public ToolbarWindow(
         double selPhysLeft, double selPhysTop,
@@ -96,14 +96,14 @@ public partial class ToolbarWindow : Window
         VerticalSeg.IsChecked = verticalText;
         _initializingDirection = false;
 
-        // A mode this build does not know — a file written by a later release — has already become
-        // Standard by the time it gets here: the settings reader keeps the property's default when a
-        // value will not read, and CaptureLayoutMode.Standard is that default. Nothing to guard
-        // against a second time; see SettingsService.Apply.
-        bool comicMode =
-            SettingsService.Instance.Current.Capture.LayoutMode == CaptureLayoutMode.ComicArticle;
-        StandardModeSeg.IsChecked = !comicMode;
-        ComicModeSeg.IsChecked = comicMode;
+        // A mode this build cannot read — a file from a later release, or one still naming a v1
+        // mode — has already become General by the time it gets here: the settings reader keeps the
+        // property's default when a value will not deserialize, and General is that default.
+        // Nothing to guard against a second time; see SettingsService.Apply.
+        bool interfaceMode =
+            SettingsService.Instance.Current.Capture.LayoutMode == CaptureLayoutMode.Interface;
+        InterfaceModeSeg.IsChecked = interfaceMode;
+        GeneralModeSeg.IsChecked = !interfaceMode;
         _initializingLayoutMode = false;
 
         InitializeSelectors(sourceLang, targetLang);
@@ -289,7 +289,7 @@ public partial class ToolbarWindow : Window
     /// <inheritdoc cref="DirectionSegment_Checked"/>
     private void LayoutModeSegment_Checked(object sender, RoutedEventArgs e)
     {
-        if (LayoutModeThumb is null || LayoutModeThumbShift is null || ComicModeSeg is null) return;
+        if (LayoutModeThumb is null || LayoutModeThumbShift is null || GeneralModeSeg is null) return;
 
         if (!_initializingLayoutMode)
             SaveLayoutModeSelection();
@@ -299,7 +299,7 @@ public partial class ToolbarWindow : Window
 
     private void RenderLayoutModeThumb(bool animate)
     {
-        double target = CurrentLayoutMode == CaptureLayoutMode.ComicArticle
+        double target = CurrentLayoutMode == CaptureLayoutMode.General
             ? LayoutModeThumb.ActualWidth
             : 0;
 
