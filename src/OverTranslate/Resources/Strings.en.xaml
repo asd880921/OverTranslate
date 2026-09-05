@@ -189,10 +189,10 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">The source runs across the page, left to right</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVerticalHint">The source runs down the page, right to left</sys:String>
     <sys:String x:Key="S.Toolbar.LayoutMode">What the selection holds</sys:String>
-    <sys:String x:Key="S.Toolbar.LayoutModeStandard">Standard</sys:String>
-    <sys:String x:Key="S.Toolbar.LayoutModeComic">Comic / article</sys:String>
-    <sys:String x:Key="S.Toolbar.LayoutModeStandardHint">Keeps the existing arrangement. Suits ordinary interfaces, game UI and multi-column content.</sys:String>
-    <sys:String x:Key="S.Toolbar.LayoutModeComicHint">Rearranges the text in reading order and relaxes the merge tests a little. Suits comics, articles and continuous content.</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeGeneral">General</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeInterface">Interface</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeGeneralHint">Sets the text in reading order and merges neighbouring lines where they belong together. Suits articles, comics, dialogue and most ordinary captures.</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeInterfaceHint">Keeps the original arrangement and the separation between blocks, and judges merges more strictly. Suits game UI, menus and multi-column interfaces.</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">Speak</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">Stop</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">Read the recognised source text aloud</sys:String>

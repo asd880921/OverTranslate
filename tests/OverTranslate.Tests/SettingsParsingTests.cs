@@ -62,13 +62,24 @@ public class SettingsParsingTests
         Assert.True(settings.Capture.VerticalText);
     }
 
-    [Fact]
-    public void CaptureLayoutMode_IsReadFromItsOwnGroup()
+    /// <summary>
+    /// A name this build writes reads back as itself. design.md §15.5, the two cases that keep the
+    /// user's answer.
+    /// </summary>
+    /// <remarks>
+    /// The other four cases of that table — the two v1 names, an unknown one, and no key at all —
+    /// are the two tests below. Between the three of them every value that can be sitting in a
+    /// settings file has somewhere it lands.
+    /// </remarks>
+    [Theory]
+    [InlineData("General", CaptureLayoutMode.General)]
+    [InlineData("Interface", CaptureLayoutMode.Interface)]
+    public void CaptureLayoutMode_IsReadFromItsOwnGroup(string stored, CaptureLayoutMode expected)
     {
         var settings = SettingsService.Parse(
-            """{"Capture":{"LayoutMode":"Interface"}}""");
+            "{\"Capture\":{\"LayoutMode\":\"" + stored + "\"}}");
 
-        Assert.Equal(CaptureLayoutMode.Interface, settings.Capture.LayoutMode);
+        Assert.Equal(expected, settings.Capture.LayoutMode);
     }
 
     /// <summary>

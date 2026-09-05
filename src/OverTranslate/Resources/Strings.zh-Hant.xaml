@@ -193,10 +193,10 @@
     <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">原文是橫著寫的，由左至右</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVerticalHint">原文是直著寫的，由上至下、由右至左</sys:String>
     <sys:String x:Key="S.Toolbar.LayoutMode">框選內容的類型</sys:String>
-    <sys:String x:Key="S.Toolbar.LayoutModeStandard">標準</sys:String>
-    <sys:String x:Key="S.Toolbar.LayoutModeComic">漫畫・文章</sys:String>
-    <sys:String x:Key="S.Toolbar.LayoutModeStandardHint">保留原有排列，適合一般介面、遊戲 UI 與多欄內容。</sys:String>
-    <sys:String x:Key="S.Toolbar.LayoutModeComicHint">依閱讀順序重新排列文字，並適度放寬文字合併判斷，適合漫畫、文章與連續內容。</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeGeneral">一般</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeInterface">介面</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeGeneralHint">依閱讀順序整理文字，並適度合併相鄰內容，適合文章、漫畫、對話與大多數一般情境。</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeInterfaceHint">優先保留原有排列與區塊分離，並採用較嚴格的文字合併判斷，適合遊戲 UI、選單與多欄介面。</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">朗讀</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">停止</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">朗讀辨識到的原文</sys:String>

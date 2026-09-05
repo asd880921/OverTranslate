@@ -289,7 +289,12 @@ public partial class ToolbarWindow : Window
     /// <inheritdoc cref="DirectionSegment_Checked"/>
     private void LayoutModeSegment_Checked(object sender, RoutedEventArgs e)
     {
-        if (LayoutModeThumb is null || LayoutModeThumbShift is null || GeneralModeSeg is null) return;
+        // InterfaceModeSeg, because that is the half CurrentLayoutMode reads. This fires once while
+        // the XAML is still being parsed, for whichever half opens checked, and at that moment the
+        // other half does not exist yet — so the guard has to name the element the property below
+        // will dereference, not merely some sibling. Naming the wrong one was a null reference in
+        // the constructor the moment 一般 moved to the left and became the half declared first.
+        if (LayoutModeThumb is null || LayoutModeThumbShift is null || InterfaceModeSeg is null) return;
 
         if (!_initializingLayoutMode)
             SaveLayoutModeSelection();
@@ -299,7 +304,7 @@ public partial class ToolbarWindow : Window
 
     private void RenderLayoutModeThumb(bool animate)
     {
-        double target = CurrentLayoutMode == CaptureLayoutMode.General
+        double target = CurrentLayoutMode == CaptureLayoutMode.Interface
             ? LayoutModeThumb.ActualWidth
             : 0;
 
