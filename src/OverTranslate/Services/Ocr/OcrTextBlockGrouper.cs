@@ -38,11 +38,6 @@ internal static class OcrTextBlockGrouper
         GroupingProfile profile,
         List<NextLineDecision>? decisions)
     {
-        // Nothing reads it yet: the two fields belong to rules that arrive in later steps, and this
-        // step is the wiring on its own, so that the step which does change behaviour has a corpus
-        // run behind it that means something. Do not "simplify" it away.
-        _ = profile;
-
         AssertLayoutGeometryFilled(blocks);
 
         if (blocks.Count <= 1)
@@ -58,7 +53,7 @@ internal static class OcrTextBlockGrouper
         foreach (var block in sorted)
         {
             var previousGroup = groups.LastOrDefault();
-            if (previousGroup is not null && CanJoinNextLine(previousGroup[^1], block, decisions))
+            if (previousGroup is not null && CanJoinNextLine(previousGroup[^1], block, profile, decisions))
                 previousGroup.Add(block);
             else
                 groups.Add([block]);
@@ -367,9 +362,12 @@ internal static class OcrTextBlockGrouper
     }
 
     private static bool CanJoinNextLine(
-        OcrTextBlock previous, OcrTextBlock current, List<NextLineDecision>? decisions)
+        OcrTextBlock previous,
+        OcrTextBlock current,
+        GroupingProfile profile,
+        List<NextLineDecision>? decisions)
     {
-        var (joined, rule) = JudgeNextLine(previous, current);
+        var (joined, rule) = JudgeNextLine(previous, current, profile);
         if (decisions is null)
             return joined;
 
@@ -450,7 +448,8 @@ internal static class OcrTextBlockGrouper
                 Math.Abs(previous.LayoutBounds.Right - current.LayoutBounds.Right),
                 Math.Abs(CenterX(previous) - CenterX(current))));
 
-    private static (bool Joined, string Rule) JudgeNextLine(OcrTextBlock previous, OcrTextBlock current)
+    private static (bool Joined, string Rule) JudgeNextLine(
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
     {
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
         if (TextSizeRatio(previous, current) < MinTextSizeRatio)
@@ -488,7 +487,7 @@ internal static class OcrTextBlockGrouper
         if (!isAlignedContinuation)
             return (false, "not aligned enough to continue");
 
-        return SentenceContinuationEvidence(previous, current);
+        return SentenceContinuationEvidence(previous, current, profile);
     }
 
     /// <summary>
@@ -536,7 +535,7 @@ internal static class OcrTextBlockGrouper
     }
 
     private static (bool Joined, string Rule) SentenceContinuationEvidence(
-        OcrTextBlock previous, OcrTextBlock current)
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
     {
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
@@ -551,7 +550,7 @@ internal static class OcrTextBlockGrouper
             return (false, "list bullet");
 
         if (EndsWithLabelColon(previousText) &&
-            LineAdvanceRatio(previous, current) > WrappedFinalLineAdvance)
+            LineAdvanceRatio(previous, current) > SolidLineAdvance)
             return (false, "label colon");
 
         if (HasUnclosedDelimiter(previousText) ||
@@ -561,6 +560,13 @@ internal static class OcrTextBlockGrouper
 
         if (EndsWithSentenceTerminator(previousText))
             return (false, "sentence terminator");
+
+        // Lines set solid under one another: same leading, same edge, no width difference to read.
+        // Asked before the shape test below because the shape test cannot see them — a paragraph's
+        // middle lines are all about as wide as each other, which is the one thing that rule takes
+        // as proof that nothing wrapped.
+        if (IsSetSolidUnder(previous, current, profile))
+            return (true, "set solid");
 
         // A much shorter following line is a common natural wrap shape.
         // Similar-width lines without linguistic evidence are kept separate
@@ -621,6 +627,91 @@ internal static class OcrTextBlockGrouper
     /// CJK. LayoutBounds is the box, so there is nothing to approximate and nothing to gate.</para>
     /// </remarks>
     private const double WrappedFinalLineAdvance = 1.38;
+
+    /// <summary>
+    /// Whether the second line is set solid under the first: one leading, one edge, no gap in the
+    /// setting that a reader would take as a break.
+    /// </summary>
+    /// <remarks>
+    /// <para>The evidence rule below it only recognises a paragraph's LAST line, because the shape
+    /// it looks for is a much shorter line under a longer one. Every line in the middle of a
+    /// paragraph is about as wide as the one above it, so a three-line subtitle came back as three
+    /// separate requests to the translator — thirteen refusals across the ten comic pages, all
+    /// reading "no continuation evidence" over pairs whose width ratio was 0.92 to 1.22.</para>
+    ///
+    /// <para>What replaces the width reading is the setting itself. Two conditions, both strict:
+    /// the leading is no looser than text set solid, and the two lines share an edge to within a
+    /// third of a line height. The alignment figure here is far tighter than the ordinary gate
+    /// (0.35 against 1.2), and it is what keeps a stat panel's label off its body — those pairs sit
+    /// at 2.90, 5.07 and 7.42 — so it is a threshold to leave alone rather than one to tune.</para>
+    ///
+    /// <para>Size is not re-tested here. The caller has already held the pair to the ordinary size
+    /// ratio, and measuring it a second time on the earlier branch pushed back out the very
+    /// sentences this exists to join.</para>
+    ///
+    /// <para>The length test is the caller's own: a line too short to have run out of room is not
+    /// wrapping, whatever its spacing. A speech bubble opening on one or two words is exactly that
+    /// shape and exactly not that case, which is what <see cref="GroupingProfile"/> waives — for
+    /// the mode where the user has said the capture is speech, and only there.</para>
+    /// </remarks>
+    private static bool IsSetSolidUnder(
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
+    {
+        var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
+
+        return LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
+               AlignmentDelta(previous, current) <= Math.Max(avgHeight * SetSolidMaxAlignment, 6) &&
+               (IsLongEnoughToHaveWrapped(previous) || profile.WaiveLengthTestWhenSetSolid);
+    }
+
+    /// <summary>
+    /// The most leading two lines can have and still read as set solid, one under the other.
+    /// </summary>
+    /// <remarks>
+    /// <para>Measured over the whole image corpus at both detector sizes, on the pairs that reach
+    /// this test at all — through the size gate and the shared-edge gate, and long enough to have
+    /// wrapped. The two populations are NOT separated by a gap, and that is the first thing to know
+    /// about this number. Lines that must join run from 0.65 to 1.25; lines that must not run from
+    /// 0.86 to 1.58 — a settings panel's checkboxes at 1.47 to 1.58, but also a news page's
+    /// consecutive headlines at 1.12 and 1.25, an event listing's two dates at 1.17, and a game's
+    /// character rows at 0.86 to 1.03. They overlap for the whole of that range. No value of this
+    /// constant separates them, so it is not chosen to.</para>
+    ///
+    /// <para>What it is chosen on is the cost of being wrong in each direction, which this codebase
+    /// has already settled: joining two labels puts two extra words in one bubble, while splitting
+    /// one sentence hands the translator half of it. So the number sits high in the overlap rather
+    /// than below it — 36 of the corpus's 37 correct joins, against 6 wrong ones. Tightening to
+    /// 1.05, just above the comic pages' loosest real wrap, removes 3 of those 6 and costs 7 of the
+    /// correct ones, among them three Japanese Wikipedia paragraphs and a game's tutorial text. The
+    /// three it cannot remove at any setting are a game's character rows, which sit at 0.86 to 1.03,
+    /// below every candidate.</para>
+    ///
+    /// <para>The ceiling is not from the corpus. A fixture written before any of this — a Chinese
+    /// heading over its byline, one line apart, similar widths — is set at 1.25, and it is there to
+    /// say that pair must not join. Three corpus cases agree with it: a news page's consecutive
+    /// headlines at 1.12 and 1.25, and an event listing's two dates at 1.17. So the limit stays
+    /// under that fixture rather than over it, which costs one Japanese Wikipedia paragraph at
+    /// 1.24 and keeps a guard that was written deliberately.</para>
+    ///
+    /// <para>Both detector sizes agree on the figures that matter here: the comic pages read
+    /// identically at 2048 and 1600 (they are small enough not to be resized either way), and the
+    /// settings panel's list sits at 1.47 and above at both. The one pair that moves is the event
+    /// listing, 1.17 native and 0.95 downscaled, which is inside the joining population at the
+    /// downscaled end — one more reason no gap exists to aim at.</para>
+    /// </remarks>
+    private const double SolidLineAdvance = 1.20;
+
+    /// <summary>
+    /// How far apart two set-solid lines' nearest edges may be, in line heights.
+    /// </summary>
+    /// <remarks>
+    /// Much tighter than the ordinary alignment gate's 1.2, and deliberately so: this is the one
+    /// test standing between a stat panel's label and the body under it once the width reading is
+    /// no longer being consulted. Measured on the comic corpus, the pairs that must stay apart sit
+    /// at 2.90, 5.07 and 7.42 line heights, and the pairs that must join sit at 0.01 to 0.10. The
+    /// band between those is enormous; this number is in it, not on either edge.
+    /// </remarks>
+    private const double SetSolidMaxAlignment = 0.35;
 
     private static bool IsLongEnoughToHaveWrapped(OcrTextBlock line) =>
         line.LayoutBounds.Height > 0 &&

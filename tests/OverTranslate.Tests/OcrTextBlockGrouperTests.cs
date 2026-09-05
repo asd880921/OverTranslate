@@ -729,6 +729,93 @@ public class OcrTextBlockGrouperTests
         Assert.True(joined.Joined);
     }
 
+    /// <summary>
+    /// Lines in the middle of a paragraph join, where the width reading could never see them.
+    /// </summary>
+    /// <remarks>
+    /// Every line inside a paragraph is about as wide as the one above it, and the rule that came
+    /// before this one took similar widths as proof that nothing had wrapped. Thirteen refusals
+    /// across the ten comic pages read that way, on pairs whose widths were within a fifth of each
+    /// other. Here the widths are equal on purpose: if this test passes, it is not the shape test
+    /// that passed it.
+    /// </remarks>
+    [Fact]
+    public void ParagraphMiddleLines_OfEqualWidth_JoinOnTheSettingAlone()
+    {
+        var previous = Line("CHANCELLOR ARRANGED THE REWARDS", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("ACCORDING TO THE EXPLORERS MERITS", x: 100, y: 50, width: 500, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("set solid", verdict.Rule);
+        Assert.True(verdict.Joined);
+        Assert.Equal(1.00, verdict.WidthRatio, precision: 2);
+    }
+
+    /// <summary>
+    /// Set solid needs the two lines to share an edge far more closely than the ordinary gate asks.
+    /// </summary>
+    /// <remarks>
+    /// This is the one test standing between a stat panel's label and the body under it now that
+    /// the width reading is no longer consulted. The pair here is 0.6 line heights out of line:
+    /// inside the ordinary alignment gate at 1.2, and well outside the 0.35 this rule asks for. It
+    /// must fall through to the older evidence rule and be refused there.
+    /// </remarks>
+    [Fact]
+    public void LinesAtOneLeadingButOutOfLine_AreNotSetSolid()
+    {
+        var previous = Line("CHANCELLOR ARRANGED THE REWARDS", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("ACCORDING TO THE EXPLORERS MERITS", x: 124, y: 50, width: 500, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("no continuation evidence", verdict.Rule);
+        Assert.False(verdict.Joined);
+        Assert.InRange(verdict.AlignmentDelta, 0.35, 1.2);
+    }
+
+    /// <summary>
+    /// A list set looser than text is set solid is still a list.
+    /// </summary>
+    /// <remarks>
+    /// The settings panel's checkbox entries are the population this has to keep out: flush left,
+    /// one text size, similar widths, and separated by nothing but their leading — 1.47 to 1.58
+    /// line heights, against the 1.26 asked for here.
+    /// </remarks>
+    [Fact]
+    public void ListEntriesSetLooserThanTheSolidLimit_AreNotSetSolid()
+    {
+        var previous = Line("Automatically navigate to coffers", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("Prioritize opening coffers over cairns", x: 100, y: 69, width: 500, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("no continuation evidence", verdict.Rule);
+        Assert.True(verdict.LineAdvance > 1.40, $"advance {verdict.LineAdvance:0.00} should be past the solid limit");
+    }
+
+    /// <summary>
+    /// A line too short to have run out of room is not set solid under the standard profile.
+    /// </summary>
+    /// <remarks>
+    /// A speech bubble opens on one or two words, which is this exact shape and is not this case —
+    /// waiving the length test is what the comic profile is for, and it is not waived here. Written
+    /// as a test now so that the step which flips that flag has something that changes.
+    /// </remarks>
+    [Fact]
+    public void AShortLineSetSolid_IsNotJoinedUnderTheStandardProfile()
+    {
+        var previous = Line("WHY ARE", x: 100, y: 10, width: 120, height: 40);
+        var current = Line("YOU PICKING ON THE GOBLIN", x: 100, y: 50, width: 400, height: 40);
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Standard, decisions);
+        var verdict = Assert.Single(decisions, decision => decision.Kind == "next");
+
+        Assert.NotEqual("set solid", verdict.Rule);
+        Assert.False(verdict.Joined);
+    }
+
     /// <summary>One line with its layout geometry stated, so a fixture cannot be re-derived from its text.</summary>
     private static OcrTextBlock Line(string text, double x, double y, double width, double height)
     {
