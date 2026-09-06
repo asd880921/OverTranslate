@@ -41,6 +41,10 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (--trace adds the estimate and identity diagnostics; the existing lines do not move)");
     Console.Error.WriteLine("       OcrHarness --estimate-precision <boxes.txt>");
     Console.Error.WriteLine("                  (script W H glyphs per line -> the same estimate at full precision, no OCR)");
+    Console.Error.WriteLine("       OcrHarness --glyph-samples <outDir>");
+    Console.Error.WriteLine("                  (draws the known-text comparison set; layout box and ink box, no OCR)");
+    Console.Error.WriteLine("       OcrHarness --glyph-samples-ocr <outDir>");
+    Console.Error.WriteLine("                  (reads those sheets back; detection boxes, and what was missed/split/merged)");
     Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (the vertical pipeline's columns and their text, which --group-explain never runs)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
@@ -1106,6 +1110,195 @@ if (args[0] == "--estimate-precision")
             $"{estimateTrace.Source}\t{estimateTrace.PitchBranchEntered}\t{estimateTrace.PitchSelected}");
     }
 
+    return 0;
+}
+
+// The rendered comparison set: known text, at known fonts and sizes, with the two boxes that can
+// be measured off the drawing itself. Writes the sheets and a manifest; no OCR runs here.
+//
+// LAYOUT BOX and INK BOX are different things and the manifest carries both, separately, because
+// the estimate is a function of a rectangle and it matters enormously which rectangle. Neither is
+// a detection box — that only exists after --glyph-samples-ocr has read the sheets back.
+//
+// Estimates are the production function's, called once per box, and the trace it fills in is what
+// says which path each one took. Nothing here re-derives any part of the formula.
+if (args[0] == "--glyph-samples")
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine("usage: --glyph-samples <outDir>");
+        return 1;
+    }
+
+    var sampleDir = args[1];
+    var samples = OcrHarness.GlyphSampleSheets.BuildSamples();
+    var placedSamples = OcrHarness.GlyphSampleSheets.Render(sampleDir, samples, Console.Error);
+
+    var manifestPath = Path.Combine(sampleDir, "samples.tsv");
+    using (var manifest = new StreamWriter(manifestPath, false, new System.Text.UTF8Encoding(false)))
+    {
+        // Two estimate blocks per row, prefixed by which box they were computed from. One header
+        // for both would leave the reader to guess, and guessing which box a number came from is
+        // exactly the mistake this whole step exists to avoid.
+        manifest.WriteLine(string.Join('\t', new string[][]
+        {
+            OcrHarness.GlyphSampleSheets.ManifestHeader,
+            [.. OcrHarness.GlyphSampleSheets.EstimateHeader.Select(column => "layout_" + column)],
+            [.. OcrHarness.GlyphSampleSheets.EstimateHeader.Select(column => "ink_" + column)],
+        }.SelectMany(columns => columns)));
+
+        foreach (var placed in placedSamples)
+        {
+            manifest.WriteLine(string.Join('\t',
+                OcrHarness.GlyphSampleSheets.ManifestLine(placed),
+                OcrHarness.GlyphSampleSheets.EstimateColumns(placed.Sample.Script, placed.LayoutBox, placed.Sample.Text),
+                OcrHarness.GlyphSampleSheets.EstimateColumns(placed.Sample.Script, placed.InkBox, placed.Sample.Text)));
+        }
+    }
+
+    Console.WriteLine($"samples: {placedSamples.Count} rows, {placedSamples.Select(p => p.Sheet).Distinct().Count()} sheets");
+    Console.WriteLine($"manifest: {manifestPath}");
+    Console.WriteLine($"no ink found: {placedSamples.Count(p => !p.InkFound)}");
+    return 0;
+}
+
+// The same set read back through OCR, which is the only place a detection box appears.
+//
+// OCR changes more than the rectangle: it changes the text, the glyph count and therefore the
+// script, and it drops, splits and merges lines. So each row is matched back to what was drawn and
+// the four failure kinds are counted rather than dropped, and every matched row gets its estimate
+// computed twice — once on the known text and once on what came back — so that the box's
+// contribution and the recognition's can be told apart.
+if (args[0] == "--glyph-samples-ocr")
+{
+    if (args.Length < 2 || !File.Exists(Path.Combine(args[1], "samples.tsv")))
+    {
+        Console.Error.WriteLine("usage: --glyph-samples-ocr <outDir>   (run --glyph-samples first)");
+        return 1;
+    }
+
+    var ocrSampleDir = args[1];
+    var manifestRows = File.ReadAllLines(Path.Combine(ocrSampleDir, "samples.tsv"))
+        .Skip(1)
+        .Where(line => line.Length > 0)
+        .Select(OcrHarness.GlyphSampleSheets.ParseManifestLine)
+        .ToList();
+
+    using var sampleEngine = new OnnxOcrEngine();
+    var sheetGroups = manifestRows.GroupBy(row => row.Sheet).ToList();
+    int sampleMatched = 0, sampleMissed = 0, sampleSplit = 0, sampleMerged = 0, sampleSpurious = 0, sampleNoInk = 0;
+
+    var ocrPath = Path.Combine(ocrSampleDir, "ocr.tsv");
+    using (var ocrOut = new StreamWriter(ocrPath, false, new System.Text.UTF8Encoding(false)))
+    {
+        ocrOut.WriteLine(string.Join('\t', new string[][]
+        {
+            [
+                "id", "sheet", "font", "sizePx", "knownScript", "content", "glyphs", "text",
+                "status", "recText", "recScript", "recGlyphs", "textExact", "conf",
+                "ocrX", "ocrY", "ocrW", "ocrH", "productionEst",
+            ],
+            [.. OcrHarness.GlyphSampleSheets.EstimateHeader.Select(column => "known_" + column)],
+            [.. OcrHarness.GlyphSampleSheets.EstimateHeader.Select(column => "rec_" + column)],
+        }.SelectMany(columns => columns)));
+
+        foreach (var sheet in sheetGroups)
+        {
+            var sheetPath = Path.Combine(ocrSampleDir, sheet.Key);
+            if (!File.Exists(sheetPath)) { Console.Error.WriteLine($"(missing sheet) {sheetPath}"); continue; }
+
+            var rows = sheet.OrderBy(row => row.LayoutBox.Y).ToList();
+
+            // The recognition model follows what was drawn, because reading a CJK sheet with the
+            // Latin model is a different experiment from the one being run.
+            var sheetLanguage = rows.Any(row => row.Sample.Script is OcrLayoutScript.Cjk or OcrLayoutScript.Mixed)
+                ? "JA"
+                : "EN";
+
+            using var sheetImage = new Bitmap(sheetPath);
+            var sheetBlocks = await sampleEngine.RecognizeAsync(sheetImage, sheetLanguage) ?? [];
+
+            // Which drawn rows each detection covers, by how much of that row's ink it contains.
+            // Ink rather than the layout box: the layout box carries the font's leading, which no
+            // detector has ever drawn a rectangle around.
+            var covers = sheetBlocks.ToDictionary(
+                block => block,
+                block => rows.Where(row =>
+                    row.InkFound &&
+                    Math.Max(0, Math.Min(block.LayoutBounds.Bottom, row.InkBox.Bottom) - Math.Max(block.LayoutBounds.Top, row.InkBox.Top))
+                        >= row.InkBox.Height * 0.5 &&
+                    Math.Min(block.LayoutBounds.Right, row.InkBox.Right) > Math.Max(block.LayoutBounds.Left, row.InkBox.Left))
+                    .ToList());
+
+            sampleSpurious += covers.Count(entry => entry.Value.Count == 0);
+
+            foreach (var row in rows)
+            {
+                if (!row.InkFound) { sampleNoInk++; continue; }
+
+                var candidates = covers.Where(entry => entry.Value.Contains(row)).Select(entry => entry.Key).ToList();
+
+                string status;
+                OcrTextBlock? chosen = null;
+
+                if (candidates.Count == 0)
+                {
+                    status = "missed";
+                    sampleMissed++;
+                }
+                else if (candidates.Any(block => covers[block].Count > 1))
+                {
+                    status = "merged";
+                    sampleMerged++;
+                }
+                else if (candidates.Count > 1)
+                {
+                    status = "split";
+                    sampleSplit++;
+                }
+                else
+                {
+                    status = "matched";
+                    chosen = candidates[0];
+                    sampleMatched++;
+                }
+
+                var recText = chosen?.Text ?? string.Empty;
+                var recScript = chosen is null ? OcrLayoutScript.Unknown : LayoutScriptDetection.For(recText);
+                var ocrBox = chosen?.LayoutBounds ?? default;
+
+                ocrOut.WriteLine(string.Join('\t',
+                    row.Sample.Id, row.Sheet, row.Sample.Font, row.Sample.SizePx, row.Sample.Script,
+                    row.Sample.Content, row.Sample.Glyphs, row.Sample.Text,
+                    status,
+                    recText.Replace('\t', ' '),
+                    recScript,
+                    recText.Count(c => !char.IsWhiteSpace(c)),
+                    string.Equals(recText.Trim(), row.Sample.Text, StringComparison.Ordinal),
+                    chosen?.Confidence is { } confidence ? OcrHarness.GlyphSampleSheets.F(confidence) : "null",
+                    OcrHarness.GlyphSampleSheets.F(ocrBox.X), OcrHarness.GlyphSampleSheets.F(ocrBox.Y),
+                    OcrHarness.GlyphSampleSheets.F(ocrBox.Width), OcrHarness.GlyphSampleSheets.F(ocrBox.Height),
+                    chosen?.LayoutGlyphHeight is { } production ? OcrHarness.GlyphSampleSheets.F(production) : "null",
+                    // Known text on the OCR box, then recognised text on the same box: the first
+                    // isolates what the detector did to the rectangle, the second is the whole
+                    // pipeline. Subtracting one from the other is not "detection error" — the
+                    // difference also carries the text and the script.
+                    OcrHarness.GlyphSampleSheets.EstimateColumns(row.Sample.Script, ocrBox, row.Sample.Text),
+                    OcrHarness.GlyphSampleSheets.EstimateColumns(recScript, ocrBox, recText)));
+            }
+
+            Console.WriteLine($"{sheet.Key}\t{rows.Count} rows\tlang={sheetLanguage}\t{sheetBlocks.Count} detections");
+        }
+    }
+
+    Console.WriteLine(new string('=', 78));
+    Console.WriteLine($"matched : {sampleMatched}");
+    Console.WriteLine($"missed  : {sampleMissed}");
+    Console.WriteLine($"split   : {sampleSplit}   <- one drawn line, more than one detection");
+    Console.WriteLine($"merged  : {sampleMerged}   <- a detection covering more than one drawn line");
+    Console.WriteLine($"spurious: {sampleSpurious}   <- detections covering no drawn line");
+    Console.WriteLine($"no ink  : {sampleNoInk}   <- nothing was drawn, so nothing could be matched");
+    Console.WriteLine($"ocr: {ocrPath}");
     return 0;
 }
 
