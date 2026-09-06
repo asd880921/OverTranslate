@@ -39,6 +39,8 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
     Console.Error.WriteLine("                  (一般 mode by default, as the app is; --interface for the other one)");
     Console.Error.WriteLine("                  (--trace adds the estimate and identity diagnostics; the existing lines do not move)");
+    Console.Error.WriteLine("       OcrHarness --estimate-precision <boxes.txt>");
+    Console.Error.WriteLine("                  (script W H glyphs per line -> the same estimate at full precision, no OCR)");
     Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (the vertical pipeline's columns and their text, which --group-explain never runs)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
@@ -1049,6 +1051,64 @@ if (args[0] == "--margin-sweep")
 // the real grouper over the UNFILTERED blocks and reports whether the fragment would have landed
 // inside a line long enough to be real. Those are the readings a carve-out would keep; everything
 // else is what it would still drop. Read the two lists before writing the rule, not after.
+// The glyph height estimate at full precision, for boxes that have already been read.
+//
+// --trace prints four decimals, which is the right amount to read but not enough to compute with:
+// two figures that print as 0.8000 can sit either side of a 0.80 bar, and an analysis that rounds
+// before it compares reports the wrong side of it. That happened — two pairs out of 302 — and the
+// fix cannot be a tolerance, because a tolerance turns a precision problem into a permanently
+// fuzzy threshold that is harder to find the next time.
+//
+// So: the boxes come back out of a trace that already exists (no image is read again), and the
+// numbers are recomputed by THE PRODUCTION FUNCTION rather than by a copy of its formula in the
+// analysis script. The text is synthesised to the glyph count because that is all the estimate
+// reads of it — the script is passed separately.
+//
+// Input, one box per line, whitespace-separated:  <Latin|Cjk> <width> <height> <glyphs>
+if (args[0] == "--estimate-precision")
+{
+    if (args.Length < 2 || !File.Exists(args[1]))
+    {
+        Console.Error.WriteLine("usage: --estimate-precision <boxes.txt>   (lines of: Latin|Cjk W H glyphs)");
+        return 1;
+    }
+
+    Console.WriteLine("script\twidth\theight\tglyphs\tboxEstimate\tpitchCandidate\tglyphHeight\tsource\tbranch\tpitchWon");
+
+    foreach (var entry in File.ReadLines(args[1]))
+    {
+        var fields = entry.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (fields.Length == 0 || entry.StartsWith('#'))
+            continue;
+
+        if (fields.Length != 4 ||
+            !Enum.TryParse<OcrLayoutScript>(fields[0], out var estimateScript) ||
+            !double.TryParse(fields[1], out var estimateWidth) ||
+            !double.TryParse(fields[2], out var estimateHeight) ||
+            !int.TryParse(fields[3], out var estimateGlyphs))
+        {
+            Console.Error.WriteLine($"skipped: {entry}");
+            continue;
+        }
+
+        // Whatever character it is, the estimate only counts them. Kept to one script's worth of
+        // character anyway, so a reader of the input cannot mistake which side it stands for.
+        var estimateText = new string(estimateScript == OcrLayoutScript.Cjk ? '字' : 'a', estimateGlyphs);
+        var estimateBox = new System.Windows.Rect(0, 0, estimateWidth, estimateHeight);
+        var estimateHeightOut = OnnxOcrEngine.LayoutGlyphHeightFor(
+            estimateScript, estimateBox, estimateText, out var estimateTrace);
+
+        Console.WriteLine(
+            $"{estimateScript}\t{estimateWidth:G17}\t{estimateHeight:G17}\t{estimateGlyphs}\t" +
+            $"{estimateTrace.BoxEstimate:G17}\t" +
+            $"{(estimateTrace.PitchCandidate is { } candidate ? candidate.ToString("G17") : "null")}\t" +
+            $"{(estimateHeightOut is { } result ? result.ToString("G17") : "null")}\t" +
+            $"{estimateTrace.Source}\t{estimateTrace.PitchBranchEntered}\t{estimateTrace.PitchSelected}");
+    }
+
+    return 0;
+}
+
 if (args[0] == "--reject-audit")
 {
     using var auditEngine = new OnnxOcrEngine();
