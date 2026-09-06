@@ -9,17 +9,20 @@ namespace OverTranslate.Services.Ocr;
 /// inside it ever asks which mode is on. It only ever knows what its limits are this time, which
 /// keeps the product meaning of the modes at the seam where the user chose one.</para>
 ///
-/// <para>Both fields sit on the set-solid path — the strictest geometry in the file, a pair already
-/// through the leading and shared-edge tests. That is the boundary: a mode may relax what counts as
-/// evidence for a pair that already looks set solid, and may not relax the geometry that decides
-/// whether it does.</para>
+/// <para>All three fields sit on the set-solid path — the strictest geometry in the file, a pair
+/// already through the leading and shared-edge tests. Two of them relax what counts as evidence for
+/// such a pair. The third relaxes the leading itself, which is a boundary this type did not cross
+/// before, and it is written down as one: a mode may move the limit that decides whether a pair is
+/// set solid, and may still not move the shared-edge test that decides whether it is aligned.</para>
 ///
-/// <para>TWO FIELDS, ON PURPOSE. Every one added has to arrive with a measured case from the image
-/// corpus behind it — a third was designed and then dropped again when the rule it would have
-/// relaxed turned out never to fire on any image measured. A profile with a dozen knobs is the mode
-/// quietly becoming a second source language, which is the thing this whole seam exists to prevent.
-/// Nothing in the type stops a fourth being added; this is a review contract, and a locked
-/// constructor would only produce a test-only factory to get around it.</para>
+/// <para>THREE FIELDS, ON PURPOSE. Every one added has to arrive with a measured case from the
+/// image corpus behind it — one was designed and then dropped again when the rule it would have
+/// relaxed turned out never to fire on any image measured, and the third arrived only after the
+/// version without it was built, measured, and found to relax the interface mode as well. A profile
+/// with a dozen knobs is the mode quietly becoming a second source language, which is the thing
+/// this whole seam exists to prevent. Nothing in the type stops a fourth being added; this is a
+/// review contract, and a locked constructor would only produce a test-only factory to get around
+/// it.</para>
 /// </remarks>
 /// <param name="TightlySetMinTextSizeRatio">
 /// How close in text size two set-solid lines have to be. Only consulted for a pair that is already
@@ -29,9 +32,37 @@ namespace OverTranslate.Services.Ocr;
 /// Whether a set-solid pair may join even when the line above is too short to have plausibly
 /// wrapped. Speech bubbles open on one or two words, which no length test can call a wrap.
 /// </param>
+/// <param name="SolidLineAdvanceWhenWrapped">
+/// <para>How far apart two set-solid lines may be, in line heights, when the line above was long
+/// enough to have run out of room. A shorter line above is held to
+/// <see cref="OcrTextBlockGrouper.SolidLineAdvance"/> whatever this says.</para>
+///
+/// <para>MEASURED, NOT CHOSEN. Six long-form web pages were annotated by hand before any threshold
+/// moved, and their pairs sort into two populations with a gap between: a paragraph's seams run up
+/// to <c>1.45</c>, and the list entries that must stay apart start at <c>1.68</c> — 1.68, 1.72,
+/// 1.76 and 1.79 for the four held by geometry alone. The relaxed figure sits on the lower edge of
+/// that gap. Before it, the general mode joined 24 of 55 paragraph seams and refused 31, every one
+/// of the refusals wrong; after it, the six pages go from 140 groups to 113.</para>
+///
+/// <para><b>THE MARGIN IS NOT 0.23 EVERYWHERE.</b> That gap was measured on bulleted lists in
+/// running text. A game settings panel's checkbox entries are a different population and sit at
+/// <c>1.47</c> and above — <b>0.02 line heights</b> above the relaxed figure, which is the narrowest
+/// margin anywhere in this rule. The interface mode is the answer to that (it keeps 1.20, so its
+/// margin is 0.27), but the general mode is the default, so a user who frames a settings panel
+/// without switching modes is standing on the 0.02. Recorded as a known cost rather than closed.
+/// See <c>region-panel-en/game-menu-en.png</c>.</para>
+///
+/// <para><b>It does nothing for a news portal's headline list, and no larger figure would.</b>
+/// Those are set <i>tighter</i> than running prose — 1.22 and 1.23 against a paragraph's 1.30 to
+/// 1.40 (see <c>OcrTextBlockGrouper.StartsWithListBullet</c>) — so on this axis the two populations
+/// are ordered the wrong way round, and every leading limit reaches the headlines before it reaches
+/// the paragraphs. Raising this number buys strung-together headlines, not paragraphs. It is why
+/// only one mode takes the relaxation at all.</para>
+/// </param>
 internal sealed record GroupingProfile(
     double TightlySetMinTextSizeRatio,
-    bool WaiveLengthTestWhenSetSolid)
+    bool WaiveLengthTestWhenSetSolid,
+    double SolidLineAdvanceWhenWrapped)
 {
     /// <summary>
     /// Interfaces: game UI, menus, multi-column panels. The conservative half of the pair, and what
@@ -45,7 +76,8 @@ internal sealed record GroupingProfile(
     /// </remarks>
     public static GroupingProfile Interface { get; } = new(
         TightlySetMinTextSizeRatio: OrdinaryMinTextSizeRatio,
-        WaiveLengthTestWhenSetSolid: false);
+        WaiveLengthTestWhenSetSolid: false,
+        SolidLineAdvanceWhenWrapped: UnrelaxedSolidLineAdvance);
 
     /// <summary>
     /// The default: articles, comics, dialogue, and most of what anyone frames. Relaxed only where a
@@ -68,6 +100,14 @@ internal sealed record GroupingProfile(
     /// is precisely the cost a declared mode exists to avoid. See
     /// <c>OcrTextBlockGrouper.IsSetSolidUnder</c>.</para>
     ///
+    /// <para>The leading limit is relaxed too, and that one is not free. It buys paragraphs — 27
+    /// groups across six annotated web pages, 34 more across the older corpus, all of them prose
+    /// that was being cut into half-sentences — and it charges 16 wrong joins for them, news
+    /// headlines and wiki timeline entries strung together. That trade was accepted for this mode
+    /// and refused for <see cref="Interface"/>, which is the whole reason the figure sits on the
+    /// profile: measured with it applied to both, the interface mode took 15 of those 16 wrong
+    /// joins as well, and a mode nobody can escape to is not a mode.</para>
+    ///
     /// <para>The size ratio is lowered as well, and 0.80 is where the measurement put it. Hand
     /// lettering is uneven — the same sentence's lines come back 0.83 to 0.88 of each other across
     /// the ten comic pages — so the ordinary figure refuses speech that is plainly one size. Going
@@ -80,22 +120,30 @@ internal sealed record GroupingProfile(
     /// </remarks>
     public static GroupingProfile General { get; } = new(
         TightlySetMinTextSizeRatio: 0.80,
-        WaiveLengthTestWhenSetSolid: true);
+        WaiveLengthTestWhenSetSolid: true,
+        SolidLineAdvanceWhenWrapped: 1.45);
 
     /// <summary>
     /// The live-screen path's own profile. It is not <see cref="Interface"/>, it merely holds the
     /// same figures today.
     /// </summary>
     /// <remarks>
-    /// Realtime has no <see cref="CaptureLayoutMode"/>: there is no toolbar in front of a running
+    /// <para>Its leading limit stays unrelaxed, and that is a measurement rather than caution about
+    /// a path nobody looked at: across 251 subtitle and HUD captures the relaxed figure changed not
+    /// one verdict, and the two lines of a single subtitle read 0.74 to 0.98 line heights apart —
+    /// a quarter of a line below even the unrelaxed limit. Relaxing here would buy nothing and
+    /// would put the live path's behaviour on a figure measured on web pages.</para>
+    ///
+    /// <para>Realtime has no <see cref="CaptureLayoutMode"/>: there is no toolbar in front of a running
     /// video and nobody to answer for a frame that arrives every quarter second. It gets its own
     /// named profile so that the day it is tuned for speech versus interface, the screenshot side
     /// is not tuned with it by accident — which is what sharing <see cref="Interface"/> would set
-    /// up, silently, the first time either number moved.
+    /// up, silently, the first time either number moved.</para>
     /// </remarks>
     public static GroupingProfile Realtime { get; } = new(
         TightlySetMinTextSizeRatio: OrdinaryMinTextSizeRatio,
-        WaiveLengthTestWhenSetSolid: false);
+        WaiveLengthTestWhenSetSolid: false,
+        SolidLineAdvanceWhenWrapped: UnrelaxedSolidLineAdvance);
 
     /// <summary>
     /// The vertical pipeline's own profile. Like <see cref="Realtime"/>, it is not
@@ -122,7 +170,8 @@ internal sealed record GroupingProfile(
     /// </remarks>
     public static GroupingProfile Vertical { get; } = new(
         TightlySetMinTextSizeRatio: OrdinaryMinTextSizeRatio,
-        WaiveLengthTestWhenSetSolid: false);
+        WaiveLengthTestWhenSetSolid: false,
+        SolidLineAdvanceWhenWrapped: UnrelaxedSolidLineAdvance);
 
     /// <summary>The thresholds for a capture the user has declared the kind of.</summary>
     /// <remarks>
@@ -145,4 +194,11 @@ internal sealed record GroupingProfile(
     /// repeated, so "the ordinary figure" cannot drift away from the figure itself.
     /// </summary>
     private const double OrdinaryMinTextSizeRatio = OcrTextBlockGrouper.MinTextSizeRatio;
+
+    /// <summary>
+    /// The set-solid leading limit a mode that relaxes nothing hands to a wrapped line: the same
+    /// one every other pair is held to. Taken from the grouper rather than repeated, for the same
+    /// reason as above.
+    /// </summary>
+    private const double UnrelaxedSolidLineAdvance = OcrTextBlockGrouper.SolidLineAdvance;
 }

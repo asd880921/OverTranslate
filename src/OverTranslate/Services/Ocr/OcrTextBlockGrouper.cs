@@ -536,7 +536,11 @@ internal static class OcrTextBlockGrouper
             previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
             LineAdvanceRatio(previous, current),
             WrappedFinalLineAdvance,
-            SolidLineAdvance,
+            // The bar this pair was judged on, not the constant. Which of the two set-solid limits
+            // applies depends on the pair, so printing one of them unconditionally would put a
+            // number in the trace the rule never read — and mislabelled columns in this tool have
+            // already cost a corpus rerun twice.
+            SolidBarFor(previous, profile),
             joined,
             rule));
 
@@ -835,7 +839,7 @@ internal static class OcrTextBlockGrouper
     {
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
 
-        return LineAdvanceRatio(previous, current) <= SolidLineAdvance &&
+        return LineAdvanceRatio(previous, current) <= SolidBarFor(previous, profile) &&
                AlignmentDelta(previous, current) <= Math.Max(avgHeight * SetSolidMaxAlignment, 6) &&
                (IsLongEnoughToHaveWrapped(previous) ||
                 (profile.WaiveLengthTestWhenSetSolid && IsCentredAgainst(previous, current, avgHeight)));
@@ -929,7 +933,33 @@ internal static class OcrTextBlockGrouper
     /// listing, 1.17 native and 0.95 downscaled, which is inside the joining population at the
     /// downscaled end — one more reason no gap exists to aim at.</para>
     /// </remarks>
-    private const double SolidLineAdvance = 1.20;
+    internal const double SolidLineAdvance = 1.20;
+
+    /// <summary>
+    /// Which set-solid leading limit a pair is judged on: the mode's relaxed one when the line
+    /// above was long enough to have run out of room, and <see cref="SolidLineAdvance"/> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <para>Only a line long enough to have wrapped earns the relaxed figure, and that condition
+    /// is what bounds the cost of relaxing at all. Measured over 118 captures, moving the constant
+    /// itself instead joined six pairs of interface labels — "Continue" over "Game Options",
+    /// 「オプション」over 「Cygames ID連携」, a stat row over "Wish List", two of a Japanese portal's
+    /// shortcuts — and gating it on the length test refused all six while keeping every one of the
+    /// paragraph joins.</para>
+    ///
+    /// <para>Those six are worth reading carefully, because the reason they reach this test at all
+    /// is not obvious: they are centred, so the general mode's waiver
+    /// (<see cref="GroupingProfile.WaiveLengthTestWhenSetSolid"/>) already lets a short line be set
+    /// solid, and the leading is then the only thing left between them. A stack of flush-left
+    /// labels never gets this far — the length test refuses it whatever this returns — so a fixture
+    /// written flush left cannot tell the two limits apart.</para>
+    ///
+    /// <para>The relaxed figure lives on <see cref="GroupingProfile"/> rather than here because it
+    /// is not free: see <see cref="GroupingProfile.SolidLineAdvanceWhenWrapped"/> for what it buys,
+    /// what it costs, and why only one mode takes it.</para>
+    /// </remarks>
+    private static double SolidBarFor(OcrTextBlock previous, GroupingProfile profile) =>
+        IsLongEnoughToHaveWrapped(previous) ? profile.SolidLineAdvanceWhenWrapped : SolidLineAdvance;
 
     /// <summary>
     /// How far apart two set-solid lines' nearest edges may be, in line heights.

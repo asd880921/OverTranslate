@@ -101,20 +101,30 @@ public class GroupingProfileContractTests
     {
         Assert.Equal(0.88, GroupingProfile.Vertical.TightlySetMinTextSizeRatio);
         Assert.False(GroupingProfile.Vertical.WaiveLengthTestWhenSetSolid);
+        Assert.Equal(1.20, GroupingProfile.Vertical.SolidLineAdvanceWhenWrapped);
         Assert.NotSame(GroupingProfile.Interface, GroupingProfile.Vertical);
     }
 
     /// <summary>
-    /// The profile carries two thresholds, and a third one arriving has to be a decision rather
+    /// The profile carries three thresholds, and a fourth one arriving has to be a decision rather
     /// than a habit.
     /// </summary>
     /// <remarks>
-    /// Not a type-system lock — a sealed constructor would only produce a test-only way around it.
-    /// This is here so that adding a field fails a test whose name says what the reviewer has to be
-    /// shown: a measured case from the image corpus, and a design change, per profile field.
+    /// <para>Not a type-system lock — a sealed constructor would only produce a test-only way
+    /// around it. This is here so that adding a field fails a test whose name says what the
+    /// reviewer has to be shown: a measured case from the image corpus, and a design change, per
+    /// profile field.</para>
+    ///
+    /// <para>The third field was added that way and it is worth recording what the case was, since
+    /// this test is where the next person will look. The relaxed leading was first built as a
+    /// constant applying to every mode, and measured that way it moved the interface mode almost as
+    /// much as the general one: 15 of the 16 wrong joins it buys happened under
+    /// <see cref="GroupingProfile.Interface"/> as well. The argument for accepting those 16 was
+    /// that a user meeting them can switch modes — so a version where switching does not help was
+    /// the argument failing, not a threshold needing a nudge.</para>
     /// </remarks>
     [Fact]
-    public void TheProfile_CarriesTwoThresholds_AndAThirdIsADesignChange()
+    public void TheProfile_CarriesThreeThresholds_AndAFourthIsADesignChange()
     {
         var fields = typeof(GroupingProfile)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -123,8 +133,35 @@ public class GroupingProfileContractTests
 
         Assert.Equal(
             [nameof(GroupingProfile.TightlySetMinTextSizeRatio),
-             nameof(GroupingProfile.WaiveLengthTestWhenSetSolid)],
+             nameof(GroupingProfile.WaiveLengthTestWhenSetSolid),
+             nameof(GroupingProfile.SolidLineAdvanceWhenWrapped)],
             fields);
+    }
+
+    /// <summary>
+    /// One mode relaxes the set-solid leading, and it is the one the user can switch away from.
+    /// </summary>
+    /// <remarks>
+    /// The relaxation is the only threshold on this record that changes which pairs are set solid
+    /// rather than what is asked of a pair already set solid, and it is paid for in wrong joins —
+    /// news headlines and timeline entries strung together. What makes that price acceptable is
+    /// that the interface mode is an escape from it, so the interface mode not taking the
+    /// relaxation is the term of the trade, not an implementation detail.
+    /// </remarks>
+    [Fact]
+    public void OnlyTheGeneralMode_RelaxesTheSetSolidLeading()
+    {
+        Assert.Equal(1.45, GroupingProfile.General.SolidLineAdvanceWhenWrapped);
+
+        Assert.Equal(
+            OcrTextBlockGrouper.SolidLineAdvance,
+            GroupingProfile.Interface.SolidLineAdvanceWhenWrapped);
+        Assert.Equal(
+            OcrTextBlockGrouper.SolidLineAdvance,
+            GroupingProfile.Realtime.SolidLineAdvanceWhenWrapped);
+        Assert.Equal(
+            OcrTextBlockGrouper.SolidLineAdvance,
+            GroupingProfile.Vertical.SolidLineAdvanceWhenWrapped);
     }
 
     /// <summary>
@@ -142,6 +179,7 @@ public class GroupingProfileContractTests
     {
         Assert.Equal(0.88, GroupingProfile.Realtime.TightlySetMinTextSizeRatio);
         Assert.False(GroupingProfile.Realtime.WaiveLengthTestWhenSetSolid);
+        Assert.Equal(1.20, GroupingProfile.Realtime.SolidLineAdvanceWhenWrapped);
     }
 
     /// <summary>
@@ -154,5 +192,8 @@ public class GroupingProfileContractTests
             OcrTextBlockGrouper.MinTextSizeRatio,
             GroupingProfile.Interface.TightlySetMinTextSizeRatio);
         Assert.False(GroupingProfile.Interface.WaiveLengthTestWhenSetSolid);
+        Assert.Equal(
+            OcrTextBlockGrouper.SolidLineAdvance,
+            GroupingProfile.Interface.SolidLineAdvanceWhenWrapped);
     }
 }

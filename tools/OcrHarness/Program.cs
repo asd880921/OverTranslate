@@ -106,9 +106,16 @@ args = [.. args.Where(argument => argument != "--realtime")];
 // these sweeps read vertical text, and ten minutes of somebody's confusion is a worse price than
 // two literals. Positional, so that a profile growing a field stops compiling here and somebody has
 // to decide what this baseline should say about it.
+//
+// The third figure arrived when the general mode was allowed to relax the set-solid leading for a
+// line long enough to have wrapped. This baseline keeps the unrelaxed one, for the same reason the
+// other two are conservative: these sweeps report a group count as a sanity check beside detection
+// numbers, and a sweep run before that change and one run after it must not differ for a reason
+// that has nothing to do with the detector.
 var harnessGroupingBaseline = new GroupingProfile(
     TightlySetMinTextSizeRatio: 0.88,
-    WaiveLengthTestWhenSetSolid: false);
+    WaiveLengthTestWhenSetSolid: false,
+    SolidLineAdvanceWhenWrapped: 1.20);
 
 // Which language to read as. It picks the recognition model, and that is not a detail on a Korean
 // dump: the general model carries no Hangul at all, so a Korean frame read as EN comes back as
