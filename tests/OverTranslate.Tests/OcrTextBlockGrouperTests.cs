@@ -1282,6 +1282,59 @@ public class OcrTextBlockGrouperTests
     }
 
     /// <summary>
+    /// A label ending in a colon is held to the unrelaxed leading in every mode, including the one
+    /// that relaxes it for prose.
+    /// </summary>
+    /// <remarks>
+    /// <para>A colon is two-faced: it ends a clause that carries on, and it ends a form's field
+    /// name sitting above its value. The rule tells them apart by leading alone — a value set right
+    /// under its label is a continuation, a value set further down is a separate field — so it
+    /// reads the strict limit rather than the mode's, and that is deliberate. Relaxing it would
+    /// give the general mode a wider window in which "Name:" swallows whatever is under it, and
+    /// nothing in the layout says which of the two a given colon is.</para>
+    ///
+    /// <para>Written because the name no longer says so. <c>SolidLineAdvance</c> reads like "the
+    /// set-solid limit", and the set-solid limit moved onto the profile in this step — so the
+    /// obvious tidy-up is to make this rule read the profile too. The pair here is exactly the one
+    /// that tidy-up would join: 1.30 line heights apart, which is inside the general mode's relaxed
+    /// window and outside the strict one. The corpus will not catch it; this rule fires rarely
+    /// enough that no image measured on this branch exercises it.</para>
+    /// </remarks>
+    [Fact]
+    public void ALabelEndingInAColon_IsHeldToTheUnrelaxedLeading_InBothModes()
+    {
+        var previous = Line("Automatically navigate to the next objective:", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("Prioritize opening coffers over cairns", x: 100, y: 62, width: 500, height: 40);
+
+        foreach (var verdict in new[] { GeneralVerdict(previous, current), NextLineVerdict(previous, current) })
+        {
+            Assert.Equal(1.30, verdict.LineAdvance, precision: 2);
+            Assert.Equal("label colon", verdict.Rule);
+            Assert.False(verdict.Joined);
+        }
+    }
+
+    /// <summary>
+    /// The same label, set right under its value, is still read as one clause carrying on.
+    /// </summary>
+    /// <remarks>
+    /// The other side of the rule, so that the test above cannot be satisfied by refusing every
+    /// colon. At 1.05 line heights the value is set under the label at a paragraph's own leading,
+    /// which is the shape the rule is meant to admit.
+    /// </remarks>
+    [Fact]
+    public void ALabelEndingInAColon_StillJoinsWhenTheValueIsSetRightUnderIt()
+    {
+        var previous = Line("Automatically navigate to the next objective:", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("Prioritize opening coffers over cairns", x: 100, y: 52, width: 500, height: 40);
+
+        var verdict = GeneralVerdict(previous, current);
+
+        Assert.Equal(1.05, verdict.LineAdvance, precision: 2);
+        Assert.True(verdict.Joined);
+    }
+
+    /// <summary>
     /// A settings panel's checkbox entries stay apart in the general mode too, by 0.02 line
     /// heights.
     /// </summary>
