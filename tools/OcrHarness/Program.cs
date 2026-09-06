@@ -1210,6 +1210,26 @@ if (args[0] == "--group-explain")
                 $"lang={harnessLanguage} mode={harnessLayoutMode} " +
                 $"detect={(harnessRealtime || harnessSize is not null ? harnessSize?.ToString() ?? "realtime" : "screenshot")}");
 
+            // What each field means, printed with the output rather than kept in a document
+            // beside it: these files are read months later by whoever is holding the bug.
+            Console.WriteLine(
+                "  trace legend: box*0.82=the estimate before anything challenges it | " +
+                "pitch=W/n*coefficient, computed whether or not it was read | " +
+                "W-2H=distance from the width condition, which is a strict > | " +
+                "n>=4,W>2H=the two halves of that condition, separately");
+            Console.WriteLine(
+                "  trace legend: branch=both halves held, so the pitch was consulted | " +
+                "pitchWon=it came out lower and replaced the box | " +
+                "short(applied,cand,won)=the one-to-three-glyph correction | " +
+                "floor=the 1px floor was reached");
+            Console.WriteLine(
+                "  trace legend: src=which value came back — Box, Pitch, ShortText, Floor, " +
+                "None (no estimate for this script), MergedPairwiseUpperMedian (merged one " +
+                "fragment at a time, each merge keeping the upper median of the two), " +
+                "NoneAfterMerge (the joined text is no longer of one script)");
+            Console.WriteLine(
+                "  trace legend: exact=the same box at full precision (G17), and whether the width " +
+                "is exactly twice the height — the case a four-decimal print cannot tell from a near miss");
             Console.WriteLine("  trace --- blocks as the detector drew them, before same-line merging ---");
             foreach (var line in groupingTrace.Blocks)
             {
@@ -1235,14 +1255,22 @@ if (args[0] == "--group-explain")
                     continue;
                 }
 
-                // Deliberately not re-estimated. A merged line's glyph height is the median of its
-                // members, so running the single-line formula over the joined box would print a
-                // number the grouper never saw.
+                // Deliberately not re-estimated: running the single-line formula over the joined
+                // box would print a number the grouper never saw. What it carries instead is the
+                // result of merging the fragments one at a time, each merge taking the upper median
+                // of the two heights in hand — which on two values is the LARGER of them, and over
+                // three fragments is not the median of the three. Heights 10, 20 and 30 merge to
+                // 30. The label said "median of members" for one round and that was not true.
                 Console.WriteLine(
                     $"  trace {line.Id,-4} <- {string.Join("+", line.SourceIds),-14} " +
                     $"script={line.Block.LayoutScript,-7} {TraceBox(line.Block.LayoutBounds)} " +
                     $"n={ShortTextGlyphHeight.GlyphsIn(line.Block.Text),3} " +
-                    $"glyph={TraceNumber(line.Block.LayoutGlyphHeight)} src=MedianOfMembers");
+                    $"glyph={TraceNumber(line.Block.LayoutGlyphHeight)} " +
+                    // Null has its own name here. A merged line whose joined text is no longer of
+                    // one script carries no estimate at all, and calling that a combination of its
+                    // members would be the same untruth in the other direction.
+                    $"src={(line.Block.LayoutGlyphHeight is null ? "NoneAfterMerge" : "MergedPairwiseUpperMedian")}");
+                Console.WriteLine($"  trace      {TraceExact(line.Block.LayoutBounds)}");
                 Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
             }
         }
@@ -1339,6 +1367,7 @@ if (args[0] == "--group-explain")
                 $"  trace      no estimate for this script  " +
                 $"W-2H={estimate.WidthMinusTwiceHeight:+0.0000;-0.0000;0.0000}  " +
                 $"n>=4={estimate.HasEnoughGlyphs} W>2H={estimate.IsWideEnough}");
+            Console.WriteLine($"  trace      {TraceExact(line.Block.LayoutBounds)}");
             Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
             return;
         }
@@ -1351,8 +1380,19 @@ if (args[0] == "--group-explain")
             $"branch={estimate.PitchBranchEntered} pitchWon={estimate.PitchSelected}  " +
             $"short(applied={estimate.ShortTextApplied},cand={TraceNumber(estimate.ShortTextCandidate)}," +
             $"won={estimate.ShortTextSelected})  floor={estimate.FloorApplied}");
+        Console.WriteLine($"  trace      {TraceExact(line.Block.LayoutBounds)}");
         Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
     }
+
+    // The width condition at full precision, and the equality asked directly.
+    //
+    // Four decimals cannot answer the question this trace was added for. "62.0000 vs 62.0000" is
+    // what a box exactly on the line prints, and it is also what a box a ten-thousandth of a pixel
+    // off it prints, and those two are estimated 36% apart. Printing G17 and the comparison itself
+    // is the difference between reporting the boundary and guessing at it.
+    static string TraceExact(System.Windows.Rect box) =>
+        $"exact: W={box.Width:G17} H={box.Height:G17} " +
+        $"W-2H={box.Width - box.Height * 2:G17} W==2H={box.Width == box.Height * 2}";
 
     static string TraceBox(System.Windows.Rect box) =>
         $"box=({box.X:0.0000},{box.Y:0.0000},{box.Width:0.0000},{box.Height:0.0000})";

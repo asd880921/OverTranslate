@@ -52,6 +52,49 @@ public class GroupingTraceTests
     }
 
     [Fact]
+    public void ThreeFragmentsCombineOneMergeAtATimeAndNotAsAMedianOfTheThree()
+    {
+        // Estimates 10, 20 and 30 on one row. Each merge keeps the upper median of the two heights
+        // in hand — on two values, the larger — so the fragments combine 10,20 -> 20 and then
+        // 20,30 -> 30. The median of the three members is 20, and the line does not carry it.
+        //
+        // Pinned because the trace called this "MedianOfMembers" for one round. No corpus verdict
+        // turns on the difference today; a diagnostic that describes it wrongly is what the next
+        // round would have been reasoned from.
+        var blocks = new List<OcrTextBlock>
+        {
+            Fragment("aaa", new Rect(10, 10, 40, 20), glyphHeight: 10),
+            Fragment("bbb", new Rect(56, 10, 40, 20), glyphHeight: 20),
+            Fragment("ccc", new Rect(102, 10, 40, 20), glyphHeight: 30),
+        };
+
+        var trace = new GroupingTrace();
+        var grouped = OcrTextBlockGrouper.Group(blocks, GroupingProfile.Interface, null, trace);
+
+        Assert.Equal(["b0", "b1", "b2"], Assert.Single(trace.Lines).SourceIds);
+        Assert.Equal(30, Assert.Single(grouped).LayoutGlyphHeight);
+    }
+
+    [Fact]
+    public void AMergeThatEndsUpMixedCarriesNoEstimateAtAll()
+    {
+        // Two fragments that each have one, joined into text that is of neither script. The
+        // combination is not a smaller number or a larger one — there is nothing there, and the
+        // trace has to say so rather than name a source it did not come from.
+        var blocks = new List<OcrTextBlock>
+        {
+            Fragment("abc", new Rect(10, 10, 40, 20), glyphHeight: 10, OcrLayoutScript.Latin),
+            Fragment("日本", new Rect(56, 10, 40, 20), glyphHeight: 16, OcrLayoutScript.Cjk),
+        };
+
+        var grouped = OcrTextBlockGrouper.Group(blocks, GroupingProfile.Interface, null, new GroupingTrace());
+
+        var line = Assert.Single(grouped);
+        Assert.Equal(OcrLayoutScript.Mixed, line.LayoutScript);
+        Assert.Null(line.LayoutGlyphHeight);
+    }
+
+    [Fact]
     public void AskingForTheTraceChangesNothingAboutTheGrouping()
     {
         var blocks = new List<OcrTextBlock>
@@ -72,4 +115,13 @@ public class GroupingTraceTests
             untraced.Select(group => group.Lines.Count),
             traced.Select(group => group.Lines.Count));
     }
+
+    /// <summary>
+    /// A detected fragment with its estimate set by hand, so a merge can be watched combining
+    /// values that differ. Real fragments of one line usually estimate within a pixel of each
+    /// other, which hides exactly the behaviour under test.
+    /// </summary>
+    private static OcrTextBlock Fragment(
+        string text, Rect box, double glyphHeight, OcrLayoutScript script = OcrLayoutScript.Latin) =>
+        new(text, box, LayoutScript: script, LayoutBounds: box, LayoutGlyphHeight: glyphHeight);
 }
