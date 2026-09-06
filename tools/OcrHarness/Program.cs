@@ -38,6 +38,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (every same-line and next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
     Console.Error.WriteLine("                  (一般 mode by default, as the app is; --interface for the other one)");
+    Console.Error.WriteLine("                  (--trace adds the estimate and identity diagnostics; the existing lines do not move)");
     Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (the vertical pipeline's columns and their text, which --group-explain never runs)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
@@ -90,6 +91,16 @@ var harnessLayoutMode = args.Contains("--interface")
 args = [.. args.Where(argument =>
     argument is not ("--interface" or "--general" or "--comic"))];
 args = [.. args.Where(argument => argument != "--realtime")];
+
+// The diagnostics --group-explain cannot be read without: which line is which, and which of the
+// three paths through the glyph height estimate each of them took.
+//
+// Off by default, and additive when on: every line the mode printed before prints unchanged, and
+// everything this adds starts with "TRACE" or "  trace" so a traced run can be reduced to an
+// untraced one with a grep. Every corpus comparison on this branch is a diff of those lines, and a
+// diagnostic that moves them is a diagnostic that invalidates the comparisons it was added to make.
+var harnessTrace = args.Contains("--trace");
+args = [.. args.Where(argument => argument != "--trace")];
 
 // The thresholds the ROI sweeps group on, written out here rather than borrowed from the product.
 //
@@ -1172,7 +1183,69 @@ if (args[0] == "--group-explain")
             ? GroupingProfile.Realtime
             : GroupingProfile.For(harnessLayoutMode);
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        var grouped = OcrTextBlockGrouper.Group(raw, explainProfile, decisions);
+        var groupingTrace = harnessTrace ? new GroupingTrace() : null;
+        var grouped = OcrTextBlockGrouper.Group(raw, explainProfile, decisions, groupingTrace);
+
+        if (groupingTrace is not null)
+        {
+            // Which build actually ran. An exe on disk is not evidence that it came out of the tree
+            // being reported on, and a scan whose build had failed has already been read as "the
+            // change did nothing" once on this branch.
+            var harnessAssembly = System.Reflection.Assembly.GetExecutingAssembly();
+            Console.WriteLine(
+                $"TRACE BUILD: {harnessAssembly.GetName().Name} " +
+                $"{System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(harnessAssembly)?.InformationalVersion} " +
+                $"built={File.GetLastWriteTimeUtc(harnessAssembly.Location):yyyy-MM-dd HH:mm:ss}Z");
+
+            // The profile prints its own values rather than its name: one mode has meant more than
+            // one set of thresholds since v2.4, so a run named only by its mode does not say what
+            // it was judged on.
+            Console.WriteLine(
+                $"TRACE PROFILE: TightlySetMinTextSizeRatio={explainProfile.TightlySetMinTextSizeRatio:0.0000} " +
+                $"WaiveLengthTestWhenSetSolid={explainProfile.WaiveLengthTestWhenSetSolid} " +
+                $"SolidLineAdvanceWhenWrapped={explainProfile.SolidLineAdvanceWhenWrapped:0.0000} " +
+                $"MinTextSizeRatio={OcrTextBlockGrouper.MinTextSizeRatio:0.0000}");
+            Console.WriteLine(
+                $"TRACE INPUT: {path} {image.Width}x{image.Height}px whole image, no ROI " +
+                $"lang={harnessLanguage} mode={harnessLayoutMode} " +
+                $"detect={(harnessRealtime || harnessSize is not null ? harnessSize?.ToString() ?? "realtime" : "screenshot")}");
+
+            Console.WriteLine("  trace --- blocks as the detector drew them, before same-line merging ---");
+            foreach (var line in groupingTrace.Blocks)
+            {
+                // The production function, asked again on the same inputs, rather than the formula
+                // written out a second time here: a harness that works out what the estimate
+                // "would have" done is a harness that can be wrong about it in exactly the way this
+                // whole step exists to stop.
+                OnnxOcrEngine.LayoutGlyphHeightFor(
+                    line.Block.LayoutScript, line.Block.LayoutBounds, line.Block.Text, out var estimate);
+                WriteTracedLine(line, estimate);
+            }
+
+            Console.WriteLine("  trace --- lines the next-line rules were asked about ---");
+            foreach (var line in groupingTrace.Lines)
+            {
+                if (line.SourceIds.Count == 1)
+                {
+                    // Same instance the block layer already traced: the merge keeps what it is
+                    // handed when a row holds one box.
+                    OnnxOcrEngine.LayoutGlyphHeightFor(
+                        line.Block.LayoutScript, line.Block.LayoutBounds, line.Block.Text, out var estimate);
+                    WriteTracedLine(line, estimate);
+                    continue;
+                }
+
+                // Deliberately not re-estimated. A merged line's glyph height is the median of its
+                // members, so running the single-line formula over the joined box would print a
+                // number the grouper never saw.
+                Console.WriteLine(
+                    $"  trace {line.Id,-4} <- {string.Join("+", line.SourceIds),-14} " +
+                    $"script={line.Block.LayoutScript,-7} {TraceBox(line.Block.LayoutBounds)} " +
+                    $"n={ShortTextGlyphHeight.GlyphsIn(line.Block.Text),3} " +
+                    $"glyph={TraceNumber(line.Block.LayoutGlyphHeight)} src=MedianOfMembers");
+                Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
+            }
+        }
 
         Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
 
@@ -1218,6 +1291,27 @@ if (args[0] == "--group-explain")
                   $"bar={decision.LeadingBar:0.00} solid={decision.SolidBar:0.00} " +
                   $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
             Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
+
+            if (!harnessTrace)
+                continue;
+
+            // Same two ids the layers above and below use, so a verdict can be followed back to the
+            // boxes it was made on and forward into the group it produced. The text is in the line
+            // above and it is truncated, which is why it cannot serve.
+            Console.WriteLine(decision.Kind == "row"
+                ? $"  trace {decision.PreviousId} + {decision.CurrentId}  (blocks)"
+                : $"  trace {decision.PreviousId} + {decision.CurrentId}  " +
+                  $"size={decision.SizeBasis} prev={decision.PreviousSizeValue:0.0000} " +
+                  $"cur={decision.CurrentSizeValue:0.0000} ratio={decision.TextSizeRatio:0.0000}  " +
+                  $"dy={decision.AdvancePixels:0.0000} / {decision.AdvanceDenominator:0.0000} " +
+                  $"= adv {decision.LineAdvance:0.0000}");
+        }
+
+        if (groupingTrace is not null)
+        {
+            Console.WriteLine("  trace --- groups, by line id ---");
+            for (var i = 0; i < groupingTrace.Groups.Count; i++)
+                Console.WriteLine($"  trace [{i}] {string.Join(" ", groupingTrace.Groups[i])}");
         }
     }
 
@@ -1225,6 +1319,45 @@ if (args[0] == "--group-explain")
 
     static string Shorten(string text) =>
         text.Length <= 42 ? text : string.Concat(text.AsSpan(0, 40), "…");
+
+    // One line of inputs and one of the path taken through the estimate. Both are printed for every
+    // line whether or not anything interesting happened on it, because which lines are interesting
+    // is the question the trace is being read to answer.
+    static void WriteTracedLine(GroupingTrace.Line line, GlyphHeightTrace estimate)
+    {
+        var sources = line.SourceIds.Count > 0 ? $"<- {string.Join("+", line.SourceIds)}" : "";
+        Console.WriteLine(
+            $"  trace {line.Id,-4} {sources,-14} script={estimate.Script,-7} {TraceBox(line.Block.LayoutBounds)} " +
+            $"n={estimate.GlyphCount,3} glyph={TraceNumber(estimate.Result)} src={estimate.Source}");
+
+        // A script with no estimate has no intermediate values either, and printing zeroes for them
+        // would read as measurements. The two width conditions are still real, and worth seeing:
+        // they say that this line would have taken the pitch branch had it been asked.
+        if (estimate.Source == GlyphHeightSource.None)
+        {
+            Console.WriteLine(
+                $"  trace      no estimate for this script  " +
+                $"W-2H={estimate.WidthMinusTwiceHeight:+0.0000;-0.0000;0.0000}  " +
+                $"n>=4={estimate.HasEnoughGlyphs} W>2H={estimate.IsWideEnough}");
+            Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
+            return;
+        }
+
+        Console.WriteLine(
+            $"  trace      box*0.82={estimate.BoxEstimate:0.0000} " +
+            $"pitch={TraceNumber(estimate.PitchCandidate)} (W/n*{estimate.PitchCoefficient:0.00})  " +
+            $"W-2H={estimate.WidthMinusTwiceHeight:+0.0000;-0.0000;0.0000}  " +
+            $"n>=4={estimate.HasEnoughGlyphs} W>2H={estimate.IsWideEnough} " +
+            $"branch={estimate.PitchBranchEntered} pitchWon={estimate.PitchSelected}  " +
+            $"short(applied={estimate.ShortTextApplied},cand={TraceNumber(estimate.ShortTextCandidate)}," +
+            $"won={estimate.ShortTextSelected})  floor={estimate.FloorApplied}");
+        Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
+    }
+
+    static string TraceBox(System.Windows.Rect box) =>
+        $"box=({box.X:0.0000},{box.Y:0.0000},{box.Width:0.0000},{box.Height:0.0000})";
+
+    static string TraceNumber(double? value) => value is { } number ? $"{number:0.0000}" : "null";
 }
 
 // The vertical pipeline, which nothing else here can reach.

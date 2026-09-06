@@ -51,12 +51,34 @@ internal static class ShortTextGlyphHeight
     /// <param name="boxHeight">Height of the detection box the text was found in.</param>
     /// <param name="glyphCount">Non-whitespace characters in the recognised line.</param>
     public static double For(double estimated, double boxHeight, int glyphCount)
+        => For(estimated, boxHeight, glyphCount, out _);
+
+    /// <param name="correction">
+    /// Whether this was in a position to change the estimate, and whether it did. Reported from
+    /// here rather than worked out by the caller: the guard below is the definition of "applied",
+    /// and a second copy of it elsewhere is one that can come to disagree.
+    /// </param>
+    /// <inheritdoc cref="For(double, double, int)"/>
+    public static double For(double estimated, double boxHeight, int glyphCount, out Correction correction)
     {
         if (glyphCount >= PitchCorrectedFromGlyphs || boxHeight <= 0)
+        {
+            correction = new Correction(false, null, false);
             return estimated;
+        }
 
-        return Math.Min(estimated, boxHeight * GlyphsToBoxHeight);
+        var candidate = boxHeight * GlyphsToBoxHeight;
+        var corrected = Math.Min(estimated, candidate);
+        correction = new Correction(true, candidate, corrected < estimated);
+
+        return corrected;
     }
+
+    /// <summary>What this correction did to one line, for the diagnostics to print.</summary>
+    /// <param name="Applied">Whether the line was short enough for the correction to be consulted.</param>
+    /// <param name="Candidate">The height the box alone would give, or null where it was not consulted.</param>
+    /// <param name="Selected">Whether that came out lower and replaced the estimate.</param>
+    public readonly record struct Correction(bool Applied, double? Candidate, bool Selected);
 
     /// <summary>Characters that occupy width, which is what "how short is this line" means here.</summary>
     public static int GlyphsIn(string text) => text.Count(c => !char.IsWhiteSpace(c));

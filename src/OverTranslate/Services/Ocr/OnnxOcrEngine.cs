@@ -1217,19 +1217,58 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// is a better proxy for the real line height than an over-tall detection rectangle.
     /// </remarks>
     private static double EstimateGlyphHeight(System.Windows.Rect box, int glyphCount, double glyphHeightFromPitch)
+        => EstimateGlyphHeight(box, glyphCount, glyphHeightFromPitch, out _);
+
+    /// <param name="trace">
+    /// The path this call took, for the diagnostics to print. Produced here rather than worked out
+    /// again by whoever prints it: a second copy of these conditions is a copy that can disagree
+    /// with this one, and the disagreement shows up as a trace quietly describing code nobody runs.
+    /// </param>
+    /// <inheritdoc cref="EstimateGlyphHeight(System.Windows.Rect, int, double)"/>
+    private static double EstimateGlyphHeight(
+        System.Windows.Rect box, int glyphCount, double glyphHeightFromPitch, out GlyphHeightTrace trace)
     {
         const double verticalScale = 0.82;
 
         var glyphHeight = box.Height * verticalScale;
+        var boxEstimate = glyphHeight;
 
-        if (glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs &&
-            box.Width > box.Height * 2)
+        var hasEnoughGlyphs = glyphCount >= ShortTextGlyphHeight.PitchCorrectedFromGlyphs;
+        var isWideEnough = box.Width > box.Height * 2;
+
+        if (hasEnoughGlyphs && isWideEnough)
         {
             var estimatedGlyphPitch = box.Width / glyphCount;
             glyphHeight = Math.Min(glyphHeight, estimatedGlyphPitch * glyphHeightFromPitch);
         }
 
-        return Math.Max(1, glyphHeight);
+        var estimated = Math.Max(1, glyphHeight);
+
+        trace = new GlyphHeightTrace(
+            OcrLayoutScript.Unknown,
+            box.Width,
+            box.Height,
+            glyphCount,
+            glyphHeightFromPitch,
+            boxEstimate,
+            glyphCount > 0 ? box.Width / glyphCount * glyphHeightFromPitch : null,
+            box.Width - box.Height * 2,
+            hasEnoughGlyphs,
+            isWideEnough,
+            hasEnoughGlyphs && isWideEnough,
+            // Read off the value that came back rather than by asking which of the two is smaller a
+            // second time, so a tie is reported as the branch having changed nothing.
+            glyphHeight < boxEstimate,
+            estimated != glyphHeight,
+            ShortTextApplied: false,
+            ShortTextCandidate: null,
+            ShortTextSelected: false,
+            estimated != glyphHeight ? GlyphHeightSource.Floor
+                : glyphHeight < boxEstimate ? GlyphHeightSource.Pitch
+                : GlyphHeightSource.Box,
+            estimated);
+
+        return estimated;
     }
 
     /// <summary>
@@ -1243,16 +1282,42 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// box standing, which is 1.7x the truth. CJK does not, matching how its box is normalised.
     /// </remarks>
     internal static double? LayoutGlyphHeightFor(OcrLayoutScript script, System.Windows.Rect box, string text)
+        => LayoutGlyphHeightFor(script, box, text, out _);
+
+    /// <param name="trace">
+    /// Every intermediate value on the way to the answer, from the estimate itself. This is what
+    /// the grouping diagnostics print, and the only honest way to say which of the three paths a
+    /// line took: the three cannot be told apart by reading the number that comes back.
+    /// </param>
+    /// <inheritdoc cref="LayoutGlyphHeightFor(OcrLayoutScript, System.Windows.Rect, string)"/>
+    internal static double? LayoutGlyphHeightFor(
+        OcrLayoutScript script, System.Windows.Rect box, string text, out GlyphHeightTrace trace)
     {
-        if (script is not (OcrLayoutScript.Latin or OcrLayoutScript.Cjk))
-            return null;
-
         var glyphCount = text.Count(c => !char.IsWhiteSpace(c));
-        var glyphHeight = EstimateGlyphHeight(box, glyphCount, script == OcrLayoutScript.Cjk ? 1.18 : 1.3);
 
-        return script == OcrLayoutScript.Cjk
-            ? glyphHeight
-            : ShortTextGlyphHeight.For(glyphHeight, box.Height, glyphCount);
+        if (script is not (OcrLayoutScript.Latin or OcrLayoutScript.Cjk))
+        {
+            trace = GlyphHeightTrace.NotEstimated(script, box, glyphCount);
+            return null;
+        }
+
+        var glyphHeight = EstimateGlyphHeight(box, glyphCount, script == OcrLayoutScript.Cjk ? 1.18 : 1.3, out trace);
+        trace = trace with { Script = script };
+
+        if (script == OcrLayoutScript.Cjk)
+            return glyphHeight;
+
+        var corrected = ShortTextGlyphHeight.For(glyphHeight, box.Height, glyphCount, out var correction);
+        trace = trace with
+        {
+            ShortTextApplied = correction.Applied,
+            ShortTextCandidate = correction.Candidate,
+            ShortTextSelected = correction.Selected,
+            Source = correction.Selected ? GlyphHeightSource.ShortText : trace.Source,
+            Result = corrected,
+        };
+
+        return corrected;
     }
 
     /// <param name="useCjkRenderMetrics">

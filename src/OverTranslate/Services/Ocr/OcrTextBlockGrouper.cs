@@ -36,28 +36,52 @@ internal static class OcrTextBlockGrouper
     internal static List<OcrTextBlock> Group(
         IReadOnlyList<OcrTextBlock> blocks,
         GroupingProfile profile,
-        List<NextLineDecision>? decisions)
+        List<NextLineDecision>? decisions) => Group(blocks, profile, decisions, null);
+
+    /// <param name="trace">
+    /// Names each line this pass saw so a diagnostic can refer to them, and collects what the
+    /// verdicts and the groups were made of. Null everywhere but the harness, and read by no rule:
+    /// a pass with one and a pass without reach the same verdicts on the same input.
+    /// </param>
+    /// <inheritdoc cref="Group(IReadOnlyList{OcrTextBlock}, GroupingProfile, List{NextLineDecision})"/>
+    internal static List<OcrTextBlock> Group(
+        IReadOnlyList<OcrTextBlock> blocks,
+        GroupingProfile profile,
+        List<NextLineDecision>? decisions,
+        GroupingTrace? trace)
     {
         AssertLayoutGeometryFilled(blocks);
+        trace?.RegisterBlocks(blocks);
 
         if (blocks.Count <= 1)
-            return blocks.ToList();
+        {
+            foreach (var block in blocks)
+                trace?.RegisterLine(block, [block]);
+            trace?.OrderLines(blocks);
+            trace?.RegisterGroups(blocks.Select(block => (IReadOnlyList<OcrTextBlock>)[block]).ToList());
 
-        var sameLineMerged = MergeSameLineFragments(blocks, decisions);
+            return blocks.ToList();
+        }
+
+        var sameLineMerged = MergeSameLineFragments(blocks, decisions, trace);
         var sorted = sameLineMerged
             .OrderBy(block => block.LayoutBounds.Y)
             .ThenBy(block => block.LayoutBounds.X)
             .ToList();
 
+        trace?.OrderLines(sorted);
+
         var groups = new List<List<OcrTextBlock>>();
         foreach (var block in sorted)
         {
-            var target = GroupThisLineContinues(groups, block, sorted, profile, decisions);
+            var target = GroupThisLineContinues(groups, block, sorted, profile, decisions, trace);
             if (target is not null)
                 target.Add(block);
             else
                 groups.Add([block]);
         }
+
+        trace?.RegisterGroups(groups);
 
         return groups.Select(BuildGroup).ToList();
     }
@@ -110,7 +134,16 @@ internal static class OcrTextBlockGrouper
     ///   SolidBar        the set-solid limit this group  unused, 0
     ///                   was held to                     
     ///   WidthRatio      width ratio                     width ratio
+    ///   SizeBasis       which quantity the size test    None
+    ///                   compared, and why
+    ///   PreviousSize    the two values it compared,     unused, 0
+    ///   CurrentSize     whichever quantity that was
+    ///   AdvancePixels   the advance before dividing,    unused, 0
+    ///   AdvanceDenom    and what it was divided by
     /// </code>
+    ///
+    /// The trailing fields carry a default so the same-line kind, which has nothing to say about
+    /// any of them, does not have to name them. All of them are diagnostics: no rule reads one.
     ///
     /// Renaming the fields per kind means two records and two code paths through the grouper for
     /// what is one diagnostic; naming them for the vertical case and documenting the reuse is the
@@ -136,16 +169,23 @@ internal static class OcrTextBlockGrouper
         double LeadingBar,
         double SolidBar,
         bool Joined,
-        string Rule);
+        string Rule,
+        string PreviousId = "",
+        string CurrentId = "",
+        TextSizeBasis SizeBasis = TextSizeBasis.None,
+        double PreviousSizeValue = 0,
+        double CurrentSizeValue = 0,
+        double AdvancePixels = 0,
+        double AdvanceDenominator = 0);
 
     private static List<OcrTextBlock> MergeSameLineFragments(
-        IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions)
+        IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions, GroupingTrace? trace)
     {
         var rows = BuildVisualRows(blocks);
         var gaps = rows.SelectMany(AdjacentGaps).ToList();
         var threshold = SameLineGapThreshold.Estimate(gaps);
 
-        return rows.SelectMany(row => SplitRowIntoLines(row, threshold.Value, decisions)).ToList();
+        return rows.SelectMany(row => SplitRowIntoLines(row, threshold.Value, decisions, trace)).ToList();
     }
 
     /// <summary>
@@ -246,27 +286,36 @@ internal static class OcrTextBlockGrouper
     /// and joins what is left.
     /// </summary>
     private static IEnumerable<OcrTextBlock> SplitRowIntoLines(
-        List<OcrTextBlock> row, double threshold, List<NextLineDecision>? decisions)
+        List<OcrTextBlock> row, double threshold, List<NextLineDecision>? decisions, GroupingTrace? trace)
     {
         var lines = new List<OcrTextBlock>();
         var line = row[0];
 
+        // What the line being built is made of, kept as it is built rather than worked out
+        // afterwards: a merged line is a new instance, and nothing on it points back at the blocks
+        // it came from.
+        var members = new List<OcrTextBlock> { row[0] };
+
         for (var i = 1; i < row.Count; i++)
         {
             var (joined, rule) = JudgeSameLine(row[i - 1], row[i], threshold);
-            decisions?.Add(SameLineDecision(row[i - 1], row[i], joined, rule));
+            decisions?.Add(SameLineDecision(row[i - 1], row[i], joined, rule, trace));
 
             if (joined)
             {
                 line = MergeSameLine(line, row[i]);
+                members.Add(row[i]);
                 continue;
             }
 
             lines.Add(line);
+            trace?.RegisterLine(line, members);
             line = row[i];
+            members = [row[i]];
         }
 
         lines.Add(line);
+        trace?.RegisterLine(line, members);
         return lines;
     }
 
@@ -311,7 +360,7 @@ internal static class OcrTextBlockGrouper
     private const double MinimumRowGapPixels = 6;
 
     private static NextLineDecision SameLineDecision(
-        OcrTextBlock previous, OcrTextBlock current, bool joined, string rule) =>
+        OcrTextBlock previous, OcrTextBlock current, bool joined, string rule, GroupingTrace? trace) =>
         new("row",
             previous.Text,
             current.Text,
@@ -331,7 +380,11 @@ internal static class OcrTextBlockGrouper
             0,
             0,
             joined,
-            rule);
+            rule,
+            // The detected blocks, not the lines: this verdict is about what a line gets built out
+            // of, and the line it ends up in does not exist yet.
+            trace?.BlockId(previous) ?? "",
+            trace?.BlockId(current) ?? "");
 
     private static OcrTextBlock MergeSameLine(OcrTextBlock previous, OcrTextBlock current)
     {
@@ -394,7 +447,8 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock current,
         IReadOnlyList<OcrTextBlock> lines,
         GroupingProfile profile,
-        List<NextLineDecision>? decisions)
+        List<NextLineDecision>? decisions,
+        GroupingTrace? trace)
     {
         List<OcrTextBlock>? best = null;
         var bestAlignment = double.PositiveInfinity;
@@ -414,7 +468,7 @@ internal static class OcrTextBlockGrouper
             if (!NothingLiesBetween(previous, current, lines))
                 continue;
 
-            if (!CanJoinNextLine(group, current, profile, decisions))
+            if (!CanJoinNextLine(group, current, profile, decisions, trace))
                 continue;
 
             var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
@@ -511,7 +565,8 @@ internal static class OcrTextBlockGrouper
         List<OcrTextBlock> group,
         OcrTextBlock current,
         GroupingProfile profile,
-        List<NextLineDecision>? decisions)
+        List<NextLineDecision>? decisions,
+        GroupingTrace? trace)
     {
         var previous = group[^1];
         var (joined, rule) = JudgeNextLine(previous, current, profile);
@@ -519,6 +574,8 @@ internal static class OcrTextBlockGrouper
             return joined;
 
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
+        var sizeRatio = TextSizeRatio(previous, current, out var sizeBasis, out var previousSize, out var currentSize);
+        LineAdvanceRatio(previous, current, out var advancePixels, out var advanceDenominator);
         decisions.Add(new NextLineDecision(
             "next",
             previous.Text,
@@ -532,7 +589,7 @@ internal static class OcrTextBlockGrouper
             // From the same function the rule read, not recomputed here: a trace that works out the
             // verdict a second way is a trace that can disagree with the verdict.
             AlignmentDelta(previous, current) / Math.Max(1, avgHeight),
-            TextSizeRatio(previous, current),
+            sizeRatio,
             previous.LayoutBounds.Width / Math.Max(1, current.LayoutBounds.Width),
             LineAdvanceRatio(previous, current),
             WrappedFinalLineAdvance,
@@ -542,7 +599,17 @@ internal static class OcrTextBlockGrouper
             // already cost a corpus rerun twice.
             SolidBarFor(previous, profile),
             joined,
-            rule));
+            rule,
+            trace?.LineId(previous) ?? "",
+            trace?.LineId(current) ?? "",
+            // Which quantity the size test compared and why, from the test itself. Reading it back
+            // off the ratio cannot tell the three apart, and two of them are refused for reasons
+            // that need opposite fixes.
+            sizeBasis,
+            previousSize,
+            currentSize,
+            advancePixels,
+            advanceDenominator));
 
         return joined;
     }
@@ -560,10 +627,23 @@ internal static class OcrTextBlockGrouper
     /// On the detector's own box they agree.
     /// </remarks>
     private static double LineAdvanceRatio(OcrTextBlock previous, OcrTextBlock current)
+        => LineAdvanceRatio(previous, current, out _, out _);
+
+    /// <param name="advancePixels">How far down the second line sits, before the division.</param>
+    /// <param name="denominator">
+    /// What that was divided by. Printed because this is the quantity under suspicion: the signal
+    /// is the advance and the noise is here, and a ratio alone does not say which of the two moved.
+    /// </param>
+    /// <inheritdoc cref="LineAdvanceRatio(OcrTextBlock, OcrTextBlock)"/>
+    private static double LineAdvanceRatio(
+        OcrTextBlock previous, OcrTextBlock current, out double advancePixels, out double denominator)
     {
         var box = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
 
-        return box > 0 ? (current.LayoutBounds.Y - previous.LayoutBounds.Y) / box : -1;
+        advancePixels = current.LayoutBounds.Y - previous.LayoutBounds.Y;
+        denominator = box;
+
+        return box > 0 ? advancePixels / box : -1;
     }
 
     /// <summary>
@@ -682,11 +762,41 @@ internal static class OcrTextBlockGrouper
     /// refused by a size test it could not have passed. That is issue #164's 「OPTIONS／ゲーム設定」.</para>
     /// </remarks>
     internal static double TextSizeRatio(OcrTextBlock previous, OcrTextBlock current)
+        => TextSizeRatio(previous, current, out _, out _, out _);
+
+    /// <param name="basis">
+    /// Which quantity was compared, and which of the two reasons sent it to the boxes. The
+    /// distinction is the whole diagnostic value: a pair that fell back because one side carries no
+    /// estimate is fixed by estimating it, and a pair whose scripts differ would still fall back
+    /// with both estimates in hand, because the scripts are the first thing this asks about.
+    /// </param>
+    /// <param name="previousCompared">The two values compared, in whichever quantity that was.</param>
+    /// <inheritdoc cref="TextSizeRatio(OcrTextBlock, OcrTextBlock)"/>
+    internal static double TextSizeRatio(
+        OcrTextBlock previous,
+        OcrTextBlock current,
+        out TextSizeBasis basis,
+        out double previousCompared,
+        out double currentCompared)
     {
         if (previous.LayoutScript == current.LayoutScript &&
             previous.LayoutGlyphHeight is { } previousGlyph and > 0 &&
             current.LayoutGlyphHeight is { } currentGlyph and > 0)
+        {
+            basis = TextSizeBasis.Glyph;
+            previousCompared = previousGlyph;
+            currentCompared = currentGlyph;
+
             return Math.Min(previousGlyph, currentGlyph) / Math.Max(previousGlyph, currentGlyph);
+        }
+
+        // Named in the order the condition above asks: differing scripts alone send a pair here
+        // whether or not both sides carry an estimate.
+        basis = previous.LayoutScript != current.LayoutScript
+            ? TextSizeBasis.BoxDifferentScript
+            : TextSizeBasis.BoxNoGlyphHeight;
+        previousCompared = previous.LayoutBounds.Height;
+        currentCompared = current.LayoutBounds.Height;
 
         return Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height) /
                Math.Max(previous.LayoutBounds.Height, current.LayoutBounds.Height);
