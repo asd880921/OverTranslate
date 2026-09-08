@@ -1,5 +1,6 @@
 using System.Net.Http;
 using GTranslate.Translators;
+using OverTranslate.Layout;
 using OverTranslate.Models;
 using OverTranslate.Services.Providers;
 
@@ -10,9 +11,13 @@ public record TranslatedBlock(
     string TranslatedText,
     System.Windows.Rect Bounds,
     IReadOnlyList<System.Windows.Rect>? SourceLineBounds = null,
-    double? SourceGlyphHeight = null,
+    double? RenderGlyphHeight = null,
     System.Windows.Media.Color BackgroundColor = default,
-    System.Windows.Media.Color TextColor = default);
+    System.Windows.Media.Color TextColor = default,
+
+    // Set by placement, read by the overlay. Default until something decides otherwise, so the
+    // realtime path and the translation providers carry it without knowing it is there.
+    OverlayLayoutIntent LayoutIntent = OverlayLayoutIntent.Default);
 
 public class TranslationService
 {

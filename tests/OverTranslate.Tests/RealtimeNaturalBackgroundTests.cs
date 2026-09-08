@@ -142,10 +142,10 @@ public class RealtimeNaturalBackgroundTests
     {
         var upper = new TranslatedBlock(
             "like an explosive force", "像是一股爆炸力",
-            new System.Windows.Rect(300, 765, 569, 70), SourceGlyphHeight: 37);
+            new System.Windows.Rect(300, 765, 569, 70), RenderGlyphHeight: 37);
         var lower = new TranslatedBlock(
             "hurtling into the sky!", "衝向天空！",
-            new System.Windows.Rect(310, 827, 542, 74), SourceGlyphHeight: 37);
+            new System.Windows.Rect(310, 827, 542, 74), RenderGlyphHeight: 37);
 
         var targets = RealtimeNaturalBackground.EraseTargets([upper, lower]);
 
@@ -163,10 +163,10 @@ public class RealtimeNaturalBackgroundTests
     {
         var translated = new TranslatedBlock(
             "like an explosive force", "像是一股爆炸力",
-            new System.Windows.Rect(300, 765, 569, 70), SourceGlyphHeight: 37);
+            new System.Windows.Rect(300, 765, 569, 70), RenderGlyphHeight: 37);
         var untranslated = new TranslatedBlock(
             "hurtling into the sky!", "  ",
-            new System.Windows.Rect(310, 827, 542, 74), SourceGlyphHeight: 37);
+            new System.Windows.Rect(310, 827, 542, 74), RenderGlyphHeight: 37);
 
         var targets = RealtimeNaturalBackground.EraseTargets([translated, untranslated]);
 

@@ -188,13 +188,18 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVertical">Vertical</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionHorizontalHint">The source runs across the page, left to right</sys:String>
     <sys:String x:Key="S.Toolbar.DirectionVerticalHint">The source runs down the page, right to left</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutMode">What the selection holds</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeGeneral">General</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeInterface">Interface</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeGeneralHint">Sets the text in reading order and merges neighbouring lines where they belong together. Suits articles, comics, dialogue and most ordinary captures.</sys:String>
+    <sys:String x:Key="S.Toolbar.LayoutModeInterfaceHint">Keeps the original arrangement and the separation between blocks, and judges merges more strictly. Suits game UI, menus and multi-column interfaces.</sys:String>
     <sys:String x:Key="S.Toolbar.Speak">Speak</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStopLabel">Stop</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakHint">Read the recognised source text aloud</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStop">Stop reading</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakAutomatic">Cannot read aloud while the source language is Automatic. Choose the actual language first.</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakNoText">No recognised text to read yet</sys:String>
-    <sys:String x:Key="S.Toolbar.BackupBadge">⚡Backup {0}</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupBadge">⚡Backup</sys:String>
     <sys:String x:Key="S.Toolbar.BackupTooltip">"{0}" could not translate everything, so "{1}" filled in the rest.
 Actually used this time: {2}</sys:String>
 
@@ -374,10 +379,9 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.Hotkeys">Shortcuts</sys:String>
     <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
     <sys:String x:Key="S.Settings.HotkeyEnable">Enable this shortcut</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyDisable">Disable this shortcut</sys:String>
     <!-- The shortcut box has no label of its own; this is its ToolTip -->
     <sys:String x:Key="S.Settings.HotkeyRecordTip">Click to record a new shortcut</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOn">Enabled</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOff">Disabled</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with another key, and also supports a single function key, a mouse button, or a gamepad button.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+A, F1, middle / side mouse buttons, XInput... etc.</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>
@@ -387,8 +391,10 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">Press the shortcut to open [[quick lookup]]</sys:String>
     <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">If text is selected, it is carried in and translated as the popup opens.</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkey">Quick translate</sys:String>
-    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">Replaces the [[selected text]] with its translation</sys:String>
-    <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote" xml:space="preserve">Only in fields that accept typed text; nothing can be pasted outside an input area.&#x0a;The languages and the translation service are the ones text translation is set to.</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">Translates the [[selected text]] and pastes it over the original</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote" xml:space="preserve">Only in fields that accept typed text; nothing can be pasted outside an input area.</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateSettings">Translation settings</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateLanguageNote">These languages apply only to quick translation, without affecting screenshot, text or real-time translation.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyNeedsModifier">✗ A single key can only be F1–F24, Pause or Scroll Lock — other keys need Ctrl/Alt/Shift</sys:String>
 
     <sys:String x:Key="S.Settings.General">General</sys:String>

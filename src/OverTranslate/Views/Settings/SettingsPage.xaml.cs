@@ -62,10 +62,6 @@ public partial class SettingsPage : UserControl
     /// and no setting behind it because that shortcut is the feature the application is for. Null
     /// here is what says "this row cannot be turned off".
     /// </param>
-    /// <param name="EnabledLabel">
-    /// The word beside the switch saying which way it is set. Null for the capture row, which has
-    /// no switch to describe.
-    /// </param>
     /// <remarks>
     /// A row shadowed by a higher-priority shortcut says nothing about it. Priority still decides
     /// which of two shortcuts sharing a combination is registered — see
@@ -82,8 +78,7 @@ public partial class SettingsPage : UserControl
         bool AdvertisedInShell,
         // Fully qualified: WinForms is also referenced here and has its own CheckBox.
         System.Windows.Controls.CheckBox? EnabledBox = null,
-        Action<AppSettings, bool>? SetEnabled = null,
-        TextBlock? EnabledLabel = null);
+        Action<AppSettings, bool>? SetEnabled = null);
 
     private HotkeyField[] _hotkeyFields = [];
 
@@ -119,8 +114,7 @@ public partial class SettingsPage : UserControl
                 ApplyQuickLookupTrigger,
                 AdvertisedInShell: true,
                 QuickLookupHotkeyEnabledCheckBox,
-                (s, on) => s.QuickLookupHotkeyEnabled = on,
-                QuickLookupHotkeyEnabledLabel),
+                (s, on) => s.QuickLookupHotkeyEnabled = on),
             new HotkeyField(
                 HotkeyAction.QuickTranslate,
                 "S.Settings.QuickTranslateHotkey",
@@ -130,8 +124,7 @@ public partial class SettingsPage : UserControl
                 ApplyQuickTranslateTrigger,
                 AdvertisedInShell: false,
                 QuickTranslateHotkeyEnabledCheckBox,
-                (s, on) => s.QuickTranslateHotkeyEnabled = on,
-                QuickTranslateHotkeyEnabledLabel),
+                (s, on) => s.QuickTranslateHotkeyEnabled = on),
             new HotkeyField(
                 HotkeyAction.TranslationWindow,
                 "S.Settings.WindowHotkey",
@@ -141,8 +134,7 @@ public partial class SettingsPage : UserControl
                 ApplyWindowTrigger,
                 AdvertisedInShell: false,
                 WindowHotkeyEnabledCheckBox,
-                (s, on) => s.TranslationWindowHotkeyEnabled = on,
-                WindowHotkeyEnabledLabel),
+                (s, on) => s.TranslationWindowHotkeyEnabled = on),
             new HotkeyField(
                 HotkeyAction.RealtimePause,
                 "S.Settings.RealtimePauseHotkey",
@@ -152,8 +144,7 @@ public partial class SettingsPage : UserControl
                 ApplyRealtimePauseTrigger,
                 AdvertisedInShell: false,
                 RealtimePauseHotkeyEnabledCheckBox,
-                (s, on) => s.RealtimePauseHotkeyEnabled = on,
-                RealtimePauseHotkeyEnabledLabel),
+                (s, on) => s.RealtimePauseHotkeyEnabled = on),
         ];
 
         _hotkeyGamepadRecordTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(45) };
@@ -211,6 +202,13 @@ public partial class SettingsPage : UserControl
             UiLanguageBox.SelectedValue = LocalizationService.Current;
             if (UiLanguageBox.SelectedValue == null) UiLanguageBox.SelectedIndex = 0;
 
+            QuickTranslateSourceBox.ItemsSource = LanguageData.SourceLanguages;
+            QuickTranslateTargetBox.ItemsSource = LanguageData.TargetLanguages;
+            QuickTranslateSourceBox.SelectedValue = LanguageData.GetValidSourceCode(s.QuickTranslate.SourceLanguage);
+            QuickTranslateTargetBox.SelectedValue = LanguageData.GetValidTargetCode(s.QuickTranslate.TargetLanguage);
+            QuickTranslateSourceBox.Items.Refresh();
+            QuickTranslateTargetBox.Items.Refresh();
+
             StartupCheckBox.IsChecked = StartupService.IsEnabled;
 
             AutoTranslateCheckBox.IsChecked = s.AutoTranslateAfterSelection;
@@ -235,6 +233,65 @@ public partial class SettingsPage : UserControl
     }
 
     // ── Persistence ──────────────────────────────────────────────────────────
+
+    private int _quickTranslateFoldVersion;
+
+    private void QuickTranslateSettings_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (QuickTranslateSettingsFold is null) return;
+
+        var expanded = QuickTranslateSettingsToggle.IsChecked == true;
+        var version = ++_quickTranslateFoldVersion;
+        var fold = QuickTranslateSettingsFold;
+        var body = QuickTranslateSettingsBody;
+        var fromHeight = fold.Visibility == Visibility.Collapsed ? 0 : fold.ActualHeight;
+        if (expanded) fold.Visibility = Visibility.Visible;
+
+        void Finish()
+        {
+            fold.BeginAnimation(HeightProperty, null);
+            body.BeginAnimation(OpacityProperty, null);
+            fold.Height = expanded ? double.NaN : 0;
+            body.Opacity = expanded ? 1 : 0;
+            fold.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (!IsLoaded || !SystemParameters.ClientAreaAnimation)
+        {
+            Finish();
+            return;
+        }
+
+        // Measure the body at the available width, including wrapped hints and its top margin.
+        // Return to Auto after opening so resizing and language changes can reflow naturally.
+        var width = ((FrameworkElement)fold.Parent).ActualWidth;
+        body.Measure(new System.Windows.Size(width, double.PositiveInfinity));
+        var target = expanded ? body.DesiredSize.Height : 0;
+        fold.Height = fromHeight;
+        var duration = TimeSpan.FromMilliseconds(expanded ? 200 : 160);
+        var height = new DoubleAnimation(target, duration)
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        height.Completed += (_, _) =>
+        {
+            if (version == _quickTranslateFoldVersion) Finish();
+        };
+        fold.BeginAnimation(HeightProperty, height);
+        body.BeginAnimation(OpacityProperty, new DoubleAnimation(expanded ? 1 : 0, duration));
+    }
+
+    private void QuickTranslateLanguage_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || QuickTranslateSourceBox.SelectedValue is not string source ||
+            QuickTranslateTargetBox.SelectedValue is not string target) return;
+
+        Persist(s =>
+        {
+            s.QuickTranslate.SourceLanguage = LanguageData.GetValidSourceCode(source);
+            s.QuickTranslate.TargetLanguage = LanguageData.GetValidTargetCode(target);
+        });
+    }
 
     private void Persist(Action<AppSettings> apply)
     {
@@ -1033,11 +1090,13 @@ public partial class SettingsPage : UserControl
 
         field.Box.IsEnabled = on;
 
-        // Written here rather than beside the switch, because this is the one place both the load
-        // and the toggle already go through — and a switch whose word disagreed with it would be
-        // worse than no word at all.
-        if (field.EnabledLabel is { } label)
-            label.Text = LocalizationService.Get(on ? "S.Settings.HotkeyOn" : "S.Settings.HotkeyOff");
+        // Describe the next action on load and after each toggle.
+        if (field.EnabledBox is { } toggle)
+        {
+            toggle.SetResourceReference(ToolTipProperty,
+                on ? "S.Settings.HotkeyDisable" : "S.Settings.HotkeyEnable");
+            System.Windows.Automation.AutomationProperties.SetName(toggle, LocalizationService.Get(field.NameKey));
+        }
     }
 
     private void HotkeyEnabled_Toggled(object sender, RoutedEventArgs e)

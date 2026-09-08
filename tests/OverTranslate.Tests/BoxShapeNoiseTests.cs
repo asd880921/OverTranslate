@@ -11,8 +11,10 @@ namespace OverTranslate.Tests;
 /// </summary>
 public class BoxShapeNoiseTests
 {
+    // As the engine hands it over: the rule reads LayoutBounds, the box the detector drew, so a
+    // fixture that only sets Bounds is not a block this rule has ever been asked about.
     private static OcrTextBlock Block(string text, double width, double height) =>
-        new(text, new Rect(100, 100, width, height));
+        new OcrTextBlock(text, new Rect(100, 100, width, height)).AsDetected();
 
     [Theory]
     // One character in a box six times wider than tall, which is what a detector returns for a

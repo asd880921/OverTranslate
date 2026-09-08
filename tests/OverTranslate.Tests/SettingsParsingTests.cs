@@ -1,5 +1,6 @@
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Services.Ocr;
 using Xunit;
 
 namespace OverTranslate.Tests;
@@ -11,6 +12,89 @@ namespace OverTranslate.Tests;
 // and hotkey. These tests pin the rule that only the unreadable field pays.
 public class SettingsParsingTests
 {
+    [Fact]
+    public void QuickTranslateDefaultsToEnglishWithoutChangingOtherDefaults()
+    {
+        Assert.Equal("EN-US", new QuickTranslateSettings().TargetLanguage);
+        var settings = SettingsService.Parse("{}");
+        Assert.Equal("EN-US", settings.QuickTranslate.TargetLanguage);
+        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.TargetLanguage);
+    }
+
+    [Fact]
+    public void QuickTranslateGroup_WinsOverFlatKeysAndSerializesOnlyTheGroup()
+    {
+        var settings = SettingsService.Parse(
+            """{"QuickTranslateSourceLanguage":"JA","QuickTranslateTargetLanguage":"EN-US","QuickTranslate":{"SourceLanguage":"KO","TargetLanguage":"ZH-HANT"}}""");
+
+        Assert.Equal("KO", settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("ZH-HANT", settings.QuickTranslate.TargetLanguage);
+        var json = SettingsService.Serialize(settings);
+        Assert.DoesNotContain("QuickTranslateSourceLanguage", json);
+        Assert.DoesNotContain("QuickTranslateTargetLanguage", json);
+        var reloaded = SettingsService.Parse(json);
+        Assert.Equal("KO", reloaded.QuickTranslate.SourceLanguage);
+        Assert.Equal("ZH-HANT", reloaded.QuickTranslate.TargetLanguage);
+    }
+
+    [Fact]
+    public void QuickTranslateGroup_InvalidFieldKeepsOtherFields()
+    {
+        var settings = SettingsService.Parse(
+            """{"QuickTranslate":{"SourceLanguage":42,"TargetLanguage":"JA"}}""");
+
+        Assert.Equal(LanguageData.DefaultSourceLanguage, settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("JA", settings.QuickTranslate.TargetLanguage);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("42")]
+    [InlineData("{}")]
+    public void QuickTranslateGroup_InvalidOrEmptyGroupUsesIndependentDefaults(string group)
+    {
+        var settings = SettingsService.Parse(
+            """{"SourceLanguage":"JA","TargetLanguage":"EN-US","QuickTranslate":""" + group + "}");
+
+        Assert.Equal(LanguageData.DefaultSourceLanguage, settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("EN-US", settings.QuickTranslate.TargetLanguage);
+    }
+
+    [Fact]
+    public void QuickTranslateLanguages_MigrateSharedPairThenRemainIndependent()
+    {
+        var settings = SettingsService.Parse(
+            """{"SourceLanguage":"JA","TargetLanguage":"EN-US"}""");
+
+        Assert.Equal("JA", settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("EN-US", settings.QuickTranslate.TargetLanguage);
+
+        settings.SourceLanguage = "KO";
+        settings.TargetLanguage = "ZH-HANT";
+        var reloaded = SettingsService.Parse(System.Text.Json.JsonSerializer.Serialize(settings));
+
+        Assert.Equal("JA", reloaded.QuickTranslate.SourceLanguage);
+        Assert.Equal("EN-US", reloaded.QuickTranslate.TargetLanguage);
+        Assert.Equal("KO", reloaded.SourceLanguage);
+        Assert.Equal("ZH-HANT", reloaded.TargetLanguage);
+    }
+
+    [Fact]
+    public void QuickTranslateLanguages_KeepExplicitPairAndIgnoreInvalidValues()
+    {
+        var settings = SettingsService.Parse(
+            """{"SourceLanguage":"JA","TargetLanguage":"EN-US","QuickTranslateSourceLanguage":"AUTO","QuickTranslateTargetLanguage":"KO"}""");
+
+        Assert.Equal("AUTO", settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("KO", settings.QuickTranslate.TargetLanguage);
+
+        var invalid = SettingsService.Parse(
+            """{"QuickTranslateSourceLanguage":null,"QuickTranslateTargetLanguage":42}""");
+
+        Assert.Equal(LanguageData.DefaultSourceLanguage, invalid.QuickTranslate.SourceLanguage);
+        Assert.Equal("EN-US", invalid.QuickTranslate.TargetLanguage);
+    }
+
     [Fact]
     public void MissingOpenAiSettings_UseSafeDefaults()
     {
@@ -59,6 +143,93 @@ public class SettingsParsingTests
             """{"Capture":{"VerticalText":true}}""");
 
         Assert.True(settings.Capture.VerticalText);
+    }
+
+    /// <summary>
+    /// A name this build writes reads back as itself. design.md §15.5, the two cases that keep the
+    /// user's answer.
+    /// </summary>
+    /// <remarks>
+    /// The other four cases of that table — the two v1 names, an unknown one, and no key at all —
+    /// are the two tests below. Between the three of them every value that can be sitting in a
+    /// settings file has somewhere it lands.
+    /// </remarks>
+    [Theory]
+    [InlineData("General", CaptureLayoutMode.General)]
+    [InlineData("Interface", CaptureLayoutMode.Interface)]
+    public void CaptureLayoutMode_IsReadFromItsOwnGroup(string stored, CaptureLayoutMode expected)
+    {
+        var settings = SettingsService.Parse(
+            "{\"Capture\":{\"LayoutMode\":\"" + stored + "\"}}");
+
+        Assert.Equal(expected, settings.Capture.LayoutMode);
+    }
+
+    /// <summary>
+    /// Every settings file written before this switch existed, and every first run, opens on 一般.
+    /// </summary>
+    [Fact]
+    public void ASettingsFileWithoutALayoutMode_OpensOnTheDefault()
+    {
+        var settings = SettingsService.Parse("""{"Capture":{"VerticalText":true}}""");
+
+        Assert.Equal(CaptureLayoutMode.General, settings.Capture.LayoutMode);
+        Assert.True(settings.Capture.VerticalText);
+    }
+
+    /// <summary>
+    /// A mode name this build cannot read falls back to 一般, and takes nothing else with it.
+    /// </summary>
+    /// <remarks>
+    /// <para>This is the whole of design.md §15.5's fallback. It is not code of its own: the mode is
+    /// stored by name, a name that is not a member will not deserialize, and the settings reader
+    /// already keeps a property's default when a value will not read. The test is here to say the
+    /// chain actually closes, because the day it stops closing is a day nobody looks.</para>
+    ///
+    /// <para>The v1 names go through the same door, which is why the theory carries them: a file
+    /// still saying ComicArticle or Standard is not a hypothetical, it is on the disk of everyone
+    /// who ran the previous build. Standard landing on 一般 rather than on 介面 is deliberate and
+    /// is the one case worth arguing about — Standard was the old default, so somebody storing it
+    /// most likely never opened the switch at all, and what that means is "no opinion", not
+    /// "keep me conservative". No opinion gets the new default. The remaining pair of cases —
+    /// General and Interface written by this build — round-trip below.</para>
+    /// </remarks>
+    [Theory]
+    [InlineData("Webtoon")]      // a mode a later release named
+    [InlineData("ComicArticle")] // v1: the mode that became General
+    [InlineData("Standard")]     // v1: the old default
+    public void ALayoutModeNameThisBuildCannotRead_OpensOnTheDefaultAndCostsNothingElse(string stored)
+    {
+        var settings = SettingsService.Parse(
+            "{\"ApiKey\":\"secret\",\"Capture\":{\"LayoutMode\":\"" + stored + "\",\"VerticalText\":true}}");
+
+        Assert.Equal(CaptureLayoutMode.General, settings.Capture.LayoutMode);
+        Assert.True(settings.Capture.VerticalText);
+        Assert.Equal("secret", settings.ApiKey);
+    }
+
+    /// <summary>
+    /// Written as the name, not as a number or a flag.
+    /// </summary>
+    /// <remarks>
+    /// 一般 and 介面 are unlikely to be the last two answers — realtime already has more than two —
+    /// and a bool, or an ordinal, would have to change data format the day a third arrives. An
+    /// ordinal would have been worse than useless through the v2 swap in particular: the two modes
+    /// exchanged positions, so every stored 0 and 1 would have quietly come back as the other mode.
+    /// A round trip through the file is what proves the choice actually survives.
+    /// </remarks>
+    [Theory]
+    [InlineData(CaptureLayoutMode.General, "General")]
+    [InlineData(CaptureLayoutMode.Interface, "Interface")]
+    public void TheLayoutModeIsStoredByName(CaptureLayoutMode mode, string expectedName)
+    {
+        var written = new AppSettings();
+        written.Capture.LayoutMode = mode;
+
+        var json = SettingsService.Serialize(written);
+
+        Assert.Contains($"\"LayoutMode\": \"{expectedName}\"", json);
+        Assert.Equal(mode, SettingsService.Parse(json).Capture.LayoutMode);
     }
 
     [Fact]
@@ -363,7 +534,7 @@ public class SettingsParsingTests
             captureGroup > lastFlatKey,
             "grouped settings must be written after every flat one");
         Assert.Equal(
-            ["Capture", "QuickLookup", "Realtime", "OcrDebug", "OpenAi"], rootKeys.TakeLast(5));
+            ["Capture", "QuickLookup", "QuickTranslate", "Realtime", "OcrDebug", "OpenAi"], rootKeys.TakeLast(6));
     }
 
     /// <summary>

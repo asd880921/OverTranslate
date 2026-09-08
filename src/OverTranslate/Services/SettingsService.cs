@@ -114,6 +114,24 @@ public class SettingsService
             return settings;
 
         Apply(settings, root, "");
+
+        // The grouped section wins. Older files used flat quick-translation keys, and before
+        // that shared the text-translation pair. Migrate only when the group is absent.
+        if (!root.ContainsKey(nameof(AppSettings.QuickTranslate)))
+        {
+            string LegacyLanguage(string key, string shared) =>
+                !root.TryGetPropertyValue(key, out var value) ? shared :
+                value is JsonValue scalar && scalar.TryGetValue<string>(out var text) ? text : "";
+
+            settings.QuickTranslate.SourceLanguage = LanguageData.GetValidSourceCode(
+                LegacyLanguage("QuickTranslateSourceLanguage", settings.SourceLanguage));
+            var legacyTarget = LegacyLanguage("QuickTranslateTargetLanguage",
+                root.ContainsKey(nameof(AppSettings.TargetLanguage)) ? settings.TargetLanguage : "");
+            var target = LanguageData.TargetLanguages.FirstOrDefault(
+                language => language.Code.Equals(legacyTarget, StringComparison.OrdinalIgnoreCase));
+            if (target is not null)
+                settings.QuickTranslate.TargetLanguage = target.Code;
+        }
         return settings;
     }
 

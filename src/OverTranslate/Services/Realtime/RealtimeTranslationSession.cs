@@ -812,7 +812,7 @@ public sealed class RealtimeTranslationSession
                         : block.Text,
                 block.Bounds,
                 block.SourceLineBounds,
-                block.SourceGlyphHeight))
+                block.RenderGlyphHeight))
             .ToList();
     }
 

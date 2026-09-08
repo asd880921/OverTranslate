@@ -12,32 +12,57 @@ public record OcrTextBlock(
     // Bounds. For Latin source the detection box is much taller than the rendered CJK font,
     // so Bounds stays full (for background coverage) while this drives only the font size.
     // Null for CJK, where Bounds already matches the glyph height.
-    double? SourceGlyphHeight = null,
+    double? RenderGlyphHeight = null,
     // Mean per-character recognition confidence, 0–1. Reading the same unchanged text twice
     // gives two slightly different answers, and this is what says which to believe; null when
     // the engine reported no scores.
-    double? Confidence = null)
+    double? Confidence = null,
+    // Writing system of this block's own text, for the grouping geometry to reason about. Never
+    // derived from the source language the user picked — that is the whole point of it existing.
+    OcrLayoutScript LayoutScript = OcrLayoutScript.Unknown,
+    // The detector's own box, before any script-specific normalisation. Bounds is not comparable
+    // across scripts — a CJK one is pulled in onto its glyphs and a Latin one is not, a ratio of
+    // 0.820 that refused every mixed-script pair on size alone. This is what grouping measures
+    // with: one detector, one procedure, whatever the text turns out to be.
+    System.Windows.Rect LayoutBounds = default,
+    // Estimated glyph body height for LayoutScript, from LayoutBounds. Comparable within one
+    // script only: a Latin box carries ascender and descender room a CJK one does not, and no
+    // constant converts between them — that was measured, and it is a property of the text
+    // rather than of the scripts. Null for Mixed and Unknown, which have no single answer.
+    double? LayoutGlyphHeight = null)
 {
     public IReadOnlyList<System.Windows.Rect> Lines => SourceLineBounds ?? [Bounds];
+
+    // Optional screenshot-only evidence; never used to size the rendered translation.
+    public double? LayoutInkHeight { get; init; }
 }
 
 public class OcrService : IDisposable
 {
     private readonly OnnxOcrEngine _engine = new();
 
+    /// <param name="layoutMode">
+    /// What the user said this capture holds. The only thing it decides here is which thresholds
+    /// grouping runs on; where the translation is then placed is decided by the caller, which is
+    /// the one layer that reads the mode itself.
+    /// </param>
     public Task<List<OcrTextBlock>> RecognizeAsync(
         Bitmap bitmap,
         string sourceLanguage,
         CancellationToken cancellationToken = default,
-        bool verticalText = false)
+        bool verticalText = false,
+        CaptureLayoutMode layoutMode = CaptureLayoutMode.General)
     {
         if (!OcrLanguageRouter.IsSupported(sourceLanguage))
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
 
         var language = OcrLanguageRouter.Normalize(sourceLanguage);
+
+        // The mode picks the thresholds for horizontal text only. Vertical has its own profile and
+        // does not take a parameter for one — see RecognizeVerticalAsync.
         return verticalText
             ? RecognizeVerticalAsync(_engine, bitmap, language, cancellationToken)
-            : RecognizeAndGroupAsync(_engine, bitmap, language, cancellationToken);
+            : RecognizeAndGroupAsync(_engine, bitmap, language, GroupingProfile.For(layoutMode), cancellationToken);
     }
 
     /// <summary>
@@ -66,7 +91,12 @@ public class OcrService : IDisposable
         // 136px line "Arisa's a big meanie.", and the merged box — 220px in a 206px block — was
         // then thrown out as a collapse, taking the subtitle with it. Filtered afterwards the
         // subtitle is already tied to the noise and cannot be recovered.
-        return OcrTextBlockGrouper.Group(RejectUnconvincingBlocks(blocks));
+        //
+        // The live-screen path's own profile, and deliberately not the screenshot side's Standard.
+        // There is no toolbar in front of a running video, so there is no CaptureLayoutMode to
+        // honour here; taking one would mean a mode the user chose for a still capture silently
+        // steering frames it was never asked about.
+        return OcrTextBlockGrouper.Group(RejectUnconvincingBlocks(blocks), GroupingProfile.Realtime);
     }
 
     // Scenery the recogniser was not sure about. Only on this path: it is the realtime one, where
@@ -96,7 +126,7 @@ public class OcrService : IDisposable
     // of the failure this ordering exists to prevent, so "no noise admitted" is an absence of the
     // test case, not a pass. Left alone deliberately. What would reopen it is a corpus with scenery
     // sitting on a subtitle's own row.
-    private static List<OcrTextBlock> RejectUnconvincingBlocks(List<OcrTextBlock> blocks)
+    internal static List<OcrTextBlock> RejectUnconvincingBlocks(List<OcrTextBlock> blocks)
     {
         List<OcrTextBlock>? kept = null;
 
@@ -142,17 +172,37 @@ public class OcrService : IDisposable
         IOcrEngine engine,
         Bitmap bitmap,
         string sourceLanguage,
+        GroupingProfile profile,
         CancellationToken cancellationToken)
     {
         var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage, cancellationToken);
-        return OcrTextBlockGrouper.Group(blocks);
+        blocks = PrepareScreenshotGrouping(bitmap, blocks, profile);
+        return OcrTextBlockGrouper.Group(blocks, profile);
     }
+
+    internal static List<OcrTextBlock> PrepareScreenshotGrouping(
+        Bitmap bitmap, List<OcrTextBlock> blocks, GroupingProfile profile) =>
+        profile.SolidLineAdvanceWhenWrapped > OcrTextBlockGrouper.SolidLineAdvance
+            ? TextInkMetrics.Annotate(bitmap, blocks)
+            : blocks;
 
     /// <summary>
     /// Turns vertical writing anticlockwise for the horizontal detector, then maps the grouped
     /// results back to the original image. The rightmost source column becomes the first detected
     /// row, preserving Japanese reading order.
     /// </summary>
+    /// <remarks>
+    /// <para>Takes no profile, and that absence is the contract. Neither pass here is judging what
+    /// the capture modes were measured on: the column merge compares column against column, and so
+    /// — once the picture has been turned 270° — does the first pass, because every column of the
+    /// original reaches the detector as a row. Handing either of them a relaxed threshold would be
+    /// relaxing something nobody has measured, and the measurement says what that buys: the relaxed
+    /// profile joined balloons rather than the lines inside them.</para>
+    ///
+    /// <para>Both passes therefore run on <see cref="GroupingProfile.Vertical"/>, which holds the
+    /// conservative figures under its own name so that tightening the interface mode later cannot
+    /// move vertical text with it.</para>
+    /// </remarks>
     internal static async Task<List<OcrTextBlock>> RecognizeVerticalAsync(
         IOcrEngine engine,
         Bitmap bitmap,
@@ -162,14 +212,19 @@ public class OcrService : IDisposable
         using var rotated = new Bitmap(bitmap);
         rotated.RotateFlip(RotateFlipType.Rotate270FlipNone);
 
-        var blocks = await RecognizeAndGroupAsync(engine, rotated, sourceLanguage, cancellationToken);
+        var blocks = await RecognizeAndGroupAsync(
+            engine, rotated, sourceLanguage, GroupingProfile.Vertical, cancellationToken);
         var columns = blocks.Select(block => block with
         {
             Bounds = MapVerticalBoundsBack(block.Bounds, bitmap.Width),
+            // The layout box turns with the picture. Without it the second pass below would be
+            // reading a rectangle still in the rotated frame beside one that is not.
+            LayoutBounds = MapVerticalBoundsBack(block.LayoutBounds, bitmap.Width),
             SourceLineBounds = null,
             // After mapping back, a column is tall and narrow. The rotated row height is the
-            // original glyph width and is the useful reference for a square vertical cell.
-            SourceGlyphHeight = block.Bounds.Height,
+            // original glyph width and is the useful reference for a square vertical cell. Only the
+            // render metric: what the columns are grouped on is LayoutBounds, above.
+            RenderGlyphHeight = block.Bounds.Height,
         }).ToList();
 
         return MergeVerticalColumns(columns);
@@ -189,7 +244,7 @@ public class OcrService : IDisposable
     {
         var remaining = columns
             .Where(IsVerticalColumnCandidate)
-            .OrderByDescending(column => column.Bounds.X)
+            .OrderByDescending(column => column.LayoutBounds.X)
             .ToList();
         var merged = new List<OcrTextBlock>();
 
@@ -225,22 +280,26 @@ public class OcrService : IDisposable
         const double maxWidthToHeightRatio = 1.4;
         int characters = column.Text.Count(character => !char.IsWhiteSpace(character));
         return characters <= 1 ||
-               column.Bounds.Width <= column.Bounds.Height * maxWidthToHeightRatio;
+               column.LayoutBounds.Width <= column.LayoutBounds.Height * maxWidthToHeightRatio;
     }
 
     private static bool IsSameVerticalTextGroup(OcrTextBlock a, OcrTextBlock b)
     {
-        double columnWidth = Math.Max(a.Bounds.Width, b.Bounds.Width);
-        if (Math.Abs(a.Bounds.Y - b.Bounds.Y) > columnWidth * 0.6)
+        double columnWidth = Math.Max(a.LayoutBounds.Width, b.LayoutBounds.Width);
+        if (Math.Abs(a.LayoutBounds.Y - b.LayoutBounds.Y) > columnWidth * 0.6)
             return false;
 
-        double gap = Math.Max(a.Bounds.Left, b.Bounds.Left) - Math.Min(a.Bounds.Right, b.Bounds.Right);
+        double gap = Math.Max(a.LayoutBounds.Left, b.LayoutBounds.Left) -
+                     Math.Min(a.LayoutBounds.Right, b.LayoutBounds.Right);
         return gap <= columnWidth * 0.6;
     }
 
     private static OcrTextBlock CombineVerticalColumns(List<OcrTextBlock> group)
     {
-        var ordered = group.OrderByDescending(column => column.Bounds.X).ToList();
+        // Reading order is a layout question, so it is decided on the detector's boxes. Everything
+        // built below — the coverage rectangle, the cell size, the character cells — is what the
+        // overlay draws, and stays on Bounds.
+        var ordered = group.OrderByDescending(column => column.LayoutBounds.X).ToList();
         var bounds = ordered.Select(column => column.Bounds).Aggregate(Rect.Union);
         var widths = ordered.Select(column => column.Bounds.Width).OrderBy(width => width).ToList();
         var glyphSize = widths[widths.Count / 2];
@@ -254,12 +313,38 @@ public class OcrService : IDisposable
             : scored.Sum(column => column.Confidence!.Value * Math.Max(1, column.Text.Length)) /
               scored.Sum(column => Math.Max(1, column.Text.Length));
 
+        var text = string.Concat(ordered.Select(column => column.Text));
+        var layoutScript = LayoutScriptDetection.For(text);
+
         return new OcrTextBlock(
-            string.Concat(ordered.Select(column => column.Text)),
+            text,
             bounds,
             lines,
             glyphSize,
-            confidence);
+            confidence,
+            // From the text as read. A vertical frame is not required to be Japanese — a western
+            // title down the spine of a book is still Latin.
+            layoutScript,
+            ordered.Select(column => column.LayoutBounds).Aggregate(Rect.Union),
+            CombineVerticalGlyphSize(layoutScript, ordered));
+    }
+
+    /// <summary>
+    /// One layout glyph size for a merged column group: the median of the columns', and nothing
+    /// once the joined text is no longer of a single script.
+    /// </summary>
+    private static double? CombineVerticalGlyphSize(OcrLayoutScript script, List<OcrTextBlock> columns)
+    {
+        if (script is not (OcrLayoutScript.Latin or OcrLayoutScript.Cjk))
+            return null;
+
+        var sizes = columns
+            .Where(column => column.LayoutGlyphHeight is > 0)
+            .Select(column => column.LayoutGlyphHeight!.Value)
+            .OrderBy(size => size)
+            .ToList();
+
+        return sizes.Count > 0 ? sizes[sizes.Count / 2] : null;
     }
 
     private static List<Rect> SplitIntoVerticalCharacterCells(Rect column, double glyphSize)
