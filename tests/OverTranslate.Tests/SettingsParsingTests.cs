@@ -13,6 +13,41 @@ namespace OverTranslate.Tests;
 public class SettingsParsingTests
 {
     [Fact]
+    public void QuickTranslateLanguages_MigrateSharedPairThenRemainIndependent()
+    {
+        var settings = SettingsService.Parse(
+            """{"SourceLanguage":"JA","TargetLanguage":"EN-US"}""");
+
+        Assert.Equal("JA", settings.QuickTranslateSourceLanguage);
+        Assert.Equal("EN-US", settings.QuickTranslateTargetLanguage);
+
+        settings.SourceLanguage = "KO";
+        settings.TargetLanguage = "ZH-HANT";
+        var reloaded = SettingsService.Parse(System.Text.Json.JsonSerializer.Serialize(settings));
+
+        Assert.Equal("JA", reloaded.QuickTranslateSourceLanguage);
+        Assert.Equal("EN-US", reloaded.QuickTranslateTargetLanguage);
+        Assert.Equal("KO", reloaded.SourceLanguage);
+        Assert.Equal("ZH-HANT", reloaded.TargetLanguage);
+    }
+
+    [Fact]
+    public void QuickTranslateLanguages_KeepExplicitPairAndIgnoreInvalidValues()
+    {
+        var settings = SettingsService.Parse(
+            """{"SourceLanguage":"JA","TargetLanguage":"EN-US","QuickTranslateSourceLanguage":"AUTO","QuickTranslateTargetLanguage":"KO"}""");
+
+        Assert.Equal("AUTO", settings.QuickTranslateSourceLanguage);
+        Assert.Equal("KO", settings.QuickTranslateTargetLanguage);
+
+        var invalid = SettingsService.Parse(
+            """{"QuickTranslateSourceLanguage":null,"QuickTranslateTargetLanguage":42}""");
+
+        Assert.Equal(LanguageData.DefaultSourceLanguage, invalid.QuickTranslateSourceLanguage);
+        Assert.Equal(LanguageData.DefaultTargetLanguage, invalid.QuickTranslateTargetLanguage);
+    }
+
+    [Fact]
     public void MissingOpenAiSettings_UseSafeDefaults()
     {
         var settings = SettingsService.Parse("{}");

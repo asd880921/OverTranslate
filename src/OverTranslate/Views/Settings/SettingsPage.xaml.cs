@@ -211,6 +211,13 @@ public partial class SettingsPage : UserControl
             UiLanguageBox.SelectedValue = LocalizationService.Current;
             if (UiLanguageBox.SelectedValue == null) UiLanguageBox.SelectedIndex = 0;
 
+            QuickTranslateSourceBox.ItemsSource = LanguageData.SourceLanguages;
+            QuickTranslateTargetBox.ItemsSource = LanguageData.TargetLanguages;
+            QuickTranslateSourceBox.SelectedValue = LanguageData.GetValidSourceCode(s.QuickTranslateSourceLanguage);
+            QuickTranslateTargetBox.SelectedValue = LanguageData.GetValidTargetCode(s.QuickTranslateTargetLanguage);
+            QuickTranslateSourceBox.Items.Refresh();
+            QuickTranslateTargetBox.Items.Refresh();
+
             StartupCheckBox.IsChecked = StartupService.IsEnabled;
 
             AutoTranslateCheckBox.IsChecked = s.AutoTranslateAfterSelection;
@@ -235,6 +242,18 @@ public partial class SettingsPage : UserControl
     }
 
     // ── Persistence ──────────────────────────────────────────────────────────
+
+    private void QuickTranslateLanguage_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || QuickTranslateSourceBox.SelectedValue is not string source ||
+            QuickTranslateTargetBox.SelectedValue is not string target) return;
+
+        Persist(s =>
+        {
+            s.QuickTranslateSourceLanguage = LanguageData.GetValidSourceCode(source);
+            s.QuickTranslateTargetLanguage = LanguageData.GetValidTargetCode(target);
+        });
+    }
 
     private void Persist(Action<AppSettings> apply)
     {

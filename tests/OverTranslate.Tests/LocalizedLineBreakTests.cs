@@ -26,11 +26,6 @@ public class LocalizedLineBreakTests
     private static readonly string[] TwoLineKeys =
     {
         "S.Settings.DiagnosticsUploadHint",
-
-        // 快速翻譯's row says two things — where the shortcut works, and whose language and service
-        // settings it uses — and they are two lines because they are two separate facts about a
-        // feature that has no interface of its own to put either one in.
-        "S.Settings.QuickTranslateHotkeyNote",
     };
 
     /// <summary>Every shipped dictionary, so a new language cannot lose the break quietly.</summary>

@@ -76,8 +76,8 @@ internal static class QuickTranslateFlow
         {
             var (results, _) = await AppServices.Translation.TranslateAsync(
                 [new OcrTextBlock(source, new Rect())],
-                LanguageData.GetValidSourceCode(settings.SourceLanguage),
-                LanguageData.GetValidTargetCode(settings.TargetLanguage),
+                LanguageData.GetValidSourceCode(settings.QuickTranslateSourceLanguage),
+                LanguageData.GetValidTargetCode(settings.QuickTranslateTargetLanguage),
                 settings.ApiKey);
 
             if (seq != _seq) return;

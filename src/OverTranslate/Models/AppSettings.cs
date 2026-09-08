@@ -132,6 +132,9 @@ public class AppSettings
     /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
     public bool QuickTranslateHotkeyEnabled { get; set; } = true;
 
+    public string QuickTranslateSourceLanguage { get; set; } = LanguageData.DefaultSourceLanguage;
+    public string QuickTranslateTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
+
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;

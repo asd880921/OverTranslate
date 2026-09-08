@@ -435,26 +435,86 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <!-- Two sentences under one ⓘ, and deliberately not two ⓘ lines.
-                                     Every other row carries exactly one, so a second turns the mark
-                                     from a footnote into a bullet: the eye reads "this row has two
-                                     points" before it reads either of them, and the rhythm of the
-                                     card breaks at this row.
+                                <ToggleButton x:Name="QuickTranslateSettingsToggle"
+                                              HorizontalAlignment="Right"
+                                              Margin="0,8,0,0"
+                                              Padding="10,5"
+                                              Foreground="{DynamicResource AppAccent}"
+                                              FocusVisualStyle="{StaticResource CardFoldFocusVisual}"
+                                              AutomationProperties.Name="{DynamicResource S.Settings.QuickTranslateSettings}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="Root" CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    Background="{DynamicResource AppAccentSubtle}"
+                                                    BorderBrush="{DynamicResource AppAccentSubtleHover}"
+                                                    BorderThickness="1">
+                                                <ContentPresenter VerticalAlignment="Center"
+                                                                  HorizontalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Root" Property="Background" Value="{DynamicResource AppAccentSubtleHover}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="Root" Property="Opacity" Value="0.7"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{DynamicResource S.Settings.QuickTranslateSettings}"
+                                                   FontSize="12" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </ToggleButton>
 
-                                     Both sentences are here because this feature has no interface of
-                                     its own. Every other way into a translation shows the reader
-                                     what it is about to do — 取詞翻譯 carries the language and
-                                     service pickers in its own header — while this one is a key
-                                     press over somebody else's window. What it will not do, and what
-                                     settings it will do it with, are answerable nowhere else.
+                                <Border Margin="0,8,0,0" Padding="12,10"
+                                        BorderBrush="{DynamicResource AppButtonBorder}"
+                                        BorderThickness="1" CornerRadius="6">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=QuickTranslateSettingsToggle}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="20"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{DynamicResource S.Realtime.SourceLanguage}" Style="{StaticResource FieldLabel}"/>
+                                                <ComboBox x:Name="QuickTranslateSourceBox"
+                                                          Style="{StaticResource ModernComboBox}"
+                                                          DisplayMemberPath="Display" SelectedValuePath="Code"
+                                                          AutomationProperties.Name="{DynamicResource S.Realtime.SourceLanguage}"
+                                                          SelectionChanged="QuickTranslateLanguage_Changed"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="{DynamicResource S.Realtime.TargetLanguage}" Style="{StaticResource FieldLabel}"/>
+                                                <ComboBox x:Name="QuickTranslateTargetBox"
+                                                          Style="{StaticResource ModernComboBox}"
+                                                          DisplayMemberPath="Display" SelectedValuePath="Code"
+                                                          AutomationProperties.Name="{DynamicResource S.Realtime.TargetLanguage}"
+                                                          SelectionChanged="QuickTranslateLanguage_Changed"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock Text="{DynamicResource S.Settings.QuickTranslateLanguageNote}"
+                                                   Style="{StaticResource FieldHint}" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </Border>
 
-                                     So this note wraps where the others are cut with an ellipsis: a
-                                     second line here is the paragraph continuing, which is what it
-                                     is, while on the other rows it would be one sentence that did
-                                     not fit. The Grid is what gives either behaviour an edge to work
-                                     against — a horizontal StackPanel, which is what these were,
-                                     hands its children all the width they ask for, and the notes
-                                     simply ran off the end of the card. -->
                                 <!-- The mark hangs off the first line, not the middle of the note:
                                      centred, it drifts down between two lines and stops reading as
                                      the start of anything.

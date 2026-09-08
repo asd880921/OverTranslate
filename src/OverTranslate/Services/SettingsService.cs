@@ -114,6 +114,12 @@ public class SettingsService
             return settings;
 
         Apply(settings, root, "");
+
+        // Preserve the previous language pair once when upgrading from shared preferences.
+        if (!root.ContainsKey(nameof(AppSettings.QuickTranslateSourceLanguage)))
+            settings.QuickTranslateSourceLanguage = LanguageData.GetValidSourceCode(settings.SourceLanguage);
+        if (!root.ContainsKey(nameof(AppSettings.QuickTranslateTargetLanguage)))
+            settings.QuickTranslateTargetLanguage = LanguageData.GetValidTargetCode(settings.TargetLanguage);
         return settings;
     }
 
