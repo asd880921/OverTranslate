@@ -588,6 +588,29 @@ internal static class OcrTextBlockGrouper
         return true;
     }
 
+    // A rejected same-row fragment must not be skipped by a wrap into its horizontal span.
+    // Check both ends: a full line may also take only half of the next visual row. Separate
+    // columns remain independent when the continuation does not cross the neighbouring column.
+    private static bool HasUnresolvedRowFragment(
+        OcrTextBlock previous, OcrTextBlock current, IReadOnlyList<OcrTextBlock> lines)
+    {
+        foreach (var other in lines)
+        {
+            if (ReferenceEquals(other, previous) || ReferenceEquals(other, current)) continue;
+            if (Conflicts(previous, current, other) || Conflicts(current, previous, other)) return true;
+        }
+        return false;
+
+        static bool Conflicts(OcrTextBlock rowPart, OcrTextBlock continuation, OcrTextBlock other)
+        {
+            if (!SharesVisualRow(rowPart, other)) return false;
+            var overlap = Math.Min(continuation.LayoutBounds.Right, other.LayoutBounds.Right) -
+                          Math.Max(continuation.LayoutBounds.Left, other.LayoutBounds.Left);
+            // Ignore a few pixels of detector expansion at touching column edges.
+            return overlap > Math.Min(continuation.LayoutBounds.Height, other.LayoutBounds.Height) * 0.2;
+        }
+    }
+
     private static bool CanJoinNextLine(
         List<OcrTextBlock> group,
         OcrTextBlock current,
@@ -605,6 +628,8 @@ internal static class OcrTextBlockGrouper
         if (joined && paragraphFinal &&
             TextSizeRatio(previous, current) < Math.Min(MinTextSizeRatio, profile.TightlySetMinTextSizeRatio))
             rule = "paragraph final line";
+        if (joined && HasUnresolvedRowFragment(previous, current, lines))
+            (joined, rule) = (false, "unresolved row fragment");
         if (decisions is null)
             return joined;
 
