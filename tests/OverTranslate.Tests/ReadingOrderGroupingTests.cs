@@ -10,10 +10,11 @@ namespace OverTranslate.Tests;
 public class ReadingOrderGroupingTests
 {
     [Theory]
-    [InlineData(0.5)]
-    [InlineData(1.0)]
-    [InlineData(2.0)]
-    public void CapturedArticleRetainsEveryFragmentInReadingOrder(double scale)
+    [InlineData(0.5, false)]
+    [InlineData(1.0, false)]
+    [InlineData(2.0, false)]
+    [InlineData(1.0, true)]
+    public void CapturedArticleRetainsEveryFragmentInReadingOrder(double scale, bool interfaceMode)
     {
         using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
             "Fixtures", "WebParagraphs", "split-rows.json")));
@@ -32,14 +33,18 @@ public class ReadingOrderGroupingTests
         }).ToArray();
         var trace = new GroupingTrace();
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        var groups = OcrTextBlockGrouper.Group(blocks, GroupingProfile.General, decisions, trace);
+        var profile = interfaceMode ? GroupingProfile.Interface : GroupingProfile.General;
+        var groups = OcrTextBlockGrouper.Group(blocks, profile, decisions, trace);
         var sources = trace.Lines.ToDictionary(line => line.Id, line => line.SourceIds);
         Assert.Equal(new[] { "b0", "b2", "b1", "b3", "b4", "b5", "b6", "b7", "b8", "b9" },
             trace.Groups.SelectMany(group => group.SelectMany(id => sources[id])));
         Assert.Equal(string.Join(" ", new[] { 0, 2, 1, 3, 4, 5, 6, 7, 8, 9 }.Select(i => blocks[i].Text)),
             string.Join(" ", groups.Select(g => g.Text)));
-        Assert.Contains(decisions, d => !d.Joined && d.Rule == "unresolved row fragment");
-        Assert.Equal(groups.Select(g => g.Text), OcrTextBlockGrouper.Group(blocks, GroupingProfile.General).Select(g => g.Text));
+        if (interfaceMode)
+            Assert.Contains(decisions, d => !d.Joined && d.Rule == "unresolved row fragment");
+        else
+            Assert.Single(groups);
+        Assert.Equal(groups.Select(g => g.Text), OcrTextBlockGrouper.Group(blocks, profile).Select(g => g.Text));
     }
 
     [Fact]
