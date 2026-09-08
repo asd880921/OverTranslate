@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="16 16 480 480" role="img" aria-labelledby="title desc">
   <title id="title">OverTranslate</title>
-  <desc id="desc">A stylized 譯 character on an OCR translation panel with a scan beam and translated text lines.</desc>
+  <desc id="desc">The OT monogram on an OCR translation panel with a scan beam and translated text lines.</desc>
   <defs>
     <filter id="edge-feather" x="16" y="16" width="480" height="480" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
       <feGaussianBlur stdDeviation="0.8"/>
@@ -53,23 +53,27 @@
       <stop offset="0.84" stop-color="#29445E"/>
       <stop offset="1" stop-color="#2A4563"/>
     </linearGradient>
-    <linearGradient id="mark-left" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="mark-o" x1="192" y1="168" x2="310" y2="334" gradientUnits="userSpaceOnUse">
       <stop stop-color="#82F7FC"/>
       <stop offset="0.48" stop-color="#34CFDD"/>
       <stop offset="1" stop-color="#1595B1"/>
     </linearGradient>
-    <linearGradient id="mark-right" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="mark-t" x1="286" y1="168" x2="422" y2="338" gradientUnits="userSpaceOnUse">
       <stop stop-color="#B0FDFF"/>
       <stop offset="0.48" stop-color="#4CE8F2"/>
       <stop offset="1" stop-color="#1EBBD4"/>
     </linearGradient>
-    <linearGradient id="mark-left-side" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#168AA4"/>
-      <stop offset="1" stop-color="#07536B"/>
+    <linearGradient id="sheen-o" x1="226" y1="0" x2="300" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E6FEFF" stop-opacity="0"/>
+      <stop offset="0.3" stop-color="#E6FEFF" stop-opacity="0.18"/>
+      <stop offset="0.72" stop-color="#E6FEFF" stop-opacity="0.13"/>
+      <stop offset="1" stop-color="#E6FEFF" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="mark-right-side" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#1BA9BF"/>
-      <stop offset="1" stop-color="#087087"/>
+    <linearGradient id="sheen-t" x1="294" y1="0" x2="410" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E6FEFF" stop-opacity="0"/>
+      <stop offset="0.24" stop-color="#E6FEFF" stop-opacity="0.15"/>
+      <stop offset="0.72" stop-color="#E6FEFF" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#E6FEFF" stop-opacity="0"/>
     </linearGradient>
     <linearGradient id="scan" x1="172" y1="0" x2="432" y2="0" gradientUnits="userSpaceOnUse">
       <stop stop-color="#70F4FB" stop-opacity="0"/>
@@ -91,9 +95,6 @@
     <filter id="scan-glow" x="158" y="244" width="288" height="34" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
       <feGaussianBlur stdDeviation="4"/>
     </filter>
-    <path id="translation-glyph" fill-rule="evenodd" d="M36.23 161.33V184.28H53.81V161.33H36.23ZM18.55 144.53H71.39V209.57H53.81V201.17H36.23V212.7H18.55V144.53ZM120.61 134.77L122.05 138.69L123.36 142.36L124.54 145.77L125.59 148.93H144.43L147.68 142.02L150.2 134.77H120.61ZM18.55 114.36H72.75V130.96H18.36L18.55 114.36ZM18.36 85.16H72.75V101.56H18.36V85.16ZM155.18 55.96V71.1H168.16V55.96H155.18ZM127.25 55.96V71.1H140.04V55.96H127.25ZM99.02 55.96V71.1H111.43V55.96H99.02ZM82.42 41.31H184.57V85.74H141.6V94.73H184.38V108.89H141.6V119.53H187.99V134.77H168.55L167.72 137.37L166.48 140.6L164.84 144.45L162.79 148.93H183.4V163.48H141.41V175.88H187.4V190.72H141.41V213.77H124.02V190.72H77.64V175.88H124.02V163.48H83.59V148.93H107.42L106.27 144.93L104.98 141.24L103.54 137.85L101.95 134.77H78.03V119.53H124.22V108.89H83.2V94.73H124.22V85.74H82.42V41.31ZM49.8 35.74L50.76 37.78L51.77 40.27L52.84 43.22L53.96 46.63L55.02 49.97L55.92 52.7L56.66 54.83L57.23 56.35H76.56V72.56H14.16V56.35H38.18L38.03 55.78L37.71 54.75L37.24 53.26L36.6 51.32L35.8 48.92L34.83 46.06L33.71 42.74L32.42 38.97L49.8 35.74Z"/>
-    <path id="translation-left-glyph" fill-rule="evenodd" d="M36.23 161.33V184.28H53.81V161.33H36.23ZM18.55 144.53H71.39V209.57H53.81V201.17H36.23V212.7H18.55V144.53ZM18.55 114.36H72.75V130.96H18.36L18.55 114.36ZM18.36 85.16H72.75V101.56H18.36V85.16ZM49.8 35.74L50.76 37.78L51.77 40.27L52.84 43.22L53.96 46.63L55.02 49.97L55.92 52.7L56.66 54.83L57.23 56.35H76.56V72.56H14.16V56.35H38.18L38.03 55.78L37.71 54.75L37.24 53.26L36.6 51.32L35.8 48.92L34.83 46.06L33.71 42.74L32.42 38.97L49.8 35.74Z"/>
-    <path id="translation-right-glyph" fill-rule="evenodd" d="M120.61 134.77L122.05 138.69L123.36 142.36L124.54 145.77L125.59 148.93H144.43L147.68 142.02L150.2 134.77H120.61ZM155.18 55.96V71.1H168.16V55.96H155.18ZM127.25 55.96V71.1H140.04V55.96H127.25ZM99.02 55.96V71.1H111.43V55.96H99.02ZM82.42 41.31H184.57V85.74H141.6V94.73H184.38V108.89H141.6V119.53H187.99V134.77H168.55L167.72 137.37L166.48 140.6L164.84 144.45L162.79 148.93H183.4V163.48H141.41V175.88H187.4V190.72H141.41V213.77H124.02V190.72H77.64V175.88H124.02V163.48H83.59V148.93H107.42L106.27 144.93L104.98 141.24L103.54 137.85L101.95 134.77H78.03V119.53H124.22V108.89H83.2V94.73H124.22V85.74H82.42V41.31Z"/>
   </defs>
   <g mask="url(#tile-mask)">
     <rect width="512" height="512" fill="url(#tile)"/>
@@ -116,13 +117,13 @@
       <rect x="138" y="120" width="326" height="338" rx="62" fill="url(#panel)" stroke="url(#panel-rim)" stroke-width="8"/>
     </g>
     <rect x="149" y="131" width="304" height="316" rx="51" fill="none" stroke="#2C7890" stroke-width="2" opacity="0.5"/>
-    <path d="M170 260H432" stroke="url(#scan)" stroke-width="10" opacity="0.32" filter="url(#scan-glow)"/>
-    <g id="translation-mark" filter="url(#mark-shadow)" aria-hidden="true">
-      <use href="#translation-left-glyph" transform="translate(198 148)" fill="url(#mark-left-side)" stroke="#06445B" stroke-width="3" stroke-linejoin="bevel"/>
-      <use href="#translation-right-glyph" transform="translate(204 148)" fill="url(#mark-right-side)" stroke="#075B70" stroke-width="3" stroke-linejoin="bevel"/>
-      <use href="#translation-left-glyph" transform="translate(198 142)" fill="url(#mark-left)" stroke="#56E9F2" stroke-width="2.4" stroke-linejoin="bevel"/>
-      <use href="#translation-right-glyph" transform="translate(204 142)" fill="url(#mark-right)" stroke="#5CEBF3" stroke-width="2.4" stroke-linejoin="bevel"/>
+    <g id="ot-mark" filter="url(#mark-shadow)" aria-hidden="true">
+      <path fill="url(#mark-o)" fill-rule="evenodd" stroke="#56E9F2" stroke-width="2" stroke-linejoin="round" d="M234 170H272L312 212V302C312 324 294 342 272 342H230C207 342 188 323 188 300V218C188 191 207 170 234 170ZM238 202H258L280 225V292C280 302 272 310 262 310H240C229 310 220 301 220 290V226C220 212 228 202 238 202Z"/>
+      <path fill="url(#mark-t)" stroke="#5CEBF3" stroke-width="2" stroke-linejoin="round" d="M280 170H424L400 202H372V342H336V202H308L280 170Z"/>
+      <path d="M230 180H264L294 210" fill="none" stroke="url(#sheen-o)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M298 180H410" fill="none" stroke="url(#sheen-t)" stroke-width="4" stroke-linecap="round"/>
     </g>
+    <path d="M170 260H432" stroke="url(#scan)" stroke-width="10" opacity="0.32" filter="url(#scan-glow)"/>
     <path d="M176 260H426" stroke="url(#scan)" stroke-width="3"/>
     <g aria-hidden="true">
       <rect x="196" y="382" width="184" height="15" rx="7.5" fill="#52EAF5" fill-opacity="0.66"/>
