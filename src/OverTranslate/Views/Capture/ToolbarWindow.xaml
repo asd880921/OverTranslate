@@ -133,6 +133,11 @@
                                    VerticalAlignment="Center"/>
                     </Border>
 
+                    <!-- Separate language/provider settings from capture translation settings. -->
+                    <Rectangle Width="1"
+                               Margin="14,9,0,9"
+                               Fill="{DynamicResource ToolbarDivider}"/>
+
                     <!-- What kind of material the selection holds, which is a different question
                          from the one beside it: 橫排／直排 says how the source is written, this says
                          what it is. They are adjacent because they are asked of the same rectangle at

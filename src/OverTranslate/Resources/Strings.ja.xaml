@@ -200,7 +200,7 @@
     <sys:String x:Key="S.Toolbar.SpeakStop">読み上げを停止</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakAutomatic">翻訳元の言語が「自動」のままでは読み上げられません。実際の言語を選んでください</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakNoText">読み上げられるテキストがまだ認識されていません</sys:String>
-    <sys:String x:Key="S.Toolbar.BackupBadge">⚡バックアップ {0}</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupBadge">⚡バックアップ</sys:String>
     <sys:String x:Key="S.Toolbar.BackupTooltip">「{0}」ではすべてを翻訳できず、バックアップの「{1}」が残りを翻訳しました。
 今回実際に使用：{2}</sys:String>
 

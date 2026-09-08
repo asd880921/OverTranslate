@@ -199,7 +199,7 @@
     <sys:String x:Key="S.Toolbar.SpeakStop">停止朗读</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakAutomatic">源语言为“自动”时无法朗读，请先选择实际的语言</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakNoText">尚未识别到可朗读的文字</sys:String>
-    <sys:String x:Key="S.Toolbar.BackupBadge">⚡备用 {0}</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupBadge">⚡备用</sys:String>
     <sys:String x:Key="S.Toolbar.BackupTooltip">“{0}”未能完整翻译，已由备用“{1}”进行部分翻译。
 本次实际翻译：{2}</sys:String>
 

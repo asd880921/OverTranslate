@@ -551,7 +551,7 @@ public partial class ToolbarWindow : Window
             : bubblesVisible ? CopyTextKind.Translation : CopyTextKind.Source;
 
     /// <summary>
-    /// Shows a subtle amber badge naming the engine that actually served the batch — but only when a
+    /// Shows a compact amber badge with engine details in its tooltip — but only when a
     /// backup engine was used (the user's chosen primary couldn't serve everything). Stays hidden on
     /// normal runs and for providers without fallback (e.g. DeepL), so it never nags during use.
     /// </summary>
@@ -563,7 +563,7 @@ public partial class ToolbarWindow : Window
             return;
         }
 
-        EngineBadgeText.Text = LocalizationService.Format("S.Toolbar.BackupBadge", usage.BackupEngine);
+        EngineBadgeText.Text = LocalizationService.Get("S.Toolbar.BackupBadge");
         EngineBadge.ToolTip = LocalizationService.Format(
             "S.Toolbar.BackupTooltip", usage.Primary, usage.BackupEngine, usage.Summary);
         EngineBadge.Visibility = Visibility.Visible;

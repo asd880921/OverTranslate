@@ -199,7 +199,7 @@ Translation failed: {1}</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakStop">Stop reading</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakAutomatic">Cannot read aloud while the source language is Automatic. Choose the actual language first.</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakNoText">No recognised text to read yet</sys:String>
-    <sys:String x:Key="S.Toolbar.BackupBadge">⚡Backup {0}</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupBadge">⚡Backup</sys:String>
     <sys:String x:Key="S.Toolbar.BackupTooltip">"{0}" could not translate everything, so "{1}" filled in the rest.
 Actually used this time: {2}</sys:String>
 

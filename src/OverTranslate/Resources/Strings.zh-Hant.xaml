@@ -205,7 +205,7 @@
          因為它是對看得見的字形做選擇；聲音沒有東西可以看。 -->
     <sys:String x:Key="S.Toolbar.SpeakAutomatic">原文語言為「自動」時無法朗讀，請先選擇實際的語言</sys:String>
     <sys:String x:Key="S.Toolbar.SpeakNoText">尚未辨識到可朗讀的文字</sys:String>
-    <sys:String x:Key="S.Toolbar.BackupBadge">⚡備援 {0}</sys:String>
+    <sys:String x:Key="S.Toolbar.BackupBadge">⚡備援</sys:String>
     <sys:String x:Key="S.Toolbar.BackupTooltip">「{0}」未能完整翻譯，已由備援「{1}」進行部分翻譯。
 本次實際翻譯：{2}</sys:String>
 
