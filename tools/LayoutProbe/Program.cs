@@ -47,6 +47,9 @@ internal static class Program
                       Opens a real ToolbarWindow and prints its size, which mode it opened on, the
                       two segmented controls' halves and pill travel, and the resolved tooltips.
 
+                  LayoutProbe debug-panel [output-directory]
+                      Renders the debug panel and toolbar offscreen in both themes without changing settings.
+
                 Both read the application's own settings file, so the toolbar opens on whatever mode
                 is stored on this machine.
                 """);
@@ -77,6 +80,9 @@ internal static class Program
                     break;
                 case "toolbar":
                     ToolbarLayout.Report();
+                    break;
+                case "debug-panel":
+                    DebugPanelLayout.Report(args.Length > 1 ? args[1] : ".test-artifacts/debug-panel");
                     break;
                 default:
                     Console.Error.WriteLine($"unknown command '{args[0]}'");

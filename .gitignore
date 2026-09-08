@@ -19,6 +19,7 @@ packages/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+.test-artifacts/
 
 # Publish output
 publish/

@@ -201,6 +201,22 @@ public class SettingsService
     internal static string Serialize(AppSettings settings) =>
         JsonSerializer.Serialize(settings, WriteOptions);
 
+    public event EventHandler? OcrDebugChanged;
+
+    public void UpdateOcrDebug(bool? showLines = null, bool? showGroups = null, bool? showOnTranslation = null)
+    {
+        var debug = Current.OcrDebug;
+        var lines = showLines ?? debug.ShowLineBoxes;
+        var groups = showGroups ?? debug.ShowGroupBoxes;
+        var onTranslation = showOnTranslation ?? debug.ShowOnTranslation;
+        if (lines == debug.ShowLineBoxes && groups == debug.ShowGroupBoxes && onTranslation == debug.ShowOnTranslation) return;
+        debug.ShowOnTranslation = onTranslation;
+        debug.ShowLineBoxes = lines;
+        debug.ShowGroupBoxes = groups;
+        Save();
+        OcrDebugChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     public void Save()
     {
         try

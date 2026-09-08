@@ -18,6 +18,9 @@ namespace OverTranslate.Models;
 /// </remarks>
 public class OcrDebugSettings
 {
+    /// <summary>Keep source outlines visible while the translation is displayed too.</summary>
+    public bool ShowOnTranslation { get; set; } = false;
+
     /// <summary>Outlines each box the recogniser returned.</summary>
     public bool ShowLineBoxes { get; set; } = false;
 

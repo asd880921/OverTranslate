@@ -158,10 +158,16 @@ public partial class SettingsPage : UserControl
         // Unloaded without re-subscribing on Loaded would leave it deaf from the first time the
         // user navigated away. A static event holding an instance handler also has to be let go
         // of at some point, which rules out subscribing only once.
-        Loaded   += (_, _) => LocalizationService.LanguageChanged += OnLanguageChanged;
+        Loaded   += (_, _) =>
+        {
+            LocalizationService.LanguageChanged += OnLanguageChanged;
+            SettingsService.Instance.OcrDebugChanged += OnOcrDebugChanged;
+            OnOcrDebugChanged(this, EventArgs.Empty);
+        };
         Unloaded += (_, _) =>
         {
             LocalizationService.LanguageChanged -= OnLanguageChanged;
+            SettingsService.Instance.OcrDebugChanged -= OnOcrDebugChanged;
             StopRecording();
         };
 
@@ -220,6 +226,8 @@ public partial class SettingsPage : UserControl
 
             OcrLineBoxesCheckBox.IsChecked = s.OcrDebug.ShowLineBoxes;
             TextGroupBoxesCheckBox.IsChecked = s.OcrDebug.ShowGroupBoxes;
+            DebugSourceOnlyRadio.IsChecked = !s.OcrDebug.ShowOnTranslation;
+            DebugSourceAndTranslationRadio.IsChecked = s.OcrDebug.ShowOnTranslation;
 
             RefreshServiceTiles();
             UpdateScreenshotPathVisibility();
@@ -618,12 +626,76 @@ public partial class SettingsPage : UserControl
 
         bool lines = OcrLineBoxesCheckBox.IsChecked == true;
         bool groups = TextGroupBoxesCheckBox.IsChecked == true;
-        Persist(s =>
-        {
-            s.OcrDebug.ShowLineBoxes = lines;
-            s.OcrDebug.ShowGroupBoxes = groups;
-        });
+        SettingsService.Instance.UpdateOcrDebug(lines, groups);
+        FlashSaved();
     }
+
+    private void OnOcrDebugChanged(object? sender, EventArgs e)
+    {
+        var loading = _loading;
+        _loading = true;
+        try
+        {
+            OcrLineBoxesCheckBox.IsChecked = SettingsService.Instance.Current.OcrDebug.ShowLineBoxes;
+            TextGroupBoxesCheckBox.IsChecked = SettingsService.Instance.Current.OcrDebug.ShowGroupBoxes;
+            DebugSourceOnlyRadio.IsChecked = !SettingsService.Instance.Current.OcrDebug.ShowOnTranslation;
+            DebugSourceAndTranslationRadio.IsChecked = SettingsService.Instance.Current.OcrDebug.ShowOnTranslation;
+        }
+        finally { _loading = loading; }
+    }
+
+    private void OcrDebugScope_Changed(object sender, RoutedEventArgs e)
+    {
+        // Ahead of the guard, because the marker has to follow the choice however it was made —
+        // including the write coming back from the capture toolbar, which arrives with _loading set.
+        MoveDebugScopeThumb(animate: true);
+
+        if (_loading) return;
+        SettingsService.Instance.UpdateOcrDebug(showOnTranslation: ReferenceEquals(sender, DebugSourceAndTranslationRadio));
+        FlashSaved();
+    }
+
+    /// <summary>
+    /// Puts the marker under the chosen half of the 框線顯示範圍 switch.
+    /// </summary>
+    /// <remarks>
+    /// The travel is the marker's own width, because the two halves share a column size — see the
+    /// tray's ColumnDefinitions. Measured rather than fixed: the halves are sized to the longer of
+    /// two labels, which is a different number in every language.
+    /// </remarks>
+    private void MoveDebugScopeThumb(bool animate)
+    {
+        var target = DebugSourceAndTranslationRadio.IsChecked == true
+            ? DebugScopeThumb.ActualWidth
+            : 0;
+
+        // Before the tray has been laid out there is no distance to travel and nothing to see; the
+        // marker's own SizeChanged runs this again once the shared columns have their final width.
+        if (!animate || DebugScopeThumb.ActualWidth <= 0 || !SystemParameters.ClientAreaAnimation)
+        {
+            DebugScopeThumbShift.BeginAnimation(TranslateTransform.XProperty, null);
+            DebugScopeThumbShift.X = target;
+            return;
+        }
+
+        DebugScopeThumbShift.BeginAnimation(
+            TranslateTransform.XProperty,
+            new DoubleAnimation(target, DebugScopeSlideDuration) { EasingFunction = DebugFoldEasing });
+    }
+
+    /// <summary>
+    /// The capture toolbar's trays, so the same control does not travel at two speeds in one app.
+    /// Shorter than the fold: this is a marker crossing a gap, not a card opening.
+    /// </summary>
+    private static readonly Duration DebugScopeSlideDuration = new(TimeSpan.FromMilliseconds(220));
+
+    /// <summary>
+    /// The half's width is not known until the card has been opened once and laid out, so the marker
+    /// is placed again whenever that number arrives or changes — without animating, since this is
+    /// the switch being measured rather than the choice being changed.
+    /// </summary>
+    private void DebugScopeThumb_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        MoveDebugScopeThumb(animate: false);
 
     /// <summary>
     /// An environment variable outranks this setting, so when one is set the checkbox says so rather

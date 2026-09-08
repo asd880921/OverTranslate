@@ -48,6 +48,8 @@ public partial class ToolbarWindow : Window
     private bool _hasTranslated;
     private bool _initializingDirection = true;
     private bool _initializingLayoutMode = true;
+    private bool _syncingDebug = true;
+    private bool _ignoreDebugClick;
 
     // Whether there is recognised text to read, and whether it is being read right now. The voice
     // itself lives with the capture session, not here: this window only shows its state.
@@ -89,6 +91,15 @@ public partial class ToolbarWindow : Window
         _selPhysHeight = selPhysHeight;
 
         InitializeComponent();
+        SyncDebugSwitches(this, EventArgs.Empty);
+        SettingsService.Instance.OcrDebugChanged += SyncDebugSwitches;
+        Closed += (_, _) =>
+        {
+            DebugPopup.IsOpen = false;
+            SettingsService.Instance.OcrDebugChanged -= SyncDebugSwitches;
+        };
+        LocationChanged += (_, _) => DebugPopup.IsOpen = false;
+        DebugMoreBtn.MouseLeave += (_, _) => _ignoreDebugClick = false;
 
         bool verticalText = SettingsService.Instance.Current.Capture.VerticalText;
         HorizontalSeg.IsChecked = !verticalText;
@@ -646,6 +657,60 @@ public partial class ToolbarWindow : Window
             // rounding: half a pixel short is a whole character replaced by an ellipsis.
             return Math.Ceiling(widest) + 9 + 28 + 2 + 1;
         }
+    }
+
+    private void SyncDebugSwitches(object? sender, EventArgs e)
+    {
+        _syncingDebug = true;
+        DebugGroupsSwitch.IsChecked = SettingsService.Instance.Current.OcrDebug.ShowGroupBoxes;
+        DebugLinesSwitch.IsChecked = SettingsService.Instance.Current.OcrDebug.ShowLineBoxes;
+        DebugSourceOnly.IsChecked = !SettingsService.Instance.Current.OcrDebug.ShowOnTranslation;
+        DebugSourceAndTranslation.IsChecked = SettingsService.Instance.Current.OcrDebug.ShowOnTranslation;
+        _syncingDebug = false;
+    }
+
+    private void DebugGroupsSwitch_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_syncingDebug) SettingsService.Instance.UpdateOcrDebug(showGroups: DebugGroupsSwitch.IsChecked == true);
+    }
+
+    private void DebugLinesSwitch_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_syncingDebug) SettingsService.Instance.UpdateOcrDebug(showLines: DebugLinesSwitch.IsChecked == true);
+    }
+
+    private void DebugMoreBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_ignoreDebugClick) { _ignoreDebugClick = false; return; }
+        DebugPopup.HorizontalOffset = Math.Max(0, BarSurface.ActualWidth - DebugPanel.Width);
+        DebugPopup.IsOpen = !DebugPopup.IsOpen;
+    }
+
+    private void DebugScope_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_syncingDebug)
+            SettingsService.Instance.UpdateOcrDebug(showOnTranslation: ReferenceEquals(sender, DebugSourceAndTranslation));
+    }
+
+    private void DebugClose_Click(object sender, RoutedEventArgs e) => DebugPopup.IsOpen = false;
+
+    private void DebugPopup_Opened(object? sender, EventArgs e)
+    {
+        SyncDebugSwitches(sender, e);
+    }
+
+    private void DebugPopup_Closed(object? sender, EventArgs e)
+    {
+        _ignoreDebugClick = DebugMoreBtn.IsMouseOver &&
+            System.Windows.Input.Mouse.LeftButton == System.Windows.Input.MouseButtonState.Pressed;
+    }
+
+    private void DebugPopup_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != System.Windows.Input.Key.Escape) return;
+        DebugPopup.IsOpen = false;
+        DebugMoreBtn.Focus();
+        e.Handled = true;
     }
 
     private void SaveCurrentLanguageSelection()

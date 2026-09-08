@@ -473,9 +473,9 @@
     <sys:String x:Key="S.Settings.DebugTools">调试工具</sys:String>
     <sys:String x:Key="S.Settings.OcrDebug">显示 OCR 调试信息</sys:String>
     <sys:String x:Key="S.Settings.OcrLineBoxes">OCR 识别框</sys:String>
-    <sys:String x:Key="S.Settings.OcrLineBoxesHint">显示 OCR 识别结果的边界框。</sys:String>
+    <sys:String x:Key="S.Settings.OcrLineBoxesHint">显示 OCR 检测到的原文文字范围。</sys:String>
     <sys:String x:Key="S.Settings.TextGroupBoxes">文字分组框</sys:String>
-    <sys:String x:Key="S.Settings.TextGroupBoxesHint">显示 OCR 文字分组区块的边界框。</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxesHint">显示哪些原文会合并为一组进行翻译。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">导出时会将日志文件、系统信息与当前设置整理成诊断文件，方便附在问题反馈中。API 密钥等敏感信息不会包含在内，也不会自动上传任何数据。</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">导出诊断信息</sys:String>
     <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">打开文件夹</sys:String>
@@ -560,4 +560,14 @@
     <sys:String x:Key="S.Lang.Turkish">土耳其语</sys:String>
     <sys:String x:Key="S.Lang.Ukrainian">乌克兰语</sys:String>
 
+    <sys:String x:Key="S.Toolbar.DebugAssist">调试辅助</sys:String>
+    <sys:String x:Key="S.Toolbar.DebugAssistHint">显示翻译辅助框线，方便确认文字识别与组合结果。</sys:String>
+    <sys:String x:Key="S.Toolbar.ShowMore">显示更多</sys:String>
+    <sys:String x:Key="S.Debug.DisplayScope">显示范围</sys:String>
+    <sys:String x:Key="S.Debug.BoxDisplayScope">框线显示范围</sys:String>
+    <sys:String x:Key="S.Debug.SourceOnly">仅原文</sys:String>
+    <sys:String x:Key="S.Debug.SourceAndTranslation">原文与译文</sys:String>
+    <!-- Two lines, one per half of the switch. xml:space is what keeps the break: without it XAML
+         collapses the &#x0A; away and the two sentences run together. -->
+    <sys:String x:Key="S.Debug.ScopeHint" xml:space="preserve">仅原文：框线只显示于原文画面&#x0A;原文与译文：原文、译文画面皆显示框线</sys:String>
 </ResourceDictionary>
