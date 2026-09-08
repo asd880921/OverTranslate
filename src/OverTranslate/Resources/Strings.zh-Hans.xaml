@@ -391,7 +391,7 @@
     <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">按下快捷键打开[[取词翻译]]</sys:String>
     <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">若已选中文字，打开窗口时会自动带入并翻译。</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkey">快速翻译</sys:String>
-    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">将[[选中的文字]]替换成译文</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">将[[选中的文字]]翻译后直接粘贴并替换原文</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote" xml:space="preserve">仅适用于可输入文字的字段，非输入区域则无法粘贴。</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateSettings">翻译设置</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateLanguageNote">此设置仅适用于快速翻译，不会影响截图翻译、文字翻译或实时翻译。</sys:String>

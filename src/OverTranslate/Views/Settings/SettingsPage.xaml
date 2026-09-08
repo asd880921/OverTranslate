@@ -238,7 +238,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*" MinWidth="140"/>
+                                        <ColumnDefinition Width="0.8*" MinWidth="140"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                     </Grid.ColumnDefinitions>
 
@@ -279,7 +279,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*" MinWidth="140"/>
+                                        <ColumnDefinition Width="0.8*" MinWidth="140"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                     </Grid.ColumnDefinitions>
 
@@ -361,7 +361,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*" MinWidth="140"/>
+                                        <ColumnDefinition Width="0.8*" MinWidth="140"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                     </Grid.ColumnDefinitions>
 
@@ -556,7 +556,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*" MinWidth="140"/>
+                                        <ColumnDefinition Width="0.8*" MinWidth="140"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                     </Grid.ColumnDefinitions>
 
@@ -615,7 +615,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*" MinWidth="140"/>
+                                        <ColumnDefinition Width="0.8*" MinWidth="140"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="HotkeyToggle"/>
                                     </Grid.ColumnDefinitions>
 

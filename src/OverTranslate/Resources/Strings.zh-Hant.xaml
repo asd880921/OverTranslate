@@ -409,7 +409,7 @@
     <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">按下快捷鍵開啟[[取詞翻譯]]</sys:String>
     <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">若有選取文字，開啟視窗時會自動帶入並翻譯。</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkey">快速翻譯</sys:String>
-    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">將[[選取文字]]替換成譯文</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">將[[選取文字]]翻譯後直接貼上並取代原文</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote" xml:space="preserve">僅適用於可輸入文字的欄位，非輸入區域則無法貼上。</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateSettings">翻譯設定</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateLanguageNote">此設定僅適用於快速翻譯，不會影響截圖翻譯、文字翻譯或即時翻譯。</sys:String>

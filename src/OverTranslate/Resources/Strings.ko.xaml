@@ -392,7 +392,7 @@
     <sys:String x:Key="S.Settings.QuickLookupHotkeyHint">단축키로 [[빠른 조회]] 열기</sys:String>
     <sys:String x:Key="S.Settings.QuickLookupHotkeyNote">텍스트를 선택해 두면 창이 열릴 때 자동으로 불러와 번역합니다.</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkey">빠른 번역</sys:String>
-    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">[[선택한 텍스트]]를 번역문으로 바꾸기</sys:String>
+    <sys:String x:Key="S.Settings.QuickTranslateHotkeyHint">[[선택한 텍스트]]를 번역해 그대로 붙여넣어 원문을 바꿉니다</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateHotkeyNote" xml:space="preserve">글자를 입력할 수 있는 칸에서만 동작하며, 입력란이 아니면 붙여넣을 수 없습니다.</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateSettings">번역 설정</sys:String>
     <sys:String x:Key="S.Settings.QuickTranslateLanguageNote">이 언어 설정은 빠른 번역에만 적용되며 스크린샷, 텍스트 또는 실시간 번역에는 영향을 주지 않습니다.</sys:String>
