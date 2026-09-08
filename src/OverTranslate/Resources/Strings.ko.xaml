@@ -380,10 +380,9 @@
     <sys:String x:Key="S.Settings.Hotkeys">단축키</sys:String>
     <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
     <sys:String x:Key="S.Settings.HotkeyEnable">이 단축키 사용</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyDisable">이 단축키 사용 안 함</sys:String>
     <!-- The shortcut box has no label of its own; this is its ToolTip -->
     <sys:String x:Key="S.Settings.HotkeyRecordTip">클릭해서 단축키 다시 지정</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOn">사용</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOff">사용 안 함</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">단축키는 Ctrl／Alt／Shift와 다른 키의 조합은 물론, 단독 기능 키, 마우스 버튼, 게임패드 버튼도 지원합니다.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">예: Ctrl+Alt+A, Shift+A, F1, 마우스 가운데／옆 버튼, XInput 등.</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">일시 정지 / 재개</sys:String>

@@ -379,10 +379,9 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.Hotkeys">Shortcuts</sys:String>
     <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
     <sys:String x:Key="S.Settings.HotkeyEnable">Enable this shortcut</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyDisable">Disable this shortcut</sys:String>
     <!-- The shortcut box has no label of its own; this is its ToolTip -->
     <sys:String x:Key="S.Settings.HotkeyRecordTip">Click to record a new shortcut</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOn">Enabled</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOff">Disabled</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">A shortcut can pair Ctrl / Alt / Shift with another key, and also supports a single function key, a mouse button, or a gamepad button.</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">For example: Ctrl+Alt+A, Shift+A, F1, middle / side mouse buttons, XInput... etc.</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">Pause / resume</sys:String>

@@ -310,12 +310,8 @@
                                                 Margin="12,0,0,0">
                                         <CheckBox x:Name="QuickLookupHotkeyEnabledCheckBox"
                                                   Style="{StaticResource ToggleSwitch}"
-                                                  ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
                                                   Checked="HotkeyEnabled_Toggled"
                                                   Unchecked="HotkeyEnabled_Toggled"/>
-                                        <TextBlock x:Name="QuickLookupHotkeyEnabledLabel"
-                                                   Style="{StaticResource FieldLabel}"
-                                                   Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
 
@@ -424,12 +420,8 @@
                                                 Margin="12,0,0,0">
                                         <CheckBox x:Name="QuickTranslateHotkeyEnabledCheckBox"
                                                   Style="{StaticResource ToggleSwitch}"
-                                                  ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
                                                   Checked="HotkeyEnabled_Toggled"
                                                   Unchecked="HotkeyEnabled_Toggled"/>
-                                        <TextBlock x:Name="QuickTranslateHotkeyEnabledLabel"
-                                                   Style="{StaticResource FieldLabel}"
-                                                   Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
 
@@ -596,12 +588,8 @@
                                                 Margin="12,0,0,0">
                                         <CheckBox x:Name="WindowHotkeyEnabledCheckBox"
                                                   Style="{StaticResource ToggleSwitch}"
-                                                  ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
                                                   Checked="HotkeyEnabled_Toggled"
                                                   Unchecked="HotkeyEnabled_Toggled"/>
-                                        <TextBlock x:Name="WindowHotkeyEnabledLabel"
-                                                   Style="{StaticResource FieldLabel}"
-                                                   Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -661,12 +649,8 @@
                                                 Margin="12,0,0,0">
                                         <CheckBox x:Name="RealtimePauseHotkeyEnabledCheckBox"
                                                   Style="{StaticResource ToggleSwitch}"
-                                                  ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
                                                   Checked="HotkeyEnabled_Toggled"
                                                   Unchecked="HotkeyEnabled_Toggled"/>
-                                        <TextBlock x:Name="RealtimePauseHotkeyEnabledLabel"
-                                                   Style="{StaticResource FieldLabel}"
-                                                   Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
 

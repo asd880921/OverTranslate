@@ -380,10 +380,9 @@
     <sys:String x:Key="S.Settings.Hotkeys">ショートカットキー</sys:String>
     <!-- The checkbox carries no text, so this is its ToolTip rather than a label -->
     <sys:String x:Key="S.Settings.HotkeyEnable">このショートカットキーを有効にする</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyDisable">このショートカットキーを無効にする</sys:String>
     <!-- The shortcut box has no label of its own; this is its ToolTip -->
     <sys:String x:Key="S.Settings.HotkeyRecordTip">クリックしてショートカットキーを録り直す</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOn">有効</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOff">無効</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">ショートカットキーは Ctrl／Alt／Shift と他のキーの組み合わせのほか、単独のファンクションキー、マウスボタン、ゲームパッドのボタンにも対応しています。</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">例：Ctrl+Alt+A、Shift+A、F1、マウスの中ボタン／サイドボタン、XInput など。</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">一時停止 / 再開</sys:String>

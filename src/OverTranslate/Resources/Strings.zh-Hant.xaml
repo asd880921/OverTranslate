@@ -397,10 +397,9 @@
     <sys:String x:Key="S.Settings.Hotkeys">快捷鍵</sys:String>
     <!-- 勾選框沒有文字，所以這是它的 ToolTip，不是標籤 -->
     <sys:String x:Key="S.Settings.HotkeyEnable">啟用此快捷鍵</sys:String>
+    <sys:String x:Key="S.Settings.HotkeyDisable">停用此快捷鍵</sys:String>
     <!-- The shortcut box has no label of its own; this is its ToolTip -->
     <sys:String x:Key="S.Settings.HotkeyRecordTip">點一下重新錄製快捷鍵</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOn">已啟用</sys:String>
-    <sys:String x:Key="S.Settings.HotkeyOff">未啟用</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKinds">快捷鍵可使用 Ctrl／Alt／Shift 搭配其他按鍵，也支援單一功能鍵、滑鼠按鍵以及遊戲手把。</sys:String>
     <sys:String x:Key="S.Settings.HotkeyKindsExample">例如：Ctrl+Alt+A、Shift+A、F1、滑鼠中鍵／側鍵、XInput...等。</sys:String>
     <sys:String x:Key="S.Settings.RealtimePauseHotkey">暫停 / 繼續</sys:String>
