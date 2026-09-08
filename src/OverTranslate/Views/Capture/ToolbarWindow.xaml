@@ -467,17 +467,13 @@
                         <StackPanel>
                             <Grid Style="{StaticResource ToolbarActionIcon}">
                               <Grid Style="{StaticResource ToolbarActionDrawing}">
-                                <!-- Camera in front of a selection frame, drawn at the same
-                                     size and stroke weight as the neighboring toolbar actions. -->
+                                <!-- A full-size camera keeps the body and lens legible at 18px. -->
                                 <Path Style="{StaticResource ToolbarActionStroke}"
-                                      Data="M3,5 V1.8 H6.2 M9,1.8 H10.8 M13.6,1.8 H16.2 V5
-                                            M16.2,8 V10 M16.2,13 V16.2 H13.6"/>
+                                      Data="M3.2,5.5 H5.2 L6.5,3.2 H11.5 L12.8,5.5 H14.8
+                                            A1.6,1.6 0 0 1 16.4,7.1 V13.8 A1.6,1.6 0 0 1 14.8,15.4
+                                            H3.2 A1.6,1.6 0 0 1 1.6,13.8 V7.1 A1.6,1.6 0 0 1 3.2,5.5 Z"/>
                                 <Path Style="{StaticResource ToolbarActionStroke}"
-                                      Data="M2.6,9.6 H3.4 L4.2,7.8 H8.4 L9.2,9.6 H10
-                                            A1.4,1.4 0 0 1 11.4,11 V14.8 A1.4,1.4 0 0 1 10,16.2
-                                            H2.6 A1.4,1.4 0 0 1 1.2,14.8 V11 A1.4,1.4 0 0 1 2.6,9.6 Z"/>
-                                <Path Style="{StaticResource ToolbarActionStroke}"
-                                      Data="M8.2,12.7 A1.9,1.9 0 1 1 4.4,12.7 A1.9,1.9 0 1 1 8.2,12.7 Z"/>
+                                      Data="M12,10.2 A3,3 0 1 1 6,10.2 A3,3 0 1 1 12,10.2 Z"/>
                               </Grid>
                             </Grid>
                             <TextBlock Text="{DynamicResource S.Toolbar.Screenshot}"/>
