@@ -473,9 +473,9 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Settings.DebugTools">Debug tools</sys:String>
     <sys:String x:Key="S.Settings.OcrDebug">Show OCR debug information</sys:String>
     <sys:String x:Key="S.Settings.OcrLineBoxes">OCR boxes</sys:String>
-    <sys:String x:Key="S.Settings.OcrLineBoxesHint">Outlines each box the recogniser returned.</sys:String>
+    <sys:String x:Key="S.Settings.OcrLineBoxesHint">Show the source text regions detected by OCR.</sys:String>
     <sys:String x:Key="S.Settings.TextGroupBoxes">Text group boxes</sys:String>
-    <sys:String x:Key="S.Settings.TextGroupBoxesHint">Outlines each group those boxes were joined into.</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxesHint">Show which source text is grouped together for translation.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">Exporting collects the log files, system information and your current settings into a diagnostic file you can attach to a problem report. Sensitive information such as API keys is not included, and no data is uploaded automatically.</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">Export diagnostics</sys:String>
     <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">Open folder</sys:String>
@@ -560,4 +560,14 @@ The parameter is left out of the request when this is off. Models differ — fol
     <sys:String x:Key="S.Lang.Turkish">Turkish</sys:String>
     <sys:String x:Key="S.Lang.Ukrainian">Ukrainian</sys:String>
 
+    <sys:String x:Key="S.Toolbar.DebugAssist">Debug aids</sys:String>
+    <sys:String x:Key="S.Toolbar.DebugAssistHint">Show translation guide boxes to check text recognition and grouping.</sys:String>
+    <sys:String x:Key="S.Toolbar.ShowMore">Show more</sys:String>
+    <sys:String x:Key="S.Debug.DisplayScope">Display scope</sys:String>
+    <sys:String x:Key="S.Debug.BoxDisplayScope">Box display scope</sys:String>
+    <sys:String x:Key="S.Debug.SourceOnly">Source only</sys:String>
+    <sys:String x:Key="S.Debug.SourceAndTranslation">Source and translation</sys:String>
+    <!-- Two lines, one per half of the switch. xml:space is what keeps the break: without it XAML
+         collapses the &#x0A; away and the two sentences run together. -->
+    <sys:String x:Key="S.Debug.ScopeHint" xml:space="preserve">Source only: outlines are drawn on the source view only.&#x0A;Source and translation: outlines are drawn on both the source view and the translation view</sys:String>
 </ResourceDictionary>

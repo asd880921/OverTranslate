@@ -474,9 +474,9 @@
     <sys:String x:Key="S.Settings.DebugTools">디버그 도구</sys:String>
     <sys:String x:Key="S.Settings.OcrDebug">OCR 디버그 정보 표시</sys:String>
     <sys:String x:Key="S.Settings.OcrLineBoxes">OCR 인식 상자</sys:String>
-    <sys:String x:Key="S.Settings.OcrLineBoxesHint">OCR 인식 결과의 경계 상자를 표시합니다.</sys:String>
+    <sys:String x:Key="S.Settings.OcrLineBoxesHint">OCR이 감지한 원문 텍스트 영역을 표시합니다.</sys:String>
     <sys:String x:Key="S.Settings.TextGroupBoxes">텍스트 그룹 상자</sys:String>
-    <sys:String x:Key="S.Settings.TextGroupBoxesHint">텍스트 그룹 블록의 경계 상자를 표시합니다.</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxesHint">번역할 때 하나의 그룹으로 묶이는 원문을 표시합니다.</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">내보내면 로그 파일, 시스템 정보, 현재 설정을 하나의 진단 파일로 모아 문제 신고에 첨부할 수 있습니다. API 키 같은 민감한 정보는 포함되지 않으며, 어떤 데이터도 자동으로 업로드되지 않습니다.</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">진단 정보 내보내기</sys:String>
     <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">폴더 열기</sys:String>
@@ -561,4 +561,14 @@
     <sys:String x:Key="S.Lang.Turkish">튀르키예어</sys:String>
     <sys:String x:Key="S.Lang.Ukrainian">우크라이나어</sys:String>
 
+    <sys:String x:Key="S.Toolbar.DebugAssist">인식 보조</sys:String>
+    <sys:String x:Key="S.Toolbar.DebugAssistHint">번역 보조 테두리를 표시하여 문자 인식 및 그룹화 결과를 확인합니다.</sys:String>
+    <sys:String x:Key="S.Toolbar.ShowMore">더 보기</sys:String>
+    <sys:String x:Key="S.Debug.DisplayScope">표시 범위</sys:String>
+    <sys:String x:Key="S.Debug.BoxDisplayScope">테두리 표시 범위</sys:String>
+    <sys:String x:Key="S.Debug.SourceOnly">원문만</sys:String>
+    <sys:String x:Key="S.Debug.SourceAndTranslation">원문과 번역</sys:String>
+    <!-- Two lines, one per half of the switch. xml:space is what keeps the break: without it XAML
+         collapses the &#x0A; away and the two sentences run together. -->
+    <sys:String x:Key="S.Debug.ScopeHint" xml:space="preserve">원문만: 테두리를 원문 화면에만 표시합니다.&#x0A;원문과 번역: 원문과 번역 화면 모두에 테두리를 표시합니다</sys:String>
 </ResourceDictionary>

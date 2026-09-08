@@ -39,6 +39,7 @@ public partial class OverlayWindow : Window
     private static readonly System.Windows.Media.Color TextGroupBoxColor = System.Windows.Media.Color.FromRgb(0xFF, 0xB4, 0x54);
 
     private bool _isLoaded;
+    private bool _translationVisible;
     private List<TranslatedBlock> _currentBlocks;
     private IReadOnlyList<OcrTextBlock> _currentOcrBlocks;
     private double _currentSelectionScreenX;
@@ -62,6 +63,7 @@ public partial class OverlayWindow : Window
     {
         InitializeComponent();
         _currentBlocks = blocks;
+        _translationVisible = blocks.Count > 0;
         _currentOcrBlocks = ocrBlocks;
         _currentSelectionScreenX = selectionScreenX;
         _currentSelectionScreenY = selectionScreenY;
@@ -70,6 +72,8 @@ public partial class OverlayWindow : Window
         _currentSourceLanguage = sourceLanguage;
         _currentTargetLanguage = targetLanguage;
         _currentVerticalText = verticalText;
+        SettingsService.Instance.OcrDebugChanged += OnOcrDebugChanged;
+        Closed += (_, _) => SettingsService.Instance.OcrDebugChanged -= OnOcrDebugChanged;
 
         // Provisional: OnSourceInitialized pins the window to _physBounds instead.
         Left   = SystemParameters.VirtualScreenLeft;
@@ -139,6 +143,9 @@ public partial class OverlayWindow : Window
     // Shows a centered status card and clears old bubbles so the indicator is unobstructed.
     public void ShowProcessing(double selPhysX, double selPhysY, double selPhysW, double selPhysH, string statusText)
     {
+        _currentOcrBlocks = [];
+        _translationVisible = false;
+        UpdateDebugVisibility();
         BubbleBackgroundCanvas.Children.Clear();
         BubbleTextCanvas.Children.Clear();
         DebugCanvas.Children.Clear();
@@ -179,6 +186,8 @@ public partial class OverlayWindow : Window
         IReadOnlyList<OcrTextBlock> ocrBlocks, double selScreenX, double selScreenY)
     {
         _currentOcrBlocks = ocrBlocks;
+        _currentSelectionScreenX = selScreenX;
+        _currentSelectionScreenY = selScreenY;
         if (_isLoaded)
             BuildDebugBoxes(selScreenX, selScreenY);
     }
@@ -793,24 +802,34 @@ public partial class OverlayWindow : Window
 
     private void SetTranslationLayersVisible(bool visible)
     {
+        _translationVisible = visible && _currentBlocks.Count > 0;
         var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         BubbleBackgroundCanvas.Visibility = visibility;
         BubbleTextCanvas.Visibility = visibility;
-        // DebugCanvas is deliberately not switched with them. These boxes are drawn around the
-        // source text, so 顯示原文 is the moment they are most worth seeing — the boxes and the words
-        // they were measured from, together.
+        UpdateDebugVisibility();
     }
 
-    /// <summary>
-    /// Draws the OCR geometry the debug setting asks for, in the selection's own coordinates.
-    /// </summary>
-    /// <remarks>
-    /// Groups first so the lines land on top of them: where the two coincide the finer box is the
-    /// one worth reading, and it is the one that says what the recogniser actually returned.
-    /// </remarks>
+    private void UpdateDebugVisibility()
+    {
+        DebugCanvas.Visibility = !_translationVisible || SettingsService.Instance.Current.OcrDebug.ShowOnTranslation
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnOcrDebugChanged(object? sender, EventArgs e)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => OnOcrDebugChanged(sender, e));
+            return;
+        }
+        if (_isLoaded) BuildDebugBoxes(_currentSelectionScreenX, _currentSelectionScreenY);
+    }
+
+    /// <summary>Draws the current source lines and groups, with lines on top of group outlines.</summary>
     private void BuildDebugBoxes(double selScreenX, double selScreenY)
     {
         DebugCanvas.Children.Clear();
+        UpdateDebugVisibility();
 
         var debug = SettingsService.Instance.Current.OcrDebug;
         if (_currentOcrBlocks.Count == 0) return;

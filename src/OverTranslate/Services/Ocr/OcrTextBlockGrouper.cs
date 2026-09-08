@@ -186,7 +186,7 @@ internal static class OcrTextBlockGrouper
         var gaps = rows.SelectMany(AdjacentGaps).ToList();
         var threshold = SameLineGapThreshold.Estimate(gaps);
 
-        return rows.SelectMany(row => SplitRowIntoLines(row, threshold.Value, decisions, trace, blocks, profile)).ToList();
+        return rows.SelectMany(row => SplitRowIntoLines(row, threshold.Value, decisions, trace, blocks, profile, rows)).ToList();
     }
 
     /// <summary>
@@ -288,7 +288,7 @@ internal static class OcrTextBlockGrouper
     /// </summary>
     private static IEnumerable<OcrTextBlock> SplitRowIntoLines(
         List<OcrTextBlock> row, double threshold, List<NextLineDecision>? decisions, GroupingTrace? trace,
-        IReadOnlyList<OcrTextBlock> blocks, GroupingProfile profile)
+        IReadOnlyList<OcrTextBlock> blocks, GroupingProfile profile, IReadOnlyList<List<OcrTextBlock>> rows)
     {
         var lines = new List<OcrTextBlock>();
         var line = row[0];
@@ -305,6 +305,10 @@ internal static class OcrTextBlockGrouper
                 profile.SolidLineAdvanceWhenWrapped > SolidLineAdvance &&
                 HasSpanningProseContinuation(row[i - 1], row[i], blocks))
                 (joined, rule) = (true, "spanning prose continuation");
+            if (!joined && rule == "horizontal gap" &&
+                profile.SolidLineAdvanceWhenWrapped > SolidLineAdvance &&
+                HasParagraphRowEvidence(row, i, rows, threshold))
+                (joined, rule) = (true, "paragraph row evidence");
             decisions?.Add(SameLineDecision(row[i - 1], row[i], joined, rule, trace));
 
             if (joined)
@@ -344,6 +348,48 @@ internal static class OcrTextBlockGrouper
             Math.Abs(next.LayoutBounds.Right - row.Right) <= height * 0.75 &&
             next.LayoutBounds.Height >= height * 0.75 &&
             next.LayoutBounds.Height <= height * 1.35);
+    }
+
+    // Use several original visual rows, not the result of speculative merges. A complete
+    // nearby row anchors the column; changing cut positions suggest missed inline punctuation.
+    // A recurring gutter is counter-evidence even when a shared heading spans both columns.
+    private static bool HasParagraphRowEvidence(List<OcrTextBlock> row, int rightIndex,
+        IReadOnlyList<List<OcrTextBlock>> rows, double threshold)
+    {
+        var left = row[rightIndex - 1];
+        var right = row[rightIndex];
+        if (NormalizedGap(left, right) > 1.5 || !SharesVisualRow(left, right)) return false;
+        var bounds = RowBounds(row);
+        var height = bounds.Height;
+        if (bounds.Width < height * 12 || row.Any(b => b.LayoutScript != OcrLayoutScript.Latin)) return false;
+        var cut = (left.LayoutBounds.Right + right.LayoutBounds.Left) / 2;
+        var supporting = new List<List<OcrTextBlock>>();
+        foreach (var other in rows)
+        {
+            if (ReferenceEquals(row, other)) continue;
+            var box = RowBounds(other);
+            if (other.Any(b => b.LayoutScript != OcrLayoutScript.Latin) ||
+                box.Height < height * 0.75 || box.Height > height * 1.35 ||
+                Math.Abs(box.Top - bounds.Top) < height * 0.5 ||
+                Math.Abs(box.Top - bounds.Top) > height * 2.5 ||
+                Math.Abs(box.Left - bounds.Left) > height * 0.5 ||
+                Math.Abs(box.Right - bounds.Right) > height * 0.75) continue;
+            for (var i = 1; i < other.Count; i++)
+            {
+                var (joined, _) = JudgeSameLine(other[i - 1], other[i], threshold);
+                var otherCut = (other[i - 1].LayoutBounds.Right + other[i].LayoutBounds.Left) / 2;
+                if (!joined && Math.Abs(otherCut - cut) <= height) return false;
+            }
+            supporting.Add(other);
+        }
+        if (supporting.Count < 2 || !supporting.Any(r => r.Count == 1)) return false;
+        var tops = supporting.Select(RowBounds).Append(bounds).OrderBy(b => b.Top).ToArray();
+        for (var i = 1; i < tops.Length; i++)
+            if (tops[i].Top - tops[i - 1].Top > Math.Min(tops[i].Height, tops[i - 1].Height) * 1.45)
+                return false;
+        return true;
+
+        static Rect RowBounds(List<OcrTextBlock> r) => r.Select(b => b.LayoutBounds).Aggregate(Rect.Union);
     }
 
     private static (bool Joined, string Rule) JudgeSameLine(
@@ -588,6 +634,29 @@ internal static class OcrTextBlockGrouper
         return true;
     }
 
+    // A rejected same-row fragment must not be skipped by a wrap into its horizontal span.
+    // Check both ends: a full line may also take only half of the next visual row. Separate
+    // columns remain independent when the continuation does not cross the neighbouring column.
+    private static bool HasUnresolvedRowFragment(
+        OcrTextBlock previous, OcrTextBlock current, IReadOnlyList<OcrTextBlock> lines)
+    {
+        foreach (var other in lines)
+        {
+            if (ReferenceEquals(other, previous) || ReferenceEquals(other, current)) continue;
+            if (Conflicts(previous, current, other) || Conflicts(current, previous, other)) return true;
+        }
+        return false;
+
+        static bool Conflicts(OcrTextBlock rowPart, OcrTextBlock continuation, OcrTextBlock other)
+        {
+            if (!SharesVisualRow(rowPart, other)) return false;
+            var overlap = Math.Min(continuation.LayoutBounds.Right, other.LayoutBounds.Right) -
+                          Math.Max(continuation.LayoutBounds.Left, other.LayoutBounds.Left);
+            // Ignore a few pixels of detector expansion at touching column edges.
+            return overlap > Math.Min(continuation.LayoutBounds.Height, other.LayoutBounds.Height) * 0.2;
+        }
+    }
+
     private static bool CanJoinNextLine(
         List<OcrTextBlock> group,
         OcrTextBlock current,
@@ -605,6 +674,8 @@ internal static class OcrTextBlockGrouper
         if (joined && paragraphFinal &&
             TextSizeRatio(previous, current) < Math.Min(MinTextSizeRatio, profile.TightlySetMinTextSizeRatio))
             rule = "paragraph final line";
+        if (joined && HasUnresolvedRowFragment(previous, current, lines))
+            (joined, rule) = (false, "unresolved row fragment");
         if (decisions is null)
             return joined;
 

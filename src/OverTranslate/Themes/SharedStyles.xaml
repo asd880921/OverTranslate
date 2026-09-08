@@ -1044,6 +1044,36 @@
     <!-- ═══════════════════════════════════════════ -->
     <!--  RADIO BUTTON (theme selector pill style)   -->
     <!-- ═══════════════════════════════════════════ -->
+    <Style x:Key="DebugScopeRadio" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Grid Width="18" Height="18" Margin="0,0,10,0">
+                            <Ellipse x:Name="Ring" Stroke="{DynamicResource AppInputBorder}" StrokeThickness="1.5"/>
+                            <Ellipse x:Name="Dot" Width="7" Height="7" Fill="{DynamicResource AppAccentFg}" Visibility="Collapsed"/>
+                        </Grid>
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Ring" Property="Fill" Value="{DynamicResource AppAccent}"/>
+                            <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource AppAccent}"/>
+                            <Setter TargetName="Dot" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource AppAccent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="ThemeRadioButton" TargetType="RadioButton">
         <Setter Property="FontFamily"  Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"    Value="{StaticResource AppFontSize}"/>
@@ -1158,52 +1188,6 @@
         <Setter Property="TextAlignment"       Value="Center"/>
         <!-- Fixed, so stepping never nudges the buttons in and out by a digit's width -->
         <Setter Property="MinWidth"            Value="28"/>
-    </Style>
-
-    <Style x:Key="SegmentedRadioButton" TargetType="RadioButton">
-        <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
-        <Setter Property="FontSize"   Value="{StaticResource AppFontSize}"/>
-        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
-        <Setter Property="Cursor"     Value="Hand"/>
-        <Setter Property="MinWidth"   Value="44"/>
-        <Setter Property="Height"     Value="32"/>
-        <Setter Property="Margin"     Value="0,0,6,0"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Root"
-                            Background="{DynamicResource AppButtonBg}"
-                            BorderBrush="{DynamicResource AppButtonBorder}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="12,0">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Root" Property="Background"
-                                    Value="{DynamicResource AppAccent}"/>
-                            <Setter TargetName="Root" Property="BorderBrush"
-                                    Value="{DynamicResource AppAccent}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource AppAccentFg}"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                        </Trigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsChecked" Value="False"/>
-                                <Condition Property="IsMouseOver" Value="True"/>
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="Root" Property="Background"
-                                    Value="{DynamicResource AppButtonHoverBg}"/>
-                        </MultiTrigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.45"/>
-                            <Setter Property="Cursor" Value="Arrow"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -1779,9 +1763,9 @@
          on the button can only appear and disappear — so a checked background here would cover it.
          The button contributes the label, the hover step, and nothing else.
 
-         SegmentedRadioButton is the same idea for a settings page and stays as it is: there the
-         options sit on a page with room to breathe and are separate outlined pills, which is the
-         right shape for a form and the wrong one for a bar the user meets over their own screen. -->
+         The 偵錯工具 card in 設定 now says its either/or the same way, with a style of its own for
+         the halves: same mechanism, but sized and spaced for a page rather than for a bar the
+         user meets over their own screen. -->
     <Style x:Key="ToolbarSegmentButton" TargetType="RadioButton">
         <Setter Property="FontFamily"         Value="{DynamicResource AppFont}"/>
         <Setter Property="FontSize"           Value="11"/>

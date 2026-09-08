@@ -618,6 +618,9 @@ public partial class MainWindow : Window
                 _lastSelPhysWidth  = selection.Width;
                 _lastSelPhysHeight = selection.Height;
                 _toolbarWindow?.FollowSelection(selection);
+                // OCR geometry belongs to the old crop until the user recognises this one.
+                _lastOcrBlocks = [];
+                _overlayWindow?.ShowOcrDebug([], selection.Left, selection.Top);
 
                 // The marks stay where they were drawn; what moves is the window onto them. See
                 // OverlayWindow.SetAnnotationBounds for why that is the way round it is.
@@ -908,8 +911,7 @@ public partial class MainWindow : Window
                 _lastSelPhysHeight,
                 LocalizationService.Get("S.Main.Translating"));
 
-            // The reading is known now, and the debug boxes describe the reading — so they go up
-            // here rather than with the translation, and stay up if the translation never arrives.
+            // Recognition is available even while translation is still pending.
             _overlayWindow?.ShowOcrDebug(_lastOcrBlocks, _lastSelPhysLeft, _lastSelPhysTop);
 
             var (translated, _) = await AppServices.Translation.TranslateAsync(
@@ -1119,6 +1121,7 @@ public partial class MainWindow : Window
                 return;
 
             _lastOcrBlocks = recognizedBlocks;
+            _overlayWindow?.ShowOcrDebug(_lastOcrBlocks, _lastSelPhysLeft, _lastSelPhysTop);
             if (_lastOcrBlocks.Count == 0)
             {
                 ShowBalloon(

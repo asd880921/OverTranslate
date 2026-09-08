@@ -1,0 +1,209 @@
+[
+  {
+    "Image": ".ai/test-images/web-v4/2.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "Compared as a version rather than for equality, so it silences that release and nothing later:",
+        "Bounds": [
+          2,
+          3,
+          666,
+          21
+        ],
+        "LayoutBounds": [
+          2,
+          3,
+          666,
+          21
+        ],
+        "Script": 1,
+        "Glyph": 10.959493670886078,
+        "Render": 10.959493670886078,
+        "Confidence": 0.9999268054962158,
+        "Ink": 7
+      },
+      {
+        "Text": "1.9.1",
+        "Bounds": [
+          157,
+          19,
+          42,
+          20
+        ],
+        "LayoutBounds": [
+          157,
+          19,
+          42,
+          20
+        ],
+        "Script": 1,
+        "Glyph": 10.920000000000002,
+        "Render": 10.920000000000002,
+        "Confidence": 0.9965400695800781,
+        "Ink": null
+      },
+      {
+        "Text": "skipping 1.9.0 leaves",
+        "Bounds": [
+          1,
+          20,
+          157,
+          21
+        ],
+        "LayoutBounds": [
+          1,
+          20,
+          157,
+          21
+        ],
+        "Script": 1,
+        "Glyph": 10.742105263157896,
+        "Render": 10.742105263157896,
+        "Confidence": 0.9977436065673828,
+        "Ink": null
+      },
+      {
+        "Text": "free to",
+        "Bounds": [
+          198,
+          21,
+          59,
+          18
+        ],
+        "LayoutBounds": [
+          198,
+          21,
+          59,
+          18
+        ],
+        "Script": 1,
+        "Glyph": 12.783333333333335,
+        "Render": 12.783333333333335,
+        "Confidence": 0.9999198317527771,
+        "Ink": null
+      },
+      {
+        "Text": "prompt again. It",
+        "Bounds": [
+          250,
+          22,
+          129,
+          18
+        ],
+        "LayoutBounds": [
+          250,
+          22,
+          129,
+          18
+        ],
+        "Script": 1,
+        "Glyph": 11.978571428571428,
+        "Render": 11.978571428571428,
+        "Confidence": 0.9959279894828796,
+        "Ink": null
+      },
+      {
+        "Text": "suppresses only the startup dialog",
+        "Bounds": [
+          371,
+          22,
+          248,
+          18
+        ],
+        "LayoutBounds": [
+          371,
+          22,
+          248,
+          18
+        ],
+        "Script": 1,
+        "Glyph": 10.746666666666668,
+        "Render": 10.746666666666668,
+        "Confidence": 0.9997453689575195,
+        "Ink": 9
+      },
+      {
+        "Text": "the",
+        "Bounds": [
+          642,
+          22,
+          25,
+          16
+        ],
+        "LayoutBounds": [
+          642,
+          22,
+          25,
+          16
+        ],
+        "Script": 1,
+        "Glyph": 8,
+        "Render": 8,
+        "Confidence": 0.9999714493751526,
+        "Ink": null
+      },
+      {
+        "Text": "nav rail still offers the update",
+        "Bounds": [
+          2,
+          38,
+          233,
+          18
+        ],
+        "LayoutBounds": [
+          2,
+          38,
+          233,
+          18
+        ],
+        "Script": 1,
+        "Glyph": 11.218518518518518,
+        "Render": 11.218518518518518,
+        "Confidence": 0.9997214674949646,
+        "Ink": 10
+      },
+      {
+        "Text": "because what the user declined was being interrupted, not",
+        "Bounds": [
+          256,
+          39,
+          404,
+          18
+        ],
+        "LayoutBounds": [
+          256,
+          39,
+          404,
+          18
+        ],
+        "Script": 1,
+        "Glyph": 10.718367346938775,
+        "Render": 10.718367346938775,
+        "Confidence": 0.9953911900520325,
+        "Ink": 10
+      },
+      {
+        "Text": "the update itself. See \u003Csee cref=\u0022Services.UpdateNotifier\u0022/\u003E",
+        "Bounds": [
+          3,
+          55,
+          427,
+          17
+        ],
+        "LayoutBounds": [
+          3,
+          55,
+          427,
+          17
+        ],
+        "Script": 1,
+        "Glyph": 10.092727272727274,
+        "Render": 10.092727272727274,
+        "Confidence": 0.9987576007843018,
+        "Ink": 10
+      }
+    ]
+  }
+]
