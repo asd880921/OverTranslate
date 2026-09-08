@@ -132,9 +132,6 @@ public class AppSettings
     /// <inheritdoc cref="TranslationWindowHotkeyEnabled"/>
     public bool QuickTranslateHotkeyEnabled { get; set; } = true;
 
-    public string QuickTranslateSourceLanguage { get; set; } = LanguageData.DefaultSourceLanguage;
-    public string QuickTranslateTargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
-
     public string SourceLanguage { get; set; } = LanguageData.DefaultOcrSourceLanguage;
     public string TargetLanguage { get; set; } = "ZH-HANT";
     public TranslationProvider Provider { get; set; } = TranslationProvider.Microsoft;
@@ -216,6 +213,9 @@ public class AppSettings
 
     /// <summary>What 取詞翻譯 keeps between lookups, grouped.</summary>
     public QuickLookupSettings QuickLookup { get; set; } = new();
+
+    /// <summary>Language preferences used only by quick translation.</summary>
+    public QuickTranslateSettings QuickTranslate { get; set; } = new();
 
     /// <summary>What 即時翻譯 keeps between sittings, grouped.</summary>
     public RealtimeSettings Realtime { get; set; } = new();

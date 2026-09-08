@@ -454,6 +454,8 @@
                                                    VerticalAlignment="Top"/>
                                     </Grid>
                                     <ToggleButton Grid.Column="1" x:Name="QuickTranslateSettingsToggle"
+                                                  Checked="QuickTranslateSettings_Toggled"
+                                                  Unchecked="QuickTranslateSettings_Toggled"
                                                   HorizontalAlignment="Right"
                                                   VerticalAlignment="Center"
                                                   Padding="10,5"
@@ -492,46 +494,39 @@
                                     </ToggleButton>
                                 </Grid>
 
-                                <Border Margin="0,8,0,0" Padding="12,10"
-                                        BorderBrush="{DynamicResource AppButtonBorder}"
-                                        BorderThickness="1" CornerRadius="6">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsChecked, ElementName=QuickTranslateSettingsToggle}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="20"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="{DynamicResource S.Realtime.SourceLanguage}" Style="{StaticResource FieldLabel}"/>
-                                                <ComboBox x:Name="QuickTranslateSourceBox"
-                                                          Style="{StaticResource ModernComboBox}"
-                                                          DisplayMemberPath="Display" SelectedValuePath="Code"
-                                                          AutomationProperties.Name="{DynamicResource S.Realtime.SourceLanguage}"
-                                                          SelectionChanged="QuickTranslateLanguage_Changed"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="{DynamicResource S.Realtime.TargetLanguage}" Style="{StaticResource FieldLabel}"/>
-                                                <ComboBox x:Name="QuickTranslateTargetBox"
-                                                          Style="{StaticResource ModernComboBox}"
-                                                          DisplayMemberPath="Display" SelectedValuePath="Code"
-                                                          AutomationProperties.Name="{DynamicResource S.Realtime.TargetLanguage}"
-                                                          SelectionChanged="QuickTranslateLanguage_Changed"/>
-                                            </StackPanel>
-                                        </Grid>
-                                        <TextBlock Text="{DynamicResource S.Settings.QuickTranslateLanguageNote}"
-                                                   Style="{StaticResource FieldHint}" Margin="0,8,0,0"/>
-                                    </StackPanel>
+                                <Border x:Name="QuickTranslateSettingsFold"
+                                        Height="0" Visibility="Collapsed" ClipToBounds="True">
+                                    <Border x:Name="QuickTranslateSettingsBody" Opacity="0" Margin="0,8,0,0" Padding="12,10"
+                                            BorderBrush="{DynamicResource AppButtonBorder}"
+                                            BorderThickness="1" CornerRadius="6">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="20"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{DynamicResource S.Realtime.SourceLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                                                    <ComboBox x:Name="QuickTranslateSourceBox"
+                                                              Style="{StaticResource ModernComboBox}"
+                                                              DisplayMemberPath="Display" SelectedValuePath="Code"
+                                                              AutomationProperties.Name="{DynamicResource S.Realtime.SourceLanguage}"
+                                                              SelectionChanged="QuickTranslateLanguage_Changed"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="{DynamicResource S.Realtime.TargetLanguage}" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                                                    <ComboBox x:Name="QuickTranslateTargetBox"
+                                                              Style="{StaticResource ModernComboBox}"
+                                                              DisplayMemberPath="Display" SelectedValuePath="Code"
+                                                              AutomationProperties.Name="{DynamicResource S.Realtime.TargetLanguage}"
+                                                              SelectionChanged="QuickTranslateLanguage_Changed"/>
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Text="{DynamicResource S.Settings.QuickTranslateLanguageNote}"
+                                                       Style="{StaticResource FieldHint}" Margin="0,8,0,0"/>
+                                        </StackPanel>
+                                    </Border>
                                 </Border>
                             </StackPanel>
                         </Border>

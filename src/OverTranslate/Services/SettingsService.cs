@@ -115,11 +115,19 @@ public class SettingsService
 
         Apply(settings, root, "");
 
-        // Preserve the previous language pair once when upgrading from shared preferences.
-        if (!root.ContainsKey(nameof(AppSettings.QuickTranslateSourceLanguage)))
-            settings.QuickTranslateSourceLanguage = LanguageData.GetValidSourceCode(settings.SourceLanguage);
-        if (!root.ContainsKey(nameof(AppSettings.QuickTranslateTargetLanguage)))
-            settings.QuickTranslateTargetLanguage = LanguageData.GetValidTargetCode(settings.TargetLanguage);
+        // The grouped section wins. Older files used flat quick-translation keys, and before
+        // that shared the text-translation pair. Migrate only when the group is absent.
+        if (!root.ContainsKey(nameof(AppSettings.QuickTranslate)))
+        {
+            string LegacyLanguage(string key, string shared) =>
+                !root.TryGetPropertyValue(key, out var value) ? shared :
+                value is JsonValue scalar && scalar.TryGetValue<string>(out var text) ? text : "";
+
+            settings.QuickTranslate.SourceLanguage = LanguageData.GetValidSourceCode(
+                LegacyLanguage("QuickTranslateSourceLanguage", settings.SourceLanguage));
+            settings.QuickTranslate.TargetLanguage = LanguageData.GetValidTargetCode(
+                LegacyLanguage("QuickTranslateTargetLanguage", settings.TargetLanguage));
+        }
         return settings;
     }
 

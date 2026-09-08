@@ -204,8 +204,8 @@ public partial class SettingsPage : UserControl
 
             QuickTranslateSourceBox.ItemsSource = LanguageData.SourceLanguages;
             QuickTranslateTargetBox.ItemsSource = LanguageData.TargetLanguages;
-            QuickTranslateSourceBox.SelectedValue = LanguageData.GetValidSourceCode(s.QuickTranslateSourceLanguage);
-            QuickTranslateTargetBox.SelectedValue = LanguageData.GetValidTargetCode(s.QuickTranslateTargetLanguage);
+            QuickTranslateSourceBox.SelectedValue = LanguageData.GetValidSourceCode(s.QuickTranslate.SourceLanguage);
+            QuickTranslateTargetBox.SelectedValue = LanguageData.GetValidTargetCode(s.QuickTranslate.TargetLanguage);
             QuickTranslateSourceBox.Items.Refresh();
             QuickTranslateTargetBox.Items.Refresh();
 
@@ -234,6 +234,53 @@ public partial class SettingsPage : UserControl
 
     // ── Persistence ──────────────────────────────────────────────────────────
 
+    private int _quickTranslateFoldVersion;
+
+    private void QuickTranslateSettings_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (QuickTranslateSettingsFold is null) return;
+
+        var expanded = QuickTranslateSettingsToggle.IsChecked == true;
+        var version = ++_quickTranslateFoldVersion;
+        var fold = QuickTranslateSettingsFold;
+        var body = QuickTranslateSettingsBody;
+        var fromHeight = fold.Visibility == Visibility.Collapsed ? 0 : fold.ActualHeight;
+        if (expanded) fold.Visibility = Visibility.Visible;
+
+        void Finish()
+        {
+            fold.BeginAnimation(HeightProperty, null);
+            body.BeginAnimation(OpacityProperty, null);
+            fold.Height = expanded ? double.NaN : 0;
+            body.Opacity = expanded ? 1 : 0;
+            fold.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (!IsLoaded || !SystemParameters.ClientAreaAnimation)
+        {
+            Finish();
+            return;
+        }
+
+        // Measure the body at the available width, including wrapped hints and its top margin.
+        // Return to Auto after opening so resizing and language changes can reflow naturally.
+        var width = ((FrameworkElement)fold.Parent).ActualWidth;
+        body.Measure(new System.Windows.Size(width, double.PositiveInfinity));
+        var target = expanded ? body.DesiredSize.Height : 0;
+        fold.Height = fromHeight;
+        var duration = TimeSpan.FromMilliseconds(expanded ? 200 : 160);
+        var height = new DoubleAnimation(target, duration)
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        height.Completed += (_, _) =>
+        {
+            if (version == _quickTranslateFoldVersion) Finish();
+        };
+        fold.BeginAnimation(HeightProperty, height);
+        body.BeginAnimation(OpacityProperty, new DoubleAnimation(expanded ? 1 : 0, duration));
+    }
+
     private void QuickTranslateLanguage_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (_loading || QuickTranslateSourceBox.SelectedValue is not string source ||
@@ -241,8 +288,8 @@ public partial class SettingsPage : UserControl
 
         Persist(s =>
         {
-            s.QuickTranslateSourceLanguage = LanguageData.GetValidSourceCode(source);
-            s.QuickTranslateTargetLanguage = LanguageData.GetValidTargetCode(target);
+            s.QuickTranslate.SourceLanguage = LanguageData.GetValidSourceCode(source);
+            s.QuickTranslate.TargetLanguage = LanguageData.GetValidTargetCode(target);
         });
     }
 

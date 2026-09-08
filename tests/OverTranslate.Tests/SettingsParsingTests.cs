@@ -13,20 +13,59 @@ namespace OverTranslate.Tests;
 public class SettingsParsingTests
 {
     [Fact]
+    public void QuickTranslateGroup_WinsOverFlatKeysAndSerializesOnlyTheGroup()
+    {
+        var settings = SettingsService.Parse(
+            """{"QuickTranslateSourceLanguage":"JA","QuickTranslateTargetLanguage":"EN-US","QuickTranslate":{"SourceLanguage":"KO","TargetLanguage":"ZH-HANT"}}""");
+
+        Assert.Equal("KO", settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("ZH-HANT", settings.QuickTranslate.TargetLanguage);
+        var json = SettingsService.Serialize(settings);
+        Assert.DoesNotContain("QuickTranslateSourceLanguage", json);
+        Assert.DoesNotContain("QuickTranslateTargetLanguage", json);
+        var reloaded = SettingsService.Parse(json);
+        Assert.Equal("KO", reloaded.QuickTranslate.SourceLanguage);
+        Assert.Equal("ZH-HANT", reloaded.QuickTranslate.TargetLanguage);
+    }
+
+    [Fact]
+    public void QuickTranslateGroup_InvalidFieldKeepsOtherFields()
+    {
+        var settings = SettingsService.Parse(
+            """{"QuickTranslate":{"SourceLanguage":42,"TargetLanguage":"JA"}}""");
+
+        Assert.Equal(LanguageData.DefaultSourceLanguage, settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("JA", settings.QuickTranslate.TargetLanguage);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("42")]
+    [InlineData("{}")]
+    public void QuickTranslateGroup_InvalidOrEmptyGroupUsesIndependentDefaults(string group)
+    {
+        var settings = SettingsService.Parse(
+            """{"SourceLanguage":"JA","TargetLanguage":"EN-US","QuickTranslate":""" + group + "}");
+
+        Assert.Equal(LanguageData.DefaultSourceLanguage, settings.QuickTranslate.SourceLanguage);
+        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.QuickTranslate.TargetLanguage);
+    }
+
+    [Fact]
     public void QuickTranslateLanguages_MigrateSharedPairThenRemainIndependent()
     {
         var settings = SettingsService.Parse(
             """{"SourceLanguage":"JA","TargetLanguage":"EN-US"}""");
 
-        Assert.Equal("JA", settings.QuickTranslateSourceLanguage);
-        Assert.Equal("EN-US", settings.QuickTranslateTargetLanguage);
+        Assert.Equal("JA", settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("EN-US", settings.QuickTranslate.TargetLanguage);
 
         settings.SourceLanguage = "KO";
         settings.TargetLanguage = "ZH-HANT";
         var reloaded = SettingsService.Parse(System.Text.Json.JsonSerializer.Serialize(settings));
 
-        Assert.Equal("JA", reloaded.QuickTranslateSourceLanguage);
-        Assert.Equal("EN-US", reloaded.QuickTranslateTargetLanguage);
+        Assert.Equal("JA", reloaded.QuickTranslate.SourceLanguage);
+        Assert.Equal("EN-US", reloaded.QuickTranslate.TargetLanguage);
         Assert.Equal("KO", reloaded.SourceLanguage);
         Assert.Equal("ZH-HANT", reloaded.TargetLanguage);
     }
@@ -37,14 +76,14 @@ public class SettingsParsingTests
         var settings = SettingsService.Parse(
             """{"SourceLanguage":"JA","TargetLanguage":"EN-US","QuickTranslateSourceLanguage":"AUTO","QuickTranslateTargetLanguage":"KO"}""");
 
-        Assert.Equal("AUTO", settings.QuickTranslateSourceLanguage);
-        Assert.Equal("KO", settings.QuickTranslateTargetLanguage);
+        Assert.Equal("AUTO", settings.QuickTranslate.SourceLanguage);
+        Assert.Equal("KO", settings.QuickTranslate.TargetLanguage);
 
         var invalid = SettingsService.Parse(
             """{"QuickTranslateSourceLanguage":null,"QuickTranslateTargetLanguage":42}""");
 
-        Assert.Equal(LanguageData.DefaultSourceLanguage, invalid.QuickTranslateSourceLanguage);
-        Assert.Equal(LanguageData.DefaultTargetLanguage, invalid.QuickTranslateTargetLanguage);
+        Assert.Equal(LanguageData.DefaultSourceLanguage, invalid.QuickTranslate.SourceLanguage);
+        Assert.Equal(LanguageData.DefaultTargetLanguage, invalid.QuickTranslate.TargetLanguage);
     }
 
     [Fact]
@@ -486,7 +525,7 @@ public class SettingsParsingTests
             captureGroup > lastFlatKey,
             "grouped settings must be written after every flat one");
         Assert.Equal(
-            ["Capture", "QuickLookup", "Realtime", "OcrDebug", "OpenAi"], rootKeys.TakeLast(5));
+            ["Capture", "QuickLookup", "QuickTranslate", "Realtime", "OcrDebug", "OpenAi"], rootKeys.TakeLast(6));
     }
 
     /// <summary>
