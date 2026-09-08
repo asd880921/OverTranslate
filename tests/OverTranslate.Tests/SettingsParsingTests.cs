@@ -13,6 +13,15 @@ namespace OverTranslate.Tests;
 public class SettingsParsingTests
 {
     [Fact]
+    public void QuickTranslateDefaultsToEnglishWithoutChangingOtherDefaults()
+    {
+        Assert.Equal("EN-US", new QuickTranslateSettings().TargetLanguage);
+        var settings = SettingsService.Parse("{}");
+        Assert.Equal("EN-US", settings.QuickTranslate.TargetLanguage);
+        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.TargetLanguage);
+    }
+
+    [Fact]
     public void QuickTranslateGroup_WinsOverFlatKeysAndSerializesOnlyTheGroup()
     {
         var settings = SettingsService.Parse(
@@ -48,7 +57,7 @@ public class SettingsParsingTests
             """{"SourceLanguage":"JA","TargetLanguage":"EN-US","QuickTranslate":""" + group + "}");
 
         Assert.Equal(LanguageData.DefaultSourceLanguage, settings.QuickTranslate.SourceLanguage);
-        Assert.Equal(LanguageData.DefaultTargetLanguage, settings.QuickTranslate.TargetLanguage);
+        Assert.Equal("EN-US", settings.QuickTranslate.TargetLanguage);
     }
 
     [Fact]
@@ -83,7 +92,7 @@ public class SettingsParsingTests
             """{"QuickTranslateSourceLanguage":null,"QuickTranslateTargetLanguage":42}""");
 
         Assert.Equal(LanguageData.DefaultSourceLanguage, invalid.QuickTranslate.SourceLanguage);
-        Assert.Equal(LanguageData.DefaultTargetLanguage, invalid.QuickTranslate.TargetLanguage);
+        Assert.Equal("EN-US", invalid.QuickTranslate.TargetLanguage);
     }
 
     [Fact]

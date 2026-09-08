@@ -125,8 +125,12 @@ public class SettingsService
 
             settings.QuickTranslate.SourceLanguage = LanguageData.GetValidSourceCode(
                 LegacyLanguage("QuickTranslateSourceLanguage", settings.SourceLanguage));
-            settings.QuickTranslate.TargetLanguage = LanguageData.GetValidTargetCode(
-                LegacyLanguage("QuickTranslateTargetLanguage", settings.TargetLanguage));
+            var legacyTarget = LegacyLanguage("QuickTranslateTargetLanguage",
+                root.ContainsKey(nameof(AppSettings.TargetLanguage)) ? settings.TargetLanguage : "");
+            var target = LanguageData.TargetLanguages.FirstOrDefault(
+                language => language.Code.Equals(legacyTarget, StringComparison.OrdinalIgnoreCase));
+            if (target is not null)
+                settings.QuickTranslate.TargetLanguage = target.Code;
         }
         return settings;
     }

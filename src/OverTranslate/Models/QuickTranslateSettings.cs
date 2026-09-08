@@ -4,5 +4,5 @@ namespace OverTranslate.Models;
 public class QuickTranslateSettings
 {
     public string SourceLanguage { get; set; } = LanguageData.DefaultSourceLanguage;
-    public string TargetLanguage { get; set; } = LanguageData.DefaultTargetLanguage;
+    public string TargetLanguage { get; set; } = "EN-US";
 }
