@@ -63,7 +63,7 @@ internal static class OcrTextBlockGrouper
             return blocks.ToList();
         }
 
-        var sameLineMerged = MergeSameLineFragments(blocks, decisions, trace);
+        var sameLineMerged = MergeSameLineFragments(blocks, decisions, trace, profile);
         var sorted = sameLineMerged
             .OrderBy(block => block.LayoutBounds.Y)
             .ThenBy(block => block.LayoutBounds.X)
@@ -179,13 +179,14 @@ internal static class OcrTextBlockGrouper
         double AdvanceDenominator = 0);
 
     private static List<OcrTextBlock> MergeSameLineFragments(
-        IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions, GroupingTrace? trace)
+        IReadOnlyList<OcrTextBlock> blocks, List<NextLineDecision>? decisions, GroupingTrace? trace,
+        GroupingProfile profile)
     {
         var rows = BuildVisualRows(blocks);
         var gaps = rows.SelectMany(AdjacentGaps).ToList();
         var threshold = SameLineGapThreshold.Estimate(gaps);
 
-        return rows.SelectMany(row => SplitRowIntoLines(row, threshold.Value, decisions, trace)).ToList();
+        return rows.SelectMany(row => SplitRowIntoLines(row, threshold.Value, decisions, trace, blocks, profile)).ToList();
     }
 
     /// <summary>
@@ -286,7 +287,8 @@ internal static class OcrTextBlockGrouper
     /// and joins what is left.
     /// </summary>
     private static IEnumerable<OcrTextBlock> SplitRowIntoLines(
-        List<OcrTextBlock> row, double threshold, List<NextLineDecision>? decisions, GroupingTrace? trace)
+        List<OcrTextBlock> row, double threshold, List<NextLineDecision>? decisions, GroupingTrace? trace,
+        IReadOnlyList<OcrTextBlock> blocks, GroupingProfile profile)
     {
         var lines = new List<OcrTextBlock>();
         var line = row[0];
@@ -299,6 +301,10 @@ internal static class OcrTextBlockGrouper
         for (var i = 1; i < row.Count; i++)
         {
             var (joined, rule) = JudgeSameLine(row[i - 1], row[i], threshold);
+            if (!joined && rule == "horizontal gap" &&
+                profile.SolidLineAdvanceWhenWrapped > SolidLineAdvance &&
+                HasSpanningProseContinuation(row[i - 1], row[i], blocks))
+                (joined, rule) = (true, "spanning prose continuation");
             decisions?.Add(SameLineDecision(row[i - 1], row[i], joined, rule, trace));
 
             if (joined)
@@ -317,6 +323,27 @@ internal static class OcrTextBlockGrouper
         lines.Add(line);
         trace?.RegisterLine(line, members);
         return lines;
+    }
+
+    // A dash or another thin separator may not become an OCR block at all. Do not depend on
+    // its recognised spelling: a following line spanning both fragments supplies the wrap
+    // evidence that two independent buttons/columns lack. Keep the ordinary row guards.
+    private static bool HasSpanningProseContinuation(
+        OcrTextBlock left, OcrTextBlock right, IReadOnlyList<OcrTextBlock> blocks)
+    {
+        var height = (left.LayoutBounds.Height + right.LayoutBounds.Height) / 2;
+        if (!SharesVisualRow(left, right) || NormalizedGap(left, right) > 1.2 ||
+            left.LayoutBounds.Width < left.LayoutBounds.Height * 8 ||
+            right.LayoutBounds.Width < right.LayoutBounds.Height * 8)
+            return false;
+        var row = Rect.Union(left.LayoutBounds, right.LayoutBounds);
+        return blocks.Any(next =>
+            next.LayoutBounds.Top >= row.Bottom - height * 0.2 &&
+            next.LayoutBounds.Top - row.Top <= height * 1.65 &&
+            Math.Abs(next.LayoutBounds.Left - row.Left) <= height * 0.35 &&
+            Math.Abs(next.LayoutBounds.Right - row.Right) <= height * 0.75 &&
+            next.LayoutBounds.Height >= height * 0.75 &&
+            next.LayoutBounds.Height <= height * 1.35);
     }
 
     private static (bool Joined, string Rule) JudgeSameLine(
@@ -468,7 +495,7 @@ internal static class OcrTextBlockGrouper
             if (!NothingLiesBetween(previous, current, lines))
                 continue;
 
-            if (!CanJoinNextLine(group, current, profile, decisions, trace))
+            if (!CanJoinNextLine(group, current, profile, decisions, trace, lines))
                 continue;
 
             var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
@@ -566,10 +593,18 @@ internal static class OcrTextBlockGrouper
         OcrTextBlock current,
         GroupingProfile profile,
         List<NextLineDecision>? decisions,
-        GroupingTrace? trace)
+        GroupingTrace? trace,
+        IReadOnlyList<OcrTextBlock> lines)
     {
         var previous = group[^1];
-        var (joined, rule) = JudgeNextLine(previous, current, profile);
+        var paragraphFinal = IsEstablishedParagraphFinalLine(group, current, profile);
+        var looseProse = IsLooselySetProse(previous, current, profile, lines);
+        var (joined, rule) = JudgeNextLine(previous, current, profile, paragraphFinal, looseProse);
+        if (joined && looseProse && LineAdvanceRatio(previous, current) > SolidBarFor(previous, profile))
+            rule = "regular prose leading";
+        if (joined && paragraphFinal &&
+            TextSizeRatio(previous, current) < Math.Min(MinTextSizeRatio, profile.TightlySetMinTextSizeRatio))
+            rule = "paragraph final line";
         if (decisions is null)
             return joined;
 
@@ -681,7 +716,8 @@ internal static class OcrTextBlockGrouper
                 Math.Abs(CenterX(previous) - CenterX(current))));
 
     private static (bool Joined, string Rule) JudgeNextLine(
-        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile,
+        bool paragraphFinal = false, bool looseProse = false)
     {
         var avgHeight = (previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0;
 
@@ -690,7 +726,14 @@ internal static class OcrTextBlockGrouper
         // pair. Everything between the two is decided further down, once the geometry has said
         // whether the pair is set solid at all, because that is the only path a profile may relax.
         var sizeRatio = TextSizeRatio(previous, current);
-        if (sizeRatio < Math.Min(MinTextSizeRatio, profile.TightlySetMinTextSizeRatio))
+        // A shorter, visibly larger heading above a different-script body.
+        if (profile.SolidLineAdvanceWhenWrapped > SolidLineAdvance &&
+            previous.LayoutScript != current.LayoutScript &&
+            previous.LayoutBounds.Width < current.LayoutBounds.Width &&
+            previous.LayoutInkHeight is > 0 && current.LayoutInkHeight is > 0 &&
+            current.LayoutInkHeight < previous.LayoutInkHeight * 0.85)
+            return (false, "visible heading size");
+        if (sizeRatio < Math.Min(MinTextSizeRatio, profile.TightlySetMinTextSizeRatio) && !paragraphFinal)
             return (false, "text size");
 
         // The gap can be negative, for exactly the reason it can horizontally in JudgeSameLine:
@@ -725,7 +768,7 @@ internal static class OcrTextBlockGrouper
         if (!isAlignedContinuation)
             return (false, "not aligned enough to continue");
 
-        return SentenceContinuationEvidence(previous, current, profile, sizeRatio);
+        return SentenceContinuationEvidence(previous, current, profile, sizeRatio, looseProse);
     }
 
     /// <summary>
@@ -803,7 +846,8 @@ internal static class OcrTextBlockGrouper
     }
 
     private static (bool Joined, string Rule) SentenceContinuationEvidence(
-        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile, double sizeRatio)
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile, double sizeRatio,
+        bool looseProse = false)
     {
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
@@ -845,7 +889,7 @@ internal static class OcrTextBlockGrouper
         // Asked before the shape test below because the shape test cannot see them — a paragraph's
         // middle lines are all about as wide as each other, which is the one thing that rule takes
         // as proof that nothing wrapped.
-        if (IsSetSolidUnder(previous, current, profile))
+        if (IsSetSolidUnder(previous, current, profile) || looseProse)
             return (true, "set solid");
 
         // A much shorter following line is a common natural wrap shape.
@@ -953,6 +997,69 @@ internal static class OcrTextBlockGrouper
                AlignmentDelta(previous, current) <= Math.Max(avgHeight * SetSolidMaxAlignment, 6) &&
                (IsLongEnoughToHaveWrapped(previous) ||
                 (profile.WaiveLengthTestWhenSetSolid && IsCentredAgainst(previous, current, avgHeight)));
+    }
+
+    // Long, left-aligned body lines can have more leading than compact UI text.
+    private static bool IsLooselySetProse(
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile,
+        IReadOnlyList<OcrTextBlock> lines)
+    {
+        if (!(profile.SolidLineAdvanceWhenWrapped > SolidLineAdvance &&
+        previous.LayoutScript == OcrLayoutScript.Latin && current.LayoutScript == OcrLayoutScript.Latin &&
+        previous.LayoutBounds.Width >= previous.LayoutBounds.Height * 20 &&
+        current.LayoutBounds.Width >= current.LayoutBounds.Height * 8 &&
+        Math.Abs(previous.LayoutBounds.Left - current.LayoutBounds.Left) <=
+            Math.Max(3, Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height) * 0.2) &&
+        TextSizeRatio(previous, current) >= MinTextSizeRatio &&
+        LineAdvanceRatio(previous, current) <= 1.65))
+            return false;
+
+        // Learn the body leading from comparable neighbours in this column. A larger gap
+        // between independent news headlines must not borrow a paragraph's relaxed limit.
+        var column = lines.Where(b => b.LayoutScript == OcrLayoutScript.Latin &&
+            TextSizeRatio(previous, b) >= MinTextSizeRatio &&
+            Math.Abs(b.LayoutBounds.Left - previous.LayoutBounds.Left) <= previous.LayoutBounds.Height * 0.2)
+            .OrderBy(b => b.LayoutBounds.Top).ToArray();
+        var advances = new List<double>();
+        for (var i = 1; i < column.Length; i++)
+        {
+            var upper = column[i - 1];
+            var lower = column[i];
+            if (upper.LayoutBounds.Width < upper.LayoutBounds.Height * 8 ||
+                LineAdvanceRatio(upper, lower) < 0.8 || LineAdvanceRatio(upper, lower) > 1.8)
+                continue;
+            advances.Add(lower.LayoutBounds.Top - upper.LayoutBounds.Top);
+        }
+        if (advances.Count < 3) return false;
+        advances.Sort();
+        var typical = advances[(advances.Count - 1) / 4];
+        return current.LayoutBounds.Top - previous.LayoutBounds.Top <= typical * 1.2;
+    }
+
+    // Use the established paragraph, not just an ambiguous isolated pair.
+    private static bool IsEstablishedParagraphFinalLine(
+        IReadOnlyList<OcrTextBlock> group, OcrTextBlock current, GroupingProfile profile)
+    {
+        if (profile.SolidLineAdvanceWhenWrapped <= SolidLineAdvance || group.Count < 3 ||
+            current.LayoutScript != OcrLayoutScript.Latin)
+            return false;
+        var text = current.Text.Trim();
+        if (text.Length == 0 || !char.IsLower(text[0]) || !EndsWithSentenceTerminator(text))
+            return false;
+        var previous = group[^1];
+        var before = group[^2];
+        if (previous.LayoutScript != OcrLayoutScript.Latin || before.LayoutScript != OcrLayoutScript.Latin ||
+            EndsWithSentenceTerminator(previous.Text.Trim()) ||
+            previous.LayoutBounds.Width < group.Max(b => b.LayoutBounds.Width) * 0.85 ||
+            current.LayoutBounds.Width > previous.LayoutBounds.Width * 0.5 ||
+            Math.Abs(previous.LayoutBounds.Left - current.LayoutBounds.Left) > previous.LayoutBounds.Height * 0.2)
+            return false;
+        var heightRatio = Math.Min(previous.LayoutBounds.Height, current.LayoutBounds.Height) /
+            Math.Max(previous.LayoutBounds.Height, current.LayoutBounds.Height);
+        var lastAdvance = previous.LayoutBounds.Top - before.LayoutBounds.Top;
+        var advance = current.LayoutBounds.Top - previous.LayoutBounds.Top;
+        return heightRatio >= 0.85 && TextSizeRatio(before, previous) >= MinTextSizeRatio &&
+            lastAdvance > 0 && advance >= lastAdvance * 0.85 && advance <= lastAdvance * 1.15;
     }
 
     /// <summary>

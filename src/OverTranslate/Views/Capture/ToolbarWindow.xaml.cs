@@ -68,16 +68,15 @@ public partial class ToolbarWindow : Window
     public bool IsVerticalText => VerticalSeg.IsChecked == true;
 
     /// <summary>
-    /// What the user says the framed capture holds: an ordinary interface, or a comic or article to
-    /// be read in order.
+    /// The effective capture mode. The single-mode release always uses General.
     /// </summary>
     /// <remarks>
-    /// Restored from <see cref="AppSettings.Capture"/> when the toolbar opens and saved on each
-    /// explicit switch. Someone reading a comic is reading a comic for more than one capture.
+    /// Keep the selector and persisted preference for future use, but do not let either override
+    /// the application's current single-mode policy.
     /// </remarks>
-    public CaptureLayoutMode CurrentLayoutMode => InterfaceModeSeg.IsChecked == true
+    public CaptureLayoutMode CurrentLayoutMode => CaptureLayoutPolicy.ForApplication(InterfaceModeSeg.IsChecked == true
         ? CaptureLayoutMode.Interface
-        : CaptureLayoutMode.General;
+        : CaptureLayoutMode.General);
 
     public ToolbarWindow(
         double selPhysLeft, double selPhysTop,
@@ -100,8 +99,10 @@ public partial class ToolbarWindow : Window
         // mode — has already become General by the time it gets here: the settings reader keeps the
         // property's default when a value will not deserialize, and General is that default.
         // Nothing to guard against a second time; see SettingsService.Apply.
-        bool interfaceMode =
-            SettingsService.Instance.Current.Capture.LayoutMode == CaptureLayoutMode.Interface;
+        LayoutModeSelector.Visibility = CaptureLayoutPolicy.IsModeSelectionAvailable
+            ? Visibility.Visible : Visibility.Collapsed;
+        bool interfaceMode = CaptureLayoutPolicy.ForApplication(
+            SettingsService.Instance.Current.Capture.LayoutMode) == CaptureLayoutMode.Interface;
         InterfaceModeSeg.IsChecked = interfaceMode;
         GeneralModeSeg.IsChecked = !interfaceMode;
         _initializingLayoutMode = false;

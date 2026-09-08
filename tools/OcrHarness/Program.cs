@@ -16,6 +16,9 @@ using OverTranslate.Services.Realtime;
 // the text it belongs to, which is the half that says whether a verdict was right.
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
+if (args.Length > 0 && args[0] == "--group-prototype")
+    return await GroupingPrototype.Run(args.Skip(1).ToArray());
+
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: OcrHarness <image.png> [more.png ...]");
@@ -1435,6 +1438,8 @@ if (args[0] == "--group-explain")
         var explainProfile = harnessRealtime
             ? GroupingProfile.Realtime
             : GroupingProfile.For(harnessLayoutMode);
+        if (!harnessRealtime)
+            raw = OcrService.PrepareScreenshotGrouping(image, raw, explainProfile);
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
         var groupingTrace = harnessTrace ? new GroupingTrace() : null;
         var grouped = OcrTextBlockGrouper.Group(raw, explainProfile, decisions, groupingTrace);

@@ -32,6 +32,9 @@ public record OcrTextBlock(
     double? LayoutGlyphHeight = null)
 {
     public IReadOnlyList<System.Windows.Rect> Lines => SourceLineBounds ?? [Bounds];
+
+    // Optional screenshot-only evidence; never used to size the rendered translation.
+    public double? LayoutInkHeight { get; init; }
 }
 
 public class OcrService : IDisposable
@@ -173,8 +176,15 @@ public class OcrService : IDisposable
         CancellationToken cancellationToken)
     {
         var blocks = await engine.RecognizeAsync(bitmap, sourceLanguage, cancellationToken);
+        blocks = PrepareScreenshotGrouping(bitmap, blocks, profile);
         return OcrTextBlockGrouper.Group(blocks, profile);
     }
+
+    internal static List<OcrTextBlock> PrepareScreenshotGrouping(
+        Bitmap bitmap, List<OcrTextBlock> blocks, GroupingProfile profile) =>
+        profile.SolidLineAdvanceWhenWrapped > OcrTextBlockGrouper.SolidLineAdvance
+            ? TextInkMetrics.Annotate(bitmap, blocks)
+            : blocks;
 
     /// <summary>
     /// Turns vertical writing anticlockwise for the horizontal detector, then maps the grouped

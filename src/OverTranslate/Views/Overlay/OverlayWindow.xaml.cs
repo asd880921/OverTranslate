@@ -244,16 +244,12 @@ public partial class OverlayWindow : Window
     {
         if (!_isLoaded) return null;
 
-        // Null only when there is nothing over the capture at all, which is not the same as "no
-        // bubbles": under 顯示原文 the debug boxes are still up, and that combination — the original
-        // words with the boxes drawn round them — is the one worth sending to somebody. Nobody is
-        // in this state by accident. Marks count for the same reason: someone can draw before any
-        // translation has run.
+        // Debug boxes are on-screen inspection aids, not exported content. Marks still count:
+        // someone can draw before translation, or copy the original with their own annotations.
         bool hasBubbles = BubbleBackgroundCanvas.Visibility == Visibility.Visible
             && (BubbleBackgroundCanvas.Children.Count > 0 || BubbleTextCanvas.Children.Count > 0);
         bool hasMarks = AnnotationCanvas.Children.Count > 0 || HasInk;
-        bool hasDebugBoxes = DebugCanvas.Visibility == Visibility.Visible && DebugCanvas.Children.Count > 0;
-        if (!hasBubbles && !hasMarks && !hasDebugBoxes) return null;
+        if (!hasBubbles && !hasMarks) return null;
 
         int fullW = Math.Max(1, _physBounds.Width);
         int fullH = Math.Max(1, _physBounds.Height);
@@ -264,12 +260,7 @@ public partial class OverlayWindow : Window
             fullW, fullH, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
         full.Render(BubbleBackgroundCanvas);
 
-        // The debug boxes are included, deliberately. Someone with them switched on is looking at
-        // how a capture was read, and the copy is how they show that to somebody else — a picture
-        // of the problem without the boxes is a picture of nothing in particular. Between the two
-        // bubble layers, which is where they sit on screen.
-        full.Render(DebugCanvas);
-
+        // Deliberately omit DebugCanvas without hiding it in the live window.
         full.Render(BubbleTextCanvas);
 
         // Drawn here rather than left to a canvas, because the finished marks are shown by the

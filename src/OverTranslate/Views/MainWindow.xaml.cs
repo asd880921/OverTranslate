@@ -7,6 +7,7 @@ using System.Windows.Interop;
 using NLog;
 using OverTranslate.Layout;
 using OverTranslate.Services;
+using OverTranslate.Services.Ocr;
 using OverTranslate.Views.Capture;
 using OverTranslate.Views.Overlay;
 using OverTranslate.Views.Realtime;
@@ -883,7 +884,7 @@ public partial class MainWindow : Window
                 req.SourceLang,
                 cancellationToken,
                 req.IsVerticalText,
-                req.LayoutMode);
+                CaptureLayoutPolicy.ForApplication(req.LayoutMode));
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
@@ -923,7 +924,7 @@ public partial class MainWindow : Window
             // Placement is what decides the boxes the overlay will draw, and a colour sampled from
             // a box that is about to be cut into four is the average of four backgrounds — the
             // group box of a wrapped paragraph spans whatever the page put between its lines.
-            var placed = OverlayPlacement.Place(translated, req.LayoutMode, req.IsVerticalText);
+            var placed = OverlayPlacement.Place(translated, CaptureLayoutPolicy.ForApplication(req.LayoutMode), req.IsVerticalText);
 
             var croppedBitmap = workBitmap;
             var bmpData = croppedBitmap.LockBits(
@@ -1113,7 +1114,7 @@ public partial class MainWindow : Window
                 req.SourceLang,
                 cancellationToken,
                 req.IsVerticalText,
-                req.LayoutMode);
+                CaptureLayoutPolicy.ForApplication(req.LayoutMode));
             if (!IsCurrentSelectionSession(requestSessionId, requestToolbar, requestCaptureWindow))
                 return;
 
