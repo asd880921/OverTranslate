@@ -494,9 +494,9 @@
     <sys:String x:Key="S.Settings.DebugTools">偵錯工具</sys:String>
     <sys:String x:Key="S.Settings.OcrDebug">顯示 OCR 偵錯資訊</sys:String>
     <sys:String x:Key="S.Settings.OcrLineBoxes">OCR 辨識框</sys:String>
-    <sys:String x:Key="S.Settings.OcrLineBoxesHint">顯示 OCR 辨識結果的邊界框。</sys:String>
-    <sys:String x:Key="S.Settings.TextGroupBoxes">文字分組框</sys:String>
-    <sys:String x:Key="S.Settings.TextGroupBoxesHint">顯示 OCR 文字分組區塊的邊界框。</sys:String>
+    <sys:String x:Key="S.Settings.OcrLineBoxesHint">顯示 OCR 偵測到的原文文字範圍。</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxes">文字組合框</sys:String>
+    <sys:String x:Key="S.Settings.TextGroupBoxesHint">顯示原文組合範圍，方便使用者確認哪些文字會被歸為同一組翻譯。</sys:String>
     <sys:String x:Key="S.Settings.DiagnosticsHint">匯出時會將記錄檔、系統資訊與目前設定整理成診斷檔，方便附在問題回報中。API 金鑰等敏感資訊不會包含在內，也不會自動上傳任何資料。</sys:String>
     <sys:String x:Key="S.Settings.ExportDiagnostics">匯出診斷資訊</sys:String>
     <sys:String x:Key="S.Settings.OpenDiagnosticsFolder">開啟資料夾</sys:String>
