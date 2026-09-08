@@ -244,16 +244,12 @@ public partial class OverlayWindow : Window
     {
         if (!_isLoaded) return null;
 
-        // Null only when there is nothing over the capture at all, which is not the same as "no
-        // bubbles": under 顯示原文 the debug boxes are still up, and that combination — the original
-        // words with the boxes drawn round them — is the one worth sending to somebody. Nobody is
-        // in this state by accident. Marks count for the same reason: someone can draw before any
-        // translation has run.
+        // Debug boxes are on-screen inspection aids, not exported content. Marks still count:
+        // someone can draw before translation, or copy the original with their own annotations.
         bool hasBubbles = BubbleBackgroundCanvas.Visibility == Visibility.Visible
             && (BubbleBackgroundCanvas.Children.Count > 0 || BubbleTextCanvas.Children.Count > 0);
         bool hasMarks = AnnotationCanvas.Children.Count > 0 || HasInk;
-        bool hasDebugBoxes = DebugCanvas.Visibility == Visibility.Visible && DebugCanvas.Children.Count > 0;
-        if (!hasBubbles && !hasMarks && !hasDebugBoxes) return null;
+        if (!hasBubbles && !hasMarks) return null;
 
         int fullW = Math.Max(1, _physBounds.Width);
         int fullH = Math.Max(1, _physBounds.Height);
@@ -264,12 +260,7 @@ public partial class OverlayWindow : Window
             fullW, fullH, 96 * _dpiX, 96 * _dpiY, System.Windows.Media.PixelFormats.Pbgra32);
         full.Render(BubbleBackgroundCanvas);
 
-        // The debug boxes are included, deliberately. Someone with them switched on is looking at
-        // how a capture was read, and the copy is how they show that to somebody else — a picture
-        // of the problem without the boxes is a picture of nothing in particular. Between the two
-        // bubble layers, which is where they sit on screen.
-        full.Render(DebugCanvas);
-
+        // Deliberately omit DebugCanvas without hiding it in the live window.
         full.Render(BubbleTextCanvas);
 
         // Drawn here rather than left to a canvas, because the finished marks are shown by the
@@ -364,6 +355,7 @@ public partial class OverlayWindow : Window
 
             bool isSingleLineSource = IsSingleLineSource(block.OriginalText, sourceFontReferenceHeight);
             bool isGroupedMultiLineSource = block.SourceLineBounds is { Count: > 1 };
+            bool reflowGroup = block.LayoutIntent == OverlayLayoutIntent.GroupReflow;
             double minFontSize = SourceFontScale.MinFontSize(sourceFontReferenceHeight);
             double fontSize = SourceFontScale.Calculate(sourceFontReferenceHeight, IsLatinSourceToCjkTarget());
             var typeface = new Typeface(
@@ -383,19 +375,29 @@ public partial class OverlayWindow : Window
                 var sourceLineCount = block.SourceLineBounds!.Count;
                 var hasLowerBlock = HasLowerOverlappingBlock(block, blocks);
                 var maxLineCount = hasLowerBlock ? sourceLineCount : sourceLineCount + 1;
-                var rightAvailableW = GetRightExpansionWidth(
-                    block,
-                    blocks,
-                    canvasX,
-                    canvasY,
-                    wpfH,
-                    selScreenX,
-                    selScreenWidth,
-                    canvasWidth);
-                var preferredGroupedWidth = Math.Min(
-                    availableWidth,
-                    Math.Max(borderW, Math.Min(measured.Width + BubbleHorizontalPadding, rightAvailableW)));
-                targetBorderW = preferredGroupedWidth;
+                // A balloon does not grow. What is to the right of it is the drawing, not room the
+                // text may have, so the group's own box is the whole budget and anything that does
+                // not fit comes off the font size below.
+                if (reflowGroup)
+                {
+                    targetBorderW = borderW;
+                }
+                else
+                {
+                    var rightAvailableW = GetRightExpansionWidth(
+                        block,
+                        blocks,
+                        canvasX,
+                        canvasY,
+                        wpfH,
+                        selScreenX,
+                        selScreenWidth,
+                        canvasWidth);
+                    targetBorderW = Math.Min(
+                        availableWidth,
+                        Math.Max(borderW, Math.Min(measured.Width + BubbleHorizontalPadding, rightAvailableW)));
+                }
+
                 preferRightExpansion = targetBorderW > borderW;
                 var maxBorderHeight = GetBottomAvailableHeight(
                     block,
@@ -586,6 +588,21 @@ public partial class OverlayWindow : Window
                     // reaching here without wrap means it already fits; leaving CharacterEllipsis on
                     // would only mean that a measurement being a pixel out costs the user a word.
                     TextTrimming = TextTrimming.None,
+                    // Centred, for a re-set group as much as for anything else. It was top-aligned
+                    // while this layout belonged to a mode the user had to go and choose: a comic
+                    // was the special case, and a translation shorter than the speech it replaces
+                    // reads better pinned to where the eye starts. That mode is now the default —
+                    // most of what anyone frames is prose of some kind — so the balance changed with
+                    // it: what sits in these boxes is ordinary text on an ordinary page far more
+                    // often than it is a balloon, and ordinary text centred in its own box is what
+                    // every other bubble on the overlay does.
+                    //
+                    // Deliberately unconditional. An alignment that depended on how much emptier the
+                    // box is than the text would be a second layout heuristic, and the problem it
+                    // would exist to solve — a stats page's body drifting down until it looks
+                    // attached to the label beneath it — has not been seen since the modes were
+                    // swapped. If it comes back, it gets designed then, on a case somebody has
+                    // actually looked at.
                     VerticalAlignment = VerticalAlignment.Center,
                     FontFamily = new System.Windows.Media.FontFamily("Microsoft JhengHei, Segoe UI, Sans-Serif"),
                 }

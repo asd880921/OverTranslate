@@ -190,6 +190,18 @@ public class OcrTextBlockGrouperTests
         Assert.Single(grouped);
     }
 
+    /// <summary>
+    /// Similar widths and nothing else is not evidence of a wrap.
+    /// </summary>
+    /// <remarks>
+    /// The 1.25 line advance here is this file's boilerplate — y=10 over y=40 at height 24, the
+    /// same rectangles the test fourteen lines above uses to assert the opposite verdict, where the
+    /// only difference is an unclosed 「 in the text. It is NOT a measured figure for how far apart
+    /// independent lines sit, and it must not be read as a ceiling for any threshold: the measured
+    /// figure for stacked independent rows is a settings panel's list at 1.47 to 1.58 line heights.
+    /// What this test guards is the rule, not the number — similar widths alone stay apart, while
+    /// the set-solid rule asks for tight leading and a shared edge on top of them.
+    /// </remarks>
     [Fact]
     public void KeepsAlignedIndependentLinesSeparateWhenWidthsAreSimilar()
     {
@@ -420,7 +432,7 @@ public class OcrTextBlockGrouperTests
     }
 
     private static List<OcrTextBlock> GroupDetected(IReadOnlyList<OcrTextBlock> blocks) =>
-        OcrTextBlockGrouper.Group(blocks.AsDetected());
+        OcrTextBlockGrouper.Group(blocks.AsDetected(), GroupingProfile.Interface);
 
     /// <summary>
     /// Symptom B: two lines whose detection boxes are exactly the same size, one Latin and one CJK.
@@ -528,7 +540,7 @@ public class OcrTextBlockGrouperTests
         Assert.True(16 / 40.0 < SameLineGapThreshold.Fallback);
         Assert.True(16 / 32.8 > SameLineGapThreshold.Fallback);
 
-        var grouped = OcrTextBlockGrouper.Group([previous, current]);
+        var grouped = OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface);
 
         Assert.Equal("今日天気", Assert.Single(grouped).Text);
     }
@@ -554,7 +566,7 @@ public class OcrTextBlockGrouperTests
             x += 60;
         }
 
-        var grouped = OcrTextBlockGrouper.Group(boxes);
+        var grouped = OcrTextBlockGrouper.Group(boxes, GroupingProfile.Interface);
 
         Assert.Equal(
             ["Alpha beta", "Gamma delta", "Epsilon zeta", "Eta theta"],
@@ -565,9 +577,16 @@ public class OcrTextBlockGrouperTests
     /// A checkbox entry is not the last line of the entry above it, however much shorter it is.
     /// </summary>
     /// <remarks>
-    /// Measured from region-panel-en, the corpus set that exists to catch exactly this: three of
-    /// its entries were being joined on the width rule alone, at 1.40 and 1.43 line advances, while
-    /// every pair in the corpus that really is one sentence wrapping stops at 1.33.
+    /// <para>Measured from region-panel-en, the corpus set that exists to catch exactly this: its
+    /// entries were being joined on the width rule alone, while every pair in the corpus that
+    /// really is one sentence wrapping stops at 1.33.</para>
+    ///
+    /// <para>The rectangles are the capture's own, scaled to whole numbers — blocks 17 and 18 of
+    /// <c>game-menu-en.png</c> read <c>(84,378,307,18)</c> and <c>(83,406,202,20)</c>, which is 1.47
+    /// line heights apart. The figure matters now in a way it did not when this was written: the
+    /// general mode lets a wrapped line reach 1.45, so this pair clears it by 0.02 — the narrowest
+    /// margin anywhere in that rule. It stays apart here because this runs on the interface profile,
+    /// which does not take the relaxation, and that is the point of the profile.</para>
     /// </remarks>
     [Fact]
     public void AShorterLineSetTooFarBelow_IsNotTheEndOfTheParagraph()
@@ -575,10 +594,10 @@ public class OcrTextBlockGrouperTests
         var blocks = new List<OcrTextBlock>
         {
             new("Reveal all rooms before proceeding to next floor", new Rect(100, 100, 520, 30)),
-            new("Allow automatic pomander use", new Rect(100, 143, 320, 30)),
+            new("Allow automatic pomander use", new Rect(100, 144, 320, 30)),
         };
 
-        // 43 / 30 = 1.43 line advances, past what a paragraph's own leading reaches.
+        // 44 / 30 = 1.47 line advances, past what a paragraph's own leading reaches.
         var grouped = GroupDetected(blocks);
 
         Assert.Equal(2, grouped.Count);
@@ -611,11 +630,866 @@ public class OcrTextBlockGrouperTests
         Assert.True(44 / 34.0 < 1.38);
         Assert.True(44 / 27.9 > 1.38);
 
-        var merged = Assert.Single(OcrTextBlockGrouper.Group([previous, current]));
+        var merged = Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface));
         Assert.Equal(2, merged.Lines.Count);
     }
 
     private static double LineAdvanceOf(OcrTextBlock previous, OcrTextBlock current) =>
         (current.LayoutBounds.Y - previous.LayoutBounds.Y) /
         ((previous.LayoutBounds.Height + current.LayoutBounds.Height) / 2.0);
+
+    /// <summary>
+    /// Centred speech is no longer refused as misaligned because its left edges disagree.
+    /// </summary>
+    /// <remarks>
+    /// The real boxes from comic-en.png: "WHY ARE" centred over "YOU PICKING ON", 1.49 line heights
+    /// apart on the left and 0.03 on the centre. Twenty-one of the ten comic pages' fifty-five
+    /// verdicts were refused on the left edge like this one.
+    /// </remarks>
+    [Fact]
+    public void CentredLines_AreNoLongerRefusedByTheAlignmentGate()
+    {
+        var previous = Line("WHY ARE", x: 320, y: 305, width: 201, height: 52);
+        var current = Line("YOU PICKING ON", x: 244, y: 358, width: 356, height: 50);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.NotEqual("alignment", verdict.Rule);
+        Assert.True(verdict.LeftDelta > 1.2, $"left delta {verdict.LeftDelta:0.00} should be over the gate");
+        Assert.Equal(verdict.CenterDelta, verdict.AlignmentDelta, precision: 6);
+    }
+
+    /// <summary>
+    /// Body text set flush right is no longer refused because its left edges disagree either.
+    /// </summary>
+    /// <remarks>
+    /// The stat panels in the comic corpus set their body flush right, so consecutive lines of one
+    /// sentence read 6.35 line heights apart on the left and 0.00 on the right. Dropping the right
+    /// edge from the comparison — which was considered — would leave those pairs permanently apart,
+    /// and the hand-marked grouping says they belong together.
+    /// </remarks>
+    [Fact]
+    public void FlushRightLines_AreNoLongerRefusedByTheAlignmentGate()
+    {
+        var previous = Line("EXPEDITION'S REAR, CONTRIBUTED TO", x: 100, y: 10, width: 600, height: 40);
+        var current = Line("SLAYING BLUE MANE", x: 340, y: 56, width: 360, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.NotEqual("alignment", verdict.Rule);
+        Assert.Equal(0, verdict.AlignmentDelta, precision: 6);
+        Assert.True(verdict.LeftDelta > 1.2, $"left delta {verdict.LeftDelta:0.00} should be over the gate");
+    }
+
+    /// <summary>
+    /// A short label over a body of text is still refused, because it is out of line on every edge.
+    /// </summary>
+    /// <remarks>
+    /// This is what the alignment gate is really for, and the reason taking the smallest of three
+    /// deltas is safe: the label/body pairs in the corpus read 3.18 / 6.33 / 9.49 line heights, so
+    /// the smallest of them is still far outside a gate set at 1.2. Refusing on the left edge alone
+    /// was never what kept them apart.
+    /// </remarks>
+    [Fact]
+    public void ALabelOverABodyOfText_IsStillRefusedByTheAlignmentGate()
+    {
+        var previous = Line("MERIT", x: 100, y: 10, width: 120, height: 40);
+        var current = Line("SERVED AS THE EXPEDITION'S", x: 300, y: 56, width: 400, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("alignment", verdict.Rule);
+        Assert.False(verdict.Joined);
+    }
+
+    /// <summary>
+    /// A line opening with a bullet is not a continuation, however it is spaced.
+    /// </summary>
+    /// <remarks>
+    /// The spacing a news portal uses between headlines in a list is the spacing it uses inside a
+    /// paragraph, so this pair is set as tightly as a real wrap and every geometric test passes it.
+    /// Only the mark says otherwise.
+    /// </remarks>
+    [Fact]
+    public void ALineOpeningWithABullet_IsNeverAContinuation()
+    {
+        var previous = Line("Government announces new transport policy", x: 100, y: 10, width: 600, height: 30);
+        var current = Line("· Opposition responds within the hour", x: 100, y: 47, width: 520, height: 30);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("list bullet", verdict.Rule);
+        Assert.False(verdict.Joined);
+        Assert.True(verdict.LineAdvance < 1.38, $"advance {verdict.LineAdvance:0.00} is inside the wrap limit");
+    }
+
+    /// <summary>
+    /// A colon joins the line below only when the two are set as closely as a wrapped sentence is.
+    /// </summary>
+    /// <remarks>
+    /// The colon is read as a clause carrying on, which is one of its two meanings. The other is a
+    /// form label over its value, and the corpus has one: a settings dialog's "Column type:" over
+    /// "Standard", 1.79 line heights apart, joined into a single string for the translator.
+    /// </remarks>
+    [Fact]
+    public void ALineEndingOnAColon_ContinuesOnlyWhenTheNextLineIsSetCloseUnderIt()
+    {
+        var label = Line("Column type:", x: 100, y: 10, width: 200, height: 30);
+        var farBelow = Line("Standard", x: 100, y: 64, width: 160, height: 30);
+        var setClose = Line("Standard", x: 100, y: 44, width: 160, height: 30);
+
+        var refused = NextLineVerdict(label, farBelow);
+        Assert.Equal("label colon", refused.Rule);
+        Assert.False(refused.Joined);
+        Assert.True(refused.LineAdvance > 1.38, $"advance {refused.LineAdvance:0.00} should be past the limit");
+
+        var joined = NextLineVerdict(label, setClose);
+        Assert.Equal("punctuation", joined.Rule);
+        Assert.True(joined.Joined);
+    }
+
+    /// <summary>
+    /// Lines in the middle of a paragraph join, where the width reading could never see them.
+    /// </summary>
+    /// <remarks>
+    /// Every line inside a paragraph is about as wide as the one above it, and the rule that came
+    /// before this one took similar widths as proof that nothing had wrapped. Thirteen refusals
+    /// across the ten comic pages read that way, on pairs whose widths were within a fifth of each
+    /// other. Here the widths are equal on purpose: if this test passes, it is not the shape test
+    /// that passed it.
+    /// </remarks>
+    [Fact]
+    public void ParagraphMiddleLines_OfEqualWidth_JoinOnTheSettingAlone()
+    {
+        var previous = Line("CHANCELLOR ARRANGED THE REWARDS", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("ACCORDING TO THE EXPLORERS MERITS", x: 100, y: 50, width: 500, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("set solid", verdict.Rule);
+        Assert.True(verdict.Joined);
+        Assert.Equal(1.00, verdict.WidthRatio, precision: 2);
+    }
+
+    /// <summary>
+    /// Set solid needs the two lines to share an edge far more closely than the ordinary gate asks.
+    /// </summary>
+    /// <remarks>
+    /// This is the one test standing between a stat panel's label and the body under it now that
+    /// the width reading is no longer consulted. The pair here is 0.6 line heights out of line:
+    /// inside the ordinary alignment gate at 1.2, and well outside the 0.35 this rule asks for. It
+    /// must fall through to the older evidence rule and be refused there.
+    /// </remarks>
+    [Fact]
+    public void LinesAtOneLeadingButOutOfLine_AreNotSetSolid()
+    {
+        var previous = Line("CHANCELLOR ARRANGED THE REWARDS", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("ACCORDING TO THE EXPLORERS MERITS", x: 124, y: 50, width: 500, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("no continuation evidence", verdict.Rule);
+        Assert.False(verdict.Joined);
+        Assert.InRange(verdict.AlignmentDelta, 0.35, 1.2);
+    }
+
+    /// <summary>
+    /// A list set looser than text is set solid is still a list.
+    /// </summary>
+    /// <remarks>
+    /// The settings panel's checkbox entries are the population this has to keep out: flush left,
+    /// one text size, similar widths, and separated by nothing but their leading — 1.47 to 1.58
+    /// line heights, against the 1.26 asked for here.
+    /// </remarks>
+    [Fact]
+    public void ListEntriesSetLooserThanTheSolidLimit_AreNotSetSolid()
+    {
+        var previous = Line("Automatically navigate to coffers", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("Prioritize opening coffers over cairns", x: 100, y: 69, width: 500, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("no continuation evidence", verdict.Rule);
+        Assert.True(verdict.LineAdvance > 1.40, $"advance {verdict.LineAdvance:0.00} should be past the solid limit");
+    }
+
+    /// <summary>
+    /// A line too short to have run out of room is not set solid under the standard profile.
+    /// </summary>
+    /// <remarks>
+    /// A speech bubble opens on one or two words, which is this exact shape and is not this case —
+    /// waiving the length test is what the comic profile is for, and it is not waived here. Written
+    /// as a test now so that the step which flips that flag has something that changes.
+    /// </remarks>
+    [Fact]
+    public void AShortLineSetSolid_IsNotJoinedUnderTheStandardProfile()
+    {
+        var previous = Line("WHY ARE", x: 100, y: 10, width: 120, height: 40);
+        var current = Line("YOU PICKING ON THE GOBLIN", x: 100, y: 50, width: 400, height: 40);
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface, decisions);
+        var verdict = Assert.Single(decisions, decision => decision.Kind == "next");
+
+        Assert.NotEqual("set solid", verdict.Rule);
+        Assert.False(verdict.Joined);
+    }
+
+    /// <summary>
+    /// A line continues the column it belongs to, not whichever group happened to open last.
+    /// </summary>
+    /// <remarks>
+    /// The shape from the Japanese event page: a title wrapping onto a second line, with a heading
+    /// from the next column sorted between the two halves because it starts a few pixels lower.
+    /// Before every open group was asked, this pair was not refused — it was never put.
+    /// </remarks>
+    [Fact]
+    public void AWrappedTitle_JoinsAcrossALineFromAnotherColumn()
+    {
+        var titleTop = Line("TVアニメ「バンドリ」放送記念フリーライブ", x: 1340, y: 612, width: 449, height: 32);
+        var otherColumn = Line("RoseliaのRADIO SHOUT! -Prost-", x: 1912, y: 615, width: 366, height: 27);
+        var titleBottom = Line("「新宿着陸計画」DAY2 チケット受付中", x: 1339, y: 650, width: 405, height: 33);
+
+        var grouped = OcrTextBlockGrouper.Group(
+            [titleTop, otherColumn, titleBottom], GroupingProfile.Interface);
+
+        Assert.Equal(2, grouped.Count);
+        Assert.Contains(grouped, block => block.Lines.Count == 2);
+        Assert.Contains(grouped, block => block.Text == "RoseliaのRADIO SHOUT! -Prost-");
+    }
+
+    /// <summary>
+    /// A third line standing in the column between two others stops them being neighbours.
+    /// </summary>
+    /// <remarks>
+    /// The failure this guards is a news front page: headline, a small kicker, next headline, one
+    /// column, all aligned. With every open group asked, the two headlines are within reach of each
+    /// other and read as a plausible continuation; the kicker between them is what says they are
+    /// not.
+    /// </remarks>
+    [Fact]
+    public void ALineStandingBetweenTwoOthers_StopsThemBeingContinuations()
+    {
+        // The line in the middle is a small one — a kicker set over the headline under it. It has
+        // to be small: two full-height lines cannot have a third of their own height between them
+        // and still be within reach of each other, so the case this rule exists for is always an
+        // intervening line shorter than the gap it sits in.
+        var headline = Line("Council approves the new transport plan", x: 100, y: 0, width: 600, height: 40);
+        var kicker = Line("TRANSPORT", x: 100, y: 42, width: 160, height: 12);
+        var nextHeadline = Line("Ferry services resume", x: 100, y: 54, width: 400, height: 40);
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group(
+            [headline, kicker, nextHeadline], GroupingProfile.Interface, decisions);
+
+        // The pair that skips the standfirst is never judged at all: it is refused before any rule
+        // is asked, which is what "nothing lies between" means.
+        Assert.DoesNotContain(
+            decisions,
+            decision => decision.Kind == "next" &&
+                        decision.Previous == headline.Text &&
+                        decision.Current == nextHeadline.Text);
+    }
+
+    /// <summary>
+    /// The same three lines, with the middle one moved out of the column, do reach each other.
+    /// </summary>
+    /// <remarks>
+    /// The positive half of the pair above. Without it, the test above would still pass if the rule
+    /// refused every distant pair for some other reason — say a reach filter set too tight — and
+    /// nobody would know the column test was doing nothing.
+    /// </remarks>
+    [Fact]
+    public void ALineBesideTheColumn_DoesNotStopTwoLinesBeingContinuations()
+    {
+        // The same three boxes as the test above, with the middle one moved out of the column.
+        var first = Line("Council approves the new transport plan", x: 100, y: 0, width: 600, height: 40);
+        var beside = Line("TRANSPORT", x: 900, y: 42, width: 160, height: 12);
+        var second = Line("after a long delay", x: 100, y: 54, width: 400, height: 40);
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        var grouped = OcrTextBlockGrouper.Group(
+            [first, beside, second], GroupingProfile.Interface, decisions);
+
+        Assert.Contains(
+            decisions,
+            decision => decision.Kind == "next" &&
+                        decision.Previous == first.Text &&
+                        decision.Current == second.Text);
+        Assert.Equal(2, grouped.Count);
+        Assert.Contains(grouped, block => block.Lines.Count == 2);
+    }
+
+    /// <summary>
+    /// A row of figures under a label is a row, however closely it is set.
+    /// </summary>
+    /// <remarks>
+    /// The game character card from the corpus: a name and level over a hit-point count, set a line
+    /// apart and sharing a right edge. Every geometric test passes it — the advance here is 1.00 —
+    /// so only the content of the second line can say what it is.
+    /// </remarks>
+    [Fact]
+    public void ALineOfNothingButFigures_IsNotAContinuation()
+    {
+        var previous = Line("Lvl 100 M. Lvl 50 Narmaya", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("57687 199730/199730", x: 200, y: 50, width: 400, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.Equal("numeric row", verdict.Rule);
+        Assert.False(verdict.Joined);
+        Assert.True(verdict.LineAdvance <= 1.20, $"advance {verdict.LineAdvance:0.00} is inside the solid limit");
+    }
+
+    /// <summary>
+    /// A sentence that carries on with a figure in it is not a row of figures.
+    /// </summary>
+    /// <remarks>
+    /// The reason the test above asks for no letters rather than for a leading digit. A release note
+    /// wrapping onto "1.81 stabilizes the Error trait…" opens on a number and is still prose; the
+    /// rule must not read the first character and stop.
+    /// </remarks>
+    [Fact]
+    public void ASentenceContinuingOnAFigure_IsStillAContinuation()
+    {
+        var previous = Line("The Rust team is happy to announce a new version", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("1.81 stabilizes the Error trait in core", x: 100, y: 50, width: 500, height: 40);
+
+        var verdict = NextLineVerdict(previous, current);
+
+        Assert.NotEqual("numeric row", verdict.Rule);
+        Assert.True(verdict.Joined);
+    }
+
+    /// <summary>
+    /// The comic mode joins a bubble's short opening line to the line under it; the standard mode
+    /// does not.
+    /// </summary>
+    /// <remarks>
+    /// The real boxes from comic-en.png. "WHY ARE" is 201px over a 52px line — under four times its
+    /// own height, so no length test can call it a wrap — and the line under it is set solid at
+    /// 1.04 line advances with their centres a hundredth of a line apart. Everything except the
+    /// length is already evidence; the mode is what says the length does not apply here.
+    /// </remarks>
+    [Fact]
+    public void AShortBubbleOpening_JoinsInComicMode_AndNotInStandard()
+    {
+        var previous = Line("WHY ARE", x: 320, y: 305, width: 201, height: 52);
+        var current = Line("YOU PICKING ON", x: 244, y: 358, width: 356, height: 50);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
+
+        var comic = OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General);
+        Assert.Single(comic);
+        Assert.Equal("WHY ARE YOU PICKING ON", comic[0].Text);
+    }
+
+    /// <summary>
+    /// The comic mode waives the length test and nothing else: the geometry still has to hold.
+    /// </summary>
+    /// <remarks>
+    /// The boundary the modes are allowed to move, stated as a test. A short line over one that is
+    /// out of line with it — 0.6 line heights, inside the ordinary alignment gate and outside the
+    /// set-solid one — must stay apart in both modes. If this ever passes in comic mode, a mode has
+    /// started relaxing geometry rather than evidence.
+    /// </remarks>
+    [Fact]
+    public void ComicMode_DoesNotWaiveTheSetSolidGeometry()
+    {
+        var previous = Line("WHY ARE", x: 320, y: 305, width: 201, height: 52);
+        var current = Line("YOU PICKING ON", x: 275, y: 358, width: 356, height: 50);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General).Count);
+    }
+
+    /// <summary>
+    /// Hand lettering's uneven size is accepted in the general mode, on the set-solid path only.
+    /// </summary>
+    /// <remarks>
+    /// The pair from comic-en10.png, real geometry and real glyph heights: one sentence across two
+    /// lines of the same balloon, whose glyphs measure 0.83 of each other because they were drawn
+    /// by hand. The ordinary gate asks 0.88 and refuses it. The two lines are set solid — one
+    /// leading, one edge — and the first is centred inside the second, which together are the only
+    /// shape a mode may relax.
+    /// </remarks>
+    [Fact]
+    public void UnevenHandLettering_JoinsInTheGeneralMode_OnTheSetSolidPath()
+    {
+        var (previous, current) = CentredBalloonPair();
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
+        Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General));
+    }
+
+    /// <summary>
+    /// The waiver reaches centred lines only. A stack of labels aligned down one edge is set solid
+    /// by every other measure, and is refused.
+    /// </summary>
+    /// <remarks>
+    /// This is what the waiver was costing before it had this condition: measured over the seven
+    /// non-comic image sets it joined 75 such pairs, and the wrong ones are all this shape — a game
+    /// panel's control labels, a HUD's readouts, stacked flush left. Sharing an edge is precisely
+    /// what the set-solid geometry is looking for, so nothing earlier in the chain can tell them
+    /// from a balloon; being centred is what a balloon does and a stack cannot.
+    /// </remarks>
+    [Fact]
+    public void AFlushLeftStack_IsRefusedEvenInTheGeneralMode()
+    {
+        // The same leading, the same edge and the same glyph heights as the balloon above — only
+        // the centring is gone, because the second line starts where the first one does.
+        var previous = LineWithGlyphHeight("Move Camera", x: 305, y: 1045, width: 437, height: 66, glyph: 51.65);
+        var current = LineWithGlyphHeight("Open Map (Hold)", x: 305, y: 1104, width: 529, height: 62, glyph: 42.98);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General).Count);
+    }
+
+    /// <summary>
+    /// The centring is read whichever line is the narrower, because a balloon's lines take turns
+    /// being the wide one.
+    /// </summary>
+    /// <remarks>
+    /// <para>comic-en2.png, real boxes and real glyph heights: "YOU THINK THAT'D" over "HURT ME?",
+    /// the wide line first. Only the second line is inset here, so a test that asks whether the
+    /// FIRST line sits inside the second — the shape a balloon's opening line has, and the shape
+    /// design.md §15.3 names — refuses it.</para>
+    ///
+    /// <para>This is the difference measured rather than argued: over the comic corpus, testing one
+    /// direction keeps 12 of the 21 joins the waiver makes and testing the narrower line keeps 19,
+    /// and the nine it loses are all balloon interiors like this one. Neither version admits the
+    /// flush-left stacks above, which is what the condition is for.</para>
+    /// </remarks>
+    [Fact]
+    public void ABalloonInteriorWithTheWideLineFirst_IsStillRead()
+    {
+        var previous = LineWithGlyphHeight("YOU THINK THAT'D", x: 204, y: 580, width: 429, height: 57, glyph: 39.84);
+        var current = LineWithGlyphHeight("HURT ME?", x: 293, y: 634, width: 248, height: 60, glyph: 46.06);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface).Count);
+        Assert.Single(OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General));
+    }
+
+    /// <summary>
+    /// A known and accepted cost: two lines of one balloon that happen to be the same width are not
+    /// centred against each other, so the waiver cannot reach them.
+    /// </summary>
+    /// <remarks>
+    /// The pair from comic-en.png, and the price of deciding this on centring. Its lines are within
+    /// 0.07 of a line height of each other at both ends — flush, as far as any geometry can see —
+    /// so it reads exactly like the label stack above. Two of the comic corpus's twenty-one such
+    /// joins are lost this way and the rest are kept; the user's judgement is that a comic missing
+    /// a couple of joins is worth a general mode that does not glue menus together. This test is
+    /// here so that the cost stays visible and so that removing it is a decision rather than a
+    /// side effect.
+    /// </remarks>
+    [Fact]
+    public void TwoBalloonLinesOfEqualWidth_AreTheAcceptedCostOfDecidingThisOnCentring()
+    {
+        var previous = LineWithGlyphHeight("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0);
+        var current = LineWithGlyphHeight("YOU ENDED UP IN", x: 372, y: 780, width: 415, height: 58, glyph: 31.0);
+
+        Assert.Equal(2, OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General).Count);
+    }
+
+    /// <summary>
+    /// comic-en10.png: "A BARBARIAN A" centred over "HEREDITARY TITLE!", real boxes and real glyph
+    /// heights. Shared with the vertical tests, which use it to establish that the two profiles
+    /// really do disagree about something before asking whether vertical text hears them.
+    /// </summary>
+    internal static (OcrTextBlock Previous, OcrTextBlock Current) CentredBalloonPair() =>
+        (LineWithGlyphHeight("A BARBARIAN A", x: 305, y: 1045, width: 437, height: 66, glyph: 51.65),
+         LineWithGlyphHeight("HEREDITARY TITLE!", x: 263, y: 1104, width: 529, height: 62, glyph: 42.98));
+
+    /// <summary>
+    /// The relaxed size ratio reaches only pairs that are already set solid.
+    /// </summary>
+    /// <remarks>
+    /// The same two lines, moved out of line with each other by 0.6 line heights — inside the
+    /// ordinary alignment gate, outside the set-solid one. Comic mode must refuse this on the
+    /// ordinary size ratio, because the pair never gets onto the path the mode is allowed to relax.
+    /// This is the guard on "a profile lowers what it asks of set-solid lines, and nothing else".
+    /// </remarks>
+    [Fact]
+    public void TheRelaxedSizeRatio_DoesNotReachPairsThatAreNotSetSolid()
+    {
+        var previous = LineWithGlyphHeight("THAT GUY'S FAULT", x: 368, y: 725, width: 417, height: 58, glyph: 36.0);
+        var current = LineWithGlyphHeight("YOU ENDED UP IN", x: 407, y: 780, width: 415, height: 58, glyph: 31.0);
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General, decisions);
+        var verdict = Assert.Single(decisions, decision => decision.Kind == "next");
+
+        Assert.Equal("text size", verdict.Rule);
+        Assert.InRange(verdict.AlignmentDelta, 0.35, 1.2);
+    }
+
+    /// <summary>
+    /// A paragraph seam set looser than one line advance still joins, when the line above it was
+    /// long enough to have wrapped.
+    /// </summary>
+    /// <remarks>
+    /// The shape the relaxed limit exists for, and the reason the old one could not reach it: a
+    /// paragraph's middle lines are equal in width, so the wrap-shape rule reads them as proof that
+    /// nothing wrapped, and at 1.30 line heights they were past the set-solid limit as well. Six
+    /// annotated web pages put 24 of these against 31 refusals, every one of the refusals wrong.
+    /// The advance here is 1.30, inside the band between a paragraph's 1.45 ceiling and a list's
+    /// 1.68 floor.
+    /// </remarks>
+    [Fact]
+    public void AParagraphSeamPastOneLine_JoinsWhenTheLineAboveCouldHaveWrapped()
+    {
+        var previous = Line("open to global upstream and downstream partners", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("in OCR and document intelligence. The alliance", x: 100, y: 62, width: 500, height: 40);
+
+        var verdict = GeneralVerdict(previous, current);
+
+        Assert.Equal("set solid", verdict.Rule);
+        Assert.True(verdict.Joined);
+        Assert.Equal(1.30, verdict.LineAdvance, precision: 2);
+    }
+
+    /// <summary>
+    /// A game menu's entries do not join at the leading a paragraph is allowed, because the entry
+    /// above is too short to have run out of room.
+    /// </summary>
+    /// <remarks>
+    /// <para>This is the pair that separates the two candidates measured for this rule, and the
+    /// whole reason the relaxed limit is gated on the length test instead of replacing the
+    /// constant. Moving the constant itself joined six of these across the corpus - "Continue" over
+    /// "Game Options", "Game Options" over "Link Cygames ID", 「オプション」over 「Cygames ID連携」,
+    /// a stat row over "Wish List", and two of a Japanese portal's shortcut labels - and the general
+    /// mode is the default, so that is what a user gets when they capture a game menu.</para>
+    ///
+    /// <para><b>The geometry is the capture's own</b>, because the reason this pair reaches the
+    /// leading test at all is subtle and a hand-written rectangle gets it wrong. The entries are
+    /// centred, not flush left, so the general mode's waiver lets a short line be set solid at all -
+    /// and once it does, the leading limit is the only thing left between them. Written flush left
+    /// instead, the pair is refused by the length test whatever the limit says, and the test then
+    /// passes for both candidates while appearing to tell them apart.</para>
+    /// </remarks>
+    [Fact]
+    public void AMenuEntryStack_DoesNotJoinAtTheLeadingAParagraphIsAllowed()
+    {
+        // screen-panel-en-ja/OverTranslate_20260816_010258506.png, blocks 4 and 5.
+        var previous = Line("Continue", x: 885, y: 762, width: 114, height: 39);
+        var current = Line("Game Options", x: 856, y: 811, width: 172, height: 37);
+
+        var verdict = GeneralVerdict(previous, current);
+
+        Assert.NotEqual("set solid", verdict.Rule);
+        Assert.False(verdict.Joined);
+        Assert.Equal(1.29, verdict.LineAdvance, precision: 2);
+        Assert.InRange(verdict.AlignmentDelta, 0, 0.35);
+    }
+
+    /// <summary>
+    /// A short line above is still judged on the unrelaxed limit, on the one path that lets a short
+    /// line be set solid at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>The other half of the branch. A short line above is refused outright under the
+    /// interface profile, which does not waive the length test, so the limit it would have been
+    /// judged on is never consulted there. The general mode waives that test for a narrower line
+    /// centred inside a wider one - a speech bubble's opening words - and that is where a short
+    /// line's limit becomes observable.</para>
+    ///
+    /// <para>Both pairs here are that shape. The first is 1.18 line heights apart and joins as it
+    /// did before this rule existed; the second is 1.30, which the relaxed limit would admit and
+    /// the unrelaxed one refuses. Without this, the branch could be rewritten to hand every pair
+    /// the relaxed limit and only the menu test would notice.</para>
+    /// </remarks>
+    [Fact]
+    public void AShortCentredLineAbove_IsStillJudgedOnTheUnrelaxedLimit()
+    {
+        var inside = GeneralVerdict(
+            Line("WHY ARE", x: 200, y: 10, width: 120, height: 40),
+            Line("YOU PICKING ON THE GOBLIN", x: 100, y: 57, width: 320, height: 40));
+        var past = GeneralVerdict(
+            Line("WHY ARE", x: 200, y: 10, width: 120, height: 40),
+            Line("YOU PICKING ON THE GOBLIN", x: 100, y: 62, width: 320, height: 40));
+
+        Assert.Equal(1.18, inside.LineAdvance, precision: 2);
+        Assert.Equal("set solid", inside.Rule);
+        Assert.True(inside.Joined);
+
+        Assert.Equal(1.30, past.LineAdvance, precision: 2);
+        Assert.NotEqual("set solid", past.Rule);
+        Assert.False(past.Joined);
+    }
+
+    /// <summary>
+    /// The same paragraph seam joins in the general mode and stays apart in the interface mode.
+    /// </summary>
+    /// <remarks>
+    /// <para>This is the trade written as a test. The relaxed leading buys prose — six annotated web
+    /// pages go from 140 groups to 113 — and charges 16 wrong joins for it, news headlines and wiki
+    /// timeline entries strung together. That was accepted on the grounds that a user who meets
+    /// those can switch to the interface mode, so the interface mode has to actually be an escape:
+    /// measured with the relaxation applied to every mode, 15 of those 16 happened under it too,
+    /// which is the argument failing rather than a number needing a nudge.</para>
+    ///
+    /// <para>One pair, 1.30 line heights apart, judged twice. Nothing about the geometry differs
+    /// between the two calls — only which profile is asked.</para>
+    /// </remarks>
+    [Fact]
+    public void AParagraphSeam_JoinsInTheGeneralMode_AndStaysApartInTheInterfaceMode()
+    {
+        var previous = Line("open to global upstream and downstream partners", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("in OCR and document intelligence. The alliance", x: 100, y: 62, width: 500, height: 40);
+
+        var general = GeneralVerdict(previous, current);
+        var iface = NextLineVerdict(previous, current);
+
+        Assert.Equal(1.30, general.LineAdvance, precision: 2);
+        Assert.Equal(general.LineAdvance, iface.LineAdvance, precision: 2);
+
+        Assert.Equal("set solid", general.Rule);
+        Assert.True(general.Joined);
+
+        Assert.NotEqual("set solid", iface.Rule);
+        Assert.False(iface.Joined);
+    }
+
+    /// <summary>
+    /// The list entries the relaxed limit must not reach, at the leadings they were measured at.
+    /// </summary>
+    /// <remarks>
+    /// <para>The gap the relaxed limit sits on the edge of is 0.23 line heights wide, which is
+    /// narrow enough to need a guard rather than a note. These are the four pairs from the
+    /// annotated pages that no bullet and no size difference protects - only their leading does -
+    /// measured at 1.68, 1.72, 1.76 and 1.79. Each is a list entry under another list entry, long
+    /// enough to have wrapped, so all four are judged on the relaxed limit and all four must still
+    /// be refused by it.</para>
+    ///
+    /// <para>The corresponding corpus check is on the six annotated pages themselves: en1 G3-G7 and
+    /// G12-G14, zh3 G4-G8 and G12-G14.</para>
+    /// </remarks>
+    [Theory]
+    [InlineData(1.68)]
+    [InlineData(1.72)]
+    [InlineData(1.76)]
+    [InlineData(1.79)]
+    public void ListEntriesJustPastTheRelaxedLimit_StayApart(double advance)
+    {
+        var previous = Line("Genuinely embrace the open-source spirit and are", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("Have the willingness and capability to contribute", x: 100, y: 10 + advance * 40, width: 500, height: 40);
+
+        var verdict = GeneralVerdict(previous, current);
+
+        Assert.NotEqual("set solid", verdict.Rule);
+        Assert.False(verdict.Joined);
+        Assert.Equal(advance, verdict.LineAdvance, precision: 2);
+    }
+
+    /// <summary>
+    /// A label ending in a colon is held to the unrelaxed leading in every mode, including the one
+    /// that relaxes it for prose.
+    /// </summary>
+    /// <remarks>
+    /// <para>A colon is two-faced: it ends a clause that carries on, and it ends a form's field
+    /// name sitting above its value. The rule tells them apart by leading alone — a value set right
+    /// under its label is a continuation, a value set further down is a separate field — so it
+    /// reads the strict limit rather than the mode's, and that is deliberate. Relaxing it would
+    /// give the general mode a wider window in which "Name:" swallows whatever is under it, and
+    /// nothing in the layout says which of the two a given colon is.</para>
+    ///
+    /// <para>Written because the name no longer says so. <c>SolidLineAdvance</c> reads like "the
+    /// set-solid limit", and the set-solid limit moved onto the profile in this step — so the
+    /// obvious tidy-up is to make this rule read the profile too. The pair here is exactly the one
+    /// that tidy-up would join: 1.30 line heights apart, which is inside the general mode's relaxed
+    /// window and outside the strict one. The corpus will not catch it; this rule fires rarely
+    /// enough that no image measured on this branch exercises it.</para>
+    /// </remarks>
+    [Fact]
+    public void ALabelEndingInAColon_IsHeldToTheUnrelaxedLeading_InBothModes()
+    {
+        var previous = Line("Automatically navigate to the next objective:", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("Prioritize opening coffers over cairns", x: 100, y: 62, width: 500, height: 40);
+
+        foreach (var verdict in new[] { GeneralVerdict(previous, current), NextLineVerdict(previous, current) })
+        {
+            Assert.Equal(1.30, verdict.LineAdvance, precision: 2);
+            Assert.Equal("label colon", verdict.Rule);
+            Assert.False(verdict.Joined);
+        }
+    }
+
+    /// <summary>
+    /// The same label, set right under its value, is still read as one clause carrying on.
+    /// </summary>
+    /// <remarks>
+    /// The other side of the rule, so that the test above cannot be satisfied by refusing every
+    /// colon. At 1.05 line heights the value is set under the label at a paragraph's own leading,
+    /// which is the shape the rule is meant to admit.
+    /// </remarks>
+    [Fact]
+    public void ALabelEndingInAColon_StillJoinsWhenTheValueIsSetRightUnderIt()
+    {
+        var previous = Line("Automatically navigate to the next objective:", x: 100, y: 10, width: 500, height: 40);
+        var current = Line("Prioritize opening coffers over cairns", x: 100, y: 52, width: 500, height: 40);
+
+        var verdict = GeneralVerdict(previous, current);
+
+        Assert.Equal(1.05, verdict.LineAdvance, precision: 2);
+        Assert.True(verdict.Joined);
+    }
+
+    /// <summary>
+    /// A settings panel's checkbox entries stay apart in the general mode too, by 0.02 line
+    /// heights.
+    /// </summary>
+    /// <remarks>
+    /// <para>The narrowest margin in this rule, and the one worth a test of its own because the
+    /// figure it is measured against was taken from a different population. The relaxed leading sits
+    /// on a 0.23 gap — paragraph seams stop at 1.45, the bulleted lists on the same web pages start
+    /// at 1.68 — but a game settings panel's checkbox entries are not those lists. They run 1.47 and
+    /// 1.58, so the nearest of them clears the relaxed limit by 0.02.</para>
+    ///
+    /// <para>The interface mode is the answer to that and it has 0.27 to spare
+    /// (<see cref="AShorterLineSetTooFarBelow_IsNotTheEndOfTheParagraph"/> is that pair on that
+    /// profile). But the general mode is the default, so a user who frames a settings panel without
+    /// switching modes is standing on the 0.02, and this is the test that goes red the day the
+    /// relaxed limit is nudged up without anyone remembering why it could not be.</para>
+    ///
+    /// <para>Blocks 16-18 of <c>region-panel-en/game-menu-en.png</c>, at their own coordinates.</para>
+    /// </remarks>
+    [Fact]
+    public void ASettingsPanelsEntries_StayApartInTheGeneralModeToo_ByTwoHundredthsOfALine()
+    {
+        var previous = Line("Reveal all rooms before proceeding to next floor", x: 84, y: 378, width: 307, height: 18);
+        var current = Line("Allow automatic pomander use", x: 83, y: 406, width: 202, height: 20);
+
+        var verdict = GeneralVerdict(previous, current);
+
+        Assert.Equal(1.47, verdict.LineAdvance, precision: 2);
+        Assert.NotEqual("set solid", verdict.Rule);
+        Assert.False(verdict.Joined);
+
+        // The margin itself, stated rather than implied: this is how much room there is.
+        Assert.InRange(verdict.LineAdvance - GroupingProfile.General.SolidLineAdvanceWhenWrapped, 0.01, 0.03);
+    }
+
+    /// <summary>
+    /// The trace reports the limit the pair was judged on, not whichever constant is named first.
+    /// </summary>
+    /// <remarks>
+    /// Two set-solid limits now exist and which one applies is a property of the pair, so a trace
+    /// printing one of them unconditionally would put a number beside a verdict that the rule never
+    /// read. That is the failure this tool has already been rerun over twice.
+    /// </remarks>
+    [Fact]
+    public void TheTrace_ReportsTheSolidLimitThePairWasJudgedOn()
+    {
+        var longAbove = Line("open to global upstream and downstream partners", x: 100, y: 10, width: 500, height: 40);
+        var shortAbove = Line("Continue", x: 100, y: 10, width: 120, height: 40);
+        var below = Line("in OCR and document intelligence. The alliance", x: 100, y: 62, width: 500, height: 40);
+
+        Assert.Equal(1.45, GeneralVerdict(longAbove, below).SolidBar, precision: 2);
+        Assert.Equal(1.20, GeneralVerdict(shortAbove, below).SolidBar, precision: 2);
+
+        // The same wrapped line under the mode that does not take the relaxation.
+        Assert.Equal(1.20, NextLineVerdict(longAbove, below).SolidBar, precision: 2);
+    }
+
+    /// <summary>One line whose glyph height is stated, for the tests about the size ratio.</summary>
+    internal static OcrTextBlock LineWithGlyphHeight(
+        string text, double x, double y, double width, double height, double glyph)
+    {
+        var bounds = new Rect(x, y, width, height);
+        return new OcrTextBlock(
+            text,
+            bounds,
+            LayoutScript: OcrLayoutScript.Latin,
+            LayoutBounds: bounds,
+            LayoutGlyphHeight: glyph);
+    }
+
+    /// <summary>One line with its layout geometry stated, so a fixture cannot be re-derived from its text.</summary>
+    private static OcrTextBlock Line(string text, double x, double y, double width, double height)
+    {
+        var bounds = new Rect(x, y, width, height);
+        return new OcrTextBlock(
+            text,
+            bounds,
+            LayoutScript: OcrLayoutScript.Latin,
+            LayoutBounds: bounds,
+            // Stated rather than estimated from the letters: these fixtures are about alignment,
+            // and a glyph height that moved with the wording would let the size gate answer first.
+            LayoutGlyphHeight: height * 0.7);
+    }
+
+    private static OcrTextBlockGrouper.NextLineDecision NextLineVerdict(
+        OcrTextBlock previous, OcrTextBlock current)
+    {
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.Interface, decisions);
+        return Assert.Single(decisions, decision => decision.Kind == "next");
+    }
+
+    /// <summary>The same verdict under the general profile, which waives the length test.</summary>
+    private static OcrTextBlockGrouper.NextLineDecision GeneralVerdict(
+        OcrTextBlock previous, OcrTextBlock current)
+    {
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group([previous, current], GroupingProfile.General, decisions);
+        return Assert.Single(decisions, decision => decision.Kind == "next");
+    }
+
+    /// <summary>
+    /// The next-line diagnostic reports the misalignment on all three edges, not just the left one.
+    /// </summary>
+    /// <remarks>
+    /// Centred speech is the case the left-edge figure cannot describe: each line starts at a
+    /// different X because it holds a different number of letters, so the left delta grows with the
+    /// difference in width while the centres stay on top of each other. The verdict here is still
+    /// the one the current rules give — this test is about what the trace says, not about what was
+    /// decided — because the threshold work that follows is done off these numbers and cannot start
+    /// until they are visible.
+    /// </remarks>
+    [Fact]
+    public void NextLineDiagnostic_ReportsCentreAndRightDeltas_NotOnlyTheLeftEdge()
+    {
+        // Same centre (200), same 40px line height, one line half as wide as the other.
+        var blocks = new List<OcrTextBlock>
+        {
+            new("WHY ARE", new Rect(160, 10, 80, 40)),
+            new("YOU PICKING ON", new Rect(120, 52, 160, 40)),
+        }.AsDetected();
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group(blocks, GroupingProfile.Interface, decisions);
+
+        var next = Assert.Single(decisions, decision => decision.Kind == "next");
+        Assert.Equal(1.00, next.LeftDelta, precision: 2);
+        Assert.Equal(0.00, next.CenterDelta, precision: 2);
+        Assert.Equal(1.00, next.RightDelta, precision: 2);
+    }
+
+    /// <summary>
+    /// A same-line verdict leaves the vertical-only fields empty rather than filling them with
+    /// whatever the horizontal case happens to have.
+    /// </summary>
+    /// <remarks>
+    /// The two kinds share one record and several of its fields already mean different things
+    /// (see <c>NextLineDecision</c>). The three added for the alignment work are not among them:
+    /// pooling a row's numbers into a next-line distribution is how a corpus run gets thrown away,
+    /// and it has happened twice.
+    /// </remarks>
+    [Fact]
+    public void SameLineDiagnostic_LeavesTheVerticalOnlyFieldsAtZero()
+    {
+        var blocks = new List<OcrTextBlock>
+        {
+            new("Send", new Rect(10, 10, 60, 30)),
+            new("to", new Rect(78, 12, 26, 26)),
+        }.AsDetected();
+
+        var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
+        OcrTextBlockGrouper.Group(blocks, GroupingProfile.Interface, decisions);
+
+        var row = Assert.Single(decisions, decision => decision.Kind == "row");
+        Assert.Equal(0, row.CenterDelta);
+        Assert.Equal(0, row.RightDelta);
+        Assert.Equal(0, row.LeadingBar);
+    }
 }

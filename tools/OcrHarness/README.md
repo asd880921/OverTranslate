@@ -1,5 +1,36 @@
 # OcrHarness
 
+## 固定輸入的分組實驗台
+
+`--group-prototype` 保留供後續測試，不隨 app 發佈，呼叫正式 OCR、墨跡量測與分組函式。
+app 目前固定一般模式，工具仍可測 general/interface，不受 UI 的模式鎖定影響。
+
+```powershell
+$h = 'tools/OcrHarness/bin/Release/net8.0-windows10.0.26100.0/win-x64/OcrHarness.exe'
+& $h --group-prototype capture .test-artifacts/prose-inputs.json image.png
+& $h --group-prototype enrich .test-artifacts/prose-inputs.json .test-artifacts/prose-ink.json
+& $h --group-prototype replay .test-artifacts/prose-ink.json .test-artifacts/prose-result.json
+& $h --group-prototype ink .test-artifacts/prose-inputs.json
+```
+
+- `capture`：一次 OCR，保存完整文字、框與估值；拒絕覆寫既有輸入。接受多圖或 `@list.txt`。
+  清單每行為路徑，可加 Tab 分隔的 flow（`screenshot`／`realtime`）和語言（如 `KO`），預設 screenshot／EN。
+- `enrich`：從原圖加入正式墨跡量測，須保留圖片路徑；即時輸入不加此量測。
+- `replay`：重新建置後可反覆重播，不跑 OCR、不讀圖片。截圖輸入跑 general/interface，即時輸入只跑 realtime。
+  輸出含每組原始 `bN` 成員、完整文字與逐項判定。`bN` 只在同一份 OCR 輸入內穩定。
+- `ink`：顯示正式墨跡量測；null 代表不適用。沒有第二份估尺公式。
+
+比較時使用同一輸入並保留建置版本／diff；組數相同不代表成員相同。
+重播不取代實際 ROI／尺度變動或翻譯疊圖驗證；realtime 使用 Subtitle 偵測尺寸，不代表直排流程。
+產物建議放在 `.test-artifacts/`，不要把圖片加入測試 Fixtures。
+
+### 外部 OCR 圖片測試
+
+測試專案不再附帶截圖。舊的真實像素回歸保留；需要執行時，將六張原始素材放在外部資料夾，
+設定 `OVERTRANSLATE_TEST_IMAGES` 為該目錄，再跑 `dotnet test`。素材名稱列在 `ScreenshotFact`／`ScreenshotTheory` 屬性中。
+未提供素材時，這些測試明確顯示略過；不以人造圖冒充原本的真實 OCR 回歸。
+一般分組測試仍使用 JSON OCR 框，墨跡單元測試在記憶體中產生像素，不依賴圖片檔案。
+
 OverTranslate 的 **OCR + 分組 + 翻譯** 離線測試工具。給人或 AI 在改動 OCR / 文字分組邏輯後，**不必啟動 WPF app、不必手動框選**，就能在真實截圖上重現並驗證結果。
 
 ## 它做什麼

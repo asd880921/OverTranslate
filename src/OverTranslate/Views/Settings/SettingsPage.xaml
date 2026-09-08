@@ -1345,23 +1345,23 @@
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
-                                        <CheckBox  Grid.Row="0" Grid.Column="0" x:Name="OcrLineBoxesCheckBox"
-                                                   Style="{StaticResource ModernCheckBox}"
-                                                   VerticalAlignment="Top"
-                                                   Checked="OcrDebugBoxes_Toggled"
-                                                   Unchecked="OcrDebugBoxes_Toggled"/>
-                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,12">
-                                            <TextBlock Text="{DynamicResource S.Settings.OcrLineBoxes}"
-                                                       Style="{StaticResource OptionTitle}"/>
-                                            <TextBlock Text="{DynamicResource S.Settings.OcrLineBoxesHint}"
-                                                       Style="{StaticResource OptionDescription}"/>
-                                        </StackPanel>
-                                        <CheckBox  Grid.Row="1" Grid.Column="0" x:Name="TextGroupBoxesCheckBox"
+                                        <CheckBox  Grid.Row="1" Grid.Column="0" x:Name="OcrLineBoxesCheckBox"
                                                    Style="{StaticResource ModernCheckBox}"
                                                    VerticalAlignment="Top"
                                                    Checked="OcrDebugBoxes_Toggled"
                                                    Unchecked="OcrDebugBoxes_Toggled"/>
                                         <StackPanel Grid.Row="1" Grid.Column="1">
+                                            <TextBlock Text="{DynamicResource S.Settings.OcrLineBoxes}"
+                                                       Style="{StaticResource OptionTitle}"/>
+                                            <TextBlock Text="{DynamicResource S.Settings.OcrLineBoxesHint}"
+                                                       Style="{StaticResource OptionDescription}"/>
+                                        </StackPanel>
+                                        <CheckBox  Grid.Row="0" Grid.Column="0" x:Name="TextGroupBoxesCheckBox"
+                                                   Style="{StaticResource ModernCheckBox}"
+                                                   VerticalAlignment="Top"
+                                                   Checked="OcrDebugBoxes_Toggled"
+                                                   Unchecked="OcrDebugBoxes_Toggled"/>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,12">
                                             <TextBlock Text="{DynamicResource S.Settings.TextGroupBoxes}"
                                                        Style="{StaticResource OptionTitle}"/>
                                             <TextBlock Text="{DynamicResource S.Settings.TextGroupBoxesHint}"

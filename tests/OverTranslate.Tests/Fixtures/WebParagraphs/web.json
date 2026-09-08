@@ -1,0 +1,1377 @@
+[
+  {
+    "Image": ".ai/test-images/web-v3/1.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "bang-dream.com",
+        "Bounds": [
+          77,
+          17,
+          141,
+          23
+        ],
+        "LayoutBounds": [
+          77,
+          17,
+          141,
+          23
+        ],
+        "Script": 1,
+        "Glyph": 13.092857142857143,
+        "Render": 13.092857142857143,
+        "Confidence": 0.9999318718910217,
+        "Ink": null
+      },
+      {
+        "Text": "https://bang-dream.com\u003Eenglish\u00B7\u7FFB\u8B6F\u9019\u500B\u7DB2\u9801",
+        "Bounds": [
+          75,
+          37,
+          341,
+          28
+        ],
+        "LayoutBounds": [
+          75,
+          37,
+          341,
+          28
+        ],
+        "Script": 3,
+        "Glyph": null,
+        "Render": 11.981081081081081,
+        "Confidence": 0.9684953093528748,
+        "Ink": 13
+      },
+      {
+        "Text": "BanG Dream! English Site",
+        "Bounds": [
+          30,
+          72,
+          326,
+          30
+        ],
+        "LayoutBounds": [
+          30,
+          72,
+          326,
+          30
+        ],
+        "Script": 1,
+        "Glyph": 20.18095238095238,
+        "Render": 20.18095238095238,
+        "Confidence": 0.9996904730796814,
+        "Ink": 20
+      },
+      {
+        "Text": "\u30A2\u30CB\u30E1\u3001\u30B2\u30FC\u30E0\u3001\u30B3\u30DF\u30C3\u30AF\u3001\u58F0\u512A\u306B\u3088\u308B\u30EA\u30A2\u30EB\u30E9\u30A4\u30D6\u306A\u3069\u69D8\u3005\u306A\u30E1\u30C7\u30A3\u30A2\u30DF\u30C3\u30AF\u30B9\u3092\u5C55\u958B\u3059\u308B\u6B21\u4E16\u4EE3\u30AC",
+        "Bounds": [
+          31,
+          108,
+          803,
+          27
+        ],
+        "LayoutBounds": [
+          31,
+          108,
+          803,
+          27
+        ],
+        "Script": 3,
+        "Glyph": null,
+        "Render": 22.139999999999997,
+        "Confidence": 0.9976244568824768,
+        "Ink": 16
+      },
+      {
+        "Text": "\u30EB\u30BA\u30D0\u30F3\u30C9\u30D7\u30ED\u30B8\u30A7\u30AF\u30C8BanG Dream!(\u30D0\u30F3\u30C9\u30EA\uFF01\uFF09\u516C\u5F0F\u30B5\u30A4\u30C8.",
+        "Bounds": [
+          29,
+          135,
+          517,
+          27
+        ],
+        "LayoutBounds": [
+          29,
+          135,
+          517,
+          27
+        ],
+        "Script": 3,
+        "Glyph": null,
+        "Render": 19.767647058823528,
+        "Confidence": 0.9552562236785889,
+        "Ink": 16
+      }
+    ]
+  },
+  {
+    "Image": ".ai/test-images/web-v3/2.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "BanG Dream! Wiki",
+        "Bounds": [
+          71,
+          16,
+          151,
+          21
+        ],
+        "LayoutBounds": [
+          71,
+          16,
+          151,
+          21
+        ],
+        "Script": 1,
+        "Glyph": 14.021428571428572,
+        "Render": 14.021428571428572,
+        "Confidence": 0.9997156858444214,
+        "Ink": null
+      },
+      {
+        "Text": "https://bandori.fandom.comwiki\u003EBa...\u00B7\u7FFB\u8B6F\u9019\u500B\u7DB2\u9801",
+        "Bounds": [
+          70,
+          41,
+          380,
+          18
+        ],
+        "LayoutBounds": [
+          70,
+          41,
+          380,
+          18
+        ],
+        "Script": 3,
+        "Glyph": null,
+        "Render": 11.488372093023257,
+        "Confidence": 0.9839234352111816,
+        "Ink": 13
+      },
+      {
+        "Text": "BanG Dream! Wikia | Fandom",
+        "Bounds": [
+          19,
+          69,
+          376,
+          34
+        ],
+        "LayoutBounds": [
+          19,
+          69,
+          376,
+          34
+        ],
+        "Script": 1,
+        "Glyph": 22.21818181818182,
+        "Render": 22.21818181818182,
+        "Confidence": 0.9810506105422974,
+        "Ink": 20
+      },
+      {
+        "Text": "BanG Dream! (\u30C9\u0027\u30EA!, Bandori!) is a Japanese multimedia project developed by Bushiroad. BanG",
+        "Bounds": [
+          21,
+          109,
+          787,
+          24
+        ],
+        "LayoutBounds": [
+          21,
+          109,
+          787,
+          24
+        ],
+        "Script": 3,
+        "Glyph": null,
+        "Render": 13.116666666666667,
+        "Confidence": 0.9819722175598145,
+        "Ink": 13
+      },
+      {
+        "Text": "Dream! has released music CD\u0027s, anime music videos, .",
+        "Bounds": [
+          22,
+          136,
+          434,
+          24
+        ],
+        "LayoutBounds": [
+          22,
+          136,
+          434,
+          24
+        ],
+        "Script": 1,
+        "Glyph": 12.537777777777778,
+        "Render": 12.537777777777778,
+        "Confidence": 0.9827070832252502,
+        "Ink": 13
+      },
+      {
+        "Text": "6.5.BanG Dream! Garupa...",
+        "Bounds": [
+          435,
+          178,
+          187,
+          20
+        ],
+        "LayoutBounds": [
+          435,
+          178,
+          187,
+          20
+        ],
+        "Script": 1,
+        "Glyph": 10.569565217391304,
+        "Render": 10.569565217391304,
+        "Confidence": 0.9697155952453613,
+        "Ink": 11
+      },
+      {
+        "Text": "2.1.BanG Dream!",
+        "Bounds": [
+          40,
+          179,
+          123,
+          18
+        ],
+        "LayoutBounds": [
+          40,
+          179,
+          123,
+          18
+        ],
+        "Script": 1,
+        "Glyph": 11.421428571428573,
+        "Render": 11.421428571428573,
+        "Confidence": 0.991039514541626,
+        "Ink": null
+      },
+      {
+        "Text": "5.3.BanG Dream! STATION",
+        "Bounds": [
+          206,
+          179,
+          187,
+          18
+        ],
+        "LayoutBounds": [
+          206,
+          179,
+          187,
+          18
+        ],
+        "Script": 1,
+        "Glyph": 11.576190476190478,
+        "Render": 11.576190476190478,
+        "Confidence": 0.9997832179069519,
+        "Ink": 11
+      }
+    ]
+  },
+  {
+    "Image": ".ai/test-images/web-v3/3.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "Since its initial release, PaddleOCR has gained widespread acclaim across academia, industry, and research communities, thanks to its cutting-edge algorithms and",
+        "Bounds": [
+          147,
+          24,
+          1742,
+          29
+        ],
+        "LayoutBounds": [
+          147,
+          24,
+          1742,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 16.06099290780142,
+        "Render": 16.06099290780142,
+        "Confidence": 0.9908418655395508,
+        "Ink": 17
+      },
+      {
+        "Text": "proven performance in real-world applications. It\u0027s already powering popular open-source projects like Umi-OCR, OmniParser, MinerU, and RAGFlow, making it the go-to",
+        "Bounds": [
+          147,
+          62,
+          1771,
+          31
+        ],
+        "LayoutBounds": [
+          147,
+          62,
+          1771,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 15.988194444444444,
+        "Render": 15.988194444444444,
+        "Confidence": 0.9967486262321472,
+        "Ink": 17
+      },
+      {
+        "Text": "OCR toolkit for developers worldwide.",
+        "Bounds": [
+          148,
+          102,
+          402,
+          27
+        ],
+        "LayoutBounds": [
+          148,
+          102,
+          402,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 15.836363636363636,
+        "Render": 15.836363636363636,
+        "Confidence": 0.9963763356208801,
+        "Ink": 18
+      },
+      {
+        "Text": "On January 29, 2026, PaddleOCR open-sourced the advanced and efficient document parsing model PaddleOCR-VL-1.5. PaddleOCR-VL-1.5 is a new iterative version of",
+        "Bounds": [
+          148,
+          164,
+          1769,
+          28
+        ],
+        "LayoutBounds": [
+          148,
+          164,
+          1769,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 16.66449275362319,
+        "Render": 16.66449275362319,
+        "Confidence": 0.9952124357223511,
+        "Ink": 17
+      },
+      {
+        "Text": "the PaddleOCR-VL series. Based on comprehensive optimization of the core capabilities of version 1.0, the model achieves 94.5% accuracy on the authoritative",
+        "Bounds": [
+          147,
+          202,
+          1693,
+          29
+        ],
+        "LayoutBounds": [
+          147,
+          202,
+          1693,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 16.302962962962965,
+        "Render": 16.302962962962965,
+        "Confidence": 0.9906505346298218,
+        "Ink": 17
+      },
+      {
+        "Text": "document parsing benchmark OmniDocBench v1.5, surpassing top global general-purpose large models and document parsing-specific models. PaddleOCR-VL-1.5",
+        "Bounds": [
+          146,
+          239,
+          1748,
+          32
+        ],
+        "LayoutBounds": [
+          146,
+          239,
+          1748,
+          32
+        ],
+        "Script": 1,
+        "Glyph": 16.708823529411767,
+        "Render": 16.708823529411767,
+        "Confidence": 0.9959288239479065,
+        "Ink": 17
+      },
+      {
+        "Text": "innovatively supports irregular-shaped bounding box localization of document elements, enabling excellent performance in real-world application scenarios such as",
+        "Bounds": [
+          148,
+          280,
+          1741,
+          28
+        ],
+        "LayoutBounds": [
+          148,
+          280,
+          1741,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 15.717361111111114,
+        "Render": 15.717361111111114,
+        "Confidence": 0.9962356686592102,
+        "Ink": 18
+      },
+      {
+        "Text": "scanning, skew, warping, screen-photography, and complex illumination, achieving comprehensive SOTA performance. In addition, the model further integrates seal",
+        "Bounds": [
+          148,
+          319,
+          1735,
+          28
+        ],
+        "LayoutBounds": [
+          148,
+          319,
+          1735,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 15.88380281690141,
+        "Render": 15.88380281690141,
+        "Confidence": 0.9961166381835938,
+        "Ink": 17
+      },
+      {
+        "Text": "recognition and spotting tasks, with key metrics continuing to lead mainstream models.",
+        "Bounds": [
+          147,
+          355,
+          933,
+          29
+        ],
+        "LayoutBounds": [
+          147,
+          355,
+          933,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 16.172,
+        "Render": 16.172,
+        "Confidence": 0.9905818700790405,
+        "Ink": 16
+      },
+      {
+        "Text": "On May 28, 2026, PaddleOCR open-sourced PaddleOCR-VL-1.6, the latest version in the PaddleOCR-VL series. With an accuracy of 96.3%, PaddleOCR-VL-1.6 once",
+        "Bounds": [
+          148,
+          418,
+          1748,
+          28
+        ],
+        "LayoutBounds": [
+          148,
+          418,
+          1748,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 17.085714285714285,
+        "Render": 17.085714285714285,
+        "Confidence": 0.9862015247344971,
+        "Ink": 17
+      },
+      {
+        "Text": "again set a new benchmark on OmniDocBench v1.6, while also achieving new state-of-the-art (SOTA) results on OmniDocBench v1.5 and Real5-OmniDocBench. It",
+        "Bounds": [
+          147,
+          455,
+          1719,
+          31
+        ],
+        "LayoutBounds": [
+          147,
+          455,
+          1719,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 16.929545454545455,
+        "Render": 16.929545454545455,
+        "Confidence": 0.9861864447593689,
+        "Ink": 17
+      },
+      {
+        "Text": "delivers industry-leading performance in text, formula, and table recognition across both open-source and proprietary solutions. In addition, the model shows",
+        "Bounds": [
+          148,
+          496,
+          1666,
+          28
+        ],
+        "LayoutBounds": [
+          148,
+          496,
+          1666,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 15.694202898550724,
+        "Render": 15.694202898550724,
+        "Confidence": 0.9964686036109924,
+        "Ink": 17
+      },
+      {
+        "Text": "substantial improvements in ancient document and rare character recognition, as well as significantly enhanced capabilities in multiple scenarios such as seal",
+        "Bounds": [
+          147,
+          533,
+          1687,
+          29
+        ],
+        "LayoutBounds": [
+          147,
+          533,
+          1687,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 15.892028985507247,
+        "Render": 15.892028985507247,
+        "Confidence": 0.9947612285614014,
+        "Ink": 17
+      },
+      {
+        "Text": "recognition, spotting, and chart understanding. PaddleOCR-VL-1.6 further upgrades the VLM component (PaddleOCR-VL-1.6-0.9B) on top of PaddleOCR-VL-1.5 and",
+        "Bounds": [
+          146,
+          569,
+          1732,
+          34
+        ],
+        "LayoutBounds": [
+          146,
+          569,
+          1732,
+          34
+        ],
+        "Script": 1,
+        "Glyph": 16.315942028985507,
+        "Render": 16.315942028985507,
+        "Confidence": 0.995705783367157,
+        "Ink": 17
+      },
+      {
+        "Text": "continues to use PP-DocLayoutV3 for layout analysis. The model architecture remains fully consistent with PaddleOCR-VL-1.5, enabling seamless migration at zero",
+        "Bounds": [
+          145,
+          607,
+          1737,
+          33
+        ],
+        "LayoutBounds": [
+          145,
+          607,
+          1737,
+          33
+        ],
+        "Script": 1,
+        "Glyph": 16.129285714285714,
+        "Render": 16.129285714285714,
+        "Confidence": 0.9964966177940369,
+        "Ink": 17
+      },
+      {
+        "Text": "cost.",
+        "Bounds": [
+          145,
+          648,
+          62,
+          31
+        ],
+        "LayoutBounds": [
+          145,
+          648,
+          62,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 25.419999999999998,
+        "Render": 25.419999999999998,
+        "Confidence": 0.999947190284729,
+        "Ink": null
+      },
+      {
+        "Text": "On June 11, 2026, PaddleOCR released PP-OCRv6, the next-generation universal OCR system. Built on the newly designed PPLCNetV4 unified backbone, PP-OCRv6",
+        "Bounds": [
+          148,
+          711,
+          1755,
+          27
+        ],
+        "LayoutBounds": [
+          148,
+          711,
+          1755,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 17.154135338345863,
+        "Render": 17.154135338345863,
+        "Confidence": 0.9929444789886475,
+        "Ink": 17
+      },
+      {
+        "Text": "offers tiny/small/medium tiers (1.5M-34.5M parameters). In terms of accuracy, the medium tier achieves \u002B5.1% recognition and \u002B4.6% detection over PP-",
+        "Bounds": [
+          149,
+          750,
+          1638,
+          28
+        ],
+        "LayoutBounds": [
+          149,
+          750,
+          1638,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 16.38,
+        "Render": 16.38,
+        "Confidence": 0.9932318329811096,
+        "Ink": 17
+      },
+      {
+        "Text": "OCRv5_server, surpassing mainstream Vision-Language Models with only 34.5M parameters. For multilingual support, a single model covers 50 languages (Chinese,",
+        "Bounds": [
+          147,
+          787,
+          1750,
+          30
+        ],
+        "LayoutBounds": [
+          147,
+          787,
+          1750,
+          30
+        ],
+        "Script": 1,
+        "Glyph": 16.366906474820144,
+        "Render": 16.366906474820144,
+        "Confidence": 0.995540976524353,
+        "Ink": 17
+      },
+      {
+        "Text": "English, Japanese, and 46 Latin-script languages) without switching models. PP-OCRv6 significantly improves recognition in specialized scenarios such as digital",
+        "Bounds": [
+          146,
+          824,
+          1720,
+          33
+        ],
+        "LayoutBounds": [
+          146,
+          824,
+          1720,
+          33
+        ],
+        "Script": 1,
+        "Glyph": 15.746478873239438,
+        "Render": 15.746478873239438,
+        "Confidence": 0.9958120584487915,
+        "Ink": 17
+      },
+      {
+        "Text": "displays, dot-matrix characters, tire prints, and industrial text that are traditionally underserved by VLMs. In terms of speed, PP-OCRv6_medium achieves 5.2\u00D7 speedup",
+        "Bounds": [
+          148,
+          864,
+          1764,
+          30
+        ],
+        "LayoutBounds": [
+          148,
+          864,
+          1764,
+          30
+        ],
+        "Script": 1,
+        "Glyph": 15.815172413793105,
+        "Render": 15.815172413793105,
+        "Confidence": 0.9916832447052002,
+        "Ink": 17
+      },
+      {
+        "Text": "over PP-0CRv5_server on Intel Xeon CPU with OpenVINO (1.40s vs 7.30s), the tiny tier reaches 6.1\u00D7 speedup on Apple M4 (0.96s vs 5.82s), and only 0.13s on A100",
+        "Bounds": [
+          148,
+          904,
+          1730,
+          28
+        ],
+        "LayoutBounds": [
+          148,
+          904,
+          1730,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 17.16793893129771,
+        "Render": 17.16793893129771,
+        "Confidence": 0.9905766844749451,
+        "Ink": 17
+      },
+      {
+        "Text": "GPU. See PP-OCRv6 Technical Documentation for details.",
+        "Bounds": [
+          148,
+          942,
+          614,
+          28
+        ],
+        "LayoutBounds": [
+          148,
+          942,
+          614,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 16.629166666666666,
+        "Render": 16.629166666666666,
+        "Confidence": 0.9937635660171509,
+        "Ink": 17
+      },
+      {
+        "Text": "You can use it online on the PaddleOCR official website or call the model API.",
+        "Bounds": [
+          147,
+          1002,
+          820,
+          30
+        ],
+        "LayoutBounds": [
+          147,
+          1002,
+          820,
+          30
+        ],
+        "Script": 1,
+        "Glyph": 16.65625,
+        "Render": 16.65625,
+        "Confidence": 0.9826594591140747,
+        "Ink": 18
+      }
+    ]
+  },
+  {
+    "Image": ".ai/test-images/web-v3/4.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "Huge Performance Boost Feature Coming",
+        "Bounds": [
+          111,
+          9,
+          716,
+          37
+        ],
+        "LayoutBounds": [
+          111,
+          9,
+          716,
+          37
+        ],
+        "Script": 1,
+        "Glyph": 28.206060606060603,
+        "Render": 28.206060606060603,
+        "Confidence": 0.9983805418014526,
+        "Ink": 23
+      },
+      {
+        "Text": "Soon to Windows 11",
+        "Bounds": [
+          109,
+          47,
+          341,
+          36
+        ],
+        "LayoutBounds": [
+          109,
+          47,
+          341,
+          36
+        ],
+        "Script": 1,
+        "Glyph": 29.52,
+        "Render": 29.52,
+        "Confidence": 0.9997013211250305,
+        "Ink": 23
+      },
+      {
+        "Text": "Leave a Comment / By emanueldas / September 3, 2026",
+        "Bounds": [
+          112,
+          103,
+          553,
+          28
+        ],
+        "LayoutBounds": [
+          112,
+          103,
+          553,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 17.116666666666667,
+        "Render": 17.116666666666667,
+        "Confidence": 0.9908005595207214,
+        "Ink": 16
+      },
+      {
+        "Text": "In this article, we will talk about the New Unified Memory Controls that",
+        "Bounds": [
+          111,
+          187,
+          703,
+          27
+        ],
+        "LayoutBounds": [
+          111,
+          187,
+          703,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 15.231666666666667,
+        "Render": 15.231666666666667,
+        "Confidence": 0.9917636513710022,
+        "Ink": 17
+      },
+      {
+        "Text": "Microsoft is testing behind the scenes, which can improve the system",
+        "Bounds": [
+          111,
+          227,
+          683,
+          29
+        ],
+        "LayoutBounds": [
+          111,
+          227,
+          683,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 15.308620689655173,
+        "Render": 15.308620689655173,
+        "Confidence": 0.9998043179512024,
+        "Ink": 16
+      },
+      {
+        "Text": "performance in certain scenarios.",
+        "Bounds": [
+          112,
+          268,
+          333,
+          27
+        ],
+        "LayoutBounds": [
+          112,
+          268,
+          333,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 14.43,
+        "Render": 14.43,
+        "Confidence": 0.9992179870605469,
+        "Ink": 12
+      },
+      {
+        "Text": "First of all, we need to mention that not all Windows 11 Devices will have",
+        "Bounds": [
+          112,
+          346,
+          715,
+          28
+        ],
+        "LayoutBounds": [
+          112,
+          346,
+          715,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 15.491666666666667,
+        "Render": 15.491666666666667,
+        "Confidence": 0.9961342215538025,
+        "Ink": 17
+      },
+      {
+        "Text": "this Features. This is a Specific Feature to New Hardware from Nvidia or",
+        "Bounds": [
+          112,
+          387,
+          705,
+          27
+        ],
+        "LayoutBounds": [
+          112,
+          387,
+          705,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 15.275,
+        "Render": 15.275,
+        "Confidence": 0.9990923404693604,
+        "Ink": 16
+      },
+      {
+        "Text": "AMD that supports the Unified Memory Technology.",
+        "Bounds": [
+          109,
+          425,
+          515,
+          33
+        ],
+        "LayoutBounds": [
+          109,
+          425,
+          515,
+          33
+        ],
+        "Script": 1,
+        "Glyph": 15.940476190476192,
+        "Render": 15.940476190476192,
+        "Confidence": 0.9916439652442932,
+        "Ink": 16
+      },
+      {
+        "Text": "In the latest Build from the Experimental Channel Future Platforms,",
+        "Bounds": [
+          110,
+          504,
+          666,
+          29
+        ],
+        "LayoutBounds": [
+          110,
+          504,
+          666,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 14.927586206896551,
+        "Render": 14.927586206896551,
+        "Confidence": 0.9986019730567932,
+        "Ink": 21
+      },
+      {
+        "Text": "Microsoft has hidden inside the System the New Settings Section where",
+        "Bounds": [
+          111,
+          545,
+          708,
+          30
+        ],
+        "LayoutBounds": [
+          111,
+          545,
+          708,
+          30
+        ],
+        "Script": 1,
+        "Glyph": 15.600000000000001,
+        "Render": 15.600000000000001,
+        "Confidence": 0.9945707321166992,
+        "Ink": 16
+      },
+      {
+        "Text": "you can customize how Unified Memory is used inside Windows 11.",
+        "Bounds": [
+          108,
+          585,
+          667,
+          30
+        ],
+        "LayoutBounds": [
+          108,
+          585,
+          667,
+          30
+        ],
+        "Script": 1,
+        "Glyph": 16.360377358490567,
+        "Render": 16.360377358490567,
+        "Confidence": 0.9942925572395325,
+        "Ink": 16
+      },
+      {
+        "Text": "Unified Memory is a different type of memory that can be shared between",
+        "Bounds": [
+          112,
+          664,
+          730,
+          28
+        ],
+        "LayoutBounds": [
+          112,
+          664,
+          730,
+          28
+        ],
+        "Script": 1,
+        "Glyph": 16.084745762711865,
+        "Render": 16.084745762711865,
+        "Confidence": 0.9956359267234802,
+        "Ink": 17
+      },
+      {
+        "Text": "a CPU, GPU, and other components. With this New Option, you can",
+        "Bounds": [
+          110,
+          706,
+          662,
+          27
+        ],
+        "LayoutBounds": [
+          110,
+          706,
+          662,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 16.55,
+        "Render": 16.55,
+        "Confidence": 0.9968268871307373,
+        "Ink": 16
+      },
+      {
+        "Text": "customize how that Memory is shared between components.",
+        "Bounds": [
+          111,
+          744,
+          604,
+          30
+        ],
+        "LayoutBounds": [
+          111,
+          744,
+          604,
+          30
+        ],
+        "Script": 1,
+        "Glyph": 16.358333333333334,
+        "Render": 16.358333333333334,
+        "Confidence": 0.9984337687492371,
+        "Ink": 15
+      }
+    ]
+  },
+  {
+    "Image": ".ai/test-images/web-v3/5.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "He has also shared how these options would look in a first preview, with",
+        "Bounds": [
+          70,
+          8,
+          712,
+          29
+        ],
+        "LayoutBounds": [
+          70,
+          8,
+          712,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 15.68813559322034,
+        "Render": 15.68813559322034,
+        "Confidence": 0.9998190402984619,
+        "Ink": 17
+      },
+      {
+        "Text": "Microsoft specifying that you can let Windows reserve additional unified",
+        "Bounds": [
+          70,
+          47,
+          716,
+          32
+        ],
+        "LayoutBounds": [
+          70,
+          47,
+          716,
+          32
+        ],
+        "Script": 1,
+        "Glyph": 14.774603174603175,
+        "Render": 14.774603174603175,
+        "Confidence": 0.9977148771286011,
+        "Ink": 17
+      },
+      {
+        "Text": "memory for graphics and Al intensive games and applications. Reserved",
+        "Bounds": [
+          71,
+          89,
+          714,
+          29
+        ],
+        "LayoutBounds": [
+          71,
+          89,
+          714,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 15.47,
+        "Render": 15.47,
+        "Confidence": 0.9988618493080139,
+        "Ink": 16
+      },
+      {
+        "Text": "memory won\u0027t be available for other applications.",
+        "Bounds": [
+          71,
+          130,
+          495,
+          27
+        ],
+        "LayoutBounds": [
+          71,
+          130,
+          495,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 14.965116279069766,
+        "Render": 14.965116279069766,
+        "Confidence": 0.9969943165779114,
+        "Ink": 16
+      },
+      {
+        "Text": "You can select from certain presets, or choose custom and reserve the",
+        "Bounds": [
+          71,
+          209,
+          691,
+          27
+        ],
+        "LayoutBounds": [
+          71,
+          209,
+          691,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 15.48793103448276,
+        "Render": 15.48793103448276,
+        "Confidence": 0.9978930950164795,
+        "Ink": 12
+      },
+      {
+        "Text": "amount of Unified Memory that you want.",
+        "Bounds": [
+          70,
+          249,
+          420,
+          29
+        ],
+        "LayoutBounds": [
+          70,
+          249,
+          420,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 16.545454545454547,
+        "Render": 16.545454545454547,
+        "Confidence": 0.9915937185287476,
+        "Ink": 16
+      },
+      {
+        "Text": "After all the settings are changed, you will need to restart your system.",
+        "Bounds": [
+          72,
+          327,
+          691,
+          29
+        ],
+        "LayoutBounds": [
+          72,
+          327,
+          691,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 14.72622950819672,
+        "Render": 14.72622950819672,
+        "Confidence": 0.9958475828170776,
+        "Ink": 15
+      },
+      {
+        "Text": "So this technology is still very new, only Nvidia RTX Spark and AMD Ryzen",
+        "Bounds": [
+          70,
+          405,
+          724,
+          29
+        ],
+        "LayoutBounds": [
+          70,
+          405,
+          724,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 15.686666666666667,
+        "Render": 15.686666666666667,
+        "Confidence": 0.9884945750236511,
+        "Ink": 16
+      },
+      {
+        "Text": "Al Max have it. This means that only the newest devices on the market",
+        "Bounds": [
+          72,
+          448,
+          690,
+          24
+        ],
+        "LayoutBounds": [
+          72,
+          448,
+          690,
+          24
+        ],
+        "Script": 1,
+        "Glyph": 16.017857142857142,
+        "Render": 16.017857142857142,
+        "Confidence": 0.9907306432723999,
+        "Ink": 16
+      },
+      {
+        "Text": "with these components will be able to use this technology.",
+        "Bounds": [
+          70,
+          485,
+          582,
+          30
+        ],
+        "LayoutBounds": [
+          70,
+          485,
+          582,
+          30
+        ],
+        "Script": 1,
+        "Glyph": 15.440816326530612,
+        "Render": 15.440816326530612,
+        "Confidence": 0.9918369054794312,
+        "Ink": 16
+      },
+      {
+        "Text": "It is present in Builds 28xxx and started rolling out in the August Feature",
+        "Bounds": [
+          70,
+          564,
+          711,
+          29
+        ],
+        "LayoutBounds": [
+          70,
+          564,
+          711,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 14.908064516129032,
+        "Render": 14.908064516129032,
+        "Confidence": 0.9934666752815247,
+        "Ink": 16
+      },
+      {
+        "Text": "Update. It will be fully available by October and Nvidia RTX Spark that is",
+        "Bounds": [
+          71,
+          605,
+          710,
+          29
+        ],
+        "LayoutBounds": [
+          71,
+          605,
+          710,
+          29
+        ],
+        "Script": 1,
+        "Glyph": 15.131147540983607,
+        "Render": 15.131147540983607,
+        "Confidence": 0.9980589747428894,
+        "Ink": 17
+      },
+      {
+        "Text": "launching this year will have it aswell.",
+        "Bounds": [
+          72,
+          647,
+          373,
+          25
+        ],
+        "LayoutBounds": [
+          72,
+          647,
+          373,
+          25
+        ],
+        "Script": 1,
+        "Glyph": 14.261764705882353,
+        "Render": 14.261764705882353,
+        "Confidence": 0.9816707968711853,
+        "Ink": 17
+      },
+      {
+        "Text": "More information about the New Controls for Unified Memory in Windows",
+        "Bounds": [
+          72,
+          725,
+          730,
+          27
+        ],
+        "LayoutBounds": [
+          72,
+          725,
+          730,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 16.084745762711865,
+        "Render": 16.084745762711865,
+        "Confidence": 0.9912493228912354,
+        "Ink": 16
+      },
+      {
+        "Text": "11 can be found in the video below from the youtube channel.",
+        "Bounds": [
+          71,
+          765,
+          615,
+          27
+        ],
+        "LayoutBounds": [
+          71,
+          765,
+          615,
+          27
+        ],
+        "Script": 1,
+        "Glyph": 16.316326530612248,
+        "Render": 16.316326530612248,
+        "Confidence": 0.9930989742279053,
+        "Ink": 17
+      }
+    ]
+  }
+]

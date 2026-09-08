@@ -135,7 +135,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
         Assert.Equal(704, primary); // 1000 * 0.68, rounded up onto the detector's grid
     }
 
-    [Theory]
+    [ScreenshotTheory("subtitle-over-light-floor-1226x196.png", "subtitle-lost-entirely-1226x196.png")]
     // Two frames captured from a live session, both of which the realtime loop read as empty and
     // cleared the overlay for. The text in each is large, white, outlined and unmistakable; the
     // detector collapsed it into a single box spanning the whole strip. See RealtimeDetectorSize
@@ -145,7 +145,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
     public async Task SubtitleFramesTheDetectorCollapsedAreReadAtTheChosenSize(string fixture, string expected)
     {
         using var engine = new OcrService();
-        using var frame = new Bitmap(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture));
+        using var frame = ExternalScreenshot.Load(fixture);
 
         var (primary, _) = RealtimeDetectorSize.For(frame.Width, frame.Height, RealtimeBlockMode.Subtitle);
         var blocks = await engine.TryRecognizeAsync(frame, "EN", primary);
@@ -179,7 +179,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
         Assert.Empty(RealtimeDetectorSize.WhileNothingIsShown(fallbacks, 400, 120));
     }
 
-    [Theory]
+    [ScreenshotTheory("subtitle-over-light-floor-1226x196.png", "subtitle-lost-entirely-1226x196.png")]
     [InlineData("subtitle-over-light-floor-1226x196.png", "okay")]
     [InlineData("subtitle-lost-entirely-1226x196.png", "minato-san")]
     public async Task TheSameFramesAlsoReadAtTheScreenshotSizeNow(string fixture, string expected)
@@ -201,7 +201,7 @@ public class RealtimeDetectorSizeTests(ITestOutputHelper output)
         // What this test asserts is unaffected either way: it is about the screenshot size, which
         // has never downscaled and still does not.
         using var engine = new OcrService();
-        using var frame = new Bitmap(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture));
+        using var frame = ExternalScreenshot.Load(fixture);
 
         var blocks = await engine.TryRecognizeAsync(frame, "EN", 2048);
         var text = string.Join(" ", blocks?.Select(b => b.Text) ?? []).ToLowerInvariant();

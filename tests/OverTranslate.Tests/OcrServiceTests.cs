@@ -238,7 +238,7 @@ public class OcrServiceTests
         Assert.NotNull(blocks);
     }
 
-    [Fact]
+    [ScreenshotFact("capture-264x56.png", "capture-270x60.png")]
     public async Task OnnxEngine_SameTextWithDifferentMargins_RecognizesIdentically()
     {
         // Two captures of the same screen region: pixel-for-pixel identical text, the second
@@ -262,7 +262,7 @@ public class OcrServiceTests
         Assert.Contains("Skill(domain-modeling)", tightText);
     }
 
-    [Fact]
+    [ScreenshotFact("capture-264x56.png")]
     public async Task OnnxEngine_AutomaticModeRecognizesLatinTextWithGeneralModel()
     {
         using var engine = new OnnxOcrEngine();
@@ -273,7 +273,7 @@ public class OcrServiceTests
         Assert.Contains("Skill(domain-modeling)", text);
     }
 
-    [Fact]
+    [ScreenshotFact("chinese-interface-1341x799.png")]
     public async Task OnnxEngine_AutomaticModeRecognizesChineseInterface()
     {
         using var engine = new OnnxOcrEngine();
@@ -305,7 +305,7 @@ public class OcrServiceTests
         Assert.Contains(blocks, block => OnnxOcrEngine.UsesCjkRenderMetricsForText(block.Text));
     }
 
-    [Fact]
+    [ScreenshotFact("mixed-interface-1060x904.png")]
     public async Task OnnxEngine_AutomaticModeMatchesManualEnglishOnMixedInterface()
     {
         using var engine = new OnnxOcrEngine();
@@ -317,8 +317,7 @@ public class OcrServiceTests
         Assert.Equal(manual, automatic);
     }
 
-    private static Bitmap LoadFixture(string name) =>
-        new(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
+    private static Bitmap LoadFixture(string name) => ExternalScreenshot.Load(name);
 
     // A leading bullet is trimmed before comparing. The capture starts with a 3px dot, and whether
     // the detector stretches the line's box far enough left to swallow it still depends on where

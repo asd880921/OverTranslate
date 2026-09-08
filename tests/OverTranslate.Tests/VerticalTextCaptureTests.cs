@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Controls;
 using OverTranslate.Services;
 using OverTranslate.Services.Ocr;
@@ -246,6 +247,73 @@ public class VerticalTextCaptureTests
         Assert.Equal(OcrLayoutScript.Cjk, merged.LayoutScript);
         Assert.Equal(new System.Windows.Rect(68, 10, 22, 62), merged.LayoutBounds);
         Assert.NotNull(merged.LayoutGlyphHeight);
+    }
+
+    // ---- design.md §8.5.1 #4 (v2.1, reversed): the capture mode reaches none of this ----
+
+    /// <summary>
+    /// A capture mode cannot change how vertical text is grouped, and the relaxed profile that
+    /// would have changed it is here to prove the test is asking a real question.
+    /// </summary>
+    /// <remarks>
+    /// <para>v1.1 wired the mode's profile into the first pass on the grounds that it is "the same
+    /// horizontal grouper". It is the same grouper, and that turned out to be the wrong reason: the
+    /// picture has been turned 270° before it gets there, so each column of the original arrives as
+    /// a row, and the first pass's "does this line continue on the next one" is being asked of
+    /// column against column — the very geometry the column merge was denied a profile over.</para>
+    ///
+    /// <para>The pair below is the set-solid one from <c>OcrTextBlockGrouperTests</c>, chosen
+    /// because the two profiles are known to disagree about it. The first two assertions establish
+    /// that disagreement rather than assume it: without them, a pipeline that ignored the profile
+    /// and a pair that no profile would have joined look exactly alike, which is the mistake the
+    /// harness made for two steps.</para>
+    /// </remarks>
+    [Fact]
+    public async Task TheRelaxedProfile_DoesNotReachTheGroupingThatRunsOnTheRotatedFrame()
+    {
+        var (previous, current) = OcrTextBlockGrouperTests.CentredBalloonPair();
+        OcrTextBlock[] pair = [previous, current];
+
+        // The two profiles really do answer this pair differently.
+        Assert.Equal(2, OcrTextBlockGrouper.Group([.. pair], GroupingProfile.Interface).Count);
+        Assert.Single(OcrTextBlockGrouper.Group([.. pair], GroupingProfile.General));
+
+        // Big enough to hold the fixture's boxes: mapping back off the edge of the picture would
+        // make the column merge judge rectangles that never existed.
+        using var source = new Bitmap(1300, 1300);
+        using var engine = new RecordingOcrEngine(pair);
+
+        var result = await OcrService.RecognizeVerticalAsync(
+            engine, source, "EN", CancellationToken.None);
+
+        // Two lines in, two blocks out: the first pass judged them on the conservative figures and
+        // kept them apart. Had the relaxed profile reached it they would have been joined there and
+        // come back as one.
+        Assert.Equal(2, result.Count);
+        Assert.DoesNotContain(
+            result,
+            block => block.Text.Contains("A BARBARIAN A") && block.Text.Contains("HEREDITARY TITLE!"));
+    }
+
+    /// <summary>
+    /// Neither vertical pass takes a profile, and this is the guard on it staying that way.
+    /// </summary>
+    /// <remarks>
+    /// Both compare column against column. None of the thresholds a capture mode moves were
+    /// measured on that geometry, so handing either of them one would be relaxing something nobody
+    /// has measured — which is exactly the kind of change that reads as tidying up a signature. The
+    /// absence of the parameter is what makes it impossible rather than merely unintended.
+    /// </remarks>
+    [Theory]
+    [InlineData(nameof(OcrService.RecognizeVerticalAsync))]
+    [InlineData(nameof(OcrService.MergeVerticalColumns))]
+    public void TheVerticalPipeline_TakesNoProfile(string method)
+    {
+        var parameters = typeof(OcrService)
+            .GetMethod(method, BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetParameters();
+
+        Assert.DoesNotContain(parameters, parameter => parameter.ParameterType == typeof(GroupingProfile));
     }
 
     private sealed class RecordingOcrEngine(params OcrTextBlock[] blocks) : IOcrEngine

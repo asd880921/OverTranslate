@@ -5,6 +5,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using OverTranslate.Models;
 using OverTranslate.Services;
+using OverTranslate.Services.Ocr;
 using OverTranslate.Services.Providers;
 
 namespace OverTranslate.Views.Capture;
@@ -46,6 +47,7 @@ public partial class ToolbarWindow : Window
     private bool _bubblesVisible = true;
     private bool _hasTranslated;
     private bool _initializingDirection = true;
+    private bool _initializingLayoutMode = true;
 
     // Whether there is recognised text to read, and whether it is being read right now. The voice
     // itself lives with the capture session, not here: this window only shows its state.
@@ -65,6 +67,17 @@ public partial class ToolbarWindow : Window
     /// </remarks>
     public bool IsVerticalText => VerticalSeg.IsChecked == true;
 
+    /// <summary>
+    /// The effective capture mode. The single-mode release always uses General.
+    /// </summary>
+    /// <remarks>
+    /// Keep the selector and persisted preference for future use, but do not let either override
+    /// the application's current single-mode policy.
+    /// </remarks>
+    public CaptureLayoutMode CurrentLayoutMode => CaptureLayoutPolicy.ForApplication(InterfaceModeSeg.IsChecked == true
+        ? CaptureLayoutMode.Interface
+        : CaptureLayoutMode.General);
+
     public ToolbarWindow(
         double selPhysLeft, double selPhysTop,
         double selPhysWidth, double selPhysHeight,
@@ -82,6 +95,18 @@ public partial class ToolbarWindow : Window
         VerticalSeg.IsChecked = verticalText;
         _initializingDirection = false;
 
+        // A mode this build cannot read — a file from a later release, or one still naming a v1
+        // mode — has already become General by the time it gets here: the settings reader keeps the
+        // property's default when a value will not deserialize, and General is that default.
+        // Nothing to guard against a second time; see SettingsService.Apply.
+        LayoutModeSelector.Visibility = CaptureLayoutPolicy.IsModeSelectionAvailable
+            ? Visibility.Visible : Visibility.Collapsed;
+        bool interfaceMode = CaptureLayoutPolicy.ForApplication(
+            SettingsService.Instance.Current.Capture.LayoutMode) == CaptureLayoutMode.Interface;
+        InterfaceModeSeg.IsChecked = interfaceMode;
+        GeneralModeSeg.IsChecked = !interfaceMode;
+        _initializingLayoutMode = false;
+
         InitializeSelectors(sourceLang, targetLang);
         SizeSelectorsToClosedLabels();
 
@@ -92,7 +117,11 @@ public partial class ToolbarWindow : Window
 
         // The shared columns do not have a width until layout. A remembered vertical choice already
         // checks the right half above; this places the thumb under it on the first rendered frame.
-        Loaded += (_, _) => RenderDirectionThumb(animate: false);
+        Loaded += (_, _) =>
+        {
+            RenderDirectionThumb(animate: false);
+            RenderLayoutModeThumb(animate: false);
+        };
 
         RenderSpeakButton();
     }
@@ -251,6 +280,50 @@ public partial class ToolbarWindow : Window
         RenderDirectionThumb(animate: IsLoaded);
     }
 
+    /// <inheritdoc cref="DirectionSegment_PreviewMouseLeftButtonDown"/>
+    private void LayoutModeSegment_PreviewMouseLeftButtonDown(
+        object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.RadioButton segment) segment.IsChecked = true;
+    }
+
+    /// <inheritdoc cref="DirectionSegment_Checked"/>
+    private void LayoutModeSegment_Checked(object sender, RoutedEventArgs e)
+    {
+        // InterfaceModeSeg, because that is the half CurrentLayoutMode reads. This fires once while
+        // the XAML is still being parsed, for whichever half opens checked, and at that moment the
+        // other half does not exist yet — so the guard has to name the element the property below
+        // will dereference, not merely some sibling. Naming the wrong one was a null reference in
+        // the constructor the moment 一般 moved to the left and became the half declared first.
+        if (LayoutModeThumb is null || LayoutModeThumbShift is null || InterfaceModeSeg is null) return;
+
+        if (!_initializingLayoutMode)
+            SaveLayoutModeSelection();
+
+        RenderLayoutModeThumb(animate: IsLoaded);
+    }
+
+    private void RenderLayoutModeThumb(bool animate)
+    {
+        double target = CurrentLayoutMode == CaptureLayoutMode.Interface
+            ? LayoutModeThumb.ActualWidth
+            : 0;
+
+        if (!animate || LayoutModeThumb.ActualWidth <= 0)
+        {
+            LayoutModeThumbShift.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+            LayoutModeThumbShift.X = target;
+            return;
+        }
+
+        LayoutModeThumbShift.BeginAnimation(
+            System.Windows.Media.TranslateTransform.XProperty,
+            new DoubleAnimation(target, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            });
+    }
+
     private void RenderDirectionThumb(bool animate)
     {
         double target = IsVerticalText ? DirectionThumb.ActualWidth : 0;
@@ -284,7 +357,7 @@ public partial class ToolbarWindow : Window
     {
         if (_isBusy) return;
         TranslateRequested?.Invoke(this, new TranslateRequest(
-            CurrentSourceLang, CurrentTargetLang, IsVerticalText));
+            CurrentSourceLang, CurrentTargetLang, IsVerticalText, CurrentLayoutMode));
     }
 
     private void OpenWindowBtn_Click(object sender, RoutedEventArgs e)
@@ -312,7 +385,8 @@ public partial class ToolbarWindow : Window
         => CopyTextRequested?.Invoke(this, new CopyTextRequest(
             ResolveCopyTextKind(_hasTranslated, _bubblesVisible),
             CurrentSourceLang,
-            IsVerticalText));
+            IsVerticalText,
+            CurrentLayoutMode));
 
     private void CopyShotBtn_Click(object sender, RoutedEventArgs e)
         => CopyScreenshotRequested?.Invoke(this, EventArgs.Empty);
@@ -595,11 +669,41 @@ public partial class ToolbarWindow : Window
         settings.Capture.VerticalText = IsVerticalText;
         SettingsService.Instance.Save();
     }
+
+    private void SaveLayoutModeSelection()
+    {
+        var settings = SettingsService.Instance.Current;
+        settings.Capture.LayoutMode = CurrentLayoutMode;
+        SettingsService.Instance.Save();
+    }
 }
 
-public record TranslateRequest(string SourceLang, string TargetLang, bool IsVerticalText);
+/// <param name="LayoutMode">
+/// What the user says the framed capture holds, read off the 標準 / 漫畫・文章 switch.
+/// </param>
+/// <remarks>
+/// No default. It carried one while the switch did not exist yet, so that the seam could be wired
+/// and measured a step before anything could choose; now that something can, a default would mean
+/// a call site added later quietly translating a comic as though it were a game menu — with no
+/// compiler complaint and nothing on screen to say which mode answered.
+/// </remarks>
+public record TranslateRequest(
+    string SourceLang,
+    string TargetLang,
+    bool IsVerticalText,
+    CaptureLayoutMode LayoutMode);
 
-public record CopyTextRequest(CopyTextKind Kind, string SourceLang, bool IsVerticalText);
+/// <inheritdoc cref="TranslateRequest" path="/param[@name='LayoutMode']"/>
+/// <remarks>
+/// Copying reads the region through the same recogniser and fills the same _lastOcrBlocks the
+/// translation does, so it has to be grouped the same way. Left off, the text a user copies would
+/// come apart differently from the text they just had translated, out of the same capture.
+/// </remarks>
+public record CopyTextRequest(
+    CopyTextKind Kind,
+    string SourceLang,
+    bool IsVerticalText,
+    CaptureLayoutMode LayoutMode);
 
 public enum CopyTextKind
 {

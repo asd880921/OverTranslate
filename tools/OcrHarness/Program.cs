@@ -16,6 +16,9 @@ using OverTranslate.Services.Realtime;
 // the text it belongs to, which is the half that says whether a verdict was right.
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
+if (args.Length > 0 && args[0] == "--group-prototype")
+    return await GroupingPrototype.Run(args.Skip(1).ToArray());
+
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: OcrHarness <image.png> [more.png ...]");
@@ -34,9 +37,17 @@ if (args.Length == 0)
     Console.Error.WriteLine("                  (same text, blocks cropped tight around it vs left loose)");
     Console.Error.WriteLine("       OcrHarness --margin-scale-grid <wholescreen.png> [more.png ...]");
     Console.Error.WriteLine("                  (CSV: the same subtitle at several margins, each read at every scale)");
-    Console.Error.WriteLine("       OcrHarness --group-explain <image.png> [more.png ...]");
+    Console.Error.WriteLine("       OcrHarness --group-explain [--interface] <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (every same-line and next-line verdict with the geometry it judged on)");
     Console.Error.WriteLine("                  (screenshot flow by default; --realtime for the live one)");
+    Console.Error.WriteLine("                  (一般 mode by default, as the app is; --interface for the other one)");
+    Console.Error.WriteLine("                  (--trace adds the estimate and identity diagnostics; the existing lines do not move)");
+    Console.Error.WriteLine("       OcrHarness --estimate-precision <boxes.txt>");
+    Console.Error.WriteLine("                  (script W H glyphs per line -> the same estimate at full precision, no OCR)");
+    Console.Error.WriteLine("       OcrHarness --glyph-samples <outDir>");
+    Console.Error.WriteLine("                  (draws the known-text comparison set; layout box and ink box, no OCR)");
+    Console.Error.WriteLine("       OcrHarness --glyph-samples-ocr <outDir>");
+    Console.Error.WriteLine("                  (reads those sheets back; detection boxes, and what was missed/split/merged)");
     Console.Error.WriteLine("       OcrHarness --vertical-explain <image.png> [more.png ...]");
     Console.Error.WriteLine("                  (the vertical pipeline's columns and their text, which --group-explain never runs)");
     Console.Error.WriteLine("       OcrHarness --reject-audit <image.png> [more.png ...]");
@@ -76,7 +87,55 @@ args = [.. args.Where(argument => argument != "--panel")];
 // regenerated rather than read across. --vertical-explain never had the problem: it goes through
 // OcrService.RecognizeVerticalAsync, which is the screenshot entry point already.
 var harnessRealtime = args.Contains("--realtime") || args.Contains("--panel");
+
+// Which capture mode the screenshot flow is asked about. The app's toolbar is what sets this, so
+// without a flag every run reproduces what a user gets before touching anything — which since the
+// v2 swap means General, the mode that is now the default.
+//
+// --comic is kept as a spelling of --general: a dozen saved corpus runs and the reports written
+// around them name it, and a flag that stops working is a flag that makes those unreproducible.
+var harnessLayoutMode = args.Contains("--interface")
+    ? CaptureLayoutMode.Interface
+    : CaptureLayoutMode.General;
+args = [.. args.Where(argument =>
+    argument is not ("--interface" or "--general" or "--comic"))];
 args = [.. args.Where(argument => argument != "--realtime")];
+
+// The diagnostics --group-explain cannot be read without: which line is which, and which of the
+// three paths through the glyph height estimate each of them took.
+//
+// Off by default, and additive when on: every line the mode printed before prints unchanged, and
+// everything this adds starts with "TRACE" or "  trace" so a traced run can be reduced to an
+// untraced one with a grep. Every corpus comparison on this branch is a diff of those lines, and a
+// diagnostic that moves them is a diagnostic that invalidates the comparisons it was added to make.
+var harnessTrace = args.Contains("--trace");
+args = [.. args.Where(argument => argument != "--trace")];
+
+// The thresholds the ROI sweeps group on, written out here rather than borrowed from the product.
+//
+// Those sweeps are about the detector — where the box lands, how stable it is across scales, what a
+// full frame costs — and they group only so that a "groups sent to translation" figure can sit
+// beside the detection numbers as a coarse sanity check. Grouping is not what they are measuring.
+//
+// They used to quote the interface mode's profile, which was fine while nobody moved it. The step
+// that tightens that mode is what makes it not fine: a sweep run before it and a sweep run after it
+// would differ for a reason that has nothing to do with the detector, and neither run says which.
+// A diagnostic tool's baseline belongs in the diagnostic tool.
+//
+// Not GroupingProfile.Vertical either, though its figures happen to match today: the name would say
+// these sweeps read vertical text, and ten minutes of somebody's confusion is a worse price than
+// two literals. Positional, so that a profile growing a field stops compiling here and somebody has
+// to decide what this baseline should say about it.
+//
+// The third figure arrived when the general mode was allowed to relax the set-solid leading for a
+// line long enough to have wrapped. This baseline keeps the unrelaxed one, for the same reason the
+// other two are conservative: these sweeps report a group count as a sanity check beside detection
+// numbers, and a sweep run before that change and one run after it must not differ for a reason
+// that has nothing to do with the detector.
+var harnessGroupingBaseline = new GroupingProfile(
+    TightlySetMinTextSizeRatio: 0.88,
+    WaiveLengthTestWhenSetSolid: false,
+    SolidLineAdvanceWhenWrapped: 1.20);
 
 // Which language to read as. It picks the recognition model, and that is not a detail on a Korean
 // dump: the general model carries no Hangul at all, so a Korean frame read as EN comes back as
@@ -999,6 +1058,253 @@ if (args[0] == "--margin-sweep")
 // the real grouper over the UNFILTERED blocks and reports whether the fragment would have landed
 // inside a line long enough to be real. Those are the readings a carve-out would keep; everything
 // else is what it would still drop. Read the two lists before writing the rule, not after.
+// The glyph height estimate at full precision, for boxes that have already been read.
+//
+// --trace prints four decimals, which is the right amount to read but not enough to compute with:
+// two figures that print as 0.8000 can sit either side of a 0.80 bar, and an analysis that rounds
+// before it compares reports the wrong side of it. That happened — two pairs out of 302 — and the
+// fix cannot be a tolerance, because a tolerance turns a precision problem into a permanently
+// fuzzy threshold that is harder to find the next time.
+//
+// So: the boxes come back out of a trace that already exists (no image is read again), and the
+// numbers are recomputed by THE PRODUCTION FUNCTION rather than by a copy of its formula in the
+// analysis script. The text is synthesised to the glyph count because that is all the estimate
+// reads of it — the script is passed separately.
+//
+// Input, one box per line, whitespace-separated:  <Latin|Cjk> <width> <height> <glyphs>
+if (args[0] == "--estimate-precision")
+{
+    if (args.Length < 2 || !File.Exists(args[1]))
+    {
+        Console.Error.WriteLine("usage: --estimate-precision <boxes.txt>   (lines of: Latin|Cjk W H glyphs)");
+        return 1;
+    }
+
+    Console.WriteLine("script\twidth\theight\tglyphs\tboxEstimate\tpitchCandidate\tglyphHeight\tsource\tbranch\tpitchWon");
+
+    foreach (var entry in File.ReadLines(args[1]))
+    {
+        var fields = entry.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (fields.Length == 0 || entry.StartsWith('#'))
+            continue;
+
+        if (fields.Length != 4 ||
+            !Enum.TryParse<OcrLayoutScript>(fields[0], out var estimateScript) ||
+            !double.TryParse(fields[1], out var estimateWidth) ||
+            !double.TryParse(fields[2], out var estimateHeight) ||
+            !int.TryParse(fields[3], out var estimateGlyphs))
+        {
+            Console.Error.WriteLine($"skipped: {entry}");
+            continue;
+        }
+
+        // Whatever character it is, the estimate only counts them. Kept to one script's worth of
+        // character anyway, so a reader of the input cannot mistake which side it stands for.
+        var estimateText = new string(estimateScript == OcrLayoutScript.Cjk ? '字' : 'a', estimateGlyphs);
+        var estimateBox = new System.Windows.Rect(0, 0, estimateWidth, estimateHeight);
+        var estimateHeightOut = OnnxOcrEngine.LayoutGlyphHeightFor(
+            estimateScript, estimateBox, estimateText, out var estimateTrace);
+
+        Console.WriteLine(
+            $"{estimateScript}\t{estimateWidth:G17}\t{estimateHeight:G17}\t{estimateGlyphs}\t" +
+            $"{estimateTrace.BoxEstimate:G17}\t" +
+            $"{(estimateTrace.PitchCandidate is { } candidate ? candidate.ToString("G17") : "null")}\t" +
+            $"{(estimateHeightOut is { } result ? result.ToString("G17") : "null")}\t" +
+            $"{estimateTrace.Source}\t{estimateTrace.PitchBranchEntered}\t{estimateTrace.PitchSelected}");
+    }
+
+    return 0;
+}
+
+// The rendered comparison set: known text, at known fonts and sizes, with the two boxes that can
+// be measured off the drawing itself. Writes the sheets and a manifest; no OCR runs here.
+//
+// LAYOUT BOX and INK BOX are different things and the manifest carries both, separately, because
+// the estimate is a function of a rectangle and it matters enormously which rectangle. Neither is
+// a detection box — that only exists after --glyph-samples-ocr has read the sheets back.
+//
+// Estimates are the production function's, called once per box, and the trace it fills in is what
+// says which path each one took. Nothing here re-derives any part of the formula.
+if (args[0] == "--glyph-samples")
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine("usage: --glyph-samples <outDir>");
+        return 1;
+    }
+
+    var sampleDir = args[1];
+    var samples = OcrHarness.GlyphSampleSheets.BuildSamples();
+    var placedSamples = OcrHarness.GlyphSampleSheets.Render(sampleDir, samples, Console.Error);
+
+    var manifestPath = Path.Combine(sampleDir, "samples.tsv");
+    using (var manifest = new StreamWriter(manifestPath, false, new System.Text.UTF8Encoding(false)))
+    {
+        // Two estimate blocks per row, prefixed by which box they were computed from. One header
+        // for both would leave the reader to guess, and guessing which box a number came from is
+        // exactly the mistake this whole step exists to avoid.
+        manifest.WriteLine(string.Join('\t', new string[][]
+        {
+            OcrHarness.GlyphSampleSheets.ManifestHeader,
+            [.. OcrHarness.GlyphSampleSheets.EstimateHeader.Select(column => "layout_" + column)],
+            [.. OcrHarness.GlyphSampleSheets.EstimateHeader.Select(column => "ink_" + column)],
+        }.SelectMany(columns => columns)));
+
+        foreach (var placed in placedSamples)
+        {
+            manifest.WriteLine(string.Join('\t',
+                OcrHarness.GlyphSampleSheets.ManifestLine(placed),
+                OcrHarness.GlyphSampleSheets.EstimateColumns(placed.Sample.Script, placed.LayoutBox, placed.Sample.Text),
+                OcrHarness.GlyphSampleSheets.EstimateColumns(placed.Sample.Script, placed.InkBox, placed.Sample.Text)));
+        }
+    }
+
+    Console.WriteLine($"samples: {placedSamples.Count} rows, {placedSamples.Select(p => p.Sheet).Distinct().Count()} sheets");
+    Console.WriteLine($"manifest: {manifestPath}");
+    Console.WriteLine($"no ink found: {placedSamples.Count(p => !p.InkFound)}");
+    return 0;
+}
+
+// The same set read back through OCR, which is the only place a detection box appears.
+//
+// OCR changes more than the rectangle: it changes the text, the glyph count and therefore the
+// script, and it drops, splits and merges lines. So each row is matched back to what was drawn and
+// the four failure kinds are counted rather than dropped, and every matched row gets its estimate
+// computed twice — once on the known text and once on what came back — so that the box's
+// contribution and the recognition's can be told apart.
+if (args[0] == "--glyph-samples-ocr")
+{
+    if (args.Length < 2 || !File.Exists(Path.Combine(args[1], "samples.tsv")))
+    {
+        Console.Error.WriteLine("usage: --glyph-samples-ocr <outDir>   (run --glyph-samples first)");
+        return 1;
+    }
+
+    var ocrSampleDir = args[1];
+    var manifestRows = File.ReadAllLines(Path.Combine(ocrSampleDir, "samples.tsv"))
+        .Skip(1)
+        .Where(line => line.Length > 0)
+        .Select(OcrHarness.GlyphSampleSheets.ParseManifestLine)
+        .ToList();
+
+    using var sampleEngine = new OnnxOcrEngine();
+    var sheetGroups = manifestRows.GroupBy(row => row.Sheet).ToList();
+    int sampleMatched = 0, sampleMissed = 0, sampleSplit = 0, sampleMerged = 0, sampleSpurious = 0, sampleNoInk = 0;
+
+    var ocrPath = Path.Combine(ocrSampleDir, "ocr.tsv");
+    using (var ocrOut = new StreamWriter(ocrPath, false, new System.Text.UTF8Encoding(false)))
+    {
+        ocrOut.WriteLine(string.Join('\t', new string[][]
+        {
+            [
+                "id", "sheet", "font", "sizePx", "knownScript", "content", "glyphs", "text",
+                "status", "recText", "recScript", "recGlyphs", "textExact", "conf",
+                "ocrX", "ocrY", "ocrW", "ocrH", "productionEst",
+            ],
+            [.. OcrHarness.GlyphSampleSheets.EstimateHeader.Select(column => "known_" + column)],
+            [.. OcrHarness.GlyphSampleSheets.EstimateHeader.Select(column => "rec_" + column)],
+        }.SelectMany(columns => columns)));
+
+        foreach (var sheet in sheetGroups)
+        {
+            var sheetPath = Path.Combine(ocrSampleDir, sheet.Key);
+            if (!File.Exists(sheetPath)) { Console.Error.WriteLine($"(missing sheet) {sheetPath}"); continue; }
+
+            var rows = sheet.OrderBy(row => row.LayoutBox.Y).ToList();
+
+            // The recognition model follows what was drawn, because reading a CJK sheet with the
+            // Latin model is a different experiment from the one being run.
+            var sheetLanguage = rows.Any(row => row.Sample.Script is OcrLayoutScript.Cjk or OcrLayoutScript.Mixed)
+                ? "JA"
+                : "EN";
+
+            using var sheetImage = new Bitmap(sheetPath);
+            var sheetBlocks = await sampleEngine.RecognizeAsync(sheetImage, sheetLanguage) ?? [];
+
+            // Which drawn rows each detection covers, by how much of that row's ink it contains.
+            // Ink rather than the layout box: the layout box carries the font's leading, which no
+            // detector has ever drawn a rectangle around.
+            var covers = sheetBlocks.ToDictionary(
+                block => block,
+                block => rows.Where(row =>
+                    row.InkFound &&
+                    Math.Max(0, Math.Min(block.LayoutBounds.Bottom, row.InkBox.Bottom) - Math.Max(block.LayoutBounds.Top, row.InkBox.Top))
+                        >= row.InkBox.Height * 0.5 &&
+                    Math.Min(block.LayoutBounds.Right, row.InkBox.Right) > Math.Max(block.LayoutBounds.Left, row.InkBox.Left))
+                    .ToList());
+
+            sampleSpurious += covers.Count(entry => entry.Value.Count == 0);
+
+            foreach (var row in rows)
+            {
+                if (!row.InkFound) { sampleNoInk++; continue; }
+
+                var candidates = covers.Where(entry => entry.Value.Contains(row)).Select(entry => entry.Key).ToList();
+
+                string status;
+                OcrTextBlock? chosen = null;
+
+                if (candidates.Count == 0)
+                {
+                    status = "missed";
+                    sampleMissed++;
+                }
+                else if (candidates.Any(block => covers[block].Count > 1))
+                {
+                    status = "merged";
+                    sampleMerged++;
+                }
+                else if (candidates.Count > 1)
+                {
+                    status = "split";
+                    sampleSplit++;
+                }
+                else
+                {
+                    status = "matched";
+                    chosen = candidates[0];
+                    sampleMatched++;
+                }
+
+                var recText = chosen?.Text ?? string.Empty;
+                var recScript = chosen is null ? OcrLayoutScript.Unknown : LayoutScriptDetection.For(recText);
+                var ocrBox = chosen?.LayoutBounds ?? default;
+
+                ocrOut.WriteLine(string.Join('\t',
+                    row.Sample.Id, row.Sheet, row.Sample.Font, row.Sample.SizePx, row.Sample.Script,
+                    row.Sample.Content, row.Sample.Glyphs, row.Sample.Text,
+                    status,
+                    recText.Replace('\t', ' '),
+                    recScript,
+                    recText.Count(c => !char.IsWhiteSpace(c)),
+                    string.Equals(recText.Trim(), row.Sample.Text, StringComparison.Ordinal),
+                    chosen?.Confidence is { } confidence ? OcrHarness.GlyphSampleSheets.F(confidence) : "null",
+                    OcrHarness.GlyphSampleSheets.F(ocrBox.X), OcrHarness.GlyphSampleSheets.F(ocrBox.Y),
+                    OcrHarness.GlyphSampleSheets.F(ocrBox.Width), OcrHarness.GlyphSampleSheets.F(ocrBox.Height),
+                    chosen?.LayoutGlyphHeight is { } production ? OcrHarness.GlyphSampleSheets.F(production) : "null",
+                    // Known text on the OCR box, then recognised text on the same box: the first
+                    // isolates what the detector did to the rectangle, the second is the whole
+                    // pipeline. Subtracting one from the other is not "detection error" — the
+                    // difference also carries the text and the script.
+                    OcrHarness.GlyphSampleSheets.EstimateColumns(row.Sample.Script, ocrBox, row.Sample.Text),
+                    OcrHarness.GlyphSampleSheets.EstimateColumns(recScript, ocrBox, recText)));
+            }
+
+            Console.WriteLine($"{sheet.Key}\t{rows.Count} rows\tlang={sheetLanguage}\t{sheetBlocks.Count} detections");
+        }
+    }
+
+    Console.WriteLine(new string('=', 78));
+    Console.WriteLine($"matched : {sampleMatched}");
+    Console.WriteLine($"missed  : {sampleMissed}");
+    Console.WriteLine($"split   : {sampleSplit}   <- one drawn line, more than one detection");
+    Console.WriteLine($"merged  : {sampleMerged}   <- a detection covering more than one drawn line");
+    Console.WriteLine($"spurious: {sampleSpurious}   <- detections covering no drawn line");
+    Console.WriteLine($"no ink  : {sampleNoInk}   <- nothing was drawn, so nothing could be matched");
+    Console.WriteLine($"ocr: {ocrPath}");
+    return 0;
+}
+
 if (args[0] == "--reject-audit")
 {
     using var auditEngine = new OnnxOcrEngine();
@@ -1027,7 +1333,7 @@ if (args[0] == "--reject-audit")
         framesLosing++;
         droppedTotal += dropped.Count;
 
-        var groupedUnfiltered = OcrTextBlockGrouper.Group(raw);
+        var groupedUnfiltered = OcrTextBlockGrouper.Group(raw, GroupingProfile.Realtime);
 
         foreach (var block in dropped)
         {
@@ -1102,7 +1408,14 @@ if (args[0] == "--group-explain")
         {
             // The screenshot flow's own entry point, so the size comes from the same place the app
             // gets it rather than from a number repeated here.
-            Console.WriteLine("FLOW: 截圖翻譯 (detect=screenshot)");
+            // The mode is named except on the conservative one, whose thresholds are the ones every
+            // capture was grouped on before modes existed — so an Interface run's output stays
+            // comparable byte for byte with every file saved back then. Tied to which behaviour it
+            // is rather than to which mode is default: the default moved in v2 and this rule did
+            // not, because what it is protecting is the comparison, not the setting.
+            Console.WriteLine(harnessLayoutMode == CaptureLayoutMode.Interface
+                ? "FLOW: 截圖翻譯 (detect=screenshot)"
+                : $"FLOW: 截圖翻譯 (detect=screenshot, mode={harnessLayoutMode})");
             raw = await explainEngine.RecognizeAsync(image, harnessLanguage);
         }
 
@@ -1119,8 +1432,106 @@ if (args[0] == "--group-explain")
             if (raw.Count == 0) { Console.WriteLine("  (nothing survived)"); continue; }
         }
 
+        // The profile the flow named above would really have used. Realtime has its own and never
+        // takes the screenshot side's, so printing verdicts from the wrong one would be tuning
+        // against thresholds the app does not run.
+        var explainProfile = harnessRealtime
+            ? GroupingProfile.Realtime
+            : GroupingProfile.For(harnessLayoutMode);
+        if (!harnessRealtime)
+            raw = OcrService.PrepareScreenshotGrouping(image, raw, explainProfile);
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
-        var grouped = OcrTextBlockGrouper.Group(raw, decisions);
+        var groupingTrace = harnessTrace ? new GroupingTrace() : null;
+        var grouped = OcrTextBlockGrouper.Group(raw, explainProfile, decisions, groupingTrace);
+
+        if (groupingTrace is not null)
+        {
+            // Which build actually ran. An exe on disk is not evidence that it came out of the tree
+            // being reported on, and a scan whose build had failed has already been read as "the
+            // change did nothing" once on this branch.
+            var harnessAssembly = System.Reflection.Assembly.GetExecutingAssembly();
+            Console.WriteLine(
+                $"TRACE BUILD: {harnessAssembly.GetName().Name} " +
+                $"{System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(harnessAssembly)?.InformationalVersion} " +
+                $"built={File.GetLastWriteTimeUtc(harnessAssembly.Location):yyyy-MM-dd HH:mm:ss}Z");
+
+            // The profile prints its own values rather than its name: one mode has meant more than
+            // one set of thresholds since v2.4, so a run named only by its mode does not say what
+            // it was judged on.
+            Console.WriteLine(
+                $"TRACE PROFILE: TightlySetMinTextSizeRatio={explainProfile.TightlySetMinTextSizeRatio:0.0000} " +
+                $"WaiveLengthTestWhenSetSolid={explainProfile.WaiveLengthTestWhenSetSolid} " +
+                $"SolidLineAdvanceWhenWrapped={explainProfile.SolidLineAdvanceWhenWrapped:0.0000} " +
+                $"MinTextSizeRatio={OcrTextBlockGrouper.MinTextSizeRatio:0.0000}");
+            Console.WriteLine(
+                $"TRACE INPUT: {path} {image.Width}x{image.Height}px whole image, no ROI " +
+                $"lang={harnessLanguage} mode={harnessLayoutMode} " +
+                $"detect={(harnessRealtime || harnessSize is not null ? harnessSize?.ToString() ?? "realtime" : "screenshot")}");
+
+            // What each field means, printed with the output rather than kept in a document
+            // beside it: these files are read months later by whoever is holding the bug.
+            Console.WriteLine(
+                "  trace legend: box*0.82=the estimate before anything challenges it | " +
+                "pitch=W/n*coefficient, computed whether or not it was read | " +
+                "W-2H=distance from the width condition, which is a strict > | " +
+                "n>=4,W>2H=the two halves of that condition, separately");
+            Console.WriteLine(
+                "  trace legend: branch=both halves held, so the pitch was consulted | " +
+                "pitchWon=it came out lower and replaced the box | " +
+                "short(applied,cand,won)=the one-to-three-glyph correction | " +
+                "floor=the 1px floor was reached");
+            Console.WriteLine(
+                "  trace legend: src=which value came back — Box, Pitch, ShortText, Floor, " +
+                "None (no estimate for this script), MergedPairwiseUpperMedian (merged one " +
+                "fragment at a time, each merge keeping the upper median of the two), " +
+                "NoneAfterMerge (the joined text is no longer of one script)");
+            Console.WriteLine(
+                "  trace legend: exact=the same box at full precision (G17), and whether the width " +
+                "is exactly twice the height — the case a four-decimal print cannot tell from a near miss");
+            Console.WriteLine("  trace --- blocks as the detector drew them, before same-line merging ---");
+            foreach (var line in groupingTrace.Blocks)
+            {
+                // The production function, asked again on the same inputs, rather than the formula
+                // written out a second time here: a harness that works out what the estimate
+                // "would have" done is a harness that can be wrong about it in exactly the way this
+                // whole step exists to stop.
+                OnnxOcrEngine.LayoutGlyphHeightFor(
+                    line.Block.LayoutScript, line.Block.LayoutBounds, line.Block.Text, out var estimate);
+                WriteTracedLine(line, estimate);
+            }
+
+            Console.WriteLine("  trace --- lines the next-line rules were asked about ---");
+            foreach (var line in groupingTrace.Lines)
+            {
+                if (line.SourceIds.Count == 1)
+                {
+                    // Same instance the block layer already traced: the merge keeps what it is
+                    // handed when a row holds one box.
+                    OnnxOcrEngine.LayoutGlyphHeightFor(
+                        line.Block.LayoutScript, line.Block.LayoutBounds, line.Block.Text, out var estimate);
+                    WriteTracedLine(line, estimate);
+                    continue;
+                }
+
+                // Deliberately not re-estimated: running the single-line formula over the joined
+                // box would print a number the grouper never saw. What it carries instead is the
+                // result of merging the fragments one at a time, each merge taking the upper median
+                // of the two heights in hand — which on two values is the LARGER of them, and over
+                // three fragments is not the median of the three. Heights 10, 20 and 30 merge to
+                // 30. The label said "median of members" for one round and that was not true.
+                Console.WriteLine(
+                    $"  trace {line.Id,-4} <- {string.Join("+", line.SourceIds),-14} " +
+                    $"script={line.Block.LayoutScript,-7} {TraceBox(line.Block.LayoutBounds)} " +
+                    $"n={ShortTextGlyphHeight.GlyphsIn(line.Block.Text),3} " +
+                    $"glyph={TraceNumber(line.Block.LayoutGlyphHeight)} " +
+                    // Null has its own name here. A merged line whose joined text is no longer of
+                    // one script carries no estimate at all, and calling that a combination of its
+                    // members would be the same untruth in the other direction.
+                    $"src={(line.Block.LayoutGlyphHeight is null ? "NoneAfterMerge" : "MergedPairwiseUpperMedian")}");
+                Console.WriteLine($"  trace      {TraceExact(line.Block.LayoutBounds)}");
+                Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
+            }
+        }
 
         Console.WriteLine($"  lines read: {raw.Count}  ->  groups sent to translation: {grouped.Count}");
 
@@ -1144,6 +1555,13 @@ if (args[0] == "--group-explain")
         // say so on its face.
         Console.WriteLine("  --- verdicts: row = same line left to right, next = the line below ---");
         Console.WriteLine("  --- gaps and advances in line heights ---");
+        // align is the left-edge delta, the one the alignment gate reads today; alignC and alignR
+        // are the same misalignment measured on the centres and on the right edges, and only a
+        // "next" verdict has them. bar is the advance a shorter final line is allowed before the
+        // leading rule refuses it. All four are line heights, and none of them exist for "row".
+        Console.WriteLine(
+            "  --- next: align=left alignC=centre alignR=right alignMin=what the gate read, " +
+            "bar=wrapped-final-line limit, solid=this group's set-solid limit ---");
         foreach (var decision in decisions)
         {
             var verdict = decision.Joined ? "JOIN  " : "SPLIT ";
@@ -1152,10 +1570,34 @@ if (args[0] == "--group-explain")
                   $"overlap={decision.LeftDelta,5:0.00} width={decision.WidthRatio:0.00} " +
                   $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]"
                 : $"  next {verdict} vgap={decision.VerticalGap,6:0.00} " +
-                  $"align={decision.LeftDelta,6:0.00} size={decision.TextSizeRatio:0.00} " +
+                  $"align={decision.LeftDelta,6:0.00} alignC={decision.CenterDelta,6:0.00} " +
+                  $"alignR={decision.RightDelta,6:0.00} alignMin={decision.AlignmentDelta,6:0.00} " +
+                  $"size={decision.TextSizeRatio:0.00} " +
                   $"width={decision.WidthRatio:0.00} adv={decision.LineAdvance,5:0.00} " +
+                  $"bar={decision.LeadingBar:0.00} solid={decision.SolidBar:0.00} " +
                   $"script={decision.PreviousScript}/{decision.CurrentScript}  [{decision.Rule}]");
             Console.WriteLine($"      \"{Shorten(decision.Previous)}\" + \"{Shorten(decision.Current)}\"");
+
+            if (!harnessTrace)
+                continue;
+
+            // Same two ids the layers above and below use, so a verdict can be followed back to the
+            // boxes it was made on and forward into the group it produced. The text is in the line
+            // above and it is truncated, which is why it cannot serve.
+            Console.WriteLine(decision.Kind == "row"
+                ? $"  trace {decision.PreviousId} + {decision.CurrentId}  (blocks)"
+                : $"  trace {decision.PreviousId} + {decision.CurrentId}  " +
+                  $"size={decision.SizeBasis} prev={decision.PreviousSizeValue:0.0000} " +
+                  $"cur={decision.CurrentSizeValue:0.0000} ratio={decision.TextSizeRatio:0.0000}  " +
+                  $"dy={decision.AdvancePixels:0.0000} / {decision.AdvanceDenominator:0.0000} " +
+                  $"= adv {decision.LineAdvance:0.0000}");
+        }
+
+        if (groupingTrace is not null)
+        {
+            Console.WriteLine("  trace --- groups, by line id ---");
+            for (var i = 0; i < groupingTrace.Groups.Count; i++)
+                Console.WriteLine($"  trace [{i}] {string.Join(" ", groupingTrace.Groups[i])}");
         }
     }
 
@@ -1163,6 +1605,57 @@ if (args[0] == "--group-explain")
 
     static string Shorten(string text) =>
         text.Length <= 42 ? text : string.Concat(text.AsSpan(0, 40), "…");
+
+    // One line of inputs and one of the path taken through the estimate. Both are printed for every
+    // line whether or not anything interesting happened on it, because which lines are interesting
+    // is the question the trace is being read to answer.
+    static void WriteTracedLine(GroupingTrace.Line line, GlyphHeightTrace estimate)
+    {
+        var sources = line.SourceIds.Count > 0 ? $"<- {string.Join("+", line.SourceIds)}" : "";
+        Console.WriteLine(
+            $"  trace {line.Id,-4} {sources,-14} script={estimate.Script,-7} {TraceBox(line.Block.LayoutBounds)} " +
+            $"n={estimate.GlyphCount,3} glyph={TraceNumber(estimate.Result)} src={estimate.Source}");
+
+        // A script with no estimate has no intermediate values either, and printing zeroes for them
+        // would read as measurements. The two width conditions are still real, and worth seeing:
+        // they say that this line would have taken the pitch branch had it been asked.
+        if (estimate.Source == GlyphHeightSource.None)
+        {
+            Console.WriteLine(
+                $"  trace      no estimate for this script  " +
+                $"W-2H={estimate.WidthMinusTwiceHeight:+0.0000;-0.0000;0.0000}  " +
+                $"n>=4={estimate.HasEnoughGlyphs} W>2H={estimate.IsWideEnough}");
+            Console.WriteLine($"  trace      {TraceExact(line.Block.LayoutBounds)}");
+            Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
+            return;
+        }
+
+        Console.WriteLine(
+            $"  trace      box*0.82={estimate.BoxEstimate:0.0000} " +
+            $"pitch={TraceNumber(estimate.PitchCandidate)} (W/n*{estimate.PitchCoefficient:0.00})  " +
+            $"W-2H={estimate.WidthMinusTwiceHeight:+0.0000;-0.0000;0.0000}  " +
+            $"n>=4={estimate.HasEnoughGlyphs} W>2H={estimate.IsWideEnough} " +
+            $"branch={estimate.PitchBranchEntered} pitchWon={estimate.PitchSelected}  " +
+            $"short(applied={estimate.ShortTextApplied},cand={TraceNumber(estimate.ShortTextCandidate)}," +
+            $"won={estimate.ShortTextSelected})  floor={estimate.FloorApplied}");
+        Console.WriteLine($"  trace      {TraceExact(line.Block.LayoutBounds)}");
+        Console.WriteLine($"  trace      \"{Shorten(line.Block.Text)}\"");
+    }
+
+    // The width condition at full precision, and the equality asked directly.
+    //
+    // Four decimals cannot answer the question this trace was added for. "62.0000 vs 62.0000" is
+    // what a box exactly on the line prints, and it is also what a box a ten-thousandth of a pixel
+    // off it prints, and those two are estimated 36% apart. Printing G17 and the comparison itself
+    // is the difference between reporting the boundary and guessing at it.
+    static string TraceExact(System.Windows.Rect box) =>
+        $"exact: W={box.Width:G17} H={box.Height:G17} " +
+        $"W-2H={box.Width - box.Height * 2:G17} W==2H={box.Width == box.Height * 2}";
+
+    static string TraceBox(System.Windows.Rect box) =>
+        $"box=({box.X:0.0000},{box.Y:0.0000},{box.Width:0.0000},{box.Height:0.0000})";
+
+    static string TraceNumber(double? value) => value is { } number ? $"{number:0.0000}" : "null";
 }
 
 // The vertical pipeline, which nothing else here can reach.
@@ -1181,6 +1674,11 @@ if (args[0] == "--vertical-explain")
         if (!File.Exists(path)) { Console.WriteLine($"(missing) {path}"); continue; }
 
         using var image = new Bitmap(path);
+        // No mode flag, because the pipeline has no parameter for one: vertical text runs on its
+        // own profile whatever the toolbar says. This was briefly wired to the flag, between
+        // discovering that it had been pinned to one profile by accident and measuring what the
+        // other profile actually did to vertical material — which was join balloons rather than the
+        // lines inside them. --interface is accepted and ignored here.
         var columns = await OcrService.RecognizeVerticalAsync(
             verticalEngine, image, harnessLanguage, CancellationToken.None);
 
@@ -1349,7 +1847,7 @@ if (args[0] == "--roi-stability")
             .ToList();
 
         var read = await roiEngine.RecognizeAsync(crop, harnessLanguage);
-        var groups = OcrTextBlockGrouper.Group(read).Count;
+        var groups = OcrTextBlockGrouper.Group(read, harnessGroupingBaseline).Count;
 
         var blocks = read
             .Select(block => (
@@ -1623,7 +2121,7 @@ if (args[0] == "--roi-snap")
         // supposed to see a whole layout. It is also where this design's own risk lives — those
         // rules now see content the user did not frame. Filtering first would trade that for the
         // opposite problem, a layout with holes in it.
-        var grouped = OcrTextBlockGrouper.Group(read);
+        var grouped = OcrTextBlockGrouper.Group(read, harnessGroupingBaseline);
 
         var all = grouped
             .Select(block => (
@@ -1968,7 +2466,7 @@ if (args[0] == "--roi-fullframe")
         var read = ffSession.Recognize(kept);
         recognitionWatch.Stop();
 
-        var groups = OcrTextBlockGrouper.Group(read).Count;
+        var groups = OcrTextBlockGrouper.Group(read, harnessGroupingBaseline).Count;
 
         // Today's behaviour, for the same selection: crop, detect on the crop, recognise, group.
         using var crop = ffSource.Clone(logical, System.Drawing.Imaging.PixelFormat.Format32bppArgb);

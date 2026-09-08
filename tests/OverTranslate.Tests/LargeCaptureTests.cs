@@ -11,12 +11,11 @@ namespace OverTranslate.Tests;
 /// </summary>
 public class LargeCaptureTests(ITestOutputHelper output)
 {
-    [Fact]
+    [ScreenshotFact("subtitle-over-light-floor-1226x196.png")]
     public async Task ALineInACaptureLargeEnoughToBeDownscaledIsStillRead()
     {
         using var ocr = new OcrService();
-        using var subtitle = new Bitmap(
-            Path.Combine(AppContext.BaseDirectory, "Fixtures", "subtitle-over-light-floor-1226x196.png"));
+        using var subtitle = ExternalScreenshot.Load("subtitle-over-light-floor-1226x196.png");
         using var capture = OnALargeCanvas(subtitle, 2400, 1200);
 
         var blocks = await ocr.RecognizeAsync(capture, "EN");

@@ -1,0 +1,1266 @@
+[
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F6/samples/mixed-cjk-tight.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "\u7AEF\u5074\u5230\u670D\u52D9\u7AEF\u7684\u5168\u5834\u666F\u6587\u4EF6\u667A\u6167\u90E8\u7F72",
+        "Bounds": [
+          87,
+          69,
+          738,
+          48
+        ],
+        "LayoutBounds": [
+          87,
+          69,
+          738,
+          48
+        ],
+        "Script": 2,
+        "Glyph": 39.36,
+        "Render": 39.36,
+        "Confidence": 0.9997528791427612,
+        "Ink": 40
+      },
+      {
+        "Text": "\u95B1\u8B80\u66F4\u591A\u3002",
+        "Bounds": [
+          89,
+          122,
+          125,
+          29
+        ],
+        "LayoutBounds": [
+          89,
+          122,
+          125,
+          29
+        ],
+        "Script": 2,
+        "Glyph": 23.779999999999998,
+        "Render": 23.779999999999998,
+        "Confidence": 0.9977098703384399,
+        "Ink": null
+      },
+      {
+        "Text": "\u7AEF\u5074\u5230\u670D\u52D9\u7AEF\u7684\u5168\u5834\u666F\u6587\u4EF6\u667A\u6167\u90E8\u7F72",
+        "Bounds": [
+          88,
+          309,
+          737,
+          48
+        ],
+        "LayoutBounds": [
+          88,
+          309,
+          737,
+          48
+        ],
+        "Script": 2,
+        "Glyph": 39.36,
+        "Render": 39.36,
+        "Confidence": 0.9998540878295898,
+        "Ink": 40
+      },
+      {
+        "Text": "\u95B1\u8B80\u66F4\u591A\u3002",
+        "Bounds": [
+          89,
+          356,
+          126,
+          29
+        ],
+        "LayoutBounds": [
+          89,
+          356,
+          126,
+          29
+        ],
+        "Script": 2,
+        "Glyph": 23.779999999999998,
+        "Render": 23.779999999999998,
+        "Confidence": 0.9976655840873718,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F6/samples/mixed-cjk.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "\u7AEF\u5074\u5230\u670D\u52D9\u7AEF\u7684\u5168\u5834\u666F\u6587\u4EF6\u667A\u6167\u90E8\u7F72",
+        "Bounds": [
+          88,
+          70,
+          736,
+          45
+        ],
+        "LayoutBounds": [
+          88,
+          70,
+          736,
+          45
+        ],
+        "Script": 2,
+        "Glyph": 36.9,
+        "Render": 36.9,
+        "Confidence": 0.9998536705970764,
+        "Ink": 40
+      },
+      {
+        "Text": "\u95B1\u8B80\u66F4\u591A\u3002",
+        "Bounds": [
+          88,
+          131,
+          126,
+          32
+        ],
+        "LayoutBounds": [
+          88,
+          131,
+          126,
+          32
+        ],
+        "Script": 2,
+        "Glyph": 26.24,
+        "Render": 26.24,
+        "Confidence": 0.9985591769218445,
+        "Ink": null
+      },
+      {
+        "Text": "\u55AE\u9EDE\u6280\u8853\u7684\u9818\u5148\u53EA\u662F\u958B\u59CB\uFF0C\u751F\u614B\u7684\u7E41\u69AE\u624D\u662F\u9577\u671F\u50F9\u503C\u6240\u5728\uFF0C\u70BA\u4E86\u8B93\u6587\u4EF6",
+        "Bounds": [
+          89,
+          304,
+          807,
+          28
+        ],
+        "LayoutBounds": [
+          89,
+          304,
+          807,
+          28
+        ],
+        "Script": 2,
+        "Glyph": 22.959999999999997,
+        "Render": 22.959999999999997,
+        "Confidence": 0.9998301863670349,
+        "Ink": 23
+      },
+      {
+        "Text": "\u667A\u6167\u6280\u8853\u80FD\u5920\u771F\u6B63\u8D70\u9032\u6BCF\u4E00\u500B\u7522\u696D\uFF0C\u6211\u5011\u6B63\u5F0F\u767C\u8D77\u9019\u500B\u958B\u653E\u7684\u751F\u614B\u806F",
+        "Bounds": [
+          91,
+          344,
+          779,
+          28
+        ],
+        "LayoutBounds": [
+          91,
+          344,
+          779,
+          28
+        ],
+        "Script": 2,
+        "Glyph": 22.959999999999997,
+        "Render": 22.959999999999997,
+        "Confidence": 0.9996122121810913,
+        "Ink": 23
+      },
+      {
+        "Text": "\u76DF\u3002",
+        "Bounds": [
+          86,
+          382,
+          49,
+          33
+        ],
+        "LayoutBounds": [
+          86,
+          382,
+          49,
+          33
+        ],
+        "Script": 2,
+        "Glyph": 27.06,
+        "Render": 16.5,
+        "Confidence": 0.999840259552002,
+        "Ink": null
+      },
+      {
+        "Text": "\u6211\u5011\u8655\u7406\u8CC7\u6599\u3002",
+        "Bounds": [
+          89,
+          548,
+          307,
+          48
+        ],
+        "LayoutBounds": [
+          89,
+          548,
+          307,
+          48
+        ],
+        "Script": 2,
+        "Glyph": 39.36,
+        "Render": 39.36,
+        "Confidence": 0.9997261166572571,
+        "Ink": null
+      },
+      {
+        "Text": "\u4F7F\u7528\u7CBE\u78BA\u7684\u5730\u7406\u4F4D\u7F6E\u8CC7\u6599\u4E26\u4E3B\u52D5\u6383\u63CF\u88DD\u7F6E\u7279\u5FB5\u4EE5\u9032\u884C\u8B58\u5225\uFF0C\u63A5\u8457\u4F9D\u7167\u8AAA",
+        "Bounds": [
+          89,
+          614,
+          808,
+          31
+        ],
+        "LayoutBounds": [
+          89,
+          614,
+          808,
+          31
+        ],
+        "Script": 2,
+        "Glyph": 25.419999999999998,
+        "Render": 25.419999999999998,
+        "Confidence": 0.9996912479400635,
+        "Ink": 23
+      },
+      {
+        "Text": "\u660E\u5728\u88DD\u7F6E\u4E0A\u5132\u5B58\u6216\u5B58\u53D6\u8CC7\u8A0A\uFF0C\u4E26\u5C07\u7D50\u679C\u63D0\u4F9B\u7D66\u5408\u4F5C\u5925\u4F34\u4F7F\u7528\u3002",
+        "Bounds": [
+          88,
+          654,
+          697,
+          31
+        ],
+        "LayoutBounds": [
+          88,
+          654,
+          697,
+          31
+        ],
+        "Script": 2,
+        "Glyph": 25.419999999999998,
+        "Render": 25.419999999999998,
+        "Confidence": 0.9998010396957397,
+        "Ink": 23
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F6/samples/mixed-latin-tight.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "Precise geolocation and device scanning",
+        "Bounds": [
+          84,
+          58,
+          847,
+          55
+        ],
+        "LayoutBounds": [
+          84,
+          58,
+          847,
+          55
+        ],
+        "Script": 1,
+        "Glyph": 31.46,
+        "Render": 31.46,
+        "Confidence": 0.9893477559089661,
+        "Ink": 32
+      },
+      {
+        "Text": "Read more.",
+        "Bounds": [
+          86,
+          117,
+          142,
+          34
+        ],
+        "LayoutBounds": [
+          86,
+          117,
+          142,
+          34
+        ],
+        "Script": 1,
+        "Glyph": 20.511111111111113,
+        "Render": 20.511111111111113,
+        "Confidence": 0.9894405603408813,
+        "Ink": null
+      },
+      {
+        "Text": "Precise geolocation and device scanning",
+        "Bounds": [
+          84,
+          299,
+          847,
+          55
+        ],
+        "LayoutBounds": [
+          84,
+          299,
+          847,
+          55
+        ],
+        "Script": 1,
+        "Glyph": 31.46,
+        "Render": 31.46,
+        "Confidence": 0.9900674223899841,
+        "Ink": 32
+      },
+      {
+        "Text": "Read more.",
+        "Bounds": [
+          87,
+          355,
+          142,
+          31
+        ],
+        "LayoutBounds": [
+          87,
+          355,
+          142,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 20.511111111111113,
+        "Render": 20.511111111111113,
+        "Confidence": 0.9999560713768005,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F6/samples/mixed-latin.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "Precise geolocation and device scanning",
+        "Bounds": [
+          84,
+          58,
+          848,
+          55
+        ],
+        "LayoutBounds": [
+          84,
+          58,
+          848,
+          55
+        ],
+        "Script": 1,
+        "Glyph": 31.497142857142858,
+        "Render": 31.497142857142858,
+        "Confidence": 0.9888512492179871,
+        "Ink": 32
+      },
+      {
+        "Text": "Read more.",
+        "Bounds": [
+          86,
+          124,
+          142,
+          35
+        ],
+        "LayoutBounds": [
+          86,
+          124,
+          142,
+          35
+        ],
+        "Script": 1,
+        "Glyph": 20.511111111111113,
+        "Render": 20.511111111111113,
+        "Confidence": 0.9999549388885498,
+        "Ink": null
+      },
+      {
+        "Text": "The alliance involves no commercial exclusivity and no barrier to entry: any",
+        "Bounds": [
+          86,
+          295,
+          856,
+          37
+        ],
+        "LayoutBounds": [
+          86,
+          295,
+          856,
+          37
+        ],
+        "Script": 1,
+        "Glyph": 17.12,
+        "Render": 17.12,
+        "Confidence": 0.9999280571937561,
+        "Ink": 19
+      },
+      {
+        "Text": "model provider or application builder may join it, and every member keeps",
+        "Bounds": [
+          87,
+          337,
+          845,
+          34
+        ],
+        "LayoutBounds": [
+          87,
+          337,
+          845,
+          34
+        ],
+        "Script": 1,
+        "Glyph": 17.717741935483872,
+        "Render": 17.717741935483872,
+        "Confidence": 0.9990457892417908,
+        "Ink": 18
+      },
+      {
+        "Text": "the right to leave at any time without notice or",
+        "Bounds": [
+          87,
+          379,
+          519,
+          31
+        ],
+        "LayoutBounds": [
+          87,
+          379,
+          519,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 17.3,
+        "Render": 17.3,
+        "Confidence": 0.9952772855758667,
+        "Ink": 18
+      },
+      {
+        "Text": "cost.",
+        "Bounds": [
+          85,
+          417,
+          61,
+          34
+        ],
+        "LayoutBounds": [
+          85,
+          417,
+          61,
+          34
+        ],
+        "Script": 1,
+        "Glyph": 27.88,
+        "Render": 27.88,
+        "Confidence": 0.9999211430549622,
+        "Ink": null
+      },
+      {
+        "Text": "We process data.",
+        "Bounds": [
+          86,
+          579,
+          367,
+          51
+        ],
+        "LayoutBounds": [
+          86,
+          579,
+          367,
+          51
+        ],
+        "Script": 1,
+        "Glyph": 34.07857142857143,
+        "Render": 34.07857142857143,
+        "Confidence": 0.9998233914375305,
+        "Ink": null
+      },
+      {
+        "Text": "Use precise geolocation data and actively scan device characteristics for",
+        "Bounds": [
+          86,
+          648,
+          828,
+          37
+        ],
+        "LayoutBounds": [
+          86,
+          648,
+          828,
+          37
+        ],
+        "Script": 1,
+        "Glyph": 16.81875,
+        "Render": 16.81875,
+        "Confidence": 0.9998883008956909,
+        "Ink": 18
+      },
+      {
+        "Text": "identification, then store or access information on a device as described.",
+        "Bounds": [
+          87,
+          690,
+          820,
+          31
+        ],
+        "LayoutBounds": [
+          87,
+          690,
+          820,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 16.65625,
+        "Render": 16.65625,
+        "Confidence": 0.988165020942688,
+        "Ink": 19
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F6/samples/mixed-script.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "\u7AEF\u5074\u5230\u670D\u52D9\u7AEF\u7684\u5168\u5834\u666F\u90E8\u7F72",
+        "Bounds": [
+          89,
+          69,
+          551,
+          46
+        ],
+        "LayoutBounds": [
+          89,
+          69,
+          551,
+          46
+        ],
+        "Script": 2,
+        "Glyph": 37.72,
+        "Render": 37.72,
+        "Confidence": 0.9995586276054382,
+        "Ink": 40
+      },
+      {
+        "Text": "Read more.",
+        "Bounds": [
+          86,
+          128,
+          147,
+          38
+        ],
+        "LayoutBounds": [
+          86,
+          128,
+          147,
+          38
+        ],
+        "Script": 1,
+        "Glyph": 21.233333333333334,
+        "Render": 21.233333333333334,
+        "Confidence": 0.9999571442604065,
+        "Ink": null
+      },
+      {
+        "Text": "Precise geolocation and device scanning",
+        "Bounds": [
+          84,
+          305,
+          882,
+          59
+        ],
+        "LayoutBounds": [
+          84,
+          305,
+          882,
+          59
+        ],
+        "Script": 1,
+        "Glyph": 32.76,
+        "Render": 32.76,
+        "Confidence": 0.9910849928855896,
+        "Ink": 34
+      },
+      {
+        "Text": "\u95B1\u8B80\u66F4\u591A\u3002",
+        "Bounds": [
+          87,
+          368,
+          128,
+          34
+        ],
+        "LayoutBounds": [
+          87,
+          368,
+          128,
+          34
+        ],
+        "Script": 2,
+        "Glyph": 27.88,
+        "Render": 27.88,
+        "Confidence": 0.997950553894043,
+        "Ink": null
+      },
+      {
+        "Text": "\u672C\u6B21 PaddleOCR 3.7.0 release \u91DD\u5C0D\u53E4\u7C4D\u8207\u5716\u8868\u7406\u89E3\u505A\u4E86\u5927\u5E45\u6539\u5584\uFF0C\u4E26\u4E14\u5728",
+        "Bounds": [
+          88,
+          541,
+          862,
+          34
+        ],
+        "LayoutBounds": [
+          88,
+          541,
+          862,
+          34
+        ],
+        "Script": 3,
+        "Glyph": null,
+        "Render": 26.680952380952384,
+        "Confidence": 0.9763821959495544,
+        "Ink": 23
+      },
+      {
+        "Text": "OmniDocBench \u4E0A\u518D\u6B21\u5237\u65B0\u7D00\u9304\uFF0C\u5B8C\u6574\u8AAA\u660E\u8ACB\u898B release notes for",
+        "Bounds": [
+          86,
+          579,
+          783,
+          37
+        ],
+        "LayoutBounds": [
+          86,
+          579,
+          783,
+          37
+        ],
+        "Script": 3,
+        "Glyph": null,
+        "Render": 24.826829268292684,
+        "Confidence": 0.9880703091621399,
+        "Ink": 22
+      },
+      {
+        "Text": "1.81.0.",
+        "Bounds": [
+          86,
+          620,
+          85,
+          36
+        ],
+        "LayoutBounds": [
+          86,
+          620,
+          85,
+          36
+        ],
+        "Script": 1,
+        "Glyph": 15.785714285714286,
+        "Render": 15.785714285714286,
+        "Confidence": 0.9997852444648743,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F7/samples/f7-c1-cjk.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "\u8B8A\u66F4\u64F7\u53D6\u5FEB\u901F\u9375\u4E4B\u5F8C\uFF0C\u65B0\u7684\u8A2D\u5B9A\u6703\u5728\u4E0B\u4E00\u6B21\u958B\u555F\u61C9\u7528\u7A0B\u5F0F\u6642\u751F\u6548\u4E26\u4E14",
+        "Bounds": [
+          88,
+          62,
+          782,
+          31
+        ],
+        "LayoutBounds": [
+          88,
+          62,
+          782,
+          31
+        ],
+        "Script": 2,
+        "Glyph": 25.419999999999998,
+        "Render": 25.419999999999998,
+        "Confidence": 0.9976613521575928,
+        "Ink": 23
+      },
+      {
+        "Text": "\u5DF2\u5132\u5B58\u3002",
+        "Bounds": [
+          89,
+          120,
+          158,
+          50
+        ],
+        "LayoutBounds": [
+          89,
+          120,
+          158,
+          50
+        ],
+        "Script": 2,
+        "Glyph": 41,
+        "Render": 41,
+        "Confidence": 0.9998271465301514,
+        "Ink": null
+      },
+      {
+        "Text": "\u9019\u88E1\u7D71\u8A08\u7684\u662F\u904E\u53BB\u4E09\u5341\u5929\u4E4B\u5167\u66FE\u7D93\u56DE\u5831\u904E\u7684\u6BCF\u4E00\u90E8\u88DD\u7F6E\uFF0C\u4E0D\u542B\u505C\u7528\u7684",
+        "Bounds": [
+          88,
+          302,
+          782,
+          31
+        ],
+        "LayoutBounds": [
+          88,
+          302,
+          782,
+          31
+        ],
+        "Script": 2,
+        "Glyph": 25.419999999999998,
+        "Render": 25.419999999999998,
+        "Confidence": 0.9989458918571472,
+        "Ink": 23
+      },
+      {
+        "Text": "\u5DF2\u5B8C\u6210\u3002",
+        "Bounds": [
+          90,
+          361,
+          158,
+          51
+        ],
+        "LayoutBounds": [
+          90,
+          361,
+          158,
+          51
+        ],
+        "Script": 2,
+        "Glyph": 41.82,
+        "Render": 41.82,
+        "Confidence": 0.9991983771324158,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F7/samples/f7-c1-cross.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "Changes to the capture shortcut take effect the next time the app",
+        "Bounds": [
+          87,
+          60,
+          803,
+          38
+        ],
+        "LayoutBounds": [
+          87,
+          60,
+          803,
+          38
+        ],
+        "Script": 1,
+        "Glyph": 19.331481481481482,
+        "Render": 19.331481481481482,
+        "Confidence": 0.9999384880065918,
+        "Ink": 18
+      },
+      {
+        "Text": "\u5DF2\u5132\u5B58\u3002",
+        "Bounds": [
+          89,
+          121,
+          158,
+          48
+        ],
+        "LayoutBounds": [
+          89,
+          121,
+          158,
+          48
+        ],
+        "Script": 2,
+        "Glyph": 39.36,
+        "Render": 39.36,
+        "Confidence": 0.9997966289520264,
+        "Ink": null
+      },
+      {
+        "Text": "\u8B8A\u66F4\u64F7\u53D6\u5FEB\u901F\u9375\u4E4B\u5F8C\uFF0C\u65B0\u7684\u8A2D\u5B9A\u6703\u5728\u4E0B\u4E00\u6B21\u958B\u555F\u61C9\u7528\u7A0B\u5F0F\u6642\u751F\u6548\u4E26\u4E14",
+        "Bounds": [
+          88,
+          302,
+          782,
+          31
+        ],
+        "LayoutBounds": [
+          88,
+          302,
+          782,
+          31
+        ],
+        "Script": 2,
+        "Glyph": 25.419999999999998,
+        "Render": 25.419999999999998,
+        "Confidence": 0.9976613521575928,
+        "Ink": 23
+      },
+      {
+        "Text": "Saved.",
+        "Bounds": [
+          85,
+          359,
+          138,
+          54
+        ],
+        "LayoutBounds": [
+          85,
+          359,
+          138,
+          54
+        ],
+        "Script": 1,
+        "Glyph": 29.900000000000002,
+        "Render": 29.900000000000002,
+        "Confidence": 0.999957799911499,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F7/samples/f7-c1-latin.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "Changes to the capture shortcut take effect the next time the app",
+        "Bounds": [
+          85,
+          57,
+          737,
+          36
+        ],
+        "LayoutBounds": [
+          85,
+          57,
+          737,
+          36
+        ],
+        "Script": 1,
+        "Glyph": 17.742592592592594,
+        "Render": 17.742592592592594,
+        "Confidence": 0.9933447241783142,
+        "Ink": 18
+      },
+      {
+        "Text": "Saved.",
+        "Bounds": [
+          85,
+          116,
+          136,
+          47
+        ],
+        "LayoutBounds": [
+          85,
+          116,
+          136,
+          47
+        ],
+        "Script": 1,
+        "Glyph": 29.46666666666667,
+        "Render": 29.46666666666667,
+        "Confidence": 0.9999399781227112,
+        "Ink": null
+      },
+      {
+        "Text": "Every device that reported in the last thirty days is counted here",
+        "Bounds": [
+          87,
+          299,
+          724,
+          31
+        ],
+        "LayoutBounds": [
+          87,
+          299,
+          724,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 17.112727272727273,
+        "Render": 17.112727272727273,
+        "Confidence": 0.9865894913673401,
+        "Ink": 19
+      },
+      {
+        "Text": "Done.",
+        "Bounds": [
+          86,
+          359,
+          117,
+          44
+        ],
+        "LayoutBounds": [
+          86,
+          359,
+          117,
+          44
+        ],
+        "Script": 1,
+        "Glyph": 30.419999999999998,
+        "Render": 30.419999999999998,
+        "Confidence": 0.9999567270278931,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F7/samples/f7-c2-cjk.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "\u9019\u500B\u751F\u614B\u806F\u76DF\u6C92\u6709\u5546\u696D\u7368\u4F54\uFF0C\u4E5F\u6C92\u6709\u4EFB\u4F55\u52A0\u5165\u7684\u9580\u6ABB\uFF0C\u4EFB\u4F55\u4E00\u500B\u5925\u4F34",
+        "Bounds": [
+          86,
+          60,
+          784,
+          33
+        ],
+        "LayoutBounds": [
+          86,
+          60,
+          784,
+          33
+        ],
+        "Script": 2,
+        "Glyph": 27.06,
+        "Render": 27.06,
+        "Confidence": 0.9964416027069092,
+        "Ink": 23
+      },
+      {
+        "Text": "\u6CE8\u610F\u3002",
+        "Bounds": [
+          86,
+          102,
+          78,
+          35
+        ],
+        "LayoutBounds": [
+          86,
+          102,
+          78,
+          35
+        ],
+        "Script": 2,
+        "Glyph": 28.7,
+        "Render": 17.5,
+        "Confidence": 0.9997752904891968,
+        "Ink": null
+      },
+      {
+        "Text": "\u8ACB\u5F9E\u96E2\u4F60\u6700\u8FD1\u7684\u93E1\u50CF\u7AD9\u4E0B\u8F09\u5B89\u88DD\u7A0B\u5F0F\uFF0C\u4E0B\u8F09\u5B8C\u6210\u4E4B\u5F8C\u518D\u4F9D\u7167\u4E0B\u5217\u6B65\u9A5F",
+        "Bounds": [
+          89,
+          304,
+          782,
+          28
+        ],
+        "LayoutBounds": [
+          89,
+          304,
+          782,
+          28
+        ],
+        "Script": 2,
+        "Glyph": 22.959999999999997,
+        "Render": 22.959999999999997,
+        "Confidence": 0.9990872144699097,
+        "Ink": 23
+      },
+      {
+        "Text": "\u8B66\u544A\u3002",
+        "Bounds": [
+          84,
+          338,
+          81,
+          41
+        ],
+        "LayoutBounds": [
+          84,
+          338,
+          81,
+          41
+        ],
+        "Script": 2,
+        "Glyph": 33.62,
+        "Render": 20.5,
+        "Confidence": 0.9998121857643127,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F7/samples/f7-c2-latin.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "The alliance involves no commercial exclusivity and no barrier to",
+        "Bounds": [
+          87,
+          59,
+          737,
+          31
+        ],
+        "LayoutBounds": [
+          87,
+          59,
+          737,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 17.108928571428574,
+        "Render": 17.108928571428574,
+        "Confidence": 0.9996083378791809,
+        "Ink": 19
+      },
+      {
+        "Text": "Note.",
+        "Bounds": [
+          84,
+          97,
+          71,
+          36
+        ],
+        "LayoutBounds": [
+          84,
+          97,
+          71,
+          36
+        ],
+        "Script": 1,
+        "Glyph": 29.52,
+        "Render": 29.52,
+        "Confidence": 0.9998266100883484,
+        "Ink": null
+      },
+      {
+        "Text": "Download the installer from the mirror closest to you and then run",
+        "Bounds": [
+          86,
+          297,
+          748,
+          33
+        ],
+        "LayoutBounds": [
+          86,
+          297,
+          748,
+          33
+        ],
+        "Script": 1,
+        "Glyph": 17.68,
+        "Render": 17.68,
+        "Confidence": 0.9978850483894348,
+        "Ink": 19
+      },
+      {
+        "Text": "Warning.",
+        "Bounds": [
+          83,
+          338,
+          113,
+          38
+        ],
+        "LayoutBounds": [
+          83,
+          338,
+          113,
+          38
+        ],
+        "Script": 1,
+        "Glyph": 18.3625,
+        "Render": 18.3625,
+        "Confidence": 0.9999610781669617,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F7/samples/f7-c3-cjk.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "\u55AE\u9EDE\u6280\u8853\u7684\u9818\u5148\u53EA\u662F\u958B\u59CB\uFF0C\u751F\u614B\u7684\u7E41\u69AE\u624D\u662F\u9577\u671F\u50F9\u503C\u6240\u5728\uFF0C\u70BA\u4E86\u8B93\u6587\u4EF6",
+        "Bounds": [
+          90,
+          64,
+          806,
+          28
+        ],
+        "LayoutBounds": [
+          90,
+          64,
+          806,
+          28
+        ],
+        "Script": 2,
+        "Glyph": 22.959999999999997,
+        "Render": 22.959999999999997,
+        "Confidence": 0.9998020529747009,
+        "Ink": 23
+      },
+      {
+        "Text": "\u667A\u6167\u6280\u8853\u80FD\u5920\u771F\u6B63\u8D70\u9032\u6BCF\u4E00\u500B\u7522\u696D\uFF0C\u6211\u5011\u6B63\u5F0F\u767C\u8D77\u9019\u500B\u958B\u653E\u7684\u751F\u614B\u806F",
+        "Bounds": [
+          89,
+          106,
+          781,
+          28
+        ],
+        "LayoutBounds": [
+          89,
+          106,
+          781,
+          28
+        ],
+        "Script": 2,
+        "Glyph": 22.959999999999997,
+        "Render": 22.959999999999997,
+        "Confidence": 0.9995632767677307,
+        "Ink": 23
+      },
+      {
+        "Text": "\u76DF\u3002",
+        "Bounds": [
+          84,
+          144,
+          54,
+          37
+        ],
+        "LayoutBounds": [
+          84,
+          144,
+          54,
+          37
+        ],
+        "Script": 2,
+        "Glyph": 30.34,
+        "Render": 18.5,
+        "Confidence": 0.9983813762664795,
+        "Ink": null
+      }
+    ]
+  },
+  {
+    "Image": "C:/Users/asd88/Desktop/Code/OverTranslate/.ai/grouping-modes/progress/step-F7/samples/f7-c3-latin.png",
+    "Flow": "screenshot",
+    "Language": "EN",
+    "Blocks": [
+      {
+        "Text": "The alliance involves no commercial exclusivity and no barrier to entry:",
+        "Bounds": [
+          87,
+          57,
+          809,
+          34
+        ],
+        "LayoutBounds": [
+          87,
+          57,
+          809,
+          34
+        ],
+        "Script": 1,
+        "Glyph": 16.962903225806453,
+        "Render": 16.962903225806453,
+        "Confidence": 0.9963368773460388,
+        "Ink": 19
+      },
+      {
+        "Text": "any model provider or application builder may join it, and every member",
+        "Bounds": [
+          86,
+          100,
+          819,
+          34
+        ],
+        "LayoutBounds": [
+          86,
+          100,
+          819,
+          34
+        ],
+        "Script": 1,
+        "Glyph": 17.745,
+        "Render": 17.745,
+        "Confidence": 0.9959494471549988,
+        "Ink": 18
+      },
+      {
+        "Text": "keeps the right to leave at any time without notice or",
+        "Bounds": [
+          85,
+          141,
+          596,
+          34
+        ],
+        "LayoutBounds": [
+          85,
+          141,
+          596,
+          34
+        ],
+        "Script": 1,
+        "Glyph": 17.60909090909091,
+        "Render": 17.60909090909091,
+        "Confidence": 0.986638069152832,
+        "Ink": 18
+      },
+      {
+        "Text": "cost.",
+        "Bounds": [
+          86,
+          186,
+          62,
+          31
+        ],
+        "LayoutBounds": [
+          86,
+          186,
+          62,
+          31
+        ],
+        "Script": 1,
+        "Glyph": 25.419999999999998,
+        "Render": 25.419999999999998,
+        "Confidence": 0.9999487996101379,
+        "Ink": null
+      }
+    ]
+  }
+]
