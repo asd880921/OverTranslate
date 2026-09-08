@@ -467,14 +467,17 @@
                         <StackPanel>
                             <Grid Style="{StaticResource ToolbarActionIcon}">
                               <Grid Style="{StaticResource ToolbarActionDrawing}">
-                                <!-- Crop marks, not the copy glyph this used to wear. E8FF is two
-                                     stacked pages, which is the same thing the copy button draws two
-                                     places away - one row, two actions, one picture, and the only way
-                                     to tell them apart was to read the words. A cropped frame says
-                                     the one thing this action does that the other does not: it takes
-                                     the rectangle, not the words inside it. -->
+                                <!-- Camera in front of a selection frame, drawn at the same
+                                     size and stroke weight as the neighboring toolbar actions. -->
                                 <Path Style="{StaticResource ToolbarActionStroke}"
-                                      Data="M5.2,1.2 V12.8 H16.8 M1.2,5.2 H12.8 V16.8"/>
+                                      Data="M3,5 V1.8 H6.2 M9,1.8 H10.8 M13.6,1.8 H16.2 V5
+                                            M16.2,8 V10 M16.2,13 V16.2 H13.6"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M2.6,9.6 H3.4 L4.2,7.8 H8.4 L9.2,9.6 H10
+                                            A1.4,1.4 0 0 1 11.4,11 V14.8 A1.4,1.4 0 0 1 10,16.2
+                                            H2.6 A1.4,1.4 0 0 1 1.2,14.8 V11 A1.4,1.4 0 0 1 2.6,9.6 Z"/>
+                                <Path Style="{StaticResource ToolbarActionStroke}"
+                                      Data="M8.2,12.7 A1.9,1.9 0 1 1 4.4,12.7 A1.9,1.9 0 1 1 8.2,12.7 Z"/>
                               </Grid>
                             </Grid>
                             <TextBlock Text="{DynamicResource S.Toolbar.Screenshot}"/>
