@@ -21,6 +21,9 @@ project.fragment.lock.json
 artifacts/
 .test-artifacts/
 
+# 個人的權限允許清單，不是專案設定
+.claude/settings.local.json
+
 # Publish output
 publish/
 PublishProfiles/
