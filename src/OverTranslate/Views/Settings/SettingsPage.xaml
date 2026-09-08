@@ -315,7 +315,6 @@
                                                   Unchecked="HotkeyEnabled_Toggled"/>
                                         <TextBlock x:Name="QuickLookupHotkeyEnabledLabel"
                                                    Style="{StaticResource FieldLabel}"
-                                                   MinWidth="56"
                                                    Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
@@ -430,48 +429,76 @@
                                                   Unchecked="HotkeyEnabled_Toggled"/>
                                         <TextBlock x:Name="QuickTranslateHotkeyEnabledLabel"
                                                    Style="{StaticResource FieldLabel}"
-                                                   MinWidth="56"
                                                    Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
 
-                                <ToggleButton x:Name="QuickTranslateSettingsToggle"
-                                              HorizontalAlignment="Right"
-                                              Margin="0,8,0,0"
-                                              Padding="10,5"
-                                              Foreground="{DynamicResource AppAccent}"
-                                              FocusVisualStyle="{StaticResource CardFoldFocusVisual}"
-                                              AutomationProperties.Name="{DynamicResource S.Settings.QuickTranslateSettings}">
-                                    <ToggleButton.Template>
-                                        <ControlTemplate TargetType="ToggleButton">
-                                            <Border x:Name="Root" CornerRadius="6"
-                                                    Padding="{TemplateBinding Padding}"
-                                                    Background="{DynamicResource AppAccentSubtle}"
-                                                    BorderBrush="{DynamicResource AppAccentSubtleHover}"
-                                                    BorderThickness="1">
-                                                <ContentPresenter VerticalAlignment="Center"
-                                                                  HorizontalAlignment="Center"/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsChecked" Value="True">
-                                                    <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Root" Property="Background" Value="{DynamicResource AppAccentSubtleHover}"/>
-                                                </Trigger>
-                                                <Trigger Property="IsPressed" Value="True">
-                                                    <Setter TargetName="Root" Property="Opacity" Value="0.7"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </ToggleButton.Template>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                        <TextBlock Text="{DynamicResource S.Settings.QuickTranslateSettings}"
-                                                   FontSize="12" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </ToggleButton>
+                                <!-- The note wraps within its column while the button keeps its width. -->
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Path Grid.Column="0"
+                                              Data="{StaticResource InfoMarkGeometry}"
+                                              Stroke="{DynamicResource AppTextSecondary}"
+                                              StrokeThickness="1.1"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              Stretch="None"
+                                              Width="12" Height="12"
+                                              VerticalAlignment="Top"
+                                              Margin="0,1.7,8,0"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
+                                                   Style="{StaticResource FieldHint}"
+                                                   Margin="0"
+                                                   VerticalAlignment="Top"/>
+                                    </Grid>
+                                    <ToggleButton Grid.Column="1" x:Name="QuickTranslateSettingsToggle"
+                                                  HorizontalAlignment="Right"
+                                                  VerticalAlignment="Center"
+                                                  Padding="10,5"
+                                                  Foreground="{DynamicResource AppAccent}"
+                                                  FocusVisualStyle="{StaticResource CardFoldFocusVisual}"
+                                                  AutomationProperties.Name="{DynamicResource S.Settings.QuickTranslateSettings}">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border x:Name="Root" CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}"
+                                                        Background="{DynamicResource AppAccentSubtle}"
+                                                        BorderBrush="{DynamicResource AppAccentSubtleHover}"
+                                                        BorderThickness="1">
+                                                    <ContentPresenter VerticalAlignment="Center"
+                                                                      HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Root" Property="Background" Value="{DynamicResource AppAccentSubtleHover}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter TargetName="Root" Property="Opacity" Value="0.7"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                       FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{DynamicResource S.Settings.QuickTranslateSettings}"
+                                                       FontSize="12" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                </Grid>
 
                                 <Border Margin="0,8,0,0" Padding="12,10"
                                         BorderBrush="{DynamicResource AppButtonBorder}"
@@ -514,43 +541,6 @@
                                                    Style="{StaticResource FieldHint}" Margin="0,8,0,0"/>
                                     </StackPanel>
                                 </Border>
-
-                                <!-- The mark hangs off the first line, not the middle of the note:
-                                     centred, it drifts down between two lines and stops reading as
-                                     the start of anything.
-
-                                     The 1.7 is measured, not chosen. Both the mark and the text sit
-                                     in boxes taller than what is drawn in them, and the two sit at
-                                     different heights inside those boxes — so aligning the boxes,
-                                     which is all VerticalAlignment can do, leaves the mark visibly
-                                     off the line. Rendered and scanned for where the ink actually
-                                     falls: the mark's own middle is 5.94 from its top, an 11px line
-                                     of ideographs has its middle at 7.56, and a line of Latin caps
-                                     at 7.94. This is the offset that puts the mark on both, nearer
-                                     the first because that is the language the interface is read in
-                                     most. Changing the size of either one makes it wrong again. -->
-                                <Grid Margin="0,8,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <Path Grid.Column="0"
-                                          Data="{StaticResource InfoMarkGeometry}"
-                                          Stroke="{DynamicResource AppTextSecondary}"
-                                          StrokeThickness="1.1"
-                                          StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round"
-                                          Stretch="None"
-                                          Width="12" Height="12"
-                                          VerticalAlignment="Top"
-                                          Margin="0,1.7,8,0"/>
-                                    <TextBlock Grid.Column="1"
-                                               Text="{DynamicResource S.Settings.QuickTranslateHotkeyNote}"
-                                               Style="{StaticResource FieldHint}"
-                                               Margin="0"
-                                               VerticalAlignment="Top"/>
-                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -609,12 +599,8 @@
                                                   ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
                                                   Checked="HotkeyEnabled_Toggled"
                                                   Unchecked="HotkeyEnabled_Toggled"/>
-                                        <!-- Sized for the longer of the two words, so switching one
-                                             row does not move the switches on the rows sharing this
-                                             column's width. -->
                                         <TextBlock x:Name="WindowHotkeyEnabledLabel"
                                                    Style="{StaticResource FieldLabel}"
-                                                   MinWidth="56"
                                                    Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
@@ -678,12 +664,8 @@
                                                   ToolTip="{DynamicResource S.Settings.HotkeyEnable}"
                                                   Checked="HotkeyEnabled_Toggled"
                                                   Unchecked="HotkeyEnabled_Toggled"/>
-                                        <!-- Sized for the longer of the two words, so switching one
-                                             row does not move the switches on the rows sharing this
-                                             column's width. -->
                                         <TextBlock x:Name="RealtimePauseHotkeyEnabledLabel"
                                                    Style="{StaticResource FieldLabel}"
-                                                   MinWidth="56"
                                                    Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
