@@ -70,11 +70,14 @@ public class OcrService : IDisposable
     /// For callers watching a live screen, where a queued pass would be answering a frame that has
     /// already been replaced — see <see cref="IOcrEngine.TryRecognizeAsync"/>.
     /// </summary>
+    /// <param name="mode">The live region's mode. Panel preserves the historical path for callers
+    /// that do not specify one; the application always passes its region's explicit mode.</param>
     public async Task<List<OcrTextBlock>?> TryRecognizeAsync(
         Bitmap bitmap,
         string sourceLanguage,
         int? maxDetectSize = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Realtime.RealtimeBlockMode mode = Realtime.RealtimeBlockMode.Panel)
     {
         if (!OcrLanguageRouter.IsSupported(sourceLanguage))
             throw new NotSupportedException(OcrLanguageRouter.GetUnsupportedLanguageMessage(sourceLanguage));
@@ -96,7 +99,20 @@ public class OcrService : IDisposable
         // There is no toolbar in front of a running video, so there is no CaptureLayoutMode to
         // honour here; taking one would mean a mode the user chose for a still capture silently
         // steering frames it was never asked about.
-        return OcrTextBlockGrouper.Group(RejectUnconvincingBlocks(blocks), GroupingProfile.Realtime);
+        return GroupRealtime(blocks, bitmap.Height, mode);
+    }
+
+    internal static List<OcrTextBlock> GroupRealtime(List<OcrTextBlock> blocks, double frameHeight,
+        Realtime.RealtimeBlockMode mode, GroupingTrace? trace = null)
+    {
+        var filtered = RejectUnconvincingBlocks(blocks);
+        if (mode != Realtime.RealtimeBlockMode.Subtitle)
+            return OcrTextBlockGrouper.Group(filtered, GroupingProfile.Realtime, null, trace);
+        trace?.RegisterBlocks(blocks);
+        // Remove scene-sized noise before it can contaminate a real dialogue row. Confident
+        // single letters (such as a split "I") may still join; isolated ones are filtered later.
+        filtered = filtered.Where(b => !Realtime.CollapsedDetection.IsCollapsed(b.Bounds.Height, frameHeight, b.Text)).ToList();
+        return Realtime.DialogueTextGrouper.Group(filtered, trace);
     }
 
     // Scenery the recogniser was not sure about. Only on this path: it is the realtime one, where

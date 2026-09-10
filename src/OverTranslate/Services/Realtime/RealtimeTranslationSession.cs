@@ -361,7 +361,7 @@ public sealed class RealtimeTranslationSession
                 // consulting a policy whose whole job is deciding which polls are worth paying for.
                 // A reading caught mid-change is not lost either — the next pass keeps the better of
                 // the two, see RealtimeReadingMerge.
-                if (!demanded && !state.Observe(Capture))
+                if (!demanded && !state.Observe(Capture, region.Mode == RealtimeBlockMode.Subtitle))
                 {
                     skippedPolls++;
                     continue;
@@ -490,9 +490,10 @@ public sealed class RealtimeTranslationSession
         // would hold this region's loop shut while it did. Skipping costs one poll.
         var (primarySize, fallbackSizes) =
             RealtimeDetectorSize.For(frame.Width, frame.Height, region.Mode);
-        var recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, primarySize, token);
+        var recognized = await _ocr.TryRecognizeAsync(frame, sourceLanguage, primarySize, token, region.Mode);
         if (recognized is null)
         {
+            state.Dialogue.RecognitionUnavailable();
             // Once per session at Warn, the rest at Debug — the same rule the grab and translation
             // sides use. Skipping is the whole recovery and the next poll is 250ms away, so this is
             // not an error; it is the one thing that would explain a region updating far less often
@@ -540,7 +541,7 @@ public sealed class RealtimeTranslationSession
         {
             if (recognized.Count > 0) break;
 
-            var retried = await _ocr.TryRecognizeAsync(frame, sourceLanguage, retrySize, token);
+            var retried = await _ocr.TryRecognizeAsync(frame, sourceLanguage, retrySize, token, region.Mode);
             if (retried is null) break;   // no free slot; the next poll can try again
 
             retried = RejectCollapsedBlocks(retried, frame.Height, region.Id);
@@ -576,6 +577,7 @@ public sealed class RealtimeTranslationSession
         // further: this is the case that keeps a session over moving content off the network.
         if (recognized.Count == 0)
         {
+            state.Dialogue.Reset();
             // Checked before the "same text" shortcut below, because both are the empty string once
             // the region has genuinely gone quiet and only this branch counts that towards clearing.
             RealtimeFrameDump.SaveUnread(frame, region.Id);
@@ -594,7 +596,9 @@ public sealed class RealtimeTranslationSession
         // readings, and a sentence nothing on screen answers to is simply new. Doing this per pass
         // instead — one weighted average against another — is what let a correctly read sentence be
         // thrown away because the line beside it had wobbled; see RealtimeReadingMerge.
-        var merged = RealtimeReadingMerge.Merge(state.RenderedLines, recognized);
+        var merged = region.Mode == RealtimeBlockMode.Subtitle
+            ? state.Dialogue.Merge(state.RenderedLines, recognized)
+            : RealtimeReadingMerge.Merge(state.RenderedLines, recognized);
         var shownBefore = state.RenderedText.Length;
 
         // Whether this pass read the region differently at all, as opposed to reading it the same
@@ -643,7 +647,7 @@ public sealed class RealtimeTranslationSession
     }
 
     /// <summary>Drops boxes the detector threw across the whole block — see CollapsedDetection.</summary>
-    private static List<OcrTextBlock> RejectCollapsedBlocks(
+    internal static List<OcrTextBlock> RejectCollapsedBlocks(
         List<OcrTextBlock> blocks, double blockHeight, int regionId)
     {
         List<OcrTextBlock>? kept = null;
@@ -685,7 +689,7 @@ public sealed class RealtimeTranslationSession
     /// a subtitle was 158px tall in a 220px block — well clear of a real line at 86px, but short of
     /// the 90% that makes a collapse, so no measure of the box was ever going to reject it.
     /// </remarks>
-    private static List<OcrTextBlock> RejectShortReadings(List<OcrTextBlock> blocks, int regionId)
+    internal static List<OcrTextBlock> RejectShortReadings(List<OcrTextBlock> blocks, int regionId)
     {
         List<OcrTextBlock>? kept = null;
 

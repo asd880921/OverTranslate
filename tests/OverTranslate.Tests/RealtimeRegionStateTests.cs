@@ -6,6 +6,74 @@ namespace OverTranslate.Tests;
 
 public class RealtimeRegionStateTests
 {
+    [Fact]
+    public void AlternatingFalseTailsCannotForceOcrForever()
+    {
+        var state = new RealtimeRegionState();
+        var frame = new FakeFrame();
+        OverTranslate.Services.OcrTextBlock Read(string text) => new(text, new System.Windows.Rect(0, 0, 100, 20), Confidence: 0.98);
+        var first = state.Dialogue.Merge([], [Read("Here we go.")]);
+        state.MarkRendered(OneLine, frame.Capture, first.Lines);
+        int forced = 0;
+        for (int poll = 0; poll < 20; poll++)
+        {
+            if (!state.Observe(frame.Capture, dialogue: true)) continue;
+            forced++;
+            var merged = state.Dialogue.Merge(state.RenderedLines, [Read(poll % 2 == 0 ? "Here we go.x" : "Here we go.y")]);
+            state.MarkRendered(OneLine, frame.Capture, merged.Lines);
+        }
+        Assert.InRange(forced, 1, 3);
+        Assert.False(state.Dialogue.NeedsConfirmation);
+        Assert.Equal("Here we go.", state.RenderedText);
+        frame.ChangeText();
+        Assert.True(state.Observe(frame.Capture, dialogue: true));
+        var pending = state.Dialogue.Merge(state.RenderedLines, [Read("Here we go.z")]);
+        state.MarkRendered(OneLine, frame.Capture, pending.Lines);
+        Assert.True(state.Dialogue.NeedsConfirmation);
+        Assert.True(state.Observe(frame.Capture, dialogue: true));
+        var confirmed = state.Dialogue.Merge(state.RenderedLines, [Read("Here we go.z")]);
+        Assert.Equal("Here we go.z", confirmed.Lines[0].Text);
+    }
+
+    [Fact]
+    public void BusyRecognizerDoesNotSpendConfirmationBudget()
+    {
+        var tracker = new DialogueReadingTracker();
+        tracker.Merge([], [new OverTranslate.Services.OcrTextBlock("Here we go.", new System.Windows.Rect(0, 0, 100, 20))]);
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            Assert.True(tracker.TryTakeConfirmation());
+            tracker.RecognitionUnavailable();
+        }
+        for (int attempt = 0; attempt < DialogueReadingTracker.MaxConfirmationReads; attempt++)
+            Assert.True(tracker.TryTakeConfirmation());
+        Assert.False(tracker.TryTakeConfirmation());
+    }
+
+    [Fact]
+    public void DialogueReadsKnownTextChangeOnTheFirstPoll()
+    {
+        var state = new RealtimeRegionState();
+        var frame = new FakeFrame();
+        state.MarkRendered(OneLine, frame.Capture, "hello");
+        frame.ChangeText();
+        Assert.True(state.Observe(frame.Capture, dialogue: true));
+    }
+
+    [Fact]
+    public void DialogueConfirmationCanReadAnUnchangedFingerprintOnce()
+    {
+        var state = new RealtimeRegionState();
+        var frame = new FakeFrame();
+        var read = new[] { new OverTranslate.Services.OcrTextBlock("Complete subtitle.", new System.Windows.Rect(0, 0, 100, 20)) };
+        var first = state.Dialogue.Merge([], read);
+        state.MarkRendered(OneLine, frame.Capture, first.Lines);
+        Assert.True(state.Observe(frame.Capture, dialogue: true));
+        var stable = state.Dialogue.Merge(state.RenderedLines, read);
+        state.MarkRendered(OneLine, frame.Capture, stable.Lines);
+        Assert.False(state.Observe(frame.Capture, dialogue: true));
+    }
+
     private static readonly List<Rectangle> OneLine = [new Rectangle(10, 40, 300, 20)];
 
     [Fact]

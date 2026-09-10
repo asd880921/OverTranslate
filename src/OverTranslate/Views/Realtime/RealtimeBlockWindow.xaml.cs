@@ -275,7 +275,6 @@ public partial class RealtimeBlockWindow : Window
         TranslatedBlock line, double canvasWidth, double canvasHeight, System.Drawing.Bitmap? frame)
     {
         double left = line.Bounds.X / _dpiX;
-        double top = line.Bounds.Y / _dpiY;
         double sourceWidth = line.Bounds.Width / _dpiX;
         double sourceHeight = line.Bounds.Height / _dpiY;
         if (sourceWidth <= 0 || sourceHeight <= 0) return null;
@@ -380,16 +379,18 @@ public partial class RealtimeBlockWindow : Window
 
         double scrimWidth = Math.Min(canvasWidth, Math.Max(textWidth, sourceWidth) + ScrimPaddingX * 2);
 
-        // A grouped block's bounds are the union of its lines, which is the area that has to be
-        // covered and is not an inflated single box, so it keeps using them.
-        double coverHeight = isGrouped ? sourceHeight : lineHeight;
+        // A union of loose Latin detection boxes still includes the first/last row's padding.
+        // Compact each row around its own center before taking the vertical span; keep the gap.
+        var coverage = isGrouped ? GroupedCoverage(line) : line.Bounds;
+        double coverHeight = isGrouped ? coverage.Height / _dpiY : lineHeight;
         double scrimHeight = Math.Max(coverHeight, textHeight) + ScrimPaddingY * 2;
 
         // The scrim covers the source, so it grows around the source's own centre — horizontally as
         // well as vertically — rather than hanging off its top-left corner.
         double scrimLeft = RealtimeBandPlacement.Left(left, sourceWidth, scrimWidth, canvasWidth);
         double scrimTop = Math.Clamp(
-            top + sourceHeight / 2 - scrimHeight / 2, 0, Math.Max(0, canvasHeight - scrimHeight));
+            coverage.Y / _dpiY + coverage.Height / _dpiY / 2 - scrimHeight / 2,
+            0, Math.Max(0, canvasHeight - scrimHeight));
 
         // The band's own geometry, which is also what the repaired patch falls back to. The guard
         // below only exists to hold the repair, so with 進階選項 off these stay as they are and the
@@ -683,6 +684,27 @@ public partial class RealtimeBlockWindow : Window
                 return size;
 
         return MinFontSize;
+    }
+
+    private static Rect GroupedCoverage(TranslatedBlock line)
+    {
+        // CJK-normalized boxes already carry compact coverage. Do not shrink them a second time.
+        if (line.RenderGlyphHeight is not { } glyphHeight || !double.IsFinite(glyphHeight) || glyphHeight <= 0 ||
+            line.SourceLineBounds is not { Count: > 1 } rows)
+            return line.Bounds;
+
+        double top = double.PositiveInfinity;
+        double bottom = double.NegativeInfinity;
+        foreach (var row in rows)
+        {
+            if (row.IsEmpty || row.Height <= 0 || !double.IsFinite(row.Y) || !double.IsFinite(row.Height))
+                return line.Bounds;
+            double height = Math.Min(row.Height, glyphHeight * LineHeightRatio);
+            double center = row.Y + row.Height / 2;
+            top = Math.Min(top, center - height / 2);
+            bottom = Math.Max(bottom, center + height / 2);
+        }
+        return new Rect(line.Bounds.X, top, line.Bounds.Width, bottom - top);
     }
 
     private double GetGlyphHeight(TranslatedBlock line, double fallbackHeight)
