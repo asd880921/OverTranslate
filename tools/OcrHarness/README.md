@@ -78,10 +78,13 @@ OcrHarness.exe --compare-models 圖.png [更多.png ...]
 OcrHarness.exe --pad-sweep 圖.png [更多.png ...]
 ```
 
-`--pad-sweep` 的白邊不是「多一圈留白」而已：它參與 `AlignForDetector` 的對齊算式，也算進
-`ImgResize` 的長邊上限，所以白邊越寬、偵測器看到的文字越小。實測 0/8/16/24/32/50/64/96，
-**50 在字幕條帶、遊戲面板、小截圖三類上都是最高分，而且兩側都比它差** —— 是峰值不是地板，
-調大不會比較保險。細節與數字記在 `OnnxOcrEngine.DetectorPaddingOverride`。
+`--pad-sweep` 的白邊以前不是獨立變因：它參與 `AlignForDetector` 的對齊算式，會連帶改變偵測器
+輸入被壓扁多少，所以舊那張「50 最高分、兩側都比它差」的表其實是在排「哪個白邊剛好落在扭曲最少
+的幾何上」。偵測器輸入幾何修好之後（`OnnxOcrEngine.CreateDetectorFrame`）白邊才第一次只是白邊，
+重掃的結果是 **8 最好**，也是現行值——0 在語料上跟 8 打平且更快，但在「框整個對話框」
+這種實際框選型態上差很多（同一畫面挪 ±8px 共 45 種框法，讀到行首詞 22/45 對 44/45）。
+細節與數字記在 `OnnxOcrEngine.DetectorPadding`
+與 `.ai/realtime-dialogue/ocr-detector-geometry.md`。
 
 `--scale-sweep` 會一併印出 `RealtimeDetectorSize` 對該尺寸區塊會挑的 primary 與 fallback，
 所以掃描結果可以直接對照 app 真正會用的尺寸來讀。它走的是主專案的 `OnnxOcrEngine`，
@@ -135,7 +138,7 @@ OcrHarness.exe --roi-stability 圖.png --roi X,Y,W,H --grow down,right,all --ste
 | 層 | 看什麼 |
 |---|---|
 | 1 來源像素 | 兩個 ROI 重疊區來自同一個檔案，只可能因為實驗切錯而不同 |
-| 2 前處理 | `AlignForDetector` 產生的畫布，以及函式庫接著套用的縮放比 |
+| 2 前處理 | `CreateDetectorFrame` 產生的畫布，以及它套用的等比例縮放（函式庫不再縮放）|
 | 3 偵測器輸入 | 對齊後的點陣圖在重疊區逐像素比對（`same` / `MOVED`） |
 | 4 偵測框 | `DetectBoxesOnly`，在辨識與所有過濾之前 |
 | 5 辨識 | 同一位置回來的文字是否相同 |

@@ -12,32 +12,34 @@ using SkiaSharp;
 namespace OverTranslate.Services.Ocr;
 
 /// <summary>
-/// KNOWN LIMITATION: the detector sometimes returns a box that starts part way along a line, and the
-/// characters before it are lost with nothing in the log to say they existed. Closed as unfixable in
-/// #69; do not spend another round looking for the setting that causes it, because it is not one.
+/// The detector used to return boxes that start part way along a line, losing the characters before
+/// them with nothing in the log to say they existed. It was the detector input's geometry, not the
+/// model — see <see cref="CreateDetectorFrame"/> and the note above <c>DetectorAlignment</c>.
 /// </summary>
 /// <remarks>
-/// Ruled out, each with a measurement rather than an argument: the recognition confidence floor (the
-/// leading box is never returned, so nothing filters it), all three detector box thresholds
-/// (<see cref="DetectorThresholdOverride"/> — dropping BoxScoreThresh to 0.10, which discards
-/// nothing, changes not one character; #71 later found all three were on the wrong values anyway and
-/// corrected them, see <see cref="ExportedThresholds"/>, and this symptom survived that too), the
-/// border (<see cref="DetectorPaddingOverride"/>, 0 to 96),
-/// the normalisation statistics (<see cref="ShippedDetector"/>), the detector size
-/// (<c>--scale-sweep</c>), and how tightly the user framed the capture (<c>--margin-series</c> over
-/// 27 whole screens: 1.1% apart, and the tightest framing is the worst of them).
+/// #69 closed this as unfixable and said not to look for the setting that causes it, which was
+/// right in its own terms: it is not a setting, it is how the image was being resized. Everything
+/// that round ruled out stays ruled out, and each was ruled out with a measurement — the
+/// recognition confidence floor (the leading box is never returned, so nothing filters it), all
+/// three detector box thresholds (<see cref="DetectorThresholdOverride"/> — dropping BoxScoreThresh
+/// to 0.10, which discards nothing, changes not one character), the normalisation statistics
+/// (<see cref="ShippedDetector"/>), the detector size (<c>--scale-sweep</c>), and how tightly the
+/// user framed the capture (<c>--margin-series</c> over 27 whole screens: 1.1% apart).
 ///
-/// What it actually is: the response is knife-edge, and only along the short axis. On the reported
-/// frame, cropping one pixel off the top takes the reading from 5 characters to 6, and four pixels
-/// takes it to 10 — while cropping up to eight pixels off the side changes nothing at all. Appending
-/// blank rows below the picture, which touches no content whatsoever, walks the reading between 5 and
-/// 10 characters with no pattern: +4px reads 10, +20px reads 6, +24px reads 9. The capture the user
-/// happened to draw lands where it lands.
+/// The border (<see cref="DetectorPaddingOverride"/>, 0 to 96) was ruled out there too and should
+/// not have been: it was swept while the distortion was still in place, where it is an input to the
+/// aligned dimensions and so changes the squash along with itself. See
+/// <c>DetectorPadding</c> for the re-sweep.
 ///
-/// So a frame either reads or does not, and the deciding factor is a few pixels of height that
-/// nobody chose. Replacing the detector is the only lever left and #33 already measured that
-/// trade — PP-OCRv6_det_medium costs 90ms per recognition and 62MB to save roughly one line every
-/// two and a half minutes — and rejected it.
+/// #69's own best evidence is what names the cause, read the other way round. It found the response
+/// knife-edge ALONG THE SHORT AXIS ONLY: cropping one pixel off the top took the reading from 5
+/// characters to 6 and four pixels took it to 10, while cropping eight off the side changed nothing;
+/// appending blank rows below the picture, which touches no content at all, walked it between 5 and
+/// 10 with no pattern. That is a 32-pixel quantisation step on the short axis being crossed and
+/// re-crossed — a few pixels of height nobody chose deciding how far the image gets squashed. The
+/// conclusion drawn at the time ("a frame either reads or does not, replacing the detector is the
+/// only lever left", and #33's rejection of PP-OCRv6_det_medium at 90ms and 62MB) followed from
+/// reading that as model behaviour.
 /// </remarks>
 internal sealed class OnnxOcrEngine : IOcrEngine
 {
@@ -234,10 +236,10 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 runtime.ModelName,
                 ThreadCount);
 
-            var options = CreateOptions(maxDetectSize);
             using var skBitmap = ConvertToSkBitmap(bitmap);
-            using var detectorInput = AlignForDetector(skBitmap, options.Padding);
-            var result = runtime.Engine.Detect(detectorInput, options);
+            using var frame = CreateDetectorFrame(skBitmap, maxDetectSize);
+            var result = runtime.Engine.Detect(frame.Bitmap, frame.Options);
+            frame.MapToSource(result.TextBlocks);
             var blocks = ApplyBlockFilters(result.TextBlocks, normalizedLanguage, useCjkRenderMetrics, usesAutomaticLayout);
 
             // Counts and lengths only — enough to tell "found nothing" from "found the wrong thing"
@@ -306,20 +308,11 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         var runtime = AcquireRuntime(OcrLanguageRouter.Normalize(sourceLanguage));
         try
         {
-            var options = CreateOptions(maxDetectSize);
             using var skBitmap = ConvertToSkBitmap(bitmap);
-            using var detectorInput = AlignForDetector(skBitmap, options.Padding);
+            using var frame = CreateDetectorFrame(skBitmap, maxDetectSize);
 
-            return runtime.Engine.DetectBoxes(detectorInput, options)
-                .Select(box =>
-                {
-                    var xs = box.BoxPoints.Select(point => point.X).ToList();
-                    var ys = box.BoxPoints.Select(point => point.Y).ToList();
-                    return (
-                        new System.Windows.Rect(
-                            xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min()),
-                        box.Score);
-                })
+            return runtime.Engine.DetectBoxes(frame.Bitmap, frame.Options)
+                .Select(box => (frame.ToSourceBounds(box.BoxPoints), box.Score))
                 .ToList();
         }
         finally
@@ -374,7 +367,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         private readonly RapidOcr _engine;
         private readonly string _language;
         private readonly SKBitmap _skBitmap;
-        private readonly SKBitmap _aligned;
+        private readonly DetectorFrame _frame;
         // Boxed, because the type is internal to the library and cannot be named here.
         private readonly object _detectorInput;
         private readonly SKBitmap _detectorBitmap;
@@ -391,11 +384,11 @@ internal sealed class OnnxOcrEngine : IOcrEngine
             _owner = owner;
             _engine = runtime.Engine;
             _language = normalizedLanguage;
-            _options = CreateOptions(maxDetectSize);
             _skBitmap = ConvertToSkBitmap(bitmap);
-            _aligned = AlignForDetector(_skBitmap, _options.Padding);
+            _frame = CreateDetectorFrame(_skBitmap, maxDetectSize);
+            _options = _frame.Options;
 
-            _detectorInput = PrepareDetectorInputMethod.Invoke(null, new object[] { _aligned, _options })!;
+            _detectorInput = PrepareDetectorInputMethod.Invoke(null, new object[] { _frame.Bitmap, _options })!;
             _detectorBitmap = (SKBitmap)DetectorInputBitmapField.GetValue(_detectorInput)!;
             var scale = (ScaleParam)DetectorInputScaleField.GetValue(_detectorInput)!;
 
@@ -411,12 +404,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
                 {
                     var points = (SKPointI[])box.BoxPoints.Clone();
                     MapToOriginalMethod.Invoke(_detectorInput, new object[] { points });
-                    var xs = points.Select(point => point.X).ToList();
-                    var ys = points.Select(point => point.Y).ToList();
-                    return (
-                        Bounds: new System.Windows.Rect(
-                            xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min()),
-                        box.Score);
+                    return (Bounds: _frame.ToSourceBounds(points), box.Score);
                 })
                 .ToList();
         }
@@ -452,6 +440,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
 
                     var points = (SKPointI[])chosen[i].BoxPoints.Clone();
                     MapToOriginalMethod.Invoke(_detectorInput, new object[] { points });
+                    _frame.MapToSource(points);
 
                     textBlocks.Add(new TextBlock
                     {
@@ -480,7 +469,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         public void Dispose()
         {
             ((IDisposable)_detectorInput).Dispose();
-            _aligned.Dispose();
+            _frame.Dispose();
             _skBitmap.Dispose();
             _owner.ReleaseRuntime();
         }
@@ -802,15 +791,24 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// no border failed to find: the detector's own input is the same size either way, because
     /// <c>ImgResize</c> caps the long side after the border is added.
     ///
-    /// ITS COLOUR IS NOT A KNOB, AND THE QUESTION IS OPEN. The library fills the border itself and
-    /// exposes no colour, so the only way to try another one is to draw the border here and ask for
-    /// none — and that turned out not to be the same experiment. Reproducing the shipped
-    /// composition by hand (align with transparent pixels, then a white border, then
-    /// <c>Padding = 0</c>) still read less than the shipped path does, so something in how the
-    /// library builds its own border is not accounted for, and every colour measured that way is
-    /// measuring that difference as much as the colour. Worth knowing because subtitles are white
-    /// text and a white border is the one combination nobody chose — but it needs the library's
-    /// source, not another harness mode.
+    /// EVERYTHING ABOVE WAS MEASURED WHILE THE DETECTOR INPUT WAS STILL BEING SQUASHED, and the
+    /// paragraph that says "that is AlignForDetector showing through" is the reason it cannot be
+    /// read as a ranking of borders. The border feeds <c>AlignedLength</c>, so moving it moved the
+    /// aligned dimensions and therefore how far each axis was quantised down; what the table ranks
+    /// is which border happened to land on the least distorted geometry, and 50 winning "in every
+    /// category with both neighbours worse" is the shape of that rather than of a border optimum.
+    /// The clock reading is superseded for the same reason — with the geometry exact the border no
+    /// longer counts towards anything, and dropping it is 10% FASTER rather than slower.
+    ///
+    /// Re-swept with the geometry fixed, the border wants to be small rather than absent: see
+    /// <c>DetectorPadding</c>, which is now 8.
+    ///
+    /// ITS COLOUR ONLY MATTERS AT ZERO. With no border the library never composites, so the stride
+    /// strip <see cref="AlignForDetector"/> leaves on the right and bottom reaches normalisation as
+    /// stored premultiplied transparent, which is black; painting it white instead cost 2.6 points
+    /// of F1 on region-subtitle-mixed-boxshape (99.9% to 97.3%) and painting it black scored
+    /// identically to leaving it transparent, as it must. At any non-zero border the library's own
+    /// MakePadding runs, clears white and composites, so the strip is white and this is moot.
     /// </remarks>
     internal static int? DetectorPaddingOverride { get; set; }
 
@@ -893,7 +891,7 @@ internal sealed class OnnxOcrEngine : IOcrEngine
         {
             ImgResize = maxDetectSize ?? ScreenshotDetectSize,
             DoAngle = false,
-            Padding = DetectorPaddingOverride ?? RapidOcrOptions.Default.Padding,
+            Padding = DetectorPaddingOverride ?? DetectorPadding,
         };
 
         var thresholds = DetectorThresholdOverride ?? ExportedThresholds;
@@ -1457,13 +1455,183 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     // the selection size. Captures that large therefore behave exactly as they did before this
     // change, residual squash included.
     //
-    // Doing that downscale ourselves, uniformly, would remove the squash at every size. It was
-    // measured and did not pay: on a ground-truth benchmark of a real capture across five canvas
-    // sizes it scored 111/120 against 115/120 for leaving the library to it (and 110/120 with a
-    // sharper resampler). That is inside the benchmark's noise, so the honest reading is "no
-    // measurable gain" rather than "worse" — but an unmeasurable gain does not justify changing
-    // how every large capture is fed. Revisit only with a benchmark strong enough to resolve it.
+    // THE PARAGRAPH ABOVE DESCRIBED A GUARANTEE THIS METHOD NEVER HAD, and it is why the leading
+    // characters of a line kept going missing. Detect() targets
+    // min(ImgResize, aligned long side) + 2 * Padding, and ImgResize is computed from the size
+    // BEFORE alignment — Realtime.RealtimeDetectorSize is asked about the region the user framed.
+    // Alignment then grows that bitmap by up to 31px, so the target lands just UNDER the padded
+    // long side, the ratio is no longer 1.0, and the quantisation runs after all. On a 465x76
+    // dialogue box the aligned 576x192 reached the detector as 512x128: 0.89x across, 0.67x down.
+    // Under it, "「うん、" was never detected at all.
+    //
+    // So the downscale is done here instead, isotropically, and ImgResize is then set above the
+    // input so the library's own resize is the identity — see CreateDetectorFrame. Both prepared
+    // dimensions are multiples of DetectorAlignment by construction at that point, which is the
+    // one case ScaleParam leaves alone. The detector finally sees the aspect ratio it was handed.
+    //
+    // The measurement that turned this down before ("111/120 against 115/120 on a ground-truth
+    // benchmark, inside the noise") compared doing the downscale ourselves against leaving it to
+    // the library WHILE KEEPING the 50px border, which is the half of the change that loses: with
+    // the geometry exact, the border is the worst value in the sweep rather than the best. See
+    // .ai/realtime-dialogue/ocr-detector-geometry.md for the corpus numbers and for what was
+    // measured and turned down (the library's v6/PythonCompat presets, stride rounding alone,
+    // re-tuning StripFraction, painting the alignment strip white).
     private const int DetectorAlignment = 32;
+
+    /// <summary>
+    /// Border to surround the detector input with. Zero: the geometry is exact, so there is none.
+    /// </summary>
+    /// <remarks>
+    /// The library's own default is 50, and a sweep of 0–96 once made it look like a peak with both
+    /// neighbours worse. That sweep could not have said otherwise: the border is an input to
+    /// <see cref="AlignedLength"/>, so changing it changed the aligned dimensions and therefore the
+    /// squash, and what it was really ranking was which border happened to land on the least
+    /// distorted geometry. <see cref="DetectorPaddingOverride"/>'s note says as much in passing.
+    ///
+    /// Re-swept once the geometry is exact and the border is finally an independent variable, on
+    /// the six ja-game frames that lose their leading word: 0 and 8 recover all six, 16 recovers
+    /// two, 24 three, 32 two, 50 none, 64 one. Shipped recovered none. On the subtitle corpora 0
+    /// and 8 are within noise of each other in F1 and both beat 50, and 0 is 10% faster — which is
+    /// why this was 0 first.
+    ///
+    /// 8 rather than 0 because those six frames were the wrong tiebreak. A user framing a dialogue
+    /// BOX rather than the text in it is the case that opened all of this, and swept properly —
+    /// the same game screen, the selection nudged over a 45-point grid of +-8px in each axis, which
+    /// is the amount a hand-drawn box moves — the two are not close:
+    ///
+    /// <code>
+    ///   border                 0      8
+    ///   leading word read   22/45  44/45
+    /// </code>
+    ///
+    /// It holds at every detector size (0.85x, 1.0x, 1.15x, 1.3x of the fraction: 30/45, 22/45,
+    /// 14/45, 15/45 at zero against 45, 44, 43, 43 at eight), so it is the border and not an
+    /// interaction with the scale. 0 loses nothing measurable on the corpora and everything on the
+    /// one workload the fix exists for; the six-frame tie could not see that because all six were
+    /// framed tight around the text.
+    /// </remarks>
+    private const int DetectorPadding = 8;
+
+    /// <summary>
+    /// An ImgResize the library can never act on, so its resize stays the identity.
+    /// </summary>
+    /// <remarks>
+    /// Not a magic large number for its own sake: Detect() takes min(ImgResize, long side), so
+    /// anything above the largest input the app can hand it makes that min pick the input and the
+    /// scale ratio come out exactly 1. A screen capture is at most a few thousand pixels.
+    /// </remarks>
+    private const int NoLibraryResize = 65536;
+
+    /// <summary>
+    /// The pixels to detect on, and how to get from a box on them back to the caller's bitmap.
+    /// </summary>
+    /// <remarks>
+    /// The two axes carry their own ratio because the isotropic resize rounds each dimension to a
+    /// whole pixel, so they differ by a fraction of a percent. Mapping with one of them would put
+    /// a box a pixel or two out on tall captures, and block bounds are what the overlay sizes its
+    /// font and background from.
+    /// </remarks>
+    internal readonly struct DetectorFrame : IDisposable
+    {
+        internal required SKBitmap Bitmap { get; init; }
+        internal required RapidOcrOptions Options { get; init; }
+        internal required double RatioX { get; init; }
+        internal required double RatioY { get; init; }
+
+        // Null-tolerant because a struct can always be default-constructed, and a measurement that
+        // holds one in a variable it does not always fill should not blow up on the way out.
+        public void Dispose() => Bitmap?.Dispose();
+
+        /// <summary>Rewrites detector-space points into the caller's coordinates, in place.</summary>
+        internal void MapToSource(SKPointI[] points)
+        {
+            if (RatioX >= 1.0 && RatioY >= 1.0)
+                return;
+
+            for (var i = 0; i < points.Length; i++)
+            {
+                points[i] = new SKPointI(
+                    (int)Math.Round(points[i].X / RatioX),
+                    (int)Math.Round(points[i].Y / RatioY));
+            }
+        }
+
+        internal void MapToSource(TextBlock[] blocks)
+        {
+            foreach (var block in blocks)
+            {
+                if (block.BoxPoints is { Length: > 0 } points)
+                    MapToSource(points);
+            }
+        }
+
+        internal System.Windows.Rect ToSourceBounds(SKPointI[] detectorSpacePoints)
+        {
+            var points = (SKPointI[])detectorSpacePoints.Clone();
+            MapToSource(points);
+
+            var xs = points.Select(point => point.X).ToList();
+            var ys = points.Select(point => point.Y).ToList();
+            return new System.Windows.Rect(
+                xs.Min(), ys.Min(), xs.Max() - xs.Min(), ys.Max() - ys.Min());
+        }
+    }
+
+    /// <summary>
+    /// Builds the detector's input: the isotropic downscale the caller asked for, aligned to the
+    /// detector's stride, with the library told not to resize it again.
+    /// </summary>
+    /// <param name="maxDetectSize">
+    /// Longest side to give the detector, or null for the screenshot default — as
+    /// <see cref="CreateOptions"/>. It is honoured exactly here, which is the point: it used to be
+    /// a request the library rounded down twice, by a different amount on each axis.
+    /// </param>
+    internal static DetectorFrame CreateDetectorFrame(SKBitmap source, int? maxDetectSize)
+    {
+        var requested = CreateOptions(maxDetectSize);
+        var longest = Math.Max(source.Width, source.Height);
+
+        // ImgResize only ever downscales, so a request at or above the input is no request at all.
+        var ratio = requested.ImgResize <= 0 || requested.ImgResize >= longest
+            ? 1.0
+            : (double)requested.ImgResize / longest;
+
+        var scaled = ratio >= 1.0 ? null : Downscale(source, ratio);
+        try
+        {
+            var body = scaled ?? source;
+            return new DetectorFrame
+            {
+                Bitmap = AlignForDetector(body, requested.Padding),
+                Options = requested with { ImgResize = NoLibraryResize },
+                RatioX = (double)body.Width / source.Width,
+                RatioY = (double)body.Height / source.Height,
+            };
+        }
+        finally
+        {
+            scaled?.Dispose();
+        }
+    }
+
+    // Mitchell because that is what the library resizes with (OcrUtils' NetworkSampling), so
+    // moving the resize out here changes where it happens and not how the glyphs come out.
+    private static SKBitmap Downscale(SKBitmap source, double ratio)
+    {
+        var width = Math.Max(1, (int)Math.Round(source.Width * ratio));
+        var height = Math.Max(1, (int)Math.Round(source.Height * ratio));
+        var scaled = new SKBitmap(width, height, source.ColorType, source.AlphaType);
+
+        using (var canvas = new SKCanvas(scaled))
+        {
+            canvas.Clear(SKColors.Transparent);
+            using var image = SKImage.FromBitmap(source);
+            canvas.DrawImage(
+                image, new SKRect(0, 0, width, height), new SKSamplingOptions(SKCubicResampler.Mitchell));
+        }
+
+        return scaled;
+    }
 
     internal static SKBitmap AlignForDetector(SKBitmap src, int detectPadding)
     {

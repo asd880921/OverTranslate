@@ -478,7 +478,7 @@ internal static class OcrTextBlockGrouper
             LayoutGlyphHeight: CombineLayoutGlyphHeight(layoutScript, [previous, current]));
     }
 
-    private static string JoinInlineText(string left, string right)
+    internal static string JoinInlineText(string left, string right)
     {
         left = left.TrimEnd();
         right = right.TrimStart();
@@ -1379,7 +1379,8 @@ internal static class OcrTextBlockGrouper
         return hasDigit;
     }
 
-    private static OcrTextBlock BuildGroup(List<OcrTextBlock> blocks)
+    // Aggregation only, shared with dialogue. No joining decision is made by this method.
+    internal static OcrTextBlock BuildGroup(List<OcrTextBlock> blocks)
     {
         if (blocks.Count == 1)
             return blocks[0];

@@ -74,6 +74,19 @@ namespace OverTranslate.Services.Realtime;
 /// spend its budget raising the detector size for small text, which is the case that was already
 /// reading well. Issue #89 was closed on this rather than carried into an implementation.
 ///
+/// EVERY TABLE ABOVE WAS MEASURED WHILE THE FRACTION WAS NOT WHAT THE DETECTOR GOT. Until the
+/// geometry fix (<c>OnnxOcrEngine.CreateDetectorFrame</c>) the size asked for here was a request the
+/// library rounded down twice, by a different amount on each axis: a strip asked for at 0.85 reached
+/// the detector at 0.84 across and 0.73 down. So "1.00 reads worse than 0.85" compared two distorted
+/// readings, and the row labelled 1.00 was never a native read.
+///
+/// The fractions themselves survive it. Re-swept on region-subtitle-mixed-boxshape (123 frames, the
+/// corpus whose distortion ranged widest — 1.15x to 1.34x) with the geometry exact, at 0.85x, 1.0x
+/// and 1.15x of what this type returns: 97.7%, 99.8% and 98.5% character F1. 1.0x — that is, leaving
+/// <see cref="StripFraction"/> at 0.85 — is the peak with both neighbours worse, so there is nothing
+/// to re-tune here and no reason to spend another sweep on it. What did change is that the fraction
+/// now means the same thing whatever size the user's box happens to be.
+///
 /// Three stories were tried and did not survive, which is why this note is longer than its
 /// conclusion: "the model wants ~30px" is PP-OCRv5 folklore; "bigger keeps helping, saturating at
 /// 40–50px" is what the strictest success criterion alone shows on one corpus, and the same data

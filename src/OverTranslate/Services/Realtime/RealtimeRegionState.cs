@@ -83,6 +83,7 @@ internal sealed class RealtimeRegionState
     private int _unsettledPolls;
     private int _pollsSinceFullScan;
     private int _emptyPasses;
+    internal DialogueReadingTracker Dialogue { get; } = new();
 
     /// <summary>
     /// What the region shows, one entry per line, each with the score it was read at — so a later
@@ -122,16 +123,18 @@ internal sealed class RealtimeRegionState
     /// policy with fingerprints it builds by hand.
     /// </param>
     /// <returns>Whether the frame should be recognised now.</returns>
-    public bool Observe(Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture)
+    public bool Observe(Func<IReadOnlyList<Rectangle>?, FrameFingerprint> capture, bool dialogue = false)
     {
+        if (dialogue && Dialogue.TryTakeConfirmation()) return true;
         var current = capture(IsWatchingText ? _watchBands : null);
 
         if (current.Differs(_rendered))
         {
+            if (dialogue) Dialogue.ObservePixelChange();
             // Changed, and not yet the same twice running. Give it a poll to settle so a line that
             // is still fading in is read once it has arrived — but only up to the cap, or content
             // that never holds still would never be read at all.
-            var cap = IsWatchingText ? MaxTextUnsettledPolls : MaxUnsettledPolls;
+            var cap = IsWatchingText ? (dialogue ? 0 : MaxTextUnsettledPolls) : MaxUnsettledPolls;
             if (current.Differs(_pending) && _unsettledPolls < cap)
             {
                 _pending = current;
@@ -156,7 +159,9 @@ internal sealed class RealtimeRegionState
         if (++_pollsSinceFullScan < FullRescanPolls) return false;
 
         _pollsSinceFullScan = 0;
-        return capture(null).Differs(_renderedFull);
+        bool changed = capture(null).Differs(_renderedFull);
+        if (dialogue && changed) Dialogue.ObservePixelChange();
+        return changed;
     }
 
     /// <summary>
@@ -244,6 +249,7 @@ internal sealed class RealtimeRegionState
     /// </remarks>
     public void Invalidate()
     {
+        Dialogue.Reset();
         _rendered = null;
         _renderedFull = null;
         _pending = null;

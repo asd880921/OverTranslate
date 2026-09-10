@@ -22,7 +22,8 @@ internal readonly record struct ReadingMerge(
     int Dropped)
 {
     /// <summary>Whether anything the reader can see is different from what is on screen now.</summary>
-    public bool Changed => Improved > 0 || Added > 0 || Dropped > 0;
+    public bool Repositioned { get; init; }
+    public bool Changed => Improved > 0 || Added > 0 || Dropped > 0 || Repositioned;
 }
 
 /// <summary>
