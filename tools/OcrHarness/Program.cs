@@ -16,6 +16,24 @@ using OverTranslate.Services.Realtime;
 // the text it belongs to, which is the half that says whether a verdict was right.
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
+if (args.Length > 0 && args[0] == "--dialogue-probe")
+    return await DialogueProbe.Run(args.Skip(1).ToArray());
+
+if (args.Length > 0 && args[0] == "--leading-edge-probe")
+    return await LeadingEdgeProbe.Run(args.Skip(1).ToArray());
+
+if (args.Length > 0 && args[0] == "--leading-edge-controls")
+    return await LeadingEdgeProbe.Run(args.Skip(1).ToArray(), controls: true);
+
+if (args.Length > 0 && args[0] == "--leading-edge-fusion")
+    return LeadingEdgeFusionProbe.Run(args.Skip(1).ToArray());
+
+if (args.Length > 0 && args[0] == "--ocr-root-probe")
+    return OcrRootProbe.Run(args.Skip(1).ToArray());
+
+if (args.Length > 0 && args[0] == "--detector-geometry")
+    return DetectorGeometryProbe.Run(args.Skip(1).ToArray());
+
 if (args.Length > 0 && args[0] == "--group-prototype")
     return await GroupingPrototype.Run(args.Skip(1).ToArray());
 
@@ -902,7 +920,7 @@ if (args[0] == "--pad-sweep")
             var text = kept is null || kept.Count == 0
                 ? ""
                 : "  " + string.Join(" | ", kept.Select(b => b.Text.Replace("\n", " ")));
-            var mark = padding == 50 ? " <- shipped" : "";
+            var mark = padding == 0 ? " <- shipped" : "";
 
             Console.WriteLine(
                 $"  pad={padding,3} : {kept?.Count ?? -1} box chars={chars,3} " +
@@ -1823,21 +1841,14 @@ if (args[0] == "--roi-stability")
     {
         using var crop = roiSource.Clone(rect, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-        var options = OnnxOcrEngine.CreateOptions(null);
         using var sk = OnnxOcrEngine.ConvertToSkBitmap(crop);
-        var aligned = OnnxOcrEngine.AlignForDetector(sk, options.Padding);
 
-        // What the library does next: pad by options.Padding on all four sides, then scale that so
-        // its long side lands on the target. ImgResize is a CAP and not a target — measured, a
-        // 260x200 capture reads identically at ImgResize 512, 1024, 2048 and 4096 — so the target is
-        // the padded long side whenever that is the smaller of the two, and the scale is then 1.0
-        // and nothing is resampled at all. Asking GetScaleParam for ImgResize directly reports the
-        // upscale it would apply if it were a target, which is not what runs.
-        var paddedWidth = aligned.Width + 2 * options.Padding;
-        var paddedHeight = aligned.Height + 2 * options.Padding;
-        using var padded = new SkiaSharp.SKBitmap(paddedWidth, paddedHeight);
-        var scale = RapidOcrNet.ScaleParam.GetScaleParam(
-            padded, Math.Min(options.ImgResize, Math.Max(paddedWidth, paddedHeight)));
+        // The detector's own input, built the way the engine builds it. What used to stand here —
+        // align, add the border back, then ask ScaleParam what the library would make of it —
+        // described a pipeline the engine no longer runs: the downscale is now isotropic and done
+        // before the library sees the image, and the library's own resize is the identity.
+        var frame = OnnxOcrEngine.CreateDetectorFrame(sk, null);
+        var aligned = frame.Bitmap;
 
         var boxes = roiEngine.DetectBoxesOnly(crop, harnessLanguage)
             .Select(box => (
@@ -1860,7 +1871,7 @@ if (args[0] == "--roi-stability")
         var probed = new RoiProbed(
             rect,
             $"{aligned.Width}x{aligned.Height}",
-            $"{scale.ScaleWidth:0.0000}x{scale.ScaleHeight:0.0000}",
+            $"{frame.RatioX:0.0000}x{frame.RatioY:0.0000}",
             aligned,
             boxes,
             blocks,
@@ -2110,9 +2121,8 @@ if (args[0] == "--roi-snap")
     {
         using var crop = snapSource.Clone(analysis, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-        var options = OnnxOcrEngine.CreateOptions(null);
         using var sk = OnnxOcrEngine.ConvertToSkBitmap(crop);
-        var aligned = OnnxOcrEngine.AlignForDetector(sk, options.Padding);
+        var aligned = OnnxOcrEngine.CreateDetectorFrame(sk, null).Bitmap;
 
         var read = await snapEngine.RecognizeAsync(crop, harnessLanguage);
 
@@ -2359,22 +2369,17 @@ if (args[0] == "--roi-fullframe")
     ffDetectWatch.Stop();
     var ffAfterMemory = Environment.WorkingSet;
 
-    var ffOptions = OnnxOcrEngine.CreateOptions(ffSize);
     using (var ffSk = OnnxOcrEngine.ConvertToSkBitmap(ffSource))
-    using (var ffAligned = OnnxOcrEngine.AlignForDetector(ffSk, ffOptions.Padding))
+    using (var ffFrame = OnnxOcrEngine.CreateDetectorFrame(ffSk, ffSize))
     {
-        // The same reading of ImgResize as --roi-stability's: a cap on the padded long side, not a
-        // target, so the scale is 1.0 whenever the page already fits. This is the line that says
-        // whether question B has anything to answer on this image.
-        var paddedWidth = ffAligned.Width + 2 * ffOptions.Padding;
-        var paddedHeight = ffAligned.Height + 2 * ffOptions.Padding;
-        using var ffPadded = new SkiaSharp.SKBitmap(paddedWidth, paddedHeight);
-        var ffScale = RapidOcrNet.ScaleParam.GetScaleParam(
-            ffPadded, Math.Min(ffOptions.ImgResize, Math.Max(paddedWidth, paddedHeight)));
+        // The isotropic downscale the engine applied before the library saw the image. It is 1.0
+        // whenever the page already fits, and this is the line that says whether question B has
+        // anything to answer on this image.
+        var ffAligned = ffFrame.Bitmap;
 
         Console.WriteLine(
             $"FULL FRAME DETECT  canvas={ffAligned.Width}x{ffAligned.Height}  " +
-            $"scale={ffScale.ScaleWidth:0.0000}x{ffScale.ScaleHeight:0.0000}  boxes={ffAllBoxes.Count}  " +
+            $"scale={ffFrame.RatioX:0.0000}x{ffFrame.RatioY:0.0000}  boxes={ffAllBoxes.Count}  " +
             $"{ffDetectWatch.ElapsedMilliseconds}ms  workingSet {(ffAfterMemory - ffBeforeMemory) / 1024 / 1024:+0;-0;0}MB");
     }
 
@@ -2486,15 +2491,9 @@ if (args[0] == "--roi-fullframe")
                 block.Text))
             .ToList();
 
-        var baselineOptions = OnnxOcrEngine.CreateOptions(null);
         using var baselineSk = OnnxOcrEngine.ConvertToSkBitmap(crop);
-        using var baselineAligned = OnnxOcrEngine.AlignForDetector(baselineSk, baselineOptions.Padding);
-        var baselinePaddedWidth = baselineAligned.Width + 2 * baselineOptions.Padding;
-        var baselinePaddedHeight = baselineAligned.Height + 2 * baselineOptions.Padding;
-        using var baselinePadded = new SkiaSharp.SKBitmap(baselinePaddedWidth, baselinePaddedHeight);
-        var baselineScale = RapidOcrNet.ScaleParam.GetScaleParam(
-            baselinePadded,
-            Math.Min(baselineOptions.ImgResize, Math.Max(baselinePaddedWidth, baselinePaddedHeight)));
+        using var baselineFrame = OnnxOcrEngine.CreateDetectorFrame(baselineSk, null);
+        var baselineAligned = baselineFrame.Bitmap;
 
         return new FullFrameProbed(
             logical,
@@ -2507,7 +2506,7 @@ if (args[0] == "--roi-fullframe")
             baselineBlocks,
             baselineWatch.ElapsedMilliseconds,
             $"{baselineAligned.Width}x{baselineAligned.Height}",
-            $"{baselineScale.ScaleWidth:0.0000}x{baselineScale.ScaleHeight:0.0000}");
+            $"{baselineFrame.RatioX:0.0000}x{baselineFrame.RatioY:0.0000}");
     }
 
     void FullFrameStabilityReport(string side, int step, FullFrameProbed b, FullFrameProbed v)
