@@ -81,7 +81,9 @@ OcrHarness.exe --pad-sweep 圖.png [更多.png ...]
 `--pad-sweep` 的白邊以前不是獨立變因：它參與 `AlignForDetector` 的對齊算式，會連帶改變偵測器
 輸入被壓扁多少，所以舊那張「50 最高分、兩側都比它差」的表其實是在排「哪個白邊剛好落在扭曲最少
 的幾何上」。偵測器輸入幾何修好之後（`OnnxOcrEngine.CreateDetectorFrame`）白邊才第一次只是白邊，
-重掃的結果是 **0 最好**，也是現行值。細節與數字記在 `OnnxOcrEngine.DetectorPadding`
+重掃的結果是 **8 最好**，也是現行值——0 在語料上跟 8 打平且更快，但在「框整個對話框」
+這種實際框選型態上差很多（同一畫面挪 ±8px 共 45 種框法，讀到行首詞 22/45 對 44/45）。
+細節與數字記在 `OnnxOcrEngine.DetectorPadding`
 與 `.ai/realtime-dialogue/ocr-detector-geometry.md`。
 
 `--scale-sweep` 會一併印出 `RealtimeDetectorSize` 對該尺寸區塊會挑的 primary 與 fallback，

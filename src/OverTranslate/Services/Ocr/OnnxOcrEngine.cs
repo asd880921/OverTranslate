@@ -800,15 +800,15 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// The clock reading is superseded for the same reason — with the geometry exact the border no
     /// longer counts towards anything, and dropping it is 10% FASTER rather than slower.
     ///
-    /// Re-swept with the geometry fixed, the border comes out worthless-to-harmful: see
-    /// <c>DetectorPadding</c>, which is now 0.
+    /// Re-swept with the geometry fixed, the border wants to be small rather than absent: see
+    /// <c>DetectorPadding</c>, which is now 8.
     ///
-    /// ITS COLOUR IS SETTLED, at 0. With no border the library never composites, so the stride
+    /// ITS COLOUR ONLY MATTERS AT ZERO. With no border the library never composites, so the stride
     /// strip <see cref="AlignForDetector"/> leaves on the right and bottom reaches normalisation as
-    /// stored premultiplied transparent, which is black. Painting it white instead costs 2.6 points
-    /// of F1 on region-subtitle-mixed-boxshape (99.9% to 97.3%); painting it black scores
-    /// identically to leaving it transparent, as it must. So the shipped behaviour is right, and it
-    /// is worth knowing it is a consequence rather than a choice.
+    /// stored premultiplied transparent, which is black; painting it white instead cost 2.6 points
+    /// of F1 on region-subtitle-mixed-boxshape (99.9% to 97.3%) and painting it black scored
+    /// identically to leaving it transparent, as it must. At any non-zero border the library's own
+    /// MakePadding runs, clears white and composites, so the strip is white and this is moot.
     /// </remarks>
     internal static int? DetectorPaddingOverride { get; set; }
 
@@ -1491,10 +1491,26 @@ internal sealed class OnnxOcrEngine : IOcrEngine
     /// Re-swept once the geometry is exact and the border is finally an independent variable, on
     /// the six ja-game frames that lose their leading word: 0 and 8 recover all six, 16 recovers
     /// two, 24 three, 32 two, 50 none, 64 one. Shipped recovered none. On the subtitle corpora 0
-    /// and 8 are within noise of each other and both beat 50; 0 is also 10% faster and keeps the
-    /// leading bracket on ja-game-2-roi, which 8 drops.
+    /// and 8 are within noise of each other in F1 and both beat 50, and 0 is 10% faster — which is
+    /// why this was 0 first.
+    ///
+    /// 8 rather than 0 because those six frames were the wrong tiebreak. A user framing a dialogue
+    /// BOX rather than the text in it is the case that opened all of this, and swept properly —
+    /// the same game screen, the selection nudged over a 45-point grid of +-8px in each axis, which
+    /// is the amount a hand-drawn box moves — the two are not close:
+    ///
+    /// <code>
+    ///   border                 0      8
+    ///   leading word read   22/45  44/45
+    /// </code>
+    ///
+    /// It holds at every detector size (0.85x, 1.0x, 1.15x, 1.3x of the fraction: 30/45, 22/45,
+    /// 14/45, 15/45 at zero against 45, 44, 43, 43 at eight), so it is the border and not an
+    /// interaction with the scale. 0 loses nothing measurable on the corpora and everything on the
+    /// one workload the fix exists for; the six-frame tie could not see that because all six were
+    /// framed tight around the text.
     /// </remarks>
-    private const int DetectorPadding = 0;
+    private const int DetectorPadding = 8;
 
     /// <summary>
     /// An ImgResize the library can never act on, so its resize stays the identity.

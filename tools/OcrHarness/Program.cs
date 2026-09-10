@@ -920,7 +920,7 @@ if (args[0] == "--pad-sweep")
             var text = kept is null || kept.Count == 0
                 ? ""
                 : "  " + string.Join(" | ", kept.Select(b => b.Text.Replace("\n", " ")));
-            var mark = padding == 0 ? " <- shipped" : "";
+            var mark = padding == 8 ? " <- shipped" : "";
 
             Console.WriteLine(
                 $"  pad={padding,3} : {kept?.Count ?? -1} box chars={chars,3} " +

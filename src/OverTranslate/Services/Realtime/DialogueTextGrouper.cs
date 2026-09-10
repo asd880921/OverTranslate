@@ -106,6 +106,11 @@ internal static class DialogueTextGrouper
         if (overlap < Math.Min(a.Width, b.Width) * 0.5) return false;
         var alignment = Math.Min(Math.Abs(a.Left - b.Left), Math.Min(Math.Abs(a.Right - b.Right),
             Math.Abs((a.Left + a.Right - b.Left - b.Right) / 2)));
-        return alignment <= height * 1.25;
+        // Two substantial, similarly wide rows get the same benefit of the doubt on alignment that
+        // they already get on height. A dialogue row whose leading word the detector missed starts
+        // well to the right of the row above it — measured at 138px on a 64px line, 2.2 heights —
+        // and refusing to stack them there turns one missing word into two overlay boxes. A short
+        // name or an isolated symbol still cannot borrow this.
+        return alignment <= height * (substantialRows ? 2.5 : 1.25);
     }
 }
