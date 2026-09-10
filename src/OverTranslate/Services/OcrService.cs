@@ -102,17 +102,23 @@ public class OcrService : IDisposable
         return GroupRealtime(blocks, bitmap.Height, mode);
     }
 
+    /// <param name="decisions">
+    /// Diagnostic only, and null everywhere but OcrHarness. Passed to whichever grouper this mode
+    /// really uses, so <c>--group-explain --realtime</c> reports the branch that ran rather than
+    /// the other one.
+    /// </param>
     internal static List<OcrTextBlock> GroupRealtime(List<OcrTextBlock> blocks, double frameHeight,
-        Realtime.RealtimeBlockMode mode, GroupingTrace? trace = null)
+        Realtime.RealtimeBlockMode mode, GroupingTrace? trace = null,
+        List<OcrTextBlockGrouper.NextLineDecision>? decisions = null)
     {
         var filtered = RejectUnconvincingBlocks(blocks);
         if (mode != Realtime.RealtimeBlockMode.Subtitle)
-            return OcrTextBlockGrouper.Group(filtered, GroupingProfile.Realtime, null, trace);
+            return OcrTextBlockGrouper.Group(filtered, GroupingProfile.Realtime, decisions, trace);
         trace?.RegisterBlocks(blocks);
         // Remove scene-sized noise before it can contaminate a real dialogue row. Confident
         // single letters (such as a split "I") may still join; isolated ones are filtered later.
         filtered = filtered.Where(b => !Realtime.CollapsedDetection.IsCollapsed(b.Bounds.Height, frameHeight, b.Text)).ToList();
-        return Realtime.DialogueTextGrouper.Group(filtered, trace);
+        return Realtime.DialogueTextGrouper.Group(filtered, trace, decisions);
     }
 
     // Scenery the recogniser was not sure about. Only on this path: it is the realtime one, where

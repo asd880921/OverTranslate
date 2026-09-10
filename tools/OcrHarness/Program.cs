@@ -1419,7 +1419,10 @@ if (args[0] == "--group-explain")
         {
             var size = harnessSize
                 ?? RealtimeDetectorSize.For(image.Width, image.Height, harnessMode).Primary;
-            Console.WriteLine($"FLOW: 即時翻譯 (detect={size})");
+            // The mode is named because it picks the grouper, not just the thresholds: Subtitle
+            // runs DialogueTextGrouper and Panel runs the screenshot grouper on the Realtime
+            // profile. A file that does not say which one ran cannot be read against the other.
+            Console.WriteLine($"FLOW: 即時翻譯 (detect={size}, mode={harnessMode})");
             raw = await explainEngine.TryRecognizeAsync(image, harnessLanguage, size);
         }
         else
@@ -1460,7 +1463,17 @@ if (args[0] == "--group-explain")
             raw = OcrService.PrepareScreenshotGrouping(image, raw, explainProfile);
         var decisions = new List<OcrTextBlockGrouper.NextLineDecision>();
         var groupingTrace = harnessTrace ? new GroupingTrace() : null;
-        var grouped = OcrTextBlockGrouper.Group(raw, explainProfile, decisions, groupingTrace);
+        // Through the app's own realtime entry point rather than straight into the screenshot
+        // grouper. Calling the grouper directly is what this diagnostic used to do, and on Subtitle
+        // that reported the Panel branch's verdicts for a pipeline that never runs it — the
+        // dialogue rules were invisible here for the whole round that changed them.
+        var grouped = harnessRealtime
+            ? OcrService.GroupRealtime(raw, image.Height, harnessMode, groupingTrace, decisions)
+            : OcrTextBlockGrouper.Group(raw, explainProfile, decisions, groupingTrace);
+        if (harnessRealtime && harnessMode == RealtimeBlockMode.Subtitle)
+            Console.WriteLine(
+                "  dialogue grouper: profile thresholds below do not apply; scene-sized boxes are " +
+                "dropped inside GroupRealtime, so a line counted here may not have reached it");
 
         if (groupingTrace is not null)
         {
@@ -1580,6 +1593,13 @@ if (args[0] == "--group-explain")
         Console.WriteLine(
             "  --- next: align=left alignC=centre alignR=right alignMin=what the gate read, " +
             "bar=wrapped-final-line limit, solid=this group's set-solid limit ---");
+        // Same columns, different quantities. Printing the screenshot legend over dialogue verdicts
+        // would put a paragraph rule's name on a number no paragraph rule produced.
+        if (harnessRealtime && harnessMode == RealtimeBlockMode.Subtitle)
+            Console.WriteLine(
+                "  --- dialogue mode: row hgap=horizontal gap, overlap=vertical overlap of the two " +
+                "boxes; next size=height ratio, bar=the height floor it was judged on (0.60 for two " +
+                "substantial rows, else 0.75), solid=the alignment ceiling (2.50 or 1.25) ---");
         foreach (var decision in decisions)
         {
             var verdict = decision.Joined ? "JOIN  " : "SPLIT ";

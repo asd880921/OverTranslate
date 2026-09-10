@@ -9,7 +9,17 @@ namespace OverTranslate.Services.Realtime;
 /// </summary>
 internal static class DialogueTextGrouper
 {
-    internal static List<OcrTextBlock> Group(IReadOnlyList<OcrTextBlock> input, GroupingTrace? trace = null)
+    /// <param name="decisions">
+    /// Collects why each pair was joined or refused, for <c>OcrHarness --group-explain --realtime</c>.
+    /// Null everywhere but the harness, and read by no rule: a pass with one and a pass without
+    /// reach the same verdicts. The record is shared with the screenshot grouper, so several of its
+    /// fields have no dialogue meaning and are left at zero; the ones filled are named in the
+    /// harness's own legend.
+    /// </param>
+    internal static List<OcrTextBlock> Group(
+        IReadOnlyList<OcrTextBlock> input,
+        GroupingTrace? trace = null,
+        List<OcrTextBlockGrouper.NextLineDecision>? decisions = null)
     {
         if (trace is not null && trace.Blocks.Count == 0) trace.RegisterBlocks(input);
         if (input.Count <= 1)
@@ -32,8 +42,9 @@ internal static class DialogueTextGrouper
             var segments = new List<List<OcrTextBlock>>();
             foreach (var block in row)
             {
-                if (segments.Count == 0 || !Adjacent(segments[^1][^1].LayoutBounds, block.LayoutBounds))
-                    segments.Add([block]);
+                var joinsRow = segments.Count > 0 && Adjacent(segments[^1][^1].LayoutBounds, block.LayoutBounds);
+                if (segments.Count > 0) RecordRow(decisions, segments[^1][^1], block, joinsRow);
+                if (!joinsRow) segments.Add([block]);
                 else segments[^1].Add(block);
             }
             // Single-character detections need a real text fragment as an anchor. Joining only
@@ -61,7 +72,9 @@ internal static class DialogueTextGrouper
                 if (!open[i]) continue;
                 var previous = groups[i][^1].LayoutBounds;
                 var current = line.Block.LayoutBounds;
-                if (!NextRow(previous, current)) continue;
+                var joins = NextRow(previous, current, out var rule);
+                RecordNext(decisions, groups[i][^1], line.Block, joins, rule);
+                if (!joins) continue;
                 var distance = current.Y - previous.Y;
                 if (distance < nearest) { target = i; nearest = distance; }
             }
@@ -90,20 +103,25 @@ internal static class DialogueTextGrouper
         SameRow(a, b) && Math.Min(a.Height, b.Height) >= Math.Max(a.Height, b.Height) * 0.6 &&
         b.Left - a.Right <= Math.Max(a.Height, b.Height) * 1.5;
 
-    private static bool NextRow(Rect a, Rect b)
+    private static bool NextRow(Rect a, Rect b, out string rule)
     {
+        rule = "stacked";
         double height = Math.Max(a.Height, b.Height);
         // Long subtitle rows can have quite different detector padding even at the same font
         // size. Give two substantial, similarly wide rows extra height tolerance; a short name
         // or isolated symbol cannot borrow it from the dialogue beside it.
         bool substantialRows = a.Width >= a.Height * 6 && b.Width >= b.Height * 6 &&
             Math.Min(a.Width, b.Width) >= Math.Max(a.Width, b.Width) * 0.5;
-        if (height <= 0 || b.Y <= a.Y || SameRow(a, b) ||
-            Math.Min(a.Height, b.Height) < height * (substantialRows ? 0.6 : 0.75) ||
-            b.Top - a.Bottom > height * 0.65 || b.Top - a.Bottom < -height * 0.25)
-            return false;
+        // Named one test at a time rather than as a single condition, so a refusal can say which
+        // test refused it. The order and the numbers are unchanged.
+        if (height <= 0 || b.Y <= a.Y) { rule = "not-below"; return false; }
+        if (SameRow(a, b)) { rule = "same-row"; return false; }
+        if (Math.Min(a.Height, b.Height) < height * (substantialRows ? 0.6 : 0.75))
+        { rule = "height-mismatch"; return false; }
+        if (b.Top - a.Bottom > height * 0.65) { rule = "gap-too-wide"; return false; }
+        if (b.Top - a.Bottom < -height * 0.25) { rule = "overlaps-above"; return false; }
         var overlap = Math.Min(a.Right, b.Right) - Math.Max(a.Left, b.Left);
-        if (overlap < Math.Min(a.Width, b.Width) * 0.5) return false;
+        if (overlap < Math.Min(a.Width, b.Width) * 0.5) { rule = "no-column-overlap"; return false; }
         var alignment = Math.Min(Math.Abs(a.Left - b.Left), Math.Min(Math.Abs(a.Right - b.Right),
             Math.Abs((a.Left + a.Right - b.Left - b.Right) / 2)));
         // Two substantial, similarly wide rows get the same benefit of the doubt on alignment that
@@ -111,6 +129,63 @@ internal static class DialogueTextGrouper
         // well to the right of the row above it — measured at 138px on a 64px line, 2.2 heights —
         // and refusing to stack them there turns one missing word into two overlay boxes. A short
         // name or an isolated symbol still cannot borrow this.
-        return alignment <= height * (substantialRows ? 2.5 : 1.25);
+        if (alignment > height * (substantialRows ? 2.5 : 1.25)) { rule = "alignment"; return false; }
+        rule = substantialRows ? "stacked-substantial" : "stacked";
+        return true;
+    }
+
+    // The two verdicts, in the record the harness already knows how to print. "row" puts the
+    // HORIZONTAL gap in VerticalGap and the vertical overlap in LeftDelta, because that is what the
+    // row printer labels those two columns; "next" fills the three alignment deltas and the one the
+    // gate actually read. Anything left at zero is a quantity the dialogue rules never compute, and
+    // the harness prints its own legend saying so.
+    private static void RecordRow(
+        List<OcrTextBlockGrouper.NextLineDecision>? decisions,
+        OcrTextBlock previous, OcrTextBlock current, bool joined)
+    {
+        if (decisions is null) return;
+        Rect a = previous.LayoutBounds, b = current.LayoutBounds;
+        double height = Math.Max(a.Height, b.Height);
+        if (height <= 0) return;
+        var rule = !SameRow(a, b) ? "not-same-row"
+            : Math.Min(a.Height, b.Height) < height * 0.6 ? "row-height-mismatch"
+            : b.Left - a.Right > height * 1.5 ? "row-gap-too-wide"
+            : "adjacent";
+        decisions.Add(new OcrTextBlockGrouper.NextLineDecision(
+            "row", previous.Text, current.Text, previous.LayoutScript, current.LayoutScript,
+            VerticalGap: (b.Left - a.Right) / height,
+            LeftDelta: (Math.Min(a.Bottom, b.Bottom) - Math.Max(a.Top, b.Top))
+                / Math.Max(1, Math.Min(a.Height, b.Height)),
+            CenterDelta: 0, RightDelta: 0, AlignmentDelta: 0,
+            TextSizeRatio: Math.Min(a.Height, b.Height) / height,
+            WidthRatio: Math.Min(a.Width, b.Width) / Math.Max(1, Math.Max(a.Width, b.Width)),
+            LineAdvance: 0, LeadingBar: 0, SolidBar: 0, Joined: joined, Rule: rule));
+    }
+
+    private static void RecordNext(
+        List<OcrTextBlockGrouper.NextLineDecision>? decisions,
+        OcrTextBlock previous, OcrTextBlock current, bool joined, string rule)
+    {
+        if (decisions is null) return;
+        Rect a = previous.LayoutBounds, b = current.LayoutBounds;
+        double height = Math.Max(a.Height, b.Height);
+        if (height <= 0) return;
+        double left = Math.Abs(a.Left - b.Left), right = Math.Abs(a.Right - b.Right);
+        double centre = Math.Abs((a.Left + a.Right - b.Left - b.Right) / 2);
+        bool substantialRows = a.Width >= a.Height * 6 && b.Width >= b.Height * 6 &&
+            Math.Min(a.Width, b.Width) >= Math.Max(a.Width, b.Width) * 0.5;
+        decisions.Add(new OcrTextBlockGrouper.NextLineDecision(
+            "next", previous.Text, current.Text, previous.LayoutScript, current.LayoutScript,
+            VerticalGap: (b.Top - a.Bottom) / height,
+            LeftDelta: left / height, CenterDelta: centre / height, RightDelta: right / height,
+            AlignmentDelta: Math.Min(left, Math.Min(right, centre)) / height,
+            TextSizeRatio: Math.Min(a.Height, b.Height) / height,
+            WidthRatio: Math.Min(a.Width, b.Width) / Math.Max(1, Math.Max(a.Width, b.Width)),
+            LineAdvance: (b.Y - a.Y) / height,
+            // The two gates this grouper actually runs, in the columns the screenshot flow uses for
+            // its own: the height floor it was judged against, and the alignment ceiling.
+            LeadingBar: substantialRows ? 0.6 : 0.75,
+            SolidBar: substantialRows ? 2.5 : 1.25,
+            Joined: joined, Rule: rule));
     }
 }
