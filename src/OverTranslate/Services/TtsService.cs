@@ -14,7 +14,8 @@ public class TtsService : IDisposable
     private readonly MicrosoftTranslator  _microsoft = new();
     private readonly BingTranslator       _bing      = new();
     private readonly YandexTranslator     _yandex    = new();
-    private readonly MediaPlayer _player = new();
+    private MediaPlayer? _player;
+    private string? _currentFile;
     private CancellationTokenSource? _cts;
     private bool _active;
 
@@ -24,11 +25,52 @@ public class TtsService : IDisposable
     /// <summary>Raised (on the UI thread) whenever playback starts, ends, fails, or is stopped.</summary>
     public event EventHandler? StateChanged;
 
-    public TtsService()
+    /// <summary>
+    /// Creates the player on demand. A MediaPlayer that has raised MediaFailed cannot be trusted to
+    /// play again — depending on the error it can go silently dead, and then every later Open/Play on
+    /// that instance does nothing at all, which is exactly the "no sound until I reopen 取詞翻譯" the
+    /// user is left with. So a failed player is thrown away and the next request gets a fresh one.
+    /// UI thread only.
+    /// </summary>
+    private MediaPlayer EnsurePlayer()
     {
+        if (_player != null) return _player;
+
+        var player = new MediaPlayer();
         // Natural end / playback error must flip the button back to "play".
-        _player.MediaEnded  += (_, _) => SetActive(false);
-        _player.MediaFailed += (_, _) => SetActive(false);
+        player.MediaEnded += (_, _) =>
+        {
+            if (!ReferenceEquals(_player, player)) return;
+            // Close() releases the temp file, which the player holds open until its next Open().
+            player.Close();
+            DeleteCurrentFile();
+            SetActive(false);
+        };
+        player.MediaFailed += (_, e) =>
+        {
+            Log.Warn(e.ErrorException, "TTS playback failed, discarding player");
+            player.Close();
+            if (ReferenceEquals(_player, player))
+            {
+                _player = null;
+                DeleteCurrentFile();
+            }
+            SetActive(false);
+        };
+
+        _player = player;
+        return player;
+    }
+
+    /// <summary>Stops playback and releases the file the player was holding. UI thread only.</summary>
+    private void ClosePlayer()
+    {
+        if (_player != null)
+        {
+            _player.Stop();
+            _player.Close();
+        }
+        DeleteCurrentFile();
     }
 
     private void SetActive(bool value)
@@ -38,14 +80,48 @@ public class TtsService : IDisposable
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private static readonly string TempFile =
-        Path.Combine(Path.GetTempPath(), "overtranslate_tts.mp3");
+    private const string TempPrefix = "overtranslate_tts_";
+    private static int _staleFilesSwept;
+
+    /// <summary>
+    /// Every playback gets its own file: the player keeps the previous one open, and re-opening the
+    /// same path also runs into the media stack caching that URI.
+    /// </summary>
+    private static string NewTempFile() =>
+        Path.Combine(Path.GetTempPath(), $"{TempPrefix}{Guid.NewGuid():N}.mp3");
+
+    private void DeleteCurrentFile()
+    {
+        var file = Interlocked.Exchange(ref _currentFile, null);
+        if (file == null) return;
+        try { File.Delete(file); }
+        catch (Exception ex) { Log.Debug(ex, "Could not delete TTS temp file {File}", file); }
+    }
+
+    /// <summary>Removes files an earlier crash left behind. Old enough that no live player holds them.</summary>
+    private static void SweepStaleFilesOnce()
+    {
+        if (Interlocked.Exchange(ref _staleFilesSwept, 1) != 0) return;
+        try
+        {
+            var cutoff = DateTime.UtcNow - TimeSpan.FromHours(1);
+            foreach (var file in Directory.EnumerateFiles(Path.GetTempPath(), TempPrefix + "*.mp3"))
+            {
+                try
+                {
+                    if (File.GetLastWriteTimeUtc(file) < cutoff) File.Delete(file);
+                }
+                catch { /* still in use by another process, or already gone */ }
+            }
+        }
+        catch (Exception ex) { Log.Debug(ex, "TTS temp sweep failed"); }
+    }
 
     /// <summary>Stops any in-flight fetch and playback.</summary>
     public void Stop()
     {
         _cts?.Cancel();
-        System.Windows.Application.Current.Dispatcher.Invoke(() => { _player.Stop(); _player.Close(); });
+        System.Windows.Application.Current.Dispatcher.Invoke(ClosePlayer);
         SetActive(false);
     }
 
@@ -58,8 +134,10 @@ public class TtsService : IDisposable
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
-        System.Windows.Application.Current.Dispatcher.Invoke(() => { _player.Stop(); _player.Close(); });
+        System.Windows.Application.Current.Dispatcher.Invoke(ClosePlayer);
         SetActive(true);
+
+        SweepStaleFilesOnce();
 
         var providers = BuildProviders(text, langCode);
         Exception? lastEx = null;
@@ -75,12 +153,16 @@ public class TtsService : IDisposable
 
                 using var ms = new MemoryStream();
                 await stream.CopyToAsync(ms, token);
-                await File.WriteAllBytesAsync(TempFile, ms.ToArray(), token);
+                var file = NewTempFile();
+                await File.WriteAllBytesAsync(file, ms.ToArray(), token);
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
-                    _player.Open(new Uri(TempFile));
-                    _player.Play();
+                    DeleteCurrentFile();
+                    _currentFile = file;
+                    var player = EnsurePlayer();
+                    player.Open(new Uri(file));
+                    player.Play();
                 });
 
                 Log.Debug("TTS success via {Provider}", name);
@@ -187,6 +269,6 @@ public class TtsService : IDisposable
         _microsoft.Dispose();
         _bing.Dispose();
         _yandex.Dispose();
-        System.Windows.Application.Current.Dispatcher.Invoke(() => { _player.Stop(); _player.Close(); });
+        System.Windows.Application.Current.Dispatcher.Invoke(ClosePlayer);
     }
 }
