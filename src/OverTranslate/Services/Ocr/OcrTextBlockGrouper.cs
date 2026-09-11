@@ -825,8 +825,9 @@ internal static class OcrTextBlockGrouper
         if (verticalGap < -avgHeight * 0.5 || verticalGap > Math.Max(avgHeight * 0.8, 10))
             return (false, "vertical gap");
 
+        var japaneseProse = IsJapaneseProseContinuation(previous, current, profile);
         var alignmentDelta = AlignmentDelta(previous, current);
-        if (alignmentDelta > Math.Max(avgHeight * 1.2, 18))
+        if (alignmentDelta > Math.Max(avgHeight * 1.2, 18) && !japaneseProse)
             return (false, "alignment");
 
         var overlap = Math.Max(
@@ -839,7 +840,7 @@ internal static class OcrTextBlockGrouper
         if (!isAlignedContinuation)
             return (false, "not aligned enough to continue");
 
-        return SentenceContinuationEvidence(previous, current, profile, sizeRatio, looseProse);
+        return SentenceContinuationEvidence(previous, current, profile, sizeRatio, looseProse, japaneseProse);
     }
 
     /// <summary>
@@ -918,7 +919,7 @@ internal static class OcrTextBlockGrouper
 
     private static (bool Joined, string Rule) SentenceContinuationEvidence(
         OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile, double sizeRatio,
-        bool looseProse = false)
+        bool looseProse = false, bool japaneseProse = false)
     {
         var previousText = previous.Text.Trim();
         var currentText = current.Text.Trim();
@@ -938,6 +939,9 @@ internal static class OcrTextBlockGrouper
         if (EndsWithLabelColon(previousText) &&
             LineAdvanceRatio(previous, current) > SolidLineAdvance)
             return (false, "label colon");
+
+        if (japaneseProse)
+            return (true, "Japanese prose rows");
 
         // The ordinary size gate, for every pair that is not set solid. A profile may lower what it
         // asks of lines sharing one leading and one edge; it may not lower what it asks of a pair
@@ -1068,6 +1072,33 @@ internal static class OcrTextBlockGrouper
                AlignmentDelta(previous, current) <= Math.Max(avgHeight * SetSolidMaxAlignment, 6) &&
                (IsLongEnoughToHaveWrapped(previous) ||
                 (profile.WaiveLengthTestWhenSetSolid && IsCentredAgainst(previous, current, avgHeight)));
+    }
+
+    // Japanese dialogue can contain several complete sentences within one paragraph. Require
+    // two substantial prose rows, punctuation and compact leading before crossing a sentence
+    // boundary. Kana keeps this measured exception away from Latin UI and Chinese headings.
+    // A missing OCR prefix can shift one row by more than the ordinary alignment allowance;
+    // substantial overlapping rows tolerate that without admitting short speaker labels.
+    private static bool IsJapaneseProseContinuation(
+        OcrTextBlock previous, OcrTextBlock current, GroupingProfile profile)
+    {
+        if (profile.SolidLineAdvanceWhenWrapped <= SolidLineAdvance ||
+            !previous.Text.Any(LayoutScriptDetection.IsKana) ||
+            !current.Text.Any(LayoutScriptDetection.IsKana) ||
+            !IsLongEnoughToHaveWrapped(previous) ||
+            current.LayoutBounds.Width < current.LayoutBounds.Height * 6 ||
+            !(EndsWithSentenceTerminator(previous.Text.Trim()) ||
+              EndsWithContinuationPunctuation(previous.Text.Trim())))
+            return false;
+
+        var a = previous.LayoutBounds;
+        var b = current.LayoutBounds;
+        var height = (a.Height + b.Height) / 2;
+        var overlap = Math.Min(a.Right, b.Right) - Math.Max(a.Left, b.Left);
+        return TextSizeRatio(previous, current) >= profile.TightlySetMinTextSizeRatio &&
+            LineAdvanceRatio(previous, current) <= profile.SolidLineAdvanceWhenWrapped &&
+            AlignmentDelta(previous, current) <= height * 2 &&
+            overlap >= Math.Min(a.Width, b.Width) * 0.5;
     }
 
     // Long, left-aligned body lines can have more leading than compact UI text.

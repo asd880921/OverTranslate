@@ -1,0 +1,210 @@
+[
+  {
+    "Name": "1.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2505,4.746,53,12.508],"LayoutBounds":[2505,0,53,22],"Script":1,"Glyph":13.78,"Ink":null},
+      {"Text":"壁のモ二ターの方から、音が聞こえた。","Bounds":[564,1159.85,828,53.3],"LayoutBounds":[564,1154,828,65],"Script":2,"Glyph":53.3,"Ink":null},
+      {"Text":"マ、ヒロはハッとし、モニターに注目する。","Bounds":[614,1236.76,923,52.48],"LayoutBounds":[614,1231,923,64],"Script":2,"Glyph":52.48,"Ink":null},
+      {"Text":"迴","Bounds":[2056,1285.35,114,94.3],"LayoutBounds":[2056,1275,114,115],"Script":2,"Glyph":94.3,"Ink":null},
+      {"Text":"Auto","Bounds":[119,1333.1025,101,29.794999999999998],"LayoutBounds":[119,1323,101,50],"Script":1,"Glyph":32.825,"Ink":null}
+    ]
+  },
+  {
+    "Name": "2.png",
+    "BodyIds": ["b3"],
+    "Blocks": [
+      {"Text":"Summer Pockets REFLECTION BLUE羽未8月2日","Bounds":[4,6.743636363636364,294,10.512727272727272],"LayoutBounds":[4,0,294,24],"Script":3,"Glyph":null,"Ink":11},
+      {"Text":"X","Bounds":[1406,6.3500000000000005,17,12.299999999999999],"LayoutBounds":[1406,5,17,15],"Script":1,"Glyph":7.5,"Ink":null},
+      {"Text":"しろは","Bounds":[438,605.06,87,27.88],"LayoutBounds":[438,602,87,34],"Script":2,"Glyph":27.88,"Ink":null},
+      {"Text":"「うん、じゃあ次はね","Bounds":[282,667.362,282,33.275999999999996],"LayoutBounds":[282,662,282,44],"Script":2,"Glyph":33.275999999999996,"Ink":null},
+      {"Text":"X CLOSE","Bounds":[1338,676.65,90,17.7],"LayoutBounds":[1338,669,90,33],"Script":1,"Glyph":19.5,"Ink":null},
+      {"Text":"VOICE","Bounds":[1338,714.734,87,20.531999999999996],"LayoutBounds":[1338,712,87,26],"Script":1,"Glyph":21.32,"Ink":null},
+      {"Text":"LOG","Bounds":[1336,748.51,76,31.979999999999997],"LayoutBounds":[1336,745,76,39],"Script":1,"Glyph":19.5,"Ink":null},
+      {"Text":"G","Bounds":[806,793.88,33,26.24],"LayoutBounds":[806,791,33,32],"Script":1,"Glyph":16,"Ink":null},
+      {"Text":"尚","Bounds":[955,797.16,27,19.68],"LayoutBounds":[955,795,27,24],"Script":2,"Glyph":19.68,"Ink":null},
+      {"Text":"LOCK","Bounds":[1365,799.535,54,15.93],"LayoutBounds":[1365,796,54,23],"Script":1,"Glyph":17.55,"Ink":null},
+      {"Text":"LOAD","Bounds":[513,817.98,44,18.04],"LayoutBounds":[513,816,44,22],"Script":1,"Glyph":18.04,"Ink":null},
+      {"Text":"QUIT","Bounds":[874,817.98,41,18.04],"LayoutBounds":[874,816,41,22],"Script":1,"Glyph":18.04,"Ink":null},
+      {"Text":"SAVE","Bounds":[444,819.8,37,16.4],"LayoutBounds":[444,818,37,20],"Script":1,"Glyph":16.4,"Ink":null},
+      {"Text":"BACK","Bounds":[586,821.6575,43,12.684999999999999],"LayoutBounds":[586,818,43,20],"Script":1,"Glyph":13.975,"Ink":null},
+      {"Text":"SKIP","Bounds":[734,819.8,35,16.4],"LayoutBounds":[734,818,35,20],"Script":1,"Glyph":16.4,"Ink":null},
+      {"Text":"TITLE","Bounds":[801,822.808,44,10.384],"LayoutBounds":[801,818,44,20],"Script":1,"Glyph":11.440000000000001,"Ink":null},
+      {"Text":"RECORD","Bounds":[1009,822.1,60,11.799999999999999],"LayoutBounds":[1009,818,60,20],"Script":1,"Glyph":13,"Ink":null},
+      {"Text":"LOCK","Bounds":[1162,821.6575,43,12.684999999999999],"LayoutBounds":[1162,818,43,20],"Script":1,"Glyph":13.975,"Ink":null},
+      {"Text":"Q.SAVE","Bounds":[296,823.6816666666666,49,9.636666666666665],"LayoutBounds":[296,819,49,19],"Script":1,"Glyph":10.616666666666667,"Ink":null},
+      {"Text":"QLOAD","Bounds":[364,822.01,55,12.979999999999999],"LayoutBounds":[364,819,55,19],"Script":1,"Glyph":14.3,"Ink":null},
+      {"Text":"AUTO","Bounds":[657,822.01,44,12.979999999999999],"LayoutBounds":[657,819,44,19],"Script":1,"Glyph":14.3,"Ink":null},
+      {"Text":"CONFIG","Bounds":[939,822.7966666666666,58,11.406666666666665],"LayoutBounds":[939,819,58,19],"Script":1,"Glyph":12.566666666666666,"Ink":null},
+      {"Text":"TWITTER","Bounds":[1079,823.6057142857143,64,10.788571428571428],"LayoutBounds":[1079,820,64,18],"Script":1,"Glyph":11.885714285714286,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205147824.png",
+    "BodyIds": ["b3","b4"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.510000000000001,55,12.979999999999999],"LayoutBounds":[2504,0,55,22],"Script":1,"Glyph":14.3,"Ink":null},
+      {"Text":"LIVE","Bounds":[442,190.8925,177,52.214999999999996],"LayoutBounds":[442,182,177,70],"Script":1,"Glyph":57.4,"Ink":null},
+      {"Text":"Comment","Bounds":[2337,534.6257142857143,218,36.748571428571424],"LayoutBounds":[2337,530,218,46],"Script":1,"Glyph":37.72,"Ink":null},
+      {"Text":"あ……もしもし……映像って見えてます","Bounds":[570,1159.49,854,50.019999999999996],"LayoutBounds":[570,1154,854,61],"Script":2,"Glyph":50.019999999999996,"Ink":null},
+      {"Text":"何せ古くて故障が多いので……やれやれ。","Bounds":[566,1235.67,877,51.66],"LayoutBounds":[566,1230,877,63],"Script":2,"Glyph":51.66,"Ink":43},
+      {"Text":"回","Bounds":[2055,1288.08,113,91.83999999999999],"LayoutBounds":[2055,1278,113,112],"Script":2,"Glyph":91.83999999999999,"Ink":null},
+      {"Text":"Auto","Bounds":[122,1329.5,95,41],"LayoutBounds":[122,1325,95,50],"Script":1,"Glyph":41,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205156783.png",
+    "BodyIds": ["b3","b4"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.392,56,13.216],"LayoutBounds":[2504,0,56,22],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"LIVE","Bounds":[442,191.8925,177,52.214999999999996],"LayoutBounds":[442,182,177,72],"Script":1,"Glyph":57.525,"Ink":null},
+      {"Text":"Comment","Bounds":[2339,534.6257142857143,218,36.748571428571424],"LayoutBounds":[2339,530,218,46],"Script":1,"Glyph":37.72,"Ink":null},
+      {"Text":"詳しい説明がしたいので、","Bounds":[565,1158.76,548,52.48],"LayoutBounds":[565,1153,548,64],"Script":2,"Glyph":52.48,"Ink":null},
+      {"Text":"ラウンジに集合してください。","Bounds":[570,1234.85,640,53.3],"LayoutBounds":[570,1229,640,65],"Script":2,"Glyph":53.3,"Ink":42},
+      {"Text":"回","Bounds":[2054,1287.17,114,92.66],"LayoutBounds":[2054,1277,114,113],"Script":2,"Glyph":92.66,"Ink":null},
+      {"Text":"Auto","Bounds":[124,1331.32,93,39.36],"LayoutBounds":[124,1327,93,48],"Script":1,"Glyph":39.36,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205233571.png",
+    "BodyIds": ["b3","b4"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.392,56,13.216],"LayoutBounds":[2504,0,56,22],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"LIVE","Bounds":[442,191.8925,177,52.214999999999996],"LayoutBounds":[442,182,177,72],"Script":1,"Glyph":57.525,"Ink":null},
+      {"Text":"Comment","Bounds":[2338,534.71,217,36.58],"LayoutBounds":[2338,530,217,46],"Script":1,"Glyph":37.72,"Ink":null},
+      {"Text":"抵抗とかは自由なんですが……","Bounds":[569,1162.13,662,46.739999999999995],"LayoutBounds":[569,1157,662,57],"Script":2,"Glyph":46.739999999999995,"Ink":null},
+      {"Text":"命とかなくなっちゃうので……はい……","Bounds":[569,1237.4,853,49.199999999999996],"LayoutBounds":[569,1232,853,60],"Script":2,"Glyph":49.199999999999996,"Ink":40},
+      {"Text":"回","Bounds":[2058,1289.72,107,88.55999999999999],"LayoutBounds":[2058,1280,107,108],"Script":2,"Glyph":88.55999999999999,"Ink":null},
+      {"Text":"Auto","Bounds":[124,1329.5,93,41],"LayoutBounds":[124,1325,93,50],"Script":1,"Glyph":41,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205248413.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,5.392,56,13.216],"LayoutBounds":[2504,0,56,24],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"エマは理解が追いつかないのか、しばらく立ち尽くしていた。","Bounds":[565,1157.1282142857142,1299,54.74357142857143],"LayoutBounds":[565,1150,1299,69],"Script":2,"Glyph":54.74357142857143,"Ink":null},
+      {"Text":"ヒロも同様だ。すると、","Bounds":[571,1235.76,494,52.48],"LayoutBounds":[571,1230,494,64],"Script":2,"Glyph":52.48,"Ink":null},
+      {"Text":"Auto","Bounds":[120,1334.3975,99,29.205],"LayoutBounds":[120,1325,99,48],"Script":1,"Glyph":32.175000000000004,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205254883.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.392,56,13.216],"LayoutBounds":[2504,0,56,22],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"鉄格子の向こう、通路の方から。","Bounds":[565,1157.624,696,54.751999999999995],"LayoutBounds":[565,1145,696,80],"Script":2,"Glyph":54.751999999999995,"Ink":null},
+      {"Text":"引きずるような重々しい音が近付いてきている。","Bounds":[562,1234.76,1020,52.48],"LayoutBounds":[562,1229,1020,64],"Script":3,"Glyph":null,"Ink":null},
+      {"Text":"回","Bounds":[2070,1295.28,88,75.44],"LayoutBounds":[2070,1287,88,92],"Script":2,"Glyph":75.44,"Ink":null},
+      {"Text":"Auto","Bounds":[125,1336.43,92,27.139999999999997],"LayoutBounds":[125,1328,92,44],"Script":1,"Glyph":29.900000000000002,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205300451.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.392,56,13.216],"LayoutBounds":[2504,0,56,22],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"その音はどこかおぞましく、","Bounds":[575,1163.13,596,46.739999999999995],"LayoutBounds":[575,1158,596,57],"Script":2,"Glyph":46.739999999999995,"Ink":null},
+      {"Text":"不穏なものが接近していることをエマたちに感じさせた。","Bounds":[564,1233.94,1205,54.12],"LayoutBounds":[564,1228,1205,66],"Script":2,"Glyph":54.12,"Ink":null},
+      {"Text":"Auto","Bounds":[125,1336.43,92,27.139999999999997],"LayoutBounds":[125,1328,92,44],"Script":1,"Glyph":29.900000000000002,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205314784.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,5.392,56,13.216],"LayoutBounds":[2504,0,56,24],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"エマもヒロも身を強張らせ、","Bounds":[565,1158.85,597,53.3],"LayoutBounds":[565,1153,597,65],"Script":2,"Glyph":53.3,"Ink":null},
+      {"Text":"その視線が、ゆるゆると、通路に向けられる。","Bounds":[665,1237.4,963,49.199999999999996],"LayoutBounds":[665,1232,963,60],"Script":2,"Glyph":49.199999999999996,"Ink":null},
+      {"Text":"回","Bounds":[2073,1297.65,84,69.7],"LayoutBounds":[2073,1290,84,85],"Script":2,"Glyph":69.7,"Ink":null},
+      {"Text":"Auto","Bounds":[120,1334.3975,99,29.205],"LayoutBounds":[120,1325,99,48],"Script":1,"Glyph":32.175000000000004,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205323491.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,5.392,56,13.216],"LayoutBounds":[2504,0,56,24],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"2、３メートルはあるだろうか。","Bounds":[575,1160.0173333333332,686,53.965333333333334],"LayoutBounds":[575,1152,686,70],"Script":2,"Glyph":53.965333333333334,"Ink":null},
+      {"Text":"ぼろぼろの黒衣をまとった大きな何かが立っていた。","Bounds":[570,1237.4,1104,49.199999999999996],"LayoutBounds":[570,1232,1104,60],"Script":2,"Glyph":49.199999999999996,"Ink":null},
+      {"Text":"回","Bounds":[2053,1284.62,117,96.75999999999999],"LayoutBounds":[2053,1274,117,118],"Script":2,"Glyph":96.75999999999999,"Ink":null},
+      {"Text":"Auto","Bounds":[119,1334.25,100,29.5],"LayoutBounds":[119,1325,100,48],"Script":1,"Glyph":32.5,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205336103.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"59 FPS","Bounds":[2504,4.392,56,13.216],"LayoutBounds":[2504,0,56,22],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"仮面をつけていて顔はわからないが、","Bounds":[569,1159.76,779,52.48],"LayoutBounds":[569,1154,779,64],"Script":2,"Glyph":52.48,"Ink":null},
+      {"Text":"明らかに人間ではない、何か。","Bounds":[564,1233.1914285714286,648,54.61714285714285],"LayoutBounds":[564,1218,648,85],"Script":2,"Glyph":54.61714285714285,"Ink":null},
+      {"Text":"回","Bounds":[2053,1283.8,120,98.39999999999999],"LayoutBounds":[2053,1273,120,120],"Script":2,"Glyph":98.39999999999999,"Ink":null},
+      {"Text":"Auto","Bounds":[119,1334.25,100,29.5],"LayoutBounds":[119,1325,100,48],"Script":1,"Glyph":32.5,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205429092.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.392,56,13.216],"LayoutBounds":[2504,0,56,22],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"ぎやあああ！触んな化け物お！キモいから！","Bounds":[571,1162.4,960,49.199999999999996],"LayoutBounds":[571,1157,960,60],"Script":2,"Glyph":49.199999999999996,"Ink":null},
+      {"Text":"わかった、わかりました、行くから！！","Bounds":[561,1234.0733333333333,852,55.85333333333333],"LayoutBounds":[561,1227,852,70],"Script":2,"Glyph":55.85333333333333,"Ink":null},
+      {"Text":"Auto","Bounds":[125,1336.43,92,27.139999999999997],"LayoutBounds":[125,1328,92,44],"Script":1,"Glyph":29.900000000000002,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205433630.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.392,56,13.216],"LayoutBounds":[2504,0,56,22],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"他の牢屋にいた誰かが、","Bounds":[569,1163.04,496,45.919999999999995],"LayoutBounds":[569,1158,496,56],"Script":2,"Glyph":45.919999999999995,"Ink":null},
+      {"Text":"化け物に連行されている様子がエマたちの耳に届いた。","Bounds":[564,1233.85,1158,53.3],"LayoutBounds":[564,1228,1158,65],"Script":2,"Glyph":53.3,"Ink":null},
+      {"Text":"Auto","Bounds":[125,1336.43,92,27.139999999999997],"LayoutBounds":[125,1328,92,44],"Script":1,"Glyph":29.900000000000002,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205443345.png",
+    "BodyIds": ["b2","b3"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.510000000000001,55,12.979999999999999],"LayoutBounds":[2504,0,55,22],"Script":1,"Glyph":14.3,"Ink":null},
+      {"Text":"階堂七口","Bounds":[462,1008.81,406,89.38],"LayoutBounds":[462,999,406,109],"Script":2,"Glyph":89.38,"Ink":null},
+      {"Text":"正しい説明がなされるのかな。","Bounds":[566,1162.4,639,49.199999999999996],"LayoutBounds":[566,1157,639,60],"Script":2,"Glyph":49.199999999999996,"Ink":null},
+      {"Text":"それなら早く向かわないと","Bounds":[571,1233.94,570,54.12],"LayoutBounds":[571,1228,570,66],"Script":2,"Glyph":54.12,"Ink":null},
+      {"Text":"回","Bounds":[2068,1293.82,97,80.36],"LayoutBounds":[2068,1285,97,98],"Script":2,"Glyph":80.36,"Ink":null},
+      {"Text":"Auto","Bounds":[120,1334.3975,99,29.205],"LayoutBounds":[120,1325,99,48],"Script":1,"Glyph":32.175000000000004,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205456346.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2503,5.274,57,13.452],"LayoutBounds":[2503,0,57,24],"Script":1,"Glyph":14.82,"Ink":null},
+      {"Text":"その時になってようやく、","Bounds":[571,1161.1466666666668,536,52.70666666666666],"LayoutBounds":[571,1155,536,65],"Script":2,"Glyph":52.70666666666666,"Ink":null},
+      {"Text":"エマが腕にしがみついていることに気付き。","Bounds":[594,1234.391,902,53.217999999999996],"LayoutBounds":[594,1224,902,74],"Script":2,"Glyph":53.217999999999996,"Ink":null},
+      {"Text":"回","Bounds":[2074,1297.83,85,71.33999999999999],"LayoutBounds":[2074,1290,85,87],"Script":2,"Glyph":71.33999999999999,"Ink":null},
+      {"Text":"Auto","Bounds":[119,1334.25,100,29.5],"LayoutBounds":[119,1325,100,48],"Script":1,"Glyph":32.5,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205502424.png",
+    "BodyIds": ["b2","b3"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,4.510000000000001,55,12.979999999999999],"LayoutBounds":[2504,0,55,22],"Script":1,"Glyph":14.3,"Ink":null},
+      {"Text":"階堂ビ口","Bounds":[467,1014.82,400,80.36],"LayoutBounds":[467,1006,400,98],"Script":2,"Glyph":80.36,"Ink":null},
+      {"Text":"気安く触れないでほしい。","Bounds":[569,1163.13,539,46.739999999999995],"LayoutBounds":[569,1158,539,57],"Script":2,"Glyph":46.739999999999995,"Ink":null},
+      {"Text":"忘れてもらっては困る。私は君が嫌いなんだ。","Bounds":[561,1235.67,978,51.66],"LayoutBounds":[561,1230,978,63],"Script":2,"Glyph":51.66,"Ink":54},
+      {"Text":"Auto","Bounds":[119,1327.86,100,44.279999999999994],"LayoutBounds":[119,1323,100,54],"Script":1,"Glyph":44.279999999999994,"Ink":null}
+    ]
+  },
+  {
+    "Name": "OverTranslate_20260910_205515238.png",
+    "BodyIds": ["b1","b2"],
+    "Blocks": [
+      {"Text":"60 FPS","Bounds":[2504,5.392,56,13.216],"LayoutBounds":[2504,0,56,24],"Script":1,"Glyph":14.559999999999999,"Ink":null},
+      {"Text":"吐き捨てるヒロの瞳は、","Bounds":[566,1163.13,495,46.739999999999995],"LayoutBounds":[566,1158,495,57],"Script":2,"Glyph":46.739999999999995,"Ink":null},
+      {"Text":"根深い嫌悪の色を宿していた。","Bounds":[564,1234.5707142857143,639,53.85857142857143],"LayoutBounds":[564,1228,639,67],"Script":2,"Glyph":53.85857142857143,"Ink":null},
+      {"Text":"回","Bounds":[2063,1293.82,99,80.36],"LayoutBounds":[2063,1285,99,98],"Script":2,"Glyph":80.36,"Ink":null},
+      {"Text":"Auto","Bounds":[119,1334.25,100,29.5],"LayoutBounds":[119,1325,100,48],"Script":1,"Glyph":32.5,"Ink":null}
+    ]
+  }
+]
