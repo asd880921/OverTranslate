@@ -140,11 +140,6 @@
                                   Margin="0,16,0,0"
                                   Padding="0,0,8,0">
                         <StackPanel>
-                            <TextBlock x:Name="ScopeHint"
-                                       Style="{StaticResource FieldHint}"
-                                       Margin="2,0,0,14"
-                                       TextWrapping="Wrap"/>
-
                             <TextBlock Text="{DynamicResource S.Settings.PromptName}"
                                        Style="{StaticResource FieldLabel}"
                                        Margin="2,0,0,6"/>
@@ -165,42 +160,449 @@
                                            Text="{DynamicResource S.Settings.PromptNamePlaceholder}"/>
                             </Grid>
 
-                            <TextBlock Text="{DynamicResource S.Settings.PromptContent}"
+                            <!-- The model this card's prompts were written for. Required, and with
+                                 no default of its own: this provider talks to whatever server the
+                                 user pointed it at, so a name shipped here would be a guess about
+                                 someone else's Ollama. The reset puts back the model the guide
+                                 recommends, which is a suggestion rather than a fallback — it only
+                                 arrives because someone asked for it. -->
+                            <TextBlock Text="{DynamicResource S.Settings.ModelName}"
                                        Style="{StaticResource FieldLabel}"
                                        Margin="2,14,0,6"/>
-                            <TextBox x:Name="TemplateBox"
-                                     Style="{StaticResource SettingsMultilineTextBox}"
-                                     MinHeight="180"
-                                     TextChanged="TemplateBox_TextChanged"/>
-
-                            <!-- Under the box it refills, pushed to that box's right edge, which is
-                                 where an action belonging to one field goes. It used to sit at the
-                                 bottom of the card under the parameter table — further from the
-                                 prompt than anything else on the card, for the button that rewrites
-                                 it. -->
-                            <Button x:Name="LoadDefaultButton"
-                                    HorizontalAlignment="Right"
-                                    Style="{StaticResource FlatButton}"
-                                    Background="Transparent"
-                                    BorderBrush="Transparent"
-                                    Height="28"
-                                    Padding="6,0"
-                                    Margin="0,8,0,0"
-                                    Click="LoadDefaultButton_Click">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE72C;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="13"
-                                               Foreground="{DynamicResource AppTextSecondary}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,7,0"/>
-                                    <TextBlock Text="{DynamicResource S.Settings.PromptLoadDefault}"
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid Grid.Column="0">
+                                    <TextBox x:Name="ModelBox"
+                                             Style="{StaticResource ModernTextBox}"
+                                             Height="42"
+                                             Padding="14,0"
+                                             FontFamily="Consolas, Cascadia Mono"
+                                             TextChanged="ModelBox_TextChanged"/>
+                                    <TextBlock x:Name="ModelPlaceholder"
+                                               IsHitTestVisible="False"
                                                FontFamily="{DynamicResource AppFont}"
-                                               FontSize="12"
+                                               FontSize="{StaticResource AppFontSize}"
                                                Foreground="{DynamicResource AppTextSecondary}"
+                                               Opacity="0.7"
+                                               Margin="15,0,15,0"
+                                               VerticalAlignment="Center"
+                                               Text="{DynamicResource S.Settings.ModelRequired}"/>
+                                </Grid>
+                                <Button Grid.Column="1"
+                                        x:Name="ModelResetButton"
+                                        Width="38" Height="42" Padding="0"
+                                        Margin="6,0,0,0"
+                                        Style="{StaticResource FlatButton}"
+                                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                        FontSize="14"
+                                        Foreground="{DynamicResource AppTextSecondary}"
+                                        Content="&#xE72C;"
+                                        ToolTip="{DynamicResource S.Settings.ModelResetTip}"
+                                        AutomationProperties.Name="{DynamicResource S.Settings.ModelResetTip}"
+                                        Click="ModelResetButton_Click"/>
+                            </Grid>
+
+                            <!-- Folded, as it was on the page this came from: a temperature is a
+                                 number a model's documentation asks for, and someone whose model
+                                 never disagrees with 0 has no reason to read the paragraph under
+                                 it. Inside this card rather than at the top of the page, because it
+                                 belongs to the model named above it. -->
+                            <Button x:Name="AdvancedToggle"
+                                    Style="{StaticResource AdvancedToggleRow}"
+                                    Margin="0,14,0,0"
+                                    Click="AdvancedToggle_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{DynamicResource S.Settings.OpenAiAdvanced}"
                                                VerticalAlignment="Center"/>
+                                    <Path x:Name="AdvancedChevron"
+                                          Width="9" Height="6"
+                                          VerticalAlignment="Center"
+                                          Margin="8,1,0,0"
+                                          Stretch="Uniform"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.4"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Data="M1,1 L5,5 L9,1"
+                                          RenderTransformOrigin="0.5,0.5">
+                                        <Path.RenderTransform>
+                                            <RotateTransform x:Name="AdvancedChevronRotation"/>
+                                        </Path.RenderTransform>
+                                    </Path>
                                 </StackPanel>
                             </Button>
+
+                            <!-- Closed by height and IsEnabled rather than by Visibility, so the
+                                 content can be animated out of a zero height and still leaves the
+                                 tab order when it is shut. -->
+                            <Border x:Name="AdvancedHost"
+                                    ClipToBounds="True"
+                                    Height="0"
+                                    Opacity="0"
+                                    IsEnabled="False">
+                                <StackPanel x:Name="AdvancedContent" Margin="0,10,0,0">
+                                    <!-- One sentence for the whole fold rather than one under each
+                                         row. All three parameters are the same shape of thing and
+                                         carry the same caveat - which server accepts which, in what
+                                         range - and repeating it three times says only that nobody
+                                         read it. What each one does is on the mark beside its name,
+                                         where it is asked for rather than in the way. -->
+                                    <TextBlock Text="{DynamicResource S.Settings.AdvancedHint}"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="2,0,0,14"/>
+
+                                    <!-- How strongly the likeliest wording is favoured. -->
+                                    <TextBlock Text="{DynamicResource S.Settings.Temperature}"
+                                               Style="{StaticResource FieldLabel}"
+                                               Margin="2,0,0,6"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox x:Name="TemperatureEnabledCheckBox"
+                                                  Content="{DynamicResource S.Settings.ParamEnable}"
+                                                  Style="{StaticResource ModernCheckBox}"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,12,0"
+                                                  Checked="AdvancedParam_Toggled"
+                                                  Unchecked="AdvancedParam_Toggled"/>
+                                        <TextBox x:Name="TemperatureBox"
+                                                 Width="86"
+                                                 Style="{StaticResource ModernTextBox}"
+                                                 TextChanged="AdvancedParam_TextChanged"
+                                                 LostFocus="TemperatureBox_LostFocus"/>
+                                        <TextBlock x:Name="TemperatureRangeHint"
+                                                   Text="{DynamicResource S.Settings.TemperatureRange}"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{DynamicResource AppFont}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppTextSecondary}"/>
+                                        <!-- After the range rather than beside the name. What the
+                                             parameter does is the last thing asked about it: the
+                                             reader arrives at this row to set a number, and a mark
+                                             between the name and the box interrupts that on the way
+                                             in. It also puts the three marks in one column. -->
+                                        <TextBlock Style="{StaticResource ParamInfo}"
+                                                   ToolTip="{DynamicResource S.Settings.TemperatureTip}"/>
+                                    </StackPanel>
+
+                                    <!-- How many candidates there are to favour between. -->
+                                    <TextBlock Text="{DynamicResource S.Settings.TopP}"
+                                               Style="{StaticResource FieldLabel}"
+                                               Margin="2,16,0,6"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox x:Name="TopPEnabledCheckBox"
+                                                  Content="{DynamicResource S.Settings.ParamEnable}"
+                                                  Style="{StaticResource ModernCheckBox}"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,12,0"
+                                                  Checked="AdvancedParam_Toggled"
+                                                  Unchecked="AdvancedParam_Toggled"/>
+                                        <TextBox x:Name="TopPBox"
+                                                 Width="86"
+                                                 Style="{StaticResource ModernTextBox}"
+                                                 TextChanged="AdvancedParam_TextChanged"
+                                                 LostFocus="TopPBox_LostFocus"/>
+                                        <TextBlock x:Name="TopPRangeHint"
+                                                   Text="{DynamicResource S.Settings.TopPRange}"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{DynamicResource AppFont}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppTextSecondary}"/>
+                                        <!-- After the range rather than beside the name. What the
+                                             parameter does is the last thing asked about it: the
+                                             reader arrives at this row to set a number, and a mark
+                                             between the name and the box interrupts that on the way
+                                             in. It also puts the three marks in one column. -->
+                                        <TextBlock Style="{StaticResource ParamInfo}"
+                                                   ToolTip="{DynamicResource S.Settings.TopPTip}"/>
+                                    </StackPanel>
+
+                                    <!-- What makes the result repeatable at a temperature above zero. -->
+                                    <TextBlock Text="{DynamicResource S.Settings.Seed}"
+                                               Style="{StaticResource FieldLabel}"
+                                               Margin="2,16,0,6"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox x:Name="SeedEnabledCheckBox"
+                                                  Content="{DynamicResource S.Settings.ParamEnable}"
+                                                  Style="{StaticResource ModernCheckBox}"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,12,0"
+                                                  Checked="AdvancedParam_Toggled"
+                                                  Unchecked="AdvancedParam_Toggled"/>
+                                        <TextBox x:Name="SeedBox"
+                                                 Width="86"
+                                                 Style="{StaticResource ModernTextBox}"
+                                                 TextChanged="AdvancedParam_TextChanged"
+                                                 LostFocus="SeedBox_LostFocus"/>
+                                        <TextBlock x:Name="SeedRangeHint"
+                                                   Text="{DynamicResource S.Settings.SeedRange}"
+                                                   Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{DynamicResource AppFont}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppTextSecondary}"/>
+                                        <!-- After the range rather than beside the name. What the
+                                             parameter does is the last thing asked about it: the
+                                             reader arrives at this row to set a number, and a mark
+                                             between the name and the box interrupts that on the way
+                                             in. It also puts the three marks in one column. -->
+                                        <TextBlock Style="{StaticResource ParamInfo}"
+                                                   ToolTip="{DynamicResource S.Settings.SeedTip}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- The whole prompt half of the card as one titled card: a heading, the
+                                 switch that says which case is being written, and the two boxes it
+                                 scopes. They were four things stacked at the same level, which read
+                                 as four unrelated rows — the heading looked like it belonged to the
+                                 card rather than to the boxes under it. -->
+                            <Border Style="{StaticResource PromptGroupBorder}" Margin="0,16,0,0">
+                                <StackPanel>
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal">
+                                            <!-- Drawn rather than set in an icon font, for the reason
+                                                 the guide's book is: the glyph fonts are not on every
+                                                 supported build and a missing icon beside a heading
+                                                 reads as damage. -->
+                                            <Path Width="17" Height="17"
+                                                  Margin="0,0,10,0"
+                                                  VerticalAlignment="Center"
+                                                  Stretch="Uniform"
+                                                  Stroke="{DynamicResource AppAccent}"
+                                                  StrokeThickness="1.15"
+                                                  StrokeLineJoin="Round"
+                                                  Data="M3.5,1.5 L9.5,1.5 L12.5,4.5 L12.5,14.5 L3.5,14.5 Z
+                                                        M9.5,1.5 L9.5,4.5 L12.5,4.5
+                                                        M5.8,8 L10.2,8 M5.8,11 L10.2,11"/>
+                                            <TextBlock Text="{DynamicResource S.Settings.PromptContent}"
+                                                       FontFamily="{DynamicResource AppFont}"
+                                                       FontSize="15"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AppTextPrimary}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Rectangle Height="1" Margin="0,12,0,0" Fill="{DynamicResource AppSeparator}"/>
+
+                                    <!-- The label and the switch on one line, the sentence the switch
+                                         changes directly under the label it belongs to. The pair is a
+                                         travelling marker rather than two outlined buttons, which is
+                                         what the 偵錯工具 card uses for the same kind of choice — one
+                                         setting with two states, not two things side by side. -->
+                                    <Grid Margin="0,14,0,0">
+                                        <TextBlock Text="{DynamicResource S.Settings.PromptSourceLanguage}"
+                                                   Style="{StaticResource FieldLabelStrong}"
+                                                   VerticalAlignment="Center"/>
+
+                                        <Border HorizontalAlignment="Right"
+                                                Background="{DynamicResource AppButtonBg}"
+                                                BorderBrush="{DynamicResource AppButtonBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Padding="3"
+                                                VerticalAlignment="Center"
+                                                Grid.IsSharedSizeScope="True">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <!-- Shared so the marker travels its own width, the
+                                                         reason the 偵錯工具 tray shares its two. -->
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PromptSourceSegment"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PromptSourceSegment"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border x:Name="PromptSourceThumb"
+                                                        Grid.Column="0"
+                                                        Background="{DynamicResource AppAccent}"
+                                                        CornerRadius="6"
+                                                        SizeChanged="PromptSourceThumb_SizeChanged">
+                                                    <Border.RenderTransform>
+                                                        <TranslateTransform x:Name="PromptSourceThumbShift"/>
+                                                    </Border.RenderTransform>
+                                                </Border>
+                                                <RadioButton x:Name="PromptAutoTab" Grid.Column="0"
+                                                             GroupName="EditPromptSource"
+                                                             Style="{StaticResource SegmentedTrackRadio}"
+                                                             Content="{DynamicResource S.Settings.PromptSourceAuto}"
+                                                             Checked="PromptTab_Checked"/>
+                                                <RadioButton x:Name="PromptExplicitTab" Grid.Column="1"
+                                                             GroupName="EditPromptSource"
+                                                             Style="{StaticResource SegmentedTrackRadio}"
+                                                             Content="{DynamicResource S.Settings.PromptSourceExplicit}"
+                                                             Checked="PromptTab_Checked"/>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+
+                                    <TextBlock x:Name="ScopeHint"
+                                               Style="{StaticResource FieldHint}"
+                                               Margin="0,6,0,0"/>
+
+                                    <Rectangle Height="1" Margin="0,14,0,0" Fill="{DynamicResource AppSeparator}"/>
+
+                                <!-- 自動 -->
+                                <StackPanel x:Name="AutoPromptPair">
+                                    <Grid Margin="0,14,0,0">
+                                        <TextBlock Text="System Prompt"
+                                                   Style="{StaticResource PromptRoleLabel}"/>
+                                        <Button x:Name="AutoSystemDefaultButton"
+                                                HorizontalAlignment="Right"
+                                                Style="{StaticResource PromptRoleAction}"
+                                                Content="&#xE72C;"
+                                                ToolTip="{DynamicResource S.Settings.PromptLoadDefault}"
+                                                AutomationProperties.Name="{DynamicResource S.Settings.PromptLoadDefault}"
+                                                Click="AutoSystemDefault_Click"/>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource FieldHint}"
+                                               Text="{DynamicResource S.Settings.PromptSystemTip}"
+                                               Margin="0,5,0,0"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBox x:Name="AutoSystemBox"
+                                                 Style="{StaticResource SettingsMultilineTextBox}"
+                                                 MinHeight="132"
+                                                 TextChanged="PromptBox_TextChanged"/>
+                                        <TextBlock x:Name="AutoSystemPlaceholder"
+                                                   IsHitTestVisible="False"
+                                                   FontFamily="{DynamicResource AppFont}"
+                                                   FontSize="{StaticResource AppFontSize}"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   Opacity="0.7"
+                                                   Margin="15,11,15,0"
+                                                   VerticalAlignment="Top"
+                                                   Text="{DynamicResource S.Settings.PromptSystemPlaceholder}"/>
+                                    </Grid>
+
+                                    <Rectangle Height="1" Margin="0,16,0,0" Fill="{DynamicResource AppSeparator}"/>
+
+                                    <Grid Margin="0,14,0,0">
+                                        <TextBlock Text="User Prompt"
+                                                   Style="{StaticResource PromptRoleLabel}"/>
+                                        <Button x:Name="AutoUserDefaultButton"
+                                                HorizontalAlignment="Right"
+                                                Style="{StaticResource PromptRoleAction}"
+                                                Content="&#xE72C;"
+                                                ToolTip="{DynamicResource S.Settings.PromptLoadDefault}"
+                                                AutomationProperties.Name="{DynamicResource S.Settings.PromptLoadDefault}"
+                                                Click="AutoUserDefault_Click"/>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource FieldHint}"
+                                               Text="{DynamicResource S.Settings.PromptUserTip}"
+                                               Margin="0,5,0,0"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBox x:Name="AutoUserBox"
+                                                 Style="{StaticResource SettingsMultilineTextBox}"
+                                                 MinHeight="96"
+                                                 TextChanged="PromptBox_TextChanged"/>
+                                        <TextBlock x:Name="AutoUserPlaceholder"
+                                                   IsHitTestVisible="False"
+                                                   FontFamily="{DynamicResource AppFont}"
+                                                   FontSize="{StaticResource AppFontSize}"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   Opacity="0.7"
+                                                   Margin="15,11,15,0"
+                                                   VerticalAlignment="Top"
+                                                   Text="{DynamicResource S.Settings.PromptUserPlaceholder}"/>
+                                    </Grid>
+                                </StackPanel>
+                                <!-- 指定語言 -->
+                                <StackPanel x:Name="ExplicitPromptPair" Visibility="Collapsed">
+                                    <Grid Margin="0,14,0,0">
+                                        <TextBlock Text="System Prompt"
+                                                   Style="{StaticResource PromptRoleLabel}"/>
+                                        <Button x:Name="ExplicitSystemDefaultButton"
+                                                HorizontalAlignment="Right"
+                                                Style="{StaticResource PromptRoleAction}"
+                                                Content="&#xE72C;"
+                                                ToolTip="{DynamicResource S.Settings.PromptLoadDefault}"
+                                                AutomationProperties.Name="{DynamicResource S.Settings.PromptLoadDefault}"
+                                                Click="ExplicitSystemDefault_Click"/>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource FieldHint}"
+                                               Text="{DynamicResource S.Settings.PromptSystemTip}"
+                                               Margin="0,5,0,0"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBox x:Name="ExplicitSystemBox"
+                                                 Style="{StaticResource SettingsMultilineTextBox}"
+                                                 MinHeight="132"
+                                                 TextChanged="PromptBox_TextChanged"/>
+                                        <TextBlock x:Name="ExplicitSystemPlaceholder"
+                                                   IsHitTestVisible="False"
+                                                   FontFamily="{DynamicResource AppFont}"
+                                                   FontSize="{StaticResource AppFontSize}"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   Opacity="0.7"
+                                                   Margin="15,11,15,0"
+                                                   VerticalAlignment="Top"
+                                                   Text="{DynamicResource S.Settings.PromptSystemPlaceholder}"/>
+                                    </Grid>
+
+                                    <Rectangle Height="1" Margin="0,16,0,0" Fill="{DynamicResource AppSeparator}"/>
+
+                                    <Grid Margin="0,14,0,0">
+                                        <TextBlock Text="User Prompt"
+                                                   Style="{StaticResource PromptRoleLabel}"/>
+                                        <Button x:Name="ExplicitUserDefaultButton"
+                                                HorizontalAlignment="Right"
+                                                Style="{StaticResource PromptRoleAction}"
+                                                Content="&#xE72C;"
+                                                ToolTip="{DynamicResource S.Settings.PromptLoadDefault}"
+                                                AutomationProperties.Name="{DynamicResource S.Settings.PromptLoadDefault}"
+                                                Click="ExplicitUserDefault_Click"/>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource FieldHint}"
+                                               Text="{DynamicResource S.Settings.PromptUserTip}"
+                                               Margin="0,5,0,0"/>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBox x:Name="ExplicitUserBox"
+                                                 Style="{StaticResource SettingsMultilineTextBox}"
+                                                 MinHeight="96"
+                                                 TextChanged="PromptBox_TextChanged"/>
+                                        <TextBlock x:Name="ExplicitUserPlaceholder"
+                                                   IsHitTestVisible="False"
+                                                   FontFamily="{DynamicResource AppFont}"
+                                                   FontSize="{StaticResource AppFontSize}"
+                                                   Foreground="{DynamicResource AppTextSecondary}"
+                                                   Opacity="0.7"
+                                                   Margin="15,11,15,0"
+                                                   VerticalAlignment="Top"
+                                                   Text="{DynamicResource S.Settings.PromptUserPlaceholder}"/>
+                                    </Grid>
+                                </StackPanel>
+                                <!-- The rule the card enforces, shown only while it is being
+                                     broken. Kept out of the placeholders because a placeholder is
+                                     read once, when the box is empty and the reader is about to
+                                     type into it - which is the one moment the rule is not yet
+                                     relevant. Here it appears when it starts to matter, and it is
+                                     also the only thing on the card that says why 儲存 has gone
+                                     quiet.
+
+                                     Below both pairs rather than inside one: it can be about the
+                                     pair that is not on screen, which is the case the reader has no
+                                     other way of finding. -->
+                                <Grid x:Name="PromptRuleRow"
+                                      Margin="0,14,0,0"
+                                      Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE7BA;"
+                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource AppError}"
+                                                   VerticalAlignment="Top"
+                                                   Margin="0,1,8,0"/>
+                                        <TextBlock x:Name="PromptRuleText"
+                                                   FontFamily="{DynamicResource AppFont}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppError}"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Grid>
+                                </StackPanel>
+                            </Border>
+
 
                             <!-- 可用參數, as one card rather than a heading with a table loose
                                  underneath: it is reference material sitting beside the field it is
@@ -266,7 +668,7 @@
                                                         <TextBlock Text="{DynamicResource S.Settings.PromptParamSourceName}" Style="{StaticResource ParamText}"/>
                                                     </Border>
                                                     <Border Grid.Column="2" Style="{StaticResource ParamLastCell}">
-                                                        <TextBlock Text="English" Style="{StaticResource ParamText}"/>
+                                                        <TextBlock Text="{DynamicResource S.Settings.PromptParamSourceNameExample}" Style="{StaticResource ParamText}"/>
                                                     </Border>
                                                 </Grid>
                                             </Border>
@@ -307,7 +709,7 @@
                                                         <TextBlock Text="{DynamicResource S.Settings.PromptParamTargetName}" Style="{StaticResource ParamText}"/>
                                                     </Border>
                                                     <Border Grid.Column="2" Style="{StaticResource ParamLastCell}">
-                                                        <TextBlock Text="Japanese" Style="{StaticResource ParamText}"/>
+                                                        <TextBlock Text="{DynamicResource S.Settings.PromptParamTargetNameExample}" Style="{StaticResource ParamText}"/>
                                                     </Border>
                                                 </Grid>
                                             </Border>

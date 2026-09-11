@@ -25,41 +25,6 @@
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="Margin"            Value="10,1,10,0"/>
         </Style>
-        <!-- One half of the sliding two-way switch in 偵錯工具. It paints no background of its own,
-             checked or not: the marker behind it is what says which half is chosen, and a fill here
-             would cover it. The button contributes the label, the hover step, and nothing else.
-             Nothing about the text changes with the state either — a weight that thickened on the
-             chosen half would widen its column and shift the switch under the pointer. -->
-        <Style x:Key="SegmentedTrackRadio" TargetType="RadioButton">
-            <Setter Property="FontFamily" Value="{DynamicResource AppFont}"/>
-            <Setter Property="FontSize"   Value="{StaticResource AppFontSize}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AppTextSecondary}"/>
-            <Setter Property="Cursor"     Value="Hand"/>
-            <Setter Property="Height"     Value="28"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <!-- Transparent rather than unpainted, so the whole half takes the click
-                             and not just the glyphs of the label. -->
-                        <Border Background="Transparent" Padding="16,0">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource AppAccentFg}"/>
-                </Trigger>
-                <MultiTrigger>
-                    <MultiTrigger.Conditions>
-                        <Condition Property="IsChecked"   Value="False"/>
-                        <Condition Property="IsMouseOver" Value="True"/>
-                    </MultiTrigger.Conditions>
-                    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimary}"/>
-                </MultiTrigger>
-            </Style.Triggers>
-        </Style>
         <Style x:Key="CardFoldFocusVisual">
             <Setter Property="Control.Template">
                 <Setter.Value>

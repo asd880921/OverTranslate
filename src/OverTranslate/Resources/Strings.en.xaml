@@ -75,6 +75,7 @@
     <sys:String x:Key="S.Error.OpenAiUnparsable">Could not parse the OpenAI-compatible API response.</sys:String>
     <sys:String x:Key="S.Error.OpenAiNoTranslation">The OpenAI-compatible API returned no translation.</sys:String>
     <sys:String x:Key="S.Error.OpenAiBadUrl">The OpenAI-compatible API address must be a valid HTTP or HTTPS URL.</sys:String>
+    <sys:String x:Key="S.Error.OpenAiNoModel">No model name is set. Enter the model to use in the translation service settings.</sys:String>
     <sys:String x:Key="S.Error.UnknownError">Unknown error</sys:String>
     <sys:String x:Key="S.Error.NoErrorContent">No error details provided</sys:String>
     <sys:String x:Key="S.Error.OcrUnsupportedLanguage">OCR currently supports AUTO, EN, ZH, ZH-HANT, JA and KO only; "{0}" is not supported yet.</sys:String>
@@ -415,29 +416,41 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.ServiceDialogTitle">{0} settings</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API URL</sys:String>
     <sys:String x:Key="S.Settings.ModelName">Model</sys:String>
+    <sys:String x:Key="S.Settings.CopyModelName">Copy the model name</sys:String>
+    <sys:String x:Key="S.Settings.ModelRequired">Required</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">Local LLM (Ollama) setup guide</sys:String>
-    <sys:String x:Key="S.Settings.PromptAuto">Auto-detect prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicit">Chosen-language prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptAuto">Source: automatic</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicit">Source: chosen</sys:String>
     <sys:String x:Key="S.Settings.PromptAutoHint">This prompt applies only when the source language is set to Automatic.</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicitHint">This prompt applies only when a source language is chosen, such as English.</sys:String>
-    <sys:String x:Key="S.Settings.PromptListTitle">Prompts</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoScope">Prompts here apply only when the source language is set to Automatic.</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitScope">Prompts here apply only when a source language is chosen, such as English.</sys:String>
+    <sys:String x:Key="S.Settings.ModelProfiles">Model settings</sys:String>
+    <sys:String x:Key="S.Settings.ProfileInUse">Settings in use</sys:String>
+    <sys:String x:Key="S.Settings.ProfileListTitle">Saved settings</sys:String>
+    <sys:String x:Key="S.Settings.ProfileAdd">Add settings ({0}/{1})</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoScope">Used only while the source language is set to Automatic.</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitScope">Used only while a source language is chosen, such as English.</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteTitle">Delete prompt</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteConfirm">Delete “{0}”? This cannot be undone.</sys:String>
-    <sys:String x:Key="S.Settings.PromptDefaultName">Built-in prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptDefaultName">Built-in</sys:String>
     <sys:String x:Key="S.Settings.PromptReadOnly">Read-only</sys:String>
-    <sys:String x:Key="S.Settings.PromptAdd">Add prompt ({0}/{1})</sys:String>
-    <sys:String x:Key="S.Settings.PromptInUse">Prompt in use</sys:String>
-    <sys:String x:Key="S.Settings.PromptAddTitle">Add prompt</sys:String>
-    <sys:String x:Key="S.Settings.PromptEditTitle">Edit prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptAddTitle">New settings</sys:String>
+    <sys:String x:Key="S.Settings.PromptEditTitle">Edit settings</sys:String>
     <sys:String x:Key="S.Settings.PromptDelete">Delete</sys:String>
     <sys:String x:Key="S.Settings.PromptName">Name</sys:String>
     <sys:String x:Key="S.Settings.PromptNamePlaceholder">Name this prompt</sys:String>
     <sys:String x:Key="S.Settings.PromptContent">Prompt text</sys:String>
+    <sys:String x:Key="S.Settings.PromptRoleEmpty">Not set</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceLanguage">Source language</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceAuto">Automatic</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceExplicit">Chosen</sys:String>
+    <sys:String x:Key="S.Settings.PromptSystemPlaceholder">System prompt…</sys:String>
+    <sys:String x:Key="S.Settings.PromptUserPlaceholder">User prompt…</sys:String>
+    <sys:String x:Key="S.Settings.PromptNeedOne">Fill in System Prompt or User Prompt</sys:String>
+    <sys:String x:Key="S.Settings.PromptOtherEmpty">The “{0}” prompt is empty</sys:String>
+    <sys:String x:Key="S.Settings.PromptSystemTip">Set the system prompt in the format your chosen model recommends, or leave it empty if it is not needed.</sys:String>
+    <sys:String x:Key="S.Settings.PromptUserTip">Set the user prompt in the format your chosen model recommends, or leave it empty if it is not needed.</sys:String>
     <sys:String x:Key="S.Settings.PromptNewName">My prompt {0}</sys:String>
     <sys:String x:Key="S.Settings.PromptLoadDefault">Load the built-in prompt</sys:String>
-    <sys:String x:Key="S.Settings.ResetDefault">Reset to default</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">Available parameters</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">Replaced with the languages actually in use before the request is sent.</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol1">Parameter</sys:String>
@@ -447,12 +460,26 @@ Leave a little room around the whole area; box several areas separately rather t
     <sys:String x:Key="S.Settings.PromptParamSourceCode">Source language code</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetName">Target language name</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetCode">Target language code</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceNameExample">English</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetNameExample">Japanese</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">Advanced</sys:String>
+    <sys:String x:Key="S.Settings.ModelResetTip">Use the recommended model</sys:String>
+    <sys:String x:Key="S.Settings.AdvancedHint">A parameter that is not enabled is left out of the request. Models differ in which parameters they accept, in what range, and at what value — follow your model's own documentation.</sys:String>
+    <sys:String x:Key="S.Settings.ParamEnable">Enable</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
-    <sys:String x:Key="S.Settings.TemperatureEnable">Enable</sys:String>
     <sys:String x:Key="S.Settings.TemperatureRange">Range: 0.0 ~ 2.0</sys:String>
-    <sys:String x:Key="S.Settings.TemperatureHint" xml:space="preserve">Temperature controls how random the output is; 0 keeps it as predictable as possible, and higher values allow more variation.
-The parameter is left out of the request when this is off. Models differ — follow whatever the model recommends.</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureTip" xml:space="preserve">How strongly the model favours the likeliest phrasing. The lower the value, the more
+it sticks to the most probable way of saying something; the higher it is, the more
+chance other ways have of being picked.</sys:String>
+    <sys:String x:Key="S.Settings.TopP">Top P</sys:String>
+    <sys:String x:Key="S.Settings.TopPRange">Range: 0.0 ~ 1.0</sys:String>
+    <sys:String x:Key="S.Settings.TopPTip" xml:space="preserve">How many candidates the model may choose between. The lower the value, the fewer
+of the likeliest candidates are kept; the higher it is, the more there are to
+choose from.</sys:String>
+    <sys:String x:Key="S.Settings.Seed">Seed</sys:String>
+    <sys:String x:Key="S.Settings.SeedRange">Whole number</sys:String>
+    <sys:String x:Key="S.Settings.SeedTip" xml:space="preserve">Makes a result easier to reproduce. With the same model, the same prompts and the
+same settings, the same seed usually gives the same output.</sys:String>
 
     <sys:String x:Key="S.Settings.SaveScreenshot">Save</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshotCheck">Save a copy of every capture</sys:String>

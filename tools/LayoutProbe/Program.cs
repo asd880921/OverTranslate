@@ -84,6 +84,13 @@ internal static class Program
                 case "debug-panel":
                     DebugPanelLayout.Report(args.Length > 1 ? args[1] : ".test-artifacts/debug-panel");
                     break;
+                case "prompt-panel":
+                    PromptPanelLayout.Report(args.Length > 1 ? args[1] : ".test-artifacts/prompt-panel");
+                    break;
+                case "glyphs":
+                    System.IO.Directory.CreateDirectory(".test-artifacts/glyphs");
+                    GlyphSheet.Save(".test-artifacts/glyphs");
+                    break;
                 default:
                     Console.Error.WriteLine($"unknown command '{args[0]}'");
                     return 2;

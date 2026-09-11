@@ -75,6 +75,7 @@
     <sys:String x:Key="S.Error.OpenAiUnparsable">OpenAI Compatible API 响应格式无法解析。</sys:String>
     <sys:String x:Key="S.Error.OpenAiNoTranslation">OpenAI Compatible API 未返回译文。</sys:String>
     <sys:String x:Key="S.Error.OpenAiBadUrl">OpenAI Compatible API 地址必须是有效的 HTTP 或 HTTPS 网址。</sys:String>
+    <sys:String x:Key="S.Error.OpenAiNoModel">尚未指定模型名称。请在「翻译服务设置」中填入要使用的模型。</sys:String>
     <sys:String x:Key="S.Error.UnknownError">未知错误</sys:String>
     <sys:String x:Key="S.Error.NoErrorContent">未提供错误内容</sys:String>
     <sys:String x:Key="S.Error.OcrUnsupportedLanguage">目前 OCR 仅支持 AUTO、EN、ZH、ZH-HANT、JA、KO；“{0}”尚未支持。</sys:String>
@@ -415,29 +416,41 @@
     <sys:String x:Key="S.Settings.ServiceDialogTitle">{0}设置</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API 地址</sys:String>
     <sys:String x:Key="S.Settings.ModelName">模型名称</sys:String>
+    <sys:String x:Key="S.Settings.CopyModelName">复制模型名称</sys:String>
+    <sys:String x:Key="S.Settings.ModelRequired">必填</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">本地 LLM (Ollama) 安装教程</sys:String>
-    <sys:String x:Key="S.Settings.PromptAuto">自动翻译 提示词</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicit">指定语言 提示词</sys:String>
+    <sys:String x:Key="S.Settings.PromptAuto">来源：自动</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicit">来源：指定语言</sys:String>
     <sys:String x:Key="S.Settings.PromptAutoHint">此提示词仅在源语言设为“自动（Automatic）”时生效。</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicitHint">此提示词仅在指定源语言时生效，例如“英语（English）”等。</sys:String>
-    <sys:String x:Key="S.Settings.PromptListTitle">提示词清单</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoScope">此处提示词仅在源语言设为“自动（Automatic）”时生效。</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitScope">此处提示词仅在指定源语言时生效，例如“英语（English）”等。</sys:String>
+    <sys:String x:Key="S.Settings.ModelProfiles">模型设置</sys:String>
+    <sys:String x:Key="S.Settings.ProfileInUse">当前使用的设置</sys:String>
+    <sys:String x:Key="S.Settings.ProfileListTitle">设置列表</sys:String>
+    <sys:String x:Key="S.Settings.ProfileAdd">新增设置（{0}/{1}）</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoScope">仅在来源语言设为「自动」时使用以下提示词。</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitScope">仅在指定来源语言（例如「英语」）时使用以下提示词。</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteTitle">删除提示词</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteConfirm">确定要删除“{0}”吗？删除后无法恢复。</sys:String>
-    <sys:String x:Key="S.Settings.PromptDefaultName">默认提示词</sys:String>
+    <sys:String x:Key="S.Settings.PromptDefaultName">系统默认</sys:String>
     <sys:String x:Key="S.Settings.PromptReadOnly">只读</sys:String>
-    <sys:String x:Key="S.Settings.PromptAdd">新增提示词（{0}/{1}）</sys:String>
-    <sys:String x:Key="S.Settings.PromptInUse">当前使用的提示词</sys:String>
-    <sys:String x:Key="S.Settings.PromptAddTitle">新增提示词</sys:String>
-    <sys:String x:Key="S.Settings.PromptEditTitle">编辑提示词</sys:String>
+    <sys:String x:Key="S.Settings.PromptAddTitle">新增设置</sys:String>
+    <sys:String x:Key="S.Settings.PromptEditTitle">编辑设置</sys:String>
     <sys:String x:Key="S.Settings.PromptDelete">删除</sys:String>
     <sys:String x:Key="S.Settings.PromptName">名称</sys:String>
     <sys:String x:Key="S.Settings.PromptNamePlaceholder">为这个提示词命名</sys:String>
     <sys:String x:Key="S.Settings.PromptContent">提示词内容</sys:String>
+    <sys:String x:Key="S.Settings.PromptRoleEmpty">未设置</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceLanguage">来源语言</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceAuto">自动</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceExplicit">指定语言</sys:String>
+    <sys:String x:Key="S.Settings.PromptSystemPlaceholder">请输入系统提示词…</sys:String>
+    <sys:String x:Key="S.Settings.PromptUserPlaceholder">请输入用户提示词…</sys:String>
+    <sys:String x:Key="S.Settings.PromptNeedOne">System Prompt 与 User Prompt 至少需填写一项</sys:String>
+    <sys:String x:Key="S.Settings.PromptOtherEmpty">「{0}」的提示词尚未填写</sys:String>
+    <sys:String x:Key="S.Settings.PromptSystemTip">可依所选模型的建议格式设置系统提示词；若不需要可留空。</sys:String>
+    <sys:String x:Key="S.Settings.PromptUserTip">可依所选模型的建议格式设置用户提示词；若不需要可留空。</sys:String>
     <sys:String x:Key="S.Settings.PromptNewName">我的提示词 {0}</sys:String>
     <sys:String x:Key="S.Settings.PromptLoadDefault">载入默认提示词</sys:String>
-    <sys:String x:Key="S.Settings.ResetDefault">恢复默认</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">可用参数</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">发送前会替换为实际使用的语言信息。</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol1">参数</sys:String>
@@ -447,12 +460,24 @@
     <sys:String x:Key="S.Settings.PromptParamSourceCode">源语言代码</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetName">目标语言名称</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetCode">目标语言代码</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceNameExample">英语</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetNameExample">日语</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">高级</sys:String>
+    <sys:String x:Key="S.Settings.ModelResetTip">带入推荐模型</sys:String>
+    <sys:String x:Key="S.Settings.AdvancedHint">未启用的参数不会发送。不同模型支持的参数、范围与建议值可能不同，请依模型文档设置。</sys:String>
+    <sys:String x:Key="S.Settings.ParamEnable">启用</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
-    <sys:String x:Key="S.Settings.TemperatureEnable">启用</sys:String>
     <sys:String x:Key="S.Settings.TemperatureRange">范围：0.0 ~ 2.0</sys:String>
-    <sys:String x:Key="S.Settings.TemperatureHint" xml:space="preserve">Temperature 会影响输出的随机程度；0 代表尽量降低随机性，提高数值则会增加输出变化。
-未启用时不发送此参数。不同模型适合的设置不同，建议按模型的建议值设置。</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureTip" xml:space="preserve">调整模型对高概率结果的偏好程度。数值越低，越倾向选择最可能的表达；
+数值越高，其他可能的表达也更有机会被选中。</sys:String>
+    <sys:String x:Key="S.Settings.TopP">Top P</sys:String>
+    <sys:String x:Key="S.Settings.TopPRange">范围：0.0 ~ 1.0</sys:String>
+    <sys:String x:Key="S.Settings.TopPTip" xml:space="preserve">限制模型可选择的候选范围。数值越低，只保留概率较高的少数候选；
+数值越高，可选择的候选越多。</sys:String>
+    <sys:String x:Key="S.Settings.Seed">Seed</sys:String>
+    <sys:String x:Key="S.Settings.SeedRange">整数</sys:String>
+    <sys:String x:Key="S.Settings.SeedTip" xml:space="preserve">用于让生成结果更容易重现。在模型、提示词与其他设置相同时，
+使用相同 Seed 通常可得到相同结果。</sys:String>
 
     <sys:String x:Key="S.Settings.SaveScreenshot">保存截图</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshotCheck">截图时自动保存</sys:String>

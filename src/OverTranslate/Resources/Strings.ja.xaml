@@ -76,6 +76,7 @@
     <sys:String x:Key="S.Error.OpenAiUnparsable">OpenAI 互換 API の応答を解析できませんでした。</sys:String>
     <sys:String x:Key="S.Error.OpenAiNoTranslation">OpenAI 互換 API から訳文が返りませんでした。</sys:String>
     <sys:String x:Key="S.Error.OpenAiBadUrl">OpenAI 互換 API のアドレスは有効な HTTP または HTTPS の URL である必要があります。</sys:String>
+    <sys:String x:Key="S.Error.OpenAiNoModel">モデル名が設定されていません。翻訳サービス設定で使用するモデルを入力してください。</sys:String>
     <sys:String x:Key="S.Error.UnknownError">不明なエラー</sys:String>
     <sys:String x:Key="S.Error.NoErrorContent">エラーの詳細はありません</sys:String>
     <sys:String x:Key="S.Error.OcrUnsupportedLanguage">OCR が対応しているのは AUTO、EN、ZH、ZH-HANT、JA、KO のみです。「{0}」はまだ対応していません。</sys:String>
@@ -416,29 +417,41 @@
     <sys:String x:Key="S.Settings.ServiceDialogTitle">{0} の設定</sys:String>
     <sys:String x:Key="S.Settings.ApiBaseUrl">API アドレス</sys:String>
     <sys:String x:Key="S.Settings.ModelName">モデル名</sys:String>
+    <sys:String x:Key="S.Settings.CopyModelName">モデル名をコピー</sys:String>
+    <sys:String x:Key="S.Settings.ModelRequired">必須</sys:String>
     <sys:String x:Key="S.Settings.OllamaGuide">ローカル LLM (Ollama) の導入ガイド</sys:String>
-    <sys:String x:Key="S.Settings.PromptAuto">自動判別用プロンプト</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicit">言語指定時のプロンプト</sys:String>
+    <sys:String x:Key="S.Settings.PromptAuto">ソース：自動</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicit">ソース：指定</sys:String>
     <sys:String x:Key="S.Settings.PromptAutoHint">このプロンプトは、翻訳元の言語が「自動（Automatic）」のときだけ適用されます。</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicitHint">このプロンプトは、翻訳元の言語を指定したときだけ適用されます（例：「英語（English）」）。</sys:String>
-    <sys:String x:Key="S.Settings.PromptListTitle">プロンプト一覧</sys:String>
-    <sys:String x:Key="S.Settings.PromptAutoScope">ここのプロンプトは、翻訳元の言語が「自動（Automatic）」のときだけ適用されます。</sys:String>
-    <sys:String x:Key="S.Settings.PromptExplicitScope">ここのプロンプトは、翻訳元の言語を指定したときだけ適用されます（例：「英語（English）」）。</sys:String>
+    <sys:String x:Key="S.Settings.ModelProfiles">モデル設定</sys:String>
+    <sys:String x:Key="S.Settings.ProfileInUse">使用中の設定</sys:String>
+    <sys:String x:Key="S.Settings.ProfileListTitle">設定一覧</sys:String>
+    <sys:String x:Key="S.Settings.ProfileAdd">設定を追加（{0}/{1}）</sys:String>
+    <sys:String x:Key="S.Settings.PromptAutoScope">ソース言語が「自動」のときだけ、以下のプロンプトを使います。</sys:String>
+    <sys:String x:Key="S.Settings.PromptExplicitScope">ソース言語を指定したとき（例：「英語」）だけ、以下のプロンプトを使います。</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteTitle">プロンプトの削除</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteConfirm">「{0}」を削除しますか？元に戻すことはできません。</sys:String>
-    <sys:String x:Key="S.Settings.PromptDefaultName">既定のプロンプト</sys:String>
+    <sys:String x:Key="S.Settings.PromptDefaultName">システム既定</sys:String>
     <sys:String x:Key="S.Settings.PromptReadOnly">読み取り専用</sys:String>
-    <sys:String x:Key="S.Settings.PromptAdd">プロンプトを追加（{0}/{1}）</sys:String>
-    <sys:String x:Key="S.Settings.PromptInUse">使用中のプロンプト</sys:String>
-    <sys:String x:Key="S.Settings.PromptAddTitle">プロンプトの追加</sys:String>
-    <sys:String x:Key="S.Settings.PromptEditTitle">プロンプトの編集</sys:String>
+    <sys:String x:Key="S.Settings.PromptAddTitle">設定を追加</sys:String>
+    <sys:String x:Key="S.Settings.PromptEditTitle">設定を編集</sys:String>
     <sys:String x:Key="S.Settings.PromptDelete">削除</sys:String>
     <sys:String x:Key="S.Settings.PromptName">名前</sys:String>
     <sys:String x:Key="S.Settings.PromptNamePlaceholder">このプロンプトの名前</sys:String>
     <sys:String x:Key="S.Settings.PromptContent">プロンプト本文</sys:String>
+    <sys:String x:Key="S.Settings.PromptRoleEmpty">未設定</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceLanguage">ソース言語</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceAuto">自動</sys:String>
+    <sys:String x:Key="S.Settings.PromptSourceExplicit">指定</sys:String>
+    <sys:String x:Key="S.Settings.PromptSystemPlaceholder">システムプロンプトを入力…</sys:String>
+    <sys:String x:Key="S.Settings.PromptUserPlaceholder">ユーザープロンプトを入力…</sys:String>
+    <sys:String x:Key="S.Settings.PromptNeedOne">System Prompt と User Prompt のどちらか一方は必要です</sys:String>
+    <sys:String x:Key="S.Settings.PromptOtherEmpty">「{0}」のプロンプトが空です</sys:String>
+    <sys:String x:Key="S.Settings.PromptSystemTip">選択したモデルが推奨する形式でシステムプロンプトを設定できます。不要なら空のままで構いません。</sys:String>
+    <sys:String x:Key="S.Settings.PromptUserTip">選択したモデルが推奨する形式でユーザープロンプトを設定できます。不要なら空のままで構いません。</sys:String>
     <sys:String x:Key="S.Settings.PromptNewName">マイプロンプト {0}</sys:String>
     <sys:String x:Key="S.Settings.PromptLoadDefault">既定のプロンプトを読み込む</sys:String>
-    <sys:String x:Key="S.Settings.ResetDefault">既定に戻す</sys:String>
     <sys:String x:Key="S.Settings.PromptParams">使用できるパラメーター</sys:String>
     <sys:String x:Key="S.Settings.PromptParamsTip">送信前に、その回に使う言語の情報へ置き換わります。</sys:String>
     <sys:String x:Key="S.Settings.PromptParamCol1">パラメーター</sys:String>
@@ -448,12 +461,24 @@
     <sys:String x:Key="S.Settings.PromptParamSourceCode">翻訳元の言語コード</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetName">翻訳先の言語名</sys:String>
     <sys:String x:Key="S.Settings.PromptParamTargetCode">翻訳先の言語コード</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamSourceNameExample">英語</sys:String>
+    <sys:String x:Key="S.Settings.PromptParamTargetNameExample">日本語</sys:String>
     <sys:String x:Key="S.Settings.OpenAiAdvanced">詳細</sys:String>
+    <sys:String x:Key="S.Settings.ModelResetTip">推奨モデルを入力</sys:String>
+    <sys:String x:Key="S.Settings.AdvancedHint">有効にしていないパラメーターは送信されません。対応するパラメーターや範囲、推奨値はモデルによって異なります。モデルのドキュメントに合わせて設定してください。</sys:String>
+    <sys:String x:Key="S.Settings.ParamEnable">有効にする</sys:String>
     <sys:String x:Key="S.Settings.Temperature">Temperature</sys:String>
-    <sys:String x:Key="S.Settings.TemperatureEnable">有効にする</sys:String>
     <sys:String x:Key="S.Settings.TemperatureRange">範囲：0.0 ~ 2.0</sys:String>
-    <sys:String x:Key="S.Settings.TemperatureHint" xml:space="preserve">Temperature は出力のばらつきに影響します。0 でばらつきを最小にし、値を上げるほど変化が大きくなります。
-無効のときはこのパラメーターを送信しません。適切な値はモデルごとに異なるため、モデルの推奨値に合わせてください。</sys:String>
+    <sys:String x:Key="S.Settings.TemperatureTip" xml:space="preserve">確率の高い結果をどれだけ優先するかを調整します。値が小さいほど最も可能性の高い
+表現が選ばれやすく、値が大きいほど他の表現も選ばれやすくなります。</sys:String>
+    <sys:String x:Key="S.Settings.TopP">Top P</sys:String>
+    <sys:String x:Key="S.Settings.TopPRange">範囲：0.0 ~ 1.0</sys:String>
+    <sys:String x:Key="S.Settings.TopPTip" xml:space="preserve">モデルが選べる候補の範囲を制限します。値が小さいほど確率の高い少数の候補だけが
+残り、値が大きいほど選べる候補が増えます。</sys:String>
+    <sys:String x:Key="S.Settings.Seed">Seed</sys:String>
+    <sys:String x:Key="S.Settings.SeedRange">整数</sys:String>
+    <sys:String x:Key="S.Settings.SeedTip" xml:space="preserve">生成結果を再現しやすくするための値です。モデル・プロンプト・その他の設定が同じ
+であれば、同じ Seed で同じ結果が得られることが多くなります。</sys:String>
 
     <sys:String x:Key="S.Settings.SaveScreenshot">スクリーンショットの保存</sys:String>
     <sys:String x:Key="S.Settings.SaveScreenshotCheck">キャプチャのたびに自動で保存する</sys:String>
