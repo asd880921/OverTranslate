@@ -428,6 +428,10 @@
     <sys:String x:Key="S.Settings.ProfileInUse">사용 중인 설정</sys:String>
     <sys:String x:Key="S.Settings.ProfileListTitle">설정 목록</sys:String>
     <sys:String x:Key="S.Settings.ProfileAdd">설정 추가({0}/{1})</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotTitle">시스템 기본값은 버전마다 갱신됩니다</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotBody">현재 시스템 기본값을 유지하려면 사용자 설정을 추가하세요.</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotAction">시스템 기본값 복사</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotName">시스템 기본값 v{0}</sys:String>
     <sys:String x:Key="S.Settings.PromptAutoScope">원본 언어가 '자동'일 때만 아래 프롬프트를 사용합니다.</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicitScope">원본 언어를 지정했을 때(예: '영어')만 아래 프롬프트를 사용합니다.</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteTitle">프롬프트 삭제</sys:String>

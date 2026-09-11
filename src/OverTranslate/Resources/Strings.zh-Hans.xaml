@@ -427,6 +427,10 @@
     <sys:String x:Key="S.Settings.ProfileInUse">当前使用的设置</sys:String>
     <sys:String x:Key="S.Settings.ProfileListTitle">设置列表</sys:String>
     <sys:String x:Key="S.Settings.ProfileAdd">新增设置（{0}/{1}）</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotTitle">系统默认会随版本更新</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotBody">如果想要保留当前系统默认，请新增一份自定义设置。</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotAction">复制默认设置</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotName">系统默认 v{0}</sys:String>
     <sys:String x:Key="S.Settings.PromptAutoScope">仅在来源语言设为「自动」时使用以下提示词。</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicitScope">仅在指定来源语言（例如「英语」）时使用以下提示词。</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteTitle">删除提示词</sys:String>

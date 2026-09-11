@@ -428,6 +428,10 @@
     <sys:String x:Key="S.Settings.ProfileInUse">使用中の設定</sys:String>
     <sys:String x:Key="S.Settings.ProfileListTitle">設定一覧</sys:String>
     <sys:String x:Key="S.Settings.ProfileAdd">設定を追加（{0}/{1}）</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotTitle">システム既定はバージョンごとに更新されます</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotBody">現在のシステム既定を残したい場合は、自分用の設定を追加してください。</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotAction">システム既定をコピー</sys:String>
+    <sys:String x:Key="S.Settings.ProfileSnapshotName">システム既定 v{0}</sys:String>
     <sys:String x:Key="S.Settings.PromptAutoScope">ソース言語が「自動」のときだけ、以下のプロンプトを使います。</sys:String>
     <sys:String x:Key="S.Settings.PromptExplicitScope">ソース言語を指定したとき（例：「英語」）だけ、以下のプロンプトを使います。</sys:String>
     <sys:String x:Key="S.Settings.PromptDeleteTitle">プロンプトの削除</sys:String>
