@@ -97,7 +97,7 @@ public sealed class OpenAiCompatibleProvider : ITranslationProvider
     /// one is edited alone, and the symptom is a user following the guide and then being offered a
     /// different name by the app.
     /// </remarks>
-    internal const string RecommendedModel = "hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M";
+    internal const string RecommendedModel = "hf.co/unsloth/Hy-MT2-7B-GGUF:UD-IQ3_XXS";
 
     /// <summary>
     /// The setting in use: the one the user picked, or the built-in one.

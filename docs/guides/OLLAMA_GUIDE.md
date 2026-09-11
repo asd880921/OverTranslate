@@ -2,53 +2,115 @@
 
 > **Language：** **繁體中文 ✓** ｜ **[English](OLLAMA_GUIDE.en.md)** ｜ **[简体中文](OLLAMA_GUIDE.zh-Hans.md)** ｜ **[日本語](OLLAMA_GUIDE.ja.md)** ｜ **[한국어](OLLAMA_GUIDE.ko.md)**
 
-OverTranslate 的 **OpenAI** 翻譯服務支援 OpenAI API 相容格式，可搭配 [Ollama](https://ollama.com/) 在本機執行 LLM 模型。使用本地模型不需要額外支付 API 費用，翻譯內容也不會傳送至外部伺服器。
+OverTranslate 的 **OpenAI** 翻譯服務支援 OpenAI API 相容格式，因此也可以搭配 [Ollama](https://ollama.com/)，直接在自己的電腦上執行本地模型。
 
-以下以 `hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M`（騰訊推出的翻譯專用模型，支援 33 種語言互譯）作為範例。
+使用本地模型不需要另外支付 API 費用，翻譯內容也不會傳送到外部伺服器。
 
-> **硬體需求：** 本地 LLM 會占用電腦的 CPU / GPU 資源。建議使用具備獨立顯示卡的電腦，以獲得較好的翻譯速度。
+這篇教學會以 `hf.co/unsloth/Hy-MT2-7B-GGUF:UD-IQ3_XXS` 為例。Hy-MT2 是騰訊推出的翻譯專用模型，支援 33 種語言互譯；這裡使用的是由 Unsloth 重新打包、體積較小的版本。
+
+> **電腦需要什麼規格？**
 >
-> 本教學使用的模型檔案約 4.6 GB，載入後約占用 5.5 GB，建議顯示卡具備 **至少 6 GB VRAM，8 GB 以上較佳**。實際記憶體占用仍會依 Ollama、輸入內容及其他程式的 GPU 使用量而有所不同。
+> 本地模型會使用電腦的 CPU 與 GPU。為了讓翻譯速度更順暢，建議使用有獨立顯示卡的電腦。
 >
-> 顯示卡記憶體只差一點就不夠時，速度會大幅下降（模型會有一部分改由 CPU 執行），此時建議改用較小的量化版本，見下方說明。
+> 這篇教學使用的模型檔案約 **3.1 GB**，載入後大約會占用 **4.1 GB VRAM**，因此建議顯示卡至少有 **6 GB VRAM**。
+>
+> 如果你會一邊玩遊戲、一邊使用 OverTranslate，遊戲本身也會占用 VRAM，建議使用 **8 GB 以上**的顯示卡。
+>
+> 實際使用量仍會受到 Ollama、翻譯內容長度，以及其他程式的 GPU 使用狀況影響。
+>
+> 如果 VRAM 不夠，模型的一部分可能會改由 CPU 執行，翻譯速度會明顯變慢。遇到這種情況，可以改用下面介紹的較小版本。
 
 ## 1. 安裝 Ollama
 
-1. 前往 [Ollama 官網](https://ollama.com/download) 下載對應作業系統的安裝程式
-2. 執行安裝檔，依照預設選項完成安裝即可
+1. 前往 [Ollama 官網](https://ollama.com/download)，下載適合你作業系統的版本
+2. 執行安裝程式，依照預設選項完成安裝即可
 
-安裝完成後，開啟 Ollama 應用。Ollama 的 API 位址預設為 `http://localhost:11434` (若曾修改過相關設定，請以實際的 API 位址為準)
+安裝完成後，開啟 Ollama。
 
-## 2. 下載模型
+Ollama 預設的 API 位址是：
 
-打開「命令提示字元」或「PowerShell」，輸入：
+`http://localhost:11434`
 
+如果你沒有特別修改過 Ollama 的設定，使用預設值即可。
+
+## 2. 下載翻譯模型
+
+開啟 Windows 的「命令提示字元」或「PowerShell」，輸入：
+
+```text
+ollama pull hf.co/unsloth/Hy-MT2-7B-GGUF:UD-IQ3_XXS
 ```
-ollama pull hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M
-```
 
-等待下載完成即可（模型大小約 4.6 GB，依網路狀況需要幾分鐘）。
+接著等待模型下載完成。
 
-> **顯示卡記憶體不足時**，可改用同一個模型的較小版本，把 `ollama pull` 後面的名稱換成下列其中一個：
+這個版本大約 **3.1 GB**，實際需要多久會依你的網路速度而定。
+
+> **想使用其他大小的版本？**
 >
-> | 模型名稱 | 檔案大小 | 適用 |
-> |----------|----------|------|
-> | `hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M` | 約 4.6 GB | 6 GB 以上 VRAM（本教學使用） |
-> | `hf.co/unsloth/Hy-MT2-7B-GGUF:IQ4_XS` | 約 4.2 GB | 5～6 GB VRAM |
-> | `hf.co/unsloth/Hy-MT2-7B-GGUF:Q3_K_M` | 約 3.8 GB | 4 GB VRAM |
+> 可以前往 [unsloth/Hy-MT2-7B-GGUF](https://huggingface.co/unsloth/Hy-MT2-7B-GGUF)，選擇同一個模型的其他量化版本。
 >
-> 後兩個由社群重新打包，模型本身相同。數字越小檔案越小、速度越快，翻譯品質則會略為下降。
+> 找到想使用的版本後，把指令改成：
+>
+> `hf.co/unsloth/Hy-MT2-7B-GGUF:<版本名稱>`
+>
+> 一般來說，檔案越小，需要的硬體資源越少，執行也會更輕量；相對地，翻譯品質也可能有所下降。
+>
+> 如果你的顯示卡只有 **4 GB VRAM**，建議改用較小的 `maternion/hy-mt2:1.8b`，模型檔案約 **1.1 GB**。
 
-> 也可以在 [Ollama Models](https://ollama.com/search) 搜尋其他模型，並替換成想使用的模型名稱。
-> 需選擇不啟用思考模式的模型；如果不確定該選哪個，可直接依照本教學使用推薦的模型。
+你也可以從其他地方尋找適合的模型：
 
-## 3. 在 OverTranslate 設定
+- [Ollama Models](https://ollama.com/search)：可以直接尋找 Ollama 已整理好的模型，使用起來最簡單。
+- [Hugging Face](https://huggingface.co/models)：模型選擇更多。如果要搭配 Ollama 使用，建議優先找**已提供 GGUF 版本**的模型。這類模型的名稱通常會帶有 `GGUF`，例如以 `-GGUF` 結尾。
 
-1. 開啟 OverTranslate 設定頁 → 翻譯服務選擇 **OpenAI Compatible**
-2. **API 位址** 與 **API Key** 都可以留空：位址的預設值就是 Ollama 的本機位址，本機執行也不需要金鑰
-3. **模型設定** 保持在 **系統預設** 即可 —— 它用的正是本教學推薦的模型 `hf.co/tencent/Hy-MT2-7B-GGUF:Q4_K_M`，提示詞也是為它寫的
-4. 關閉設定頁後即可開始使用本機 LLM 進行翻譯
+如果 Hugging Face 上只有原始模型，例如 Safetensors，而沒有提供 GGUF 版本，就需要先透過 [llama.cpp](https://github.com/ggml-org/llama.cpp) 將相容的模型轉換成 GGUF，再匯入 Ollama。
 
-> **換成其他模型時**，在 **設定清單** 按 **新增設定**，填入模型名稱（包含 `hf.co/` 開頭的完整名稱）與該模型建議的提示詞，儲存後選取即可。一份設定就是一整組：模型名稱、Temperature，以及 **自動** 與 **指定語言** 各一組 System / User 提示詞，切換設定會整組一起換。
+如果不確定該選哪一個，直接使用這篇教學推薦的模型即可；另外也建議選擇**不使用思考模式**的模型，會比較適合 OverTranslate 這類即時翻譯用途。
 
-> **提示詞與 Temperature**：系統預設的提示詞會依照 OverTranslate 的介面語言自動切換，並已針對本教學推薦的模型調整過。它只送 User 提示詞、不送 System 提示詞，這是依照該模型官方文件的格式；不同模型的要求不同，兩者至少填寫一項即可。進階參數（Temperature `0.7`、Top P `0.6`、Seed `42`）預設全部啟用，數值為推薦模型官方文件的建議值；Seed 固定的情況下，相同的原文每次仍會得到一致的譯文。
+## 3. 在 OverTranslate 中設定
+
+模型下載完成後，回到 OverTranslate：
+
+1. 開啟 **設定**
+2. 在翻譯服務中選擇 **OpenAI**
+3. **API 位址**與 **API Key** 都可以直接留空
+4. **模型設定**維持預設的推薦設定
+5. 關閉設定頁後，就可以開始使用本地模型翻譯
+
+API 位址留空時，OverTranslate 會使用 Ollama 預設的本機位址；而 Ollama 在本機執行時也不需要 API Key。
+
+OverTranslate 內建的推薦設定已經使用這篇教學中的模型：
+
+`hf.co/unsloth/Hy-MT2-7B-GGUF:UD-IQ3_XXS`
+
+對應的提示詞與進階參數也已經設定好，因此如果只是想直接使用，**不需要另外修改模型設定**。
+
+> **想改用其他模型？**
+>
+> 在 **設定清單**中按下 **新增設定**，填入完整的模型名稱，以及該模型所需要的提示詞，儲存後再選擇這份設定即可。
+>
+> 如果模型來自 Hugging Face，模型名稱請連同開頭的 `hf.co/` 一起填入。
+>
+> 每一份模型設定都包含：
+>
+> - 模型名稱
+> - Temperature
+> - 自動偵測語言時使用的 System / User 提示詞
+> - 指定來源語言時使用的 System / User 提示詞
+>
+> 切換模型設定時，這些內容會一起切換，不需要逐項重新設定。
+
+> **關於提示詞與進階參數**
+>
+> OverTranslate 內建的提示詞會依照目前的介面語言切換，並已針對推薦的 Hy-MT2 模型調整。
+>
+> 這個模型預設只使用 **User Prompt**，不需要 **System Prompt**，這是依照模型官方文件提供的使用方式設定。
+>
+> 不同模型需要的提示詞格式可能不同，因此自行加入其他模型時，可以按照該模型的說明設定。System Prompt 與 User Prompt 不需要兩個都填寫，只要至少有其中一項即可。
+>
+> 推薦模型的進階參數預設為：
+>
+> - Temperature：`0.7`
+> - Top P：`0.6`
+> - Seed：`42`
+>
+> 這些數值依照推薦模型官方文件的建議設定。Seed 固定後，同一段原文在相同設定下，可以維持較一致的翻譯結果。
