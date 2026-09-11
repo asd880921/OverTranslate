@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -9,6 +10,9 @@ using OverTranslate.Services.Providers;
 // UseWindowsForms puts System.Windows.Forms in the implicit usings, so these names collide
 using UserControl = System.Windows.Controls.UserControl;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using TextBox = System.Windows.Controls.TextBox;
+using CheckBox = System.Windows.Controls.CheckBox;
+using Size = System.Windows.Size;
 
 namespace OverTranslate.Views.Settings;
 
@@ -68,39 +72,52 @@ public partial class PromptEditOverlay : UserControl
 
     // ── Open / close ─────────────────────────────────────────────────────────
 
-    /// <param name="preset">The prompt to edit, or null to write a new one.</param>
+    /// <param name="profile">The setting to edit, or null to write a new one.</param>
     /// <param name="suggestedName">
-    /// What to call a new prompt until the user renames it. Ignored when editing.
+    /// What to call a new setting until the user renames it. Ignored when editing.
     /// </param>
-    public void Open(bool automatic, OpenAiPromptPreset? preset, string suggestedName)
+    public void Open(bool automatic, OpenAiModelProfile? profile, string suggestedName)
     {
         _automatic = automatic;
-        _editingId = preset?.Id ?? "";
+        _editingId = profile?.Id ?? "";
 
         _loading = true;
         try
         {
             TitleText.Text = LocalizationService.Get(
-                preset is null ? "S.Settings.PromptAddTitle" : "S.Settings.PromptEditTitle");
+                profile is null ? "S.Settings.PromptAddTitle" : "S.Settings.PromptEditTitle");
             ScopeHint.Text = LocalizationService.Get(
                 automatic ? "S.Settings.PromptAutoScope" : "S.Settings.PromptExplicitScope");
 
-            NameBox.Text = preset?.Name ?? suggestedName;
+            NameBox.Text = profile?.Name ?? suggestedName;
 
-            // A new prompt opens on the built-in wording rather than on an empty box: it is the one
+            // A new setting opens on the built-in wording rather than on empty boxes: it is the one
             // worked example of these parameters there is, and most edits are a sentence away from
-            // it rather than a page of prose from nothing.
-            TemplateBox.Text = preset?.Template ?? OpenAiCompatibleProvider.DefaultPromptTemplate(automatic);
+            // it rather than a page of prose from nothing. Both pairs, because one saved setting
+            // holds both.
+            var built = OpenAiCompatibleProvider.BuiltInProfile();
+            WritePair(AutoSystemBox, AutoUserBox, profile?.Auto ?? built.Auto);
+            WritePair(ExplicitSystemBox, ExplicitUserBox, profile?.Explicit ?? built.Explicit);
 
-            // 自動 has no source language, so the two rows describing one would be listing
-            // parameters that resolve to nothing. Hidden whole rather than left showing an empty
-            // example.
-            var sourceRows = automatic ? Visibility.Collapsed : Visibility.Visible;
-            ParamRowSourceName.Visibility = sourceRows;
-            ParamRowSourceCode.Visibility = sourceRows;
+            // The model opens on the built-in one like everything else on this card. A new setting is
+            // a copy of what ships, and the reset beside this box puts the same name back — a box
+            // that opened empty while its own reset filled it in would be two answers to one
+            // question. Whoever is here for a different model is replacing a name either way.
+            ModelBox.Text = profile?.Model ?? built.Model;
 
-            // Nothing to delete while the prompt does not exist yet.
-            DeleteButton.Visibility = preset is null ? Visibility.Collapsed : Visibility.Visible;
+            var sampling = profile ?? built;
+            TemperatureEnabledCheckBox.IsChecked = sampling.TemperatureEnabled;
+            TemperatureBox.Text = FormatNumber(sampling.Temperature);
+            TopPEnabledCheckBox.IsChecked = sampling.TopPEnabled;
+            TopPBox.Text = FormatNumber(sampling.TopP);
+            SeedEnabledCheckBox.IsChecked = sampling.SeedEnabled;
+            SeedBox.Text = sampling.Seed.ToString(CultureInfo.InvariantCulture);
+
+            if (automatic) PromptAutoTab.IsChecked = true;
+            else PromptExplicitTab.IsChecked = true;
+
+            // Nothing to delete while the setting does not exist yet.
+            DeleteButton.Visibility = profile is null ? Visibility.Collapsed : Visibility.Visible;
 
             // Left open by a card that was closed from inside the confirmation, otherwise.
             ConfirmLayer.Visibility = Visibility.Collapsed;
@@ -110,6 +127,8 @@ public partial class PromptEditOverlay : UserControl
             _loading = false;
         }
 
+        UpdateAdvancedChrome();
+        UpdatePromptTabChrome();
         UpdateChrome();
 
         Visibility = Visibility.Visible;
@@ -207,25 +226,113 @@ public partial class PromptEditOverlay : UserControl
 
     private void NameBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateChrome();
 
-    private void TemplateBox_TextChanged(object sender, TextChangedEventArgs e)
+    /// <summary>
+    /// Swaps which of the two prompt pairs is on screen. Nothing else on the card moves: the model
+    /// and the temperature belong to the setting, not to one of its two cases.
+    /// </summary>
+    private void PromptTab_Checked(object sender, RoutedEventArgs e)
     {
+        if (!IsLoaded && _loading) return;
+
+        _automatic = PromptAutoTab.IsChecked == true;
+        UpdatePromptTabChrome();
+    }
+
+    private void UpdatePromptTabChrome()
+    {
+        AutoPromptPair.Visibility = _automatic ? Visibility.Visible : Visibility.Collapsed;
+        ExplicitPromptPair.Visibility = _automatic ? Visibility.Collapsed : Visibility.Visible;
+
+        // The sentence under the switch is what the switch changes, so it is written again here
+        // rather than left as a general note about both cases.
+        ScopeHint.Text = LocalizationService.Get(
+            _automatic ? "S.Settings.PromptAutoScope" : "S.Settings.PromptExplicitScope");
+
+        MovePromptSourceThumb(animate: !_loading);
+
+        // Which pair is on screen decides which of the two messages the rule line carries.
+        if (!_loading) UpdateChrome();
+
+        // 自動 has no source language, so the two rows describing one would be listing parameters
+        // that resolve to nothing. Hidden whole rather than left showing an empty example.
+        var sourceRows = _automatic ? Visibility.Collapsed : Visibility.Visible;
+        ParamRowSourceName.Visibility = sourceRows;
+        ParamRowSourceCode.Visibility = sourceRows;
+    }
+
+    private void ModelBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateChrome();
+
+    /// <remarks>
+    /// The cap is per box rather than across the pair. Each is sent as one message, and a limit
+    /// counted over both would make room in one half depend on what is in the other — which is
+    /// invisible from the box being typed in.
+    /// </remarks>
+    private void PromptBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+
+        // All four, not just the User halves: either one may be the empty one, because the card asks
+        // for one of the two rather than for System with User optional.
+        AutoSystemPlaceholder.Visibility = Placeholder(AutoSystemBox);
+        AutoUserPlaceholder.Visibility = Placeholder(AutoUserBox);
+        ExplicitSystemPlaceholder.Visibility = Placeholder(ExplicitSystemBox);
+        ExplicitUserPlaceholder.Visibility = Placeholder(ExplicitUserBox);
+
         // The trim below raises this event again for its own edit.
         if (_trimming) return;
 
-        if (!_loading) TrimToLineLimit();
+        if (!_loading) TrimToLineLimit(box);
 
         UpdateChrome();
     }
 
-    /// <summary>Puts the built-in wording back in the box, to write over or to write from.</summary>
-    private void LoadDefaultButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Fills one pair's boxes from a stored pair.</summary>
+    private static void WritePair(TextBox system, TextBox user, OpenAiPromptPair prompts)
     {
-        // Through the selection rather than by assigning Text, which would throw away the undo
-        // history: this replaces something the user wrote, and Ctrl+Z getting it back is what makes
-        // a confirmation unnecessary.
-        TemplateBox.SelectAll();
-        TemplateBox.SelectedText = OpenAiCompatibleProvider.DefaultPromptTemplate(_automatic);
-        TemplateBox.Focus();
+        system.Text = prompts.SystemPrompt;
+        user.Text = prompts.UserPrompt;
+    }
+
+    /// <remarks>
+    /// The built-in setting sends no system message, so this empties the box rather than filling it.
+    /// It is the same action as the one on the User box — "put back what the app ships with" — and a
+    /// button missing on one of four otherwise identical panels reads as an oversight.
+    /// </remarks>
+    private void AutoSystemDefault_Click(object sender, RoutedEventArgs e) =>
+        Refill(AutoSystemBox, OpenAiCompatibleProvider.DefaultSystemPrompt);
+
+    private void ExplicitSystemDefault_Click(object sender, RoutedEventArgs e) =>
+        Refill(ExplicitSystemBox, OpenAiCompatibleProvider.DefaultSystemPrompt);
+
+    private void AutoUserDefault_Click(object sender, RoutedEventArgs e) =>
+        Refill(AutoUserBox, OpenAiCompatibleProvider.DefaultUserPrompt());
+
+    private void ExplicitUserDefault_Click(object sender, RoutedEventArgs e) =>
+        Refill(ExplicitUserBox, OpenAiCompatibleProvider.DefaultUserPrompt());
+
+    /// <summary>Puts the built-in wording back in one box, to write over or to write from.</summary>
+    /// <remarks>
+    /// Through the selection rather than by assigning Text, which would throw away the undo history:
+    /// this replaces something the user wrote, and Ctrl+Z getting it back is what makes a
+    /// confirmation unnecessary.
+    /// </remarks>
+    private static void Refill(TextBox box, string text)
+    {
+        box.SelectAll();
+        box.SelectedText = text;
+        box.Focus();
+    }
+
+    /// <summary>Puts the model the guide recommends in the box.</summary>
+    /// <remarks>
+    /// A suggestion rather than a fallback, which is the difference that matters here: leaving the
+    /// box empty is still a configuration error and still refuses to send, and this name only ever
+    /// arrives because somebody asked for it. It is the one the Ollama guide tells the user to pull.
+    /// </remarks>
+    private void ModelResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        Refill(ModelBox, OpenAiCompatibleProvider.RecommendedModel);
+        UpdateChrome();
     }
 
     /// <summary>
@@ -235,10 +342,117 @@ public partial class PromptEditOverlay : UserControl
     private void UpdateChrome()
     {
         NamePlaceholder.Visibility = NameBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ModelPlaceholder.Visibility = ModelBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // A name to be picked out of the list by, a model to send to, and something to send. The
+        // prompt is one of the two halves rather than both: which one a model wants its prompt in is
+        // the model's business, and a card that demanded both would be asking the user to pad out a
+        // message their model expects to be empty.
+        // Each case has to have something to send, not just one of the two: both are used, and a
+        // setting whose 指定 half is empty would send an empty prompt the moment someone picked a
+        // source language. Checked across both pairs rather than the visible one, so the button does
+        // not go live because the incomplete half happens to be off screen.
+        var autoOk = HasPrompt(AutoSystemBox, AutoUserBox);
+        var explicitOk = HasPrompt(ExplicitSystemBox, ExplicitUserBox);
 
         SaveButton.IsEnabled =
-            NameBox.Text.Trim().Length > 0 && TemplateBox.Text.Trim().Length > 0;
+            NameBox.Text.Trim().Length > 0 &&
+            ModelBox.Text.Trim().Length > 0 &&
+            autoOk && explicitOk;
+
+        UpdatePromptRule(autoOk, explicitOk);
     }
+
+    /// <summary>
+    /// Says which prompt is missing, or nothing at all while none is.
+    /// </summary>
+    /// <remarks>
+    /// The pair on screen first: that is the one the reader can act on without moving. Naming the
+    /// other tab is the case that would otherwise be unexplainable — the boxes in front of them are
+    /// filled in, and 儲存 is off for a reason on a page they are not looking at.
+    /// </remarks>
+    private void UpdatePromptRule(bool autoOk, bool explicitOk)
+    {
+        var visibleOk = _automatic ? autoOk : explicitOk;
+        var otherOk = _automatic ? explicitOk : autoOk;
+
+        if (!visibleOk)
+        {
+            PromptRuleText.Text = LocalizationService.Get("S.Settings.PromptNeedOne");
+            PromptRuleRow.Visibility = Visibility.Visible;
+            return;
+        }
+
+        if (!otherOk)
+        {
+            PromptRuleText.Text = LocalizationService.Format(
+                "S.Settings.PromptOtherEmpty",
+                LocalizationService.Get(_automatic
+                    ? "S.Settings.PromptSourceExplicit"
+                    : "S.Settings.PromptSourceAuto"));
+            PromptRuleRow.Visibility = Visibility.Visible;
+            return;
+        }
+
+        PromptRuleRow.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Whether one case has a prompt at all — one of the two halves, not both.
+    /// </summary>
+    /// <remarks>
+    /// Which half a model wants its prompt in is the model's business, and a card that demanded both
+    /// would be asking the user to pad out a message their model expects to be empty.
+    /// </remarks>
+    private static Visibility Placeholder(TextBox box) =>
+        box.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    private static bool HasPrompt(TextBox system, TextBox user) =>
+        system.Text.Trim().Length > 0 || user.Text.Trim().Length > 0;
+
+    // ── The source-language switch ───────────────────────────────────────────
+
+    /// <summary>
+    /// The 偵錯工具 card's marker, so the same control does not travel at two speeds in one app.
+    /// </summary>
+    private static readonly Duration PromptSourceSlide = new(TimeSpan.FromMilliseconds(220));
+
+    /// <summary>
+    /// Puts the marker under the chosen half.
+    /// </summary>
+    /// <remarks>
+    /// The travel is the marker's own width, because the two halves share a column size. Measured
+    /// rather than fixed: the halves are sized to the longer of two labels, which is a different
+    /// number in every language.
+    /// </remarks>
+    private void MovePromptSourceThumb(bool animate)
+    {
+        var target = _automatic ? 0 : PromptSourceThumb.ActualWidth;
+
+        // Before the tray has been laid out there is no distance to travel and nothing to see; the
+        // marker's own SizeChanged runs this again once the shared columns have their final width.
+        if (!animate || PromptSourceThumb.ActualWidth <= 0 || !SystemParameters.ClientAreaAnimation)
+        {
+            PromptSourceThumbShift.BeginAnimation(TranslateTransform.XProperty, null);
+            PromptSourceThumbShift.X = target;
+            return;
+        }
+
+        PromptSourceThumbShift.BeginAnimation(
+            TranslateTransform.XProperty,
+            new DoubleAnimation(target, PromptSourceSlide)
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            });
+    }
+
+    /// <summary>
+    /// The half's width is not known until the card has been opened once and laid out, so the marker
+    /// is placed again whenever that number arrives or changes — without animating, since this is
+    /// the switch being measured rather than the choice being changed.
+    /// </summary>
+    private void PromptSourceThumb_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        MovePromptSourceThumb(animate: false);
 
     /// <summary>
     /// Drops anything past <see cref="PromptMaxLines"/> lines, silently.
@@ -253,17 +467,17 @@ public partial class PromptEditOverlay : UserControl
     /// Removed through the selection so the paste stays undoable; the trim is then simply applied
     /// again if the undone text is still too long.
     /// </remarks>
-    private void TrimToLineLimit()
+    private void TrimToLineLimit(TextBox box)
     {
-        var overflow = LineLimitOverflowIndex(TemplateBox.Text, PromptMaxLines);
+        var overflow = LineLimitOverflowIndex(box.Text, PromptMaxLines);
         if (overflow < 0) return;
 
         _trimming = true;
         try
         {
-            TemplateBox.Select(overflow, TemplateBox.Text.Length - overflow);
-            TemplateBox.SelectedText = "";
-            TemplateBox.CaretIndex = overflow;
+            box.Select(overflow, box.Text.Length - overflow);
+            box.SelectedText = "";
+            box.CaretIndex = overflow;
         }
         finally
         {
@@ -292,49 +506,257 @@ public partial class PromptEditOverlay : UserControl
         return index > 0 && text[index - 1] == '\r' ? index - 1 : index;
     }
 
+
+
+    // ── Advanced fold ───────────────────────────────────────────────
+
+    /// <summary>How long the advanced section takes to open or close.</summary>
+    private static readonly Duration AdvancedDuration = TimeSpan.FromMilliseconds(180);
+
+    private bool _advancedExpanded;
+
+    /// <summary>
+    /// Which open/close is current, so a run that is replaced part way through does not then finish
+    /// and hand the section a height belonging to the state it was leaving.
+    /// </summary>
+    private int _advancedTransition;
+
+    private void AdvancedToggle_Click(object sender, RoutedEventArgs e) =>
+        SetAdvancedExpanded(!_advancedExpanded);
+
+    /// <remarks>
+    /// The height is animated from the content's measured height rather than from a number written
+    /// here, and handed back to Auto once open: the sentences inside are localized and wrap against
+    /// the card's width, so today's measurement is not tomorrow's.
+    /// </remarks>
+    private void SetAdvancedExpanded(bool expanded)
+    {
+        _advancedExpanded = expanded;
+        var transition = ++_advancedTransition;
+
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        AdvancedChevronRotation.BeginAnimation(
+            RotateTransform.AngleProperty,
+            new DoubleAnimation(expanded ? 180 : 0, AdvancedDuration) { EasingFunction = ease });
+
+        // Enabled for the whole of the opening move, and only switched off once the closing one has
+        // finished - closed, its content has to be out of the tab order as well as out of sight,
+        // which a zero height alone would not manage.
+        if (expanded) AdvancedHost.IsEnabled = true;
+
+        var to = 0d;
+        if (expanded)
+        {
+            AdvancedContent.Measure(new Size(
+                AdvancedHost.ActualWidth > 0 ? AdvancedHost.ActualWidth : double.PositiveInfinity,
+                double.PositiveInfinity));
+            to = AdvancedContent.DesiredSize.Height;
+        }
+
+        var height = new DoubleAnimation(AdvancedHost.ActualHeight, to, AdvancedDuration)
+        {
+            EasingFunction = ease
+        };
+        height.Completed += (_, _) =>
+        {
+            if (transition != _advancedTransition) return;
+
+            AdvancedHost.BeginAnimation(HeightProperty, null);
+            if (_advancedExpanded)
+            {
+                AdvancedHost.Height = double.NaN;
+            }
+            else
+            {
+                AdvancedHost.Height = 0;
+                AdvancedHost.IsEnabled = false;
+            }
+        };
+
+        AdvancedHost.BeginAnimation(HeightProperty, height);
+        AdvancedHost.BeginAnimation(
+            OpacityProperty, new DoubleAnimation(expanded ? 1 : 0, AdvancedDuration) { EasingFunction = ease });
+    }
+
+    // ── Advanced parameters ──────────────────────────────────────────────────
+
+    /// <summary>Widest value any of these APIs accepts; the field is clamped to it.</summary>
+    /// <remarks>
+    /// Clamped rather than refused, because a number outside the range is a typo rather than a
+    /// decision — and a card that refused to save over one would leave the reader hunting for it
+    /// behind a fold.
+    /// </remarks>
+    private const double MaxTemperature = 2;
+
+    /// <inheritdoc cref="MaxTemperature"/>
+    private const double MaxTopP = 1;
+
+    /// <remarks>
+    /// One handler for all three rows rather than one each: what they do is identical, and the
+    /// difference between them is which box is disabled, which is read off the sender's own row.
+    ///
+    /// Moved here from the panel with the model name they belong beside. They were in an 進階 fold at
+    /// the top of the page, which made them look like preferences of the application's — they are
+    /// numbers a model's own documentation asks for, and they change when the model does.
+    /// </remarks>
+    private void AdvancedParam_Toggled(object sender, RoutedEventArgs e)
+    {
+        UpdateAdvancedChrome();
+        UpdateChrome();
+    }
+
+    /// <inheritdoc cref="AdvancedParam_Toggled"/>
+    private void AdvancedParam_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateAdvancedChrome();
+        UpdateChrome();
+    }
+
+    /// <summary>
+    /// Puts the box back into the shape the value is stored in once the caret leaves, so a half-typed
+    /// "1." is not what the card carries away.
+    /// </summary>
+    private void TemperatureBox_LostFocus(object sender, RoutedEventArgs e) =>
+        Settle(TemperatureBox, FormatNumber(ReadNumber(TemperatureBox, MaxTemperature)));
+
+    /// <inheritdoc cref="TemperatureBox_LostFocus"/>
+    private void TopPBox_LostFocus(object sender, RoutedEventArgs e) =>
+        Settle(TopPBox, FormatNumber(ReadNumber(TopPBox, MaxTopP)));
+
+    /// <inheritdoc cref="TemperatureBox_LostFocus"/>
+    private void SeedBox_LostFocus(object sender, RoutedEventArgs e) =>
+        Settle(SeedBox, ReadSeed().ToString(CultureInfo.InvariantCulture));
+
+    /// <inheritdoc cref="TemperatureBox_LostFocus"/>
+    private void Settle(TextBox box, string text)
+    {
+        if (box.Text != text) box.Text = text;
+        UpdateAdvancedChrome();
+    }
+
+    /// <summary>What is in one box, clamped, or 0 when it is not a number at all.</summary>
+    /// <remarks>
+    /// Both cultures are tried, in that order. The value is stored and sent as invariant, but the
+    /// separator someone types is the one their keyboard and their locale give them.
+    /// </remarks>
+    private static double ReadNumber(TextBox box, double max)
+    {
+        var text = box.Text.Trim();
+        if (text.Length == 0) return 0;
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) &&
+            !double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
+            return 0;
+
+        return Math.Clamp(value, 0, max);
+    }
+
+    /// <summary>What is in the seed box, or 0 when it is not a whole number at all.</summary>
+    /// <remarks>
+    /// Parsed as a long and clamped down, so pasting something longer than an int is a number at the
+    /// end of the range rather than an overflow. Negative seeds are not offered: the servers this
+    /// talks to disagree about them, and there is nothing a negative one can express that a positive
+    /// one cannot.
+    /// </remarks>
+    private int ReadSeed()
+    {
+        var text = SeedBox.Text.Trim();
+        if (text.Length == 0) return 0;
+        if (!long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) &&
+            !long.TryParse(text, NumberStyles.Integer, CultureInfo.CurrentCulture, out value))
+            return 0;
+
+        return (int)Math.Clamp(value, 0, int.MaxValue);
+    }
+
+    private static string FormatNumber(double value) =>
+        value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Brings the three rows in line with what is on screen: nothing to type into while a parameter
+    /// is not being sent, and its range greyed with it.
+    /// </summary>
+    private void UpdateAdvancedChrome()
+    {
+        Row(TemperatureEnabledCheckBox, TemperatureBox, TemperatureRangeHint);
+        Row(TopPEnabledCheckBox, TopPBox, TopPRangeHint);
+        Row(SeedEnabledCheckBox, SeedBox, SeedRangeHint);
+
+        static void Row(CheckBox enabled, TextBox box, TextBlock range)
+        {
+            var on = enabled.IsChecked == true;
+            box.IsEnabled = on;
+            range.Opacity = on ? 1 : 0.45;
+        }
+    }
+
     // ── Committing ───────────────────────────────────────────────────────────
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         var name = NameBox.Text.Trim();
-        var template = TemplateBox.Text.Trim();
-        if (name.Length == 0 || template.Length == 0) return;
+        var model = ModelBox.Text.Trim();
+        if (name.Length == 0 || model.Length == 0 || !HasPrompt(AutoSystemBox, AutoUserBox) ||
+            !HasPrompt(ExplicitSystemBox, ExplicitUserBox)) return;
 
         var openAi = SettingsService.Instance.Current.OpenAi;
-        var presets = openAi.PresetsFor(_automatic);
 
         // Looked up again rather than held: the list is the stored one, and this card has been open
         // for as long as someone took to write a paragraph.
-        var existing = presets.FirstOrDefault(p => p.Id == _editingId);
-        if (existing is not null)
+        var profile = openAi.Profiles.FirstOrDefault(p => p.Id == _editingId);
+        if (profile is null)
         {
-            existing.Name = name;
-            existing.Template = template;
-        }
-        else
-        {
-            // The panel does not offer to add past the cap, so this only fires if the list filled
-            // up behind this card. Closing without writing is the honest answer.
-            if (presets.Count >= OpenAiSettings.MaxPresets)
+            // The panel does not offer to add past the cap, so this only fires if the list filled up
+            // behind this card. Closing without writing is the honest answer.
+            if (openAi.Profiles.Count >= OpenAiSettings.MaxProfiles)
             {
                 Close();
                 return;
             }
 
-            var created = new OpenAiPromptPreset
-            {
-                Id = OpenAiSettings.NewId(),
-                Name = name,
-                Template = template,
-            };
-            presets.Add(created);
+            profile = new OpenAiModelProfile { Id = OpenAiSettings.NewId() };
+            openAi.Profiles.Add(profile);
 
-            // A prompt someone just wrote is a prompt they want used. Adding one and then having to
-            // pick it in the list would make the first half of that gesture do nothing.
-            openAi.SelectPreset(_automatic, created.Id);
+            // A setting someone just wrote is a setting they want used. Adding one and then having
+            // to pick it in the list would make the first half of that gesture do nothing.
+            openAi.SelectedProfileId = profile.Id;
         }
 
+        profile.Name = name;
+        profile.Model = model;
+        profile.TemperatureEnabled = TemperatureEnabledCheckBox.IsChecked == true;
+        profile.Temperature = ReadNumber(TemperatureBox, MaxTemperature);
+        profile.TopPEnabled = TopPEnabledCheckBox.IsChecked == true;
+        profile.TopP = ReadNumber(TopPBox, MaxTopP);
+        profile.SeedEnabled = SeedEnabledCheckBox.IsChecked == true;
+        profile.Seed = ReadSeed();
+        profile.Auto = ReadPair(AutoSystemBox, AutoUserBox);
+        profile.Explicit = ReadPair(ExplicitSystemBox, ExplicitUserBox);
+
         Commit();
+    }
+
+    /// <summary>What one pair's boxes hold, in the form the settings file keeps.</summary>
+    /// <remarks>
+    /// Normalised but not trimmed. The blank line between the user prompt and the text being
+    /// translated is the end of the wording rather than something the provider adds — see
+    /// OpenAiCompatibleProvider.BuildMessages — so trimming here would delete the separator every
+    /// time someone opened a setting and saved it again, and the symptom would be a model that
+    /// gradually got worse with no edit anyone made on purpose.
+    ///
+    /// A box holding nothing but whitespace is still stored as empty: that is what decides whether
+    /// the message is sent at all, and a space is not an instruction.
+    /// </remarks>
+    private static OpenAiPromptPair ReadPair(TextBox system, TextBox user) => new()
+    {
+        SystemPrompt = Stored(system),
+        UserPrompt = Stored(user),
+    };
+
+    /// <inheritdoc cref="ReadPair"/>
+    private static string Stored(TextBox box)
+    {
+        var text = OpenAiSettings.NormaliseLineBreaks(box.Text);
+        return text.Trim().Length == 0 ? "" : text;
     }
 
     /// <summary>
@@ -377,13 +799,12 @@ public partial class PromptEditOverlay : UserControl
         CloseConfirm();
 
         var openAi = SettingsService.Instance.Current.OpenAi;
-        openAi.PresetsFor(_automatic).RemoveAll(p => p.Id == _editingId);
+        openAi.Profiles.RemoveAll(p => p.Id == _editingId);
 
-        // Back to the built-in wording rather than to whichever prompt happens to be next in the
+        // Back to the built-in setting rather than to whichever profile happens to be next in the
         // list: the provider resolves an id that names nothing the same way, and a silent move onto
-        // a neighbouring prompt would change what gets sent without saying so.
-        if (openAi.SelectedIdFor(_automatic) == _editingId)
-            openAi.SelectPreset(_automatic, "");
+        // a neighbouring model would change what gets sent without saying so.
+        if (openAi.SelectedProfileId == _editingId) openAi.SelectedProfileId = "";
 
         Commit();
     }

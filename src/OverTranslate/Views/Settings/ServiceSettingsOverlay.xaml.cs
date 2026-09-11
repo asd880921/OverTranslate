@@ -18,6 +18,7 @@ using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using Size = System.Windows.Size;
 using RadioButton = System.Windows.Controls.RadioButton;
 using Button = System.Windows.Controls.Button;
+using Clipboard = System.Windows.Clipboard;
 
 namespace OverTranslate.Views.Settings;
 
@@ -80,8 +81,6 @@ public partial class ServiceSettingsOverlay : UserControl
             {
                 s.OpenAiBaseUrl = OpenAiBaseUrlBox.Text.Trim();
                 s.OpenAiApiKey = OpenAiApiKeyBox.Secret.Trim();
-                s.OpenAiModel = OpenAiModelBox.Text.Trim();
-                s.OpenAiTemperature = ReadTemperature();
             });
         };
 
@@ -205,9 +204,6 @@ public partial class ServiceSettingsOverlay : UserControl
 
             OpenAiBaseUrlBox.Text = s.OpenAiBaseUrl;
             OpenAiApiKeyBox.Secret = s.OpenAiApiKey;
-            OpenAiModelBox.Text = s.OpenAiModel;
-            TemperatureEnabledCheckBox.IsChecked = s.OpenAiTemperatureEnabled;
-            TemperatureBox.Text = FormatTemperature(s.OpenAiTemperature);
             LoadPromptLibrary(s);
 
             // Set here rather than in XAML because the guide has a copy per interface language, and
@@ -215,7 +211,6 @@ public partial class ServiceSettingsOverlay : UserControl
             OllamaGuideLink.NavigateUri = new Uri(DocumentationLinks.OllamaGuide);
 
             UpdateOpenAiFieldChrome();
-            UpdateTemperatureChrome();
         }
         finally
         {
@@ -254,8 +249,6 @@ public partial class ServiceSettingsOverlay : UserControl
             {
                 s.OpenAiBaseUrl = OpenAiBaseUrlBox.Text.Trim();
                 s.OpenAiApiKey = OpenAiApiKeyBox.Secret.Trim();
-                s.OpenAiModel = OpenAiModelBox.Text.Trim();
-                s.OpenAiTemperature = ReadTemperature();
             });
         }
     }
@@ -285,15 +278,17 @@ public partial class ServiceSettingsOverlay : UserControl
     /// <summary>
     /// Shows what each empty box falls back to, in place of the empty box.
     /// </summary>
+    /// <remarks>
+    /// The model box is the one with nothing to fall back to, so it says so rather than naming a
+    /// model: a name shown the way the address below shows its default reads as "leave this and it
+    /// still works", which is the one thing that is not true of this field.
+    /// </remarks>
     private void UpdateOpenAiFieldChrome()
     {
         OpenAiBaseUrlPlaceholder.Text = OpenAiCompatibleProvider.DefaultBaseUrl;
         OpenAiBaseUrlPlaceholder.Visibility =
             OpenAiBaseUrlBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        OpenAiModelPlaceholder.Text = OpenAiCompatibleProvider.DefaultModel;
-        OpenAiModelPlaceholder.Visibility =
-            OpenAiModelBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OpenAiSecret_SecretChanged(object? sender, EventArgs e)
@@ -301,160 +296,6 @@ public partial class ServiceSettingsOverlay : UserControl
         if (_loading) return;
         _openAiSettingsDebounce.Stop();
         _openAiSettingsDebounce.Start();
-    }
-
-    // ── OpenAI advanced settings ─────────────────────────────────────────────
-
-    /// <summary>How long the advanced section takes to open or close.</summary>
-    private static readonly Duration AdvancedDuration = TimeSpan.FromMilliseconds(180);
-
-    /// <summary>Widest temperature any of these APIs accepts; the field is clamped to it.</summary>
-    private const double MaxTemperature = 2;
-
-    private bool _openAiAdvancedExpanded;
-
-    /// <summary>
-    /// Which open/close is current, so a run that is replaced part way through does not then finish
-    /// and hand the section a height belonging to the state it was leaving.
-    /// </summary>
-    private int _openAiAdvancedTransition;
-
-    private void OpenAiAdvancedToggle_Click(object sender, RoutedEventArgs e) =>
-        SetOpenAiAdvancedExpanded(!_openAiAdvancedExpanded);
-
-    /// <remarks>
-    /// The height is animated from the content's measured height rather than from a number written
-    /// here, and handed back to Auto once open: the sentences inside are localized and wrap against
-    /// the card's width, so today's measurement is not tomorrow's.
-    /// </remarks>
-    private void SetOpenAiAdvancedExpanded(bool expanded)
-    {
-        _openAiAdvancedExpanded = expanded;
-        var transition = ++_openAiAdvancedTransition;
-
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-        OpenAiAdvancedChevronRotation.BeginAnimation(
-            RotateTransform.AngleProperty,
-            new DoubleAnimation(expanded ? 180 : 0, AdvancedDuration) { EasingFunction = ease });
-
-        // Enabled for the whole of the opening move, and only switched off once the closing one has
-        // finished — closed, its content has to be out of the tab order as well as out of sight,
-        // which a zero height alone would not manage.
-        if (expanded) OpenAiAdvancedHost.IsEnabled = true;
-
-        var from = OpenAiAdvancedHost.ActualHeight;
-        double to = 0;
-        if (expanded)
-        {
-            var width = OpenAiAdvancedHost.ActualWidth;
-            OpenAiAdvancedContent.Measure(new Size(
-                width > 0 ? width : double.PositiveInfinity, double.PositiveInfinity));
-            to = OpenAiAdvancedContent.DesiredSize.Height;
-        }
-
-        var height = new DoubleAnimation(from, to, AdvancedDuration) { EasingFunction = ease };
-        height.Completed += (_, _) =>
-        {
-            if (transition != _openAiAdvancedTransition) return;
-            OpenAiAdvancedHost.BeginAnimation(HeightProperty, null);
-            if (expanded)
-            {
-                OpenAiAdvancedHost.Height = double.NaN;
-            }
-            else
-            {
-                OpenAiAdvancedHost.Height = 0;
-                OpenAiAdvancedHost.IsEnabled = false;
-            }
-        };
-
-        OpenAiAdvancedHost.BeginAnimation(HeightProperty, height);
-        OpenAiAdvancedHost.BeginAnimation(
-            OpacityProperty, new DoubleAnimation(expanded ? 1 : 0, AdvancedDuration));
-    }
-
-    private void TemperatureEnabled_Toggled(object sender, RoutedEventArgs e)
-    {
-        UpdateTemperatureChrome();
-        if (_loading) return;
-        Persist(s => s.OpenAiTemperatureEnabled = TemperatureEnabledCheckBox.IsChecked == true);
-    }
-
-    private void TemperatureBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        UpdateTemperatureChrome();
-
-        if (_loading) return;
-        _openAiSettingsDebounce.Stop();
-        _openAiSettingsDebounce.Start();
-    }
-
-    /// <summary>Back to sending a temperature, and back to zero.</summary>
-    private void TemperatureResetButton_Click(object sender, RoutedEventArgs e)
-    {
-        // Assigned before the checkbox so its own handler, which reads the box, sees the new value.
-        TemperatureBox.Text = FormatTemperature(0);
-        TemperatureEnabledCheckBox.IsChecked = true;
-
-        _openAiSettingsDebounce.Stop();
-        Persist(s =>
-        {
-            s.OpenAiTemperatureEnabled = true;
-            s.OpenAiTemperature = 0;
-        });
-
-        UpdateTemperatureChrome();
-    }
-
-    /// <summary>
-    /// Puts the field back in agreement with what will actually be sent: an empty box, a number out
-    /// of range, or something that is not a number at all all become the value stored for them.
-    /// </summary>
-    /// <remarks>
-    /// On leaving the field rather than on each keystroke, so half-typed input is left alone —
-    /// "0." is on the way to "0.5" and rewriting it mid-word would take the decimal point back out.
-    /// </remarks>
-    private void TemperatureBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        var value = ReadTemperature();
-        var text = FormatTemperature(value);
-        if (TemperatureBox.Text != text) TemperatureBox.Text = text;
-
-        _openAiSettingsDebounce.Stop();
-        Persist(s => s.OpenAiTemperature = value);
-    }
-
-    /// <summary>The value in the box, or 0 for anything that is not a number in range.</summary>
-    private double ReadTemperature()
-    {
-        var text = TemperatureBox.Text.Trim();
-
-        // The invariant form first because that is what the field is written back as and what the
-        // API takes; the user's own is tried after it, so a comma typed on a locale that uses one
-        // is read as the decimal point it was meant to be.
-        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) &&
-            !double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
-            return 0;
-
-        return Math.Clamp(value, 0, MaxTemperature);
-    }
-
-    private static string FormatTemperature(double value) =>
-        value.ToString("0.##", CultureInfo.InvariantCulture);
-
-    /// <summary>
-    /// Brings the field and its reset in line with what is on screen: nothing to type into while the
-    /// parameter is not being sent, and nothing to restore while both halves are already the default.
-    /// </summary>
-    private void UpdateTemperatureChrome()
-    {
-        var enabled = TemperatureEnabledCheckBox.IsChecked == true;
-        TemperatureBox.IsEnabled = enabled;
-        TemperatureRangeHint.Opacity = enabled ? 1 : 0.45;
-
-        // The box rather than the stored value, so this answers on the first keystroke instead of
-        // when the debounce eventually fires.
-        TemperatureResetButton.IsEnabled = !enabled || TemperatureBox.Text.Trim() != FormatTemperature(0);
     }
 
     // ── Prompt library ───────────────────────────────────────────────────────
@@ -498,14 +339,16 @@ public partial class ServiceSettingsOverlay : UserControl
         if (_promptSegment == PromptAutoSegment) PromptAutoTab.IsChecked = true;
         else PromptExplicitTab.IsChecked = true;
 
-        var automatic = _promptSegment == PromptAutoSegment;
-        var presets = s.OpenAi.PresetsFor(automatic);
-        var selectedId = s.OpenAi.SelectedIdFor(automatic);
+        // One list, whichever tab is showing. A saved profile carries a model, a temperature and both
+        // prompt pairs, so the tab beside the panels changes what is drawn in them and nothing else.
+        // It used to be two lists, and picking a row in one said nothing about the other.
+        var profiles = s.OpenAi.Profiles;
+        var selectedId = s.OpenAi.SelectedProfileId;
 
-        // An id naming a preset that is no longer there comes up as the built-in row, which is what
-        // the provider sends in the same situation. Not corrected in the file here — checking that
+        // An id naming a profile that is no longer there comes up as the built-in row, which is what
+        // the provider uses in the same situation. Not corrected in the file here — checking that
         // row writes it back, and nothing reads the stale value in between.
-        if (selectedId.Length > 0 && presets.All(p => p.Id != selectedId)) selectedId = "";
+        if (selectedId.Length > 0 && profiles.All(p => p.Id != selectedId)) selectedId = "";
 
         var rows = new List<PromptPresetRow>
         {
@@ -516,7 +359,7 @@ public partial class ServiceSettingsOverlay : UserControl
             },
         };
 
-        rows.AddRange(presets.Select(p => new PromptPresetRow
+        rows.AddRange(profiles.Select(p => new PromptPresetRow
         {
             Id = p.Id,
             Name = p.Name,
@@ -547,11 +390,10 @@ public partial class ServiceSettingsOverlay : UserControl
     {
         if (sender is not RadioButton row || row.Tag is not string id) return;
 
-        var automatic = _promptSegment == PromptAutoSegment;
         var openAi = SettingsService.Instance.Current.OpenAi;
-        if (openAi.SelectedIdFor(automatic) != id)
+        if (openAi.SelectedProfileId != id)
         {
-            openAi.SelectPreset(automatic, id);
+            openAi.SelectedProfileId = id;
             SettingsService.Instance.Save();
         }
 
@@ -560,24 +402,26 @@ public partial class ServiceSettingsOverlay : UserControl
 
     private void PromptAddButton_Click(object sender, RoutedEventArgs e)
     {
-        var automatic = _promptSegment == PromptAutoSegment;
-        var presets = SettingsService.Instance.Current.OpenAi.PresetsFor(automatic);
-        if (presets.Count >= OpenAiSettings.MaxPresets) return;
+        var profiles = SettingsService.Instance.Current.OpenAi.Profiles;
+        if (profiles.Count >= OpenAiSettings.MaxProfiles) return;
 
-        PromptEditor.Open(automatic, preset: null, suggestedName: SuggestPresetName(presets));
+        PromptEditor.Open(
+            _promptSegment == PromptAutoSegment,
+            profile: null,
+            suggestedName: SuggestProfileName(profiles));
     }
 
     private void PromptEditPreset_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button button || button.Tag is not string id) return;
 
-        var automatic = _promptSegment == PromptAutoSegment;
-        var preset = SettingsService.Instance.Current.OpenAi
-            .PresetsFor(automatic)
+        var profile = SettingsService.Instance.Current.OpenAi.Profiles
             .FirstOrDefault(p => p.Id == id);
-        if (preset is null) return;
+        if (profile is null) return;
 
-        PromptEditor.Open(automatic, preset, suggestedName: "");
+        // The card opens on the tab the panel is showing, which is the one the reader was looking at
+        // when they reached for the pencil — it edits both pairs either way.
+        PromptEditor.Open(_promptSegment == PromptAutoSegment, profile, suggestedName: "");
     }
 
     /// <summary>
@@ -589,17 +433,17 @@ public partial class ServiceSettingsOverlay : UserControl
     /// expected to replace it — it opens selected — and it exists so that saving without thinking
     /// about a name still leaves a list that can be read.
     /// </remarks>
-    private static string SuggestPresetName(List<OpenAiPromptPreset> presets)
+    private static string SuggestProfileName(List<OpenAiModelProfile> profiles)
     {
-        for (var n = 1; n <= OpenAiSettings.MaxPresets + 1; n++)
+        for (var n = 1; n <= OpenAiSettings.MaxProfiles + 1; n++)
         {
             var name = LocalizationService.Format("S.Settings.PromptNewName", n);
-            if (presets.All(p => !string.Equals(p.Name, name, StringComparison.CurrentCultureIgnoreCase)))
+            if (profiles.All(p => !string.Equals(p.Name, name, StringComparison.CurrentCultureIgnoreCase)))
                 return name;
         }
 
         // Unreachable while the cap holds: the loop tries one more number than there are slots.
-        return LocalizationService.Format("S.Settings.PromptNewName", presets.Count + 1);
+        return LocalizationService.Format("S.Settings.PromptNewName", profiles.Count + 1);
     }
 
     /// <summary>
@@ -613,16 +457,110 @@ public partial class ServiceSettingsOverlay : UserControl
         PromptTabHint.Text = LocalizationService.Get(
             automatic ? "S.Settings.PromptAutoHint" : "S.Settings.PromptExplicitHint");
 
-        var count = openAi.PresetsFor(automatic).Count;
-        PromptAddButton.IsEnabled = count < OpenAiSettings.MaxPresets;
+        var count = openAi.Profiles.Count;
+        PromptAddButton.IsEnabled = count < OpenAiSettings.MaxProfiles;
         PromptAddText.Text = LocalizationService.Format(
-            "S.Settings.PromptAdd", count, OpenAiSettings.MaxPresets);
+            "S.Settings.ProfileAdd", count, OpenAiSettings.MaxProfiles);
 
-        // The built-in wording stands in for the built-in row, which stores no template of its own —
-        // the empty string is how the settings file says "whatever the app ships with today".
-        var template = openAi.TemplateFor(automatic);
-        if (template.Length == 0) template = OpenAiCompatibleProvider.DefaultPromptTemplate(automatic);
-        WritePlaceholderAware(PromptPreviewText, template);
+        // One profile answers every question this pane asks, including which model and which
+        // temperature: that is what makes it a 模型設定 rather than a prompt. The built-in one stands
+        // in when nothing is picked, and it is a profile of the same shape — see
+        // OpenAiCompatibleProvider.BuiltInProfile — so nothing here is a special case.
+        var profile = openAi.SelectedProfile() ?? OpenAiCompatibleProvider.BuiltInProfile();
+
+        var model = profile.Model.Trim();
+        ProfileModelText.Text = model.Length > 0
+            ? model
+            : LocalizationService.Get("S.Settings.ModelRequired");
+        ProfileModelText.Opacity = model.Length > 0 ? 1 : 0.55;
+
+        // A parameter that is switched off is drawn as 不傳送 rather than left blank or hidden: the
+        // reason a model behaves the way it does is as often a field that was left out as a value
+        // that was sent, and a row that disappears when it is off cannot be read as either.
+        ProfileTemperatureText.Text = Sampling(profile.TemperatureEnabled, profile.Temperature);
+        ProfileTopPText.Text = Sampling(profile.TopPEnabled, profile.TopP);
+        ProfileSeedText.Text = Sampling(profile.SeedEnabled, profile.Seed);
+
+        // An em dash rather than a phrase for a parameter that is switched off. The three cards are
+        // read as a row of values, and a sentence in one of them is longer than the card, pushes the
+        // label into ellipsis and stops the row scanning as three of the same thing. A dash is the
+        // conventional "no value here", and the same mark in any language.
+        static string Sampling(bool enabled, double value) => enabled
+            ? value.ToString("0.##", CultureInfo.InvariantCulture)
+            : "\u2014";
+
+        // The tab decides which of the profile's two pairs is drawn and nothing else: the model and
+        // the temperature above belong to the profile, not to one of its cases.
+        var prompts = profile.PromptsFor(automatic);
+        WritePromptRole(PromptPreviewSystemText, PromptPreviewSystemEmpty, prompts.SystemPrompt);
+        WritePromptRole(PromptPreviewUserText, PromptPreviewUserEmpty, prompts.UserPrompt);
+    }
+
+    /// <summary>
+    /// Puts the model name on the clipboard, which is the one value on this pane someone needs
+    /// somewhere else — in a terminal, next to `ollama list`.
+    /// </summary>
+    /// <remarks>
+    /// The glyph answers rather than a toast: this panel has no status line of its own, and a message
+    /// that has to appear somewhere would have to be dismissed from somewhere. A tick where the copy
+    /// icon was is feedback in the place the click happened, and it goes back on its own.
+    ///
+    /// Nothing is said when the clipboard refuses — another application can hold it open — because
+    /// the icon staying as it was is already the honest answer: nothing was copied. The alternative
+    /// is an error dialog over a settings panel for a value the reader can select and copy by hand.
+    /// </remarks>
+    private void ProfileModelCopy_Click(object sender, RoutedEventArgs e)
+    {
+        var model = ProfileModelText.Text.Trim();
+        if (model.Length == 0) return;
+
+        try
+        {
+            Clipboard.SetText(model);
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        ProfileModelCopyButton.Content = "\uE73E";
+
+        _copyFeedback?.Stop();
+        _copyFeedback = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1400) };
+        _copyFeedback.Tick += (_, _) =>
+        {
+            _copyFeedback?.Stop();
+            _copyFeedback = null;
+            ProfileModelCopyButton.Content = "\uE8C8";
+        };
+        _copyFeedback.Start();
+    }
+
+    /// <summary>Puts the copy icon back after the tick. Null while no tick is showing.</summary>
+    private DispatcherTimer? _copyFeedback;
+
+    /// <summary>
+    /// Fills one role's panel, or shows the line that says the role is deliberately unused.
+    /// </summary>
+    /// <remarks>
+    /// The two TextBlocks are stacked rather than one being retargeted, because the prose is written
+    /// as Inlines with the placeholders picked out — see <see cref="WritePlaceholderAware"/> — and
+    /// the empty line is a plain string in a different style.
+    /// </remarks>
+    private static void WritePromptRole(TextBlock body, TextBlock empty, string text)
+    {
+        var hasText = text.Trim().Length > 0;
+
+        body.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
+        empty.Visibility = hasText ? Visibility.Collapsed : Visibility.Visible;
+
+        // Drawn exactly as stored, trailing breaks included. This pane is what someone checks a
+        // prompt against before deciding it is wrong, and the break at the end of the user prompt is
+        // load-bearing: it is the blank line between the instruction and the text being translated,
+        // which nothing else inserts. Tidied away here, the one thing the reader cannot see would be
+        // the one thing easiest to delete by accident.
+        if (hasText) WritePlaceholderAware(body, text);
+        else body.Inlines.Clear();
     }
 
     /// <summary>
@@ -650,7 +588,11 @@ public partial class ServiceSettingsOverlay : UserControl
             // The prose between placeholders may carry a line break — the explicit hint lists the
             // source pair and the target pair one per line. Added as a LineBreak rather than left in
             // a Run, so it does not depend on the block's wrapping to show up.
-            var lines = segment.Split('\n');
+            //
+            // Normalised first, or a CRLF splits into a piece ending in \r, which WPF draws as a
+            // break of its own on top of the one added here — the paragraph gap doubles. Presets
+            // saved before OpenAiSettings.NormaliseLineBreaks existed still hold mixed breaks.
+            var lines = OpenAiSettings.NormaliseLineBreaks(segment).Split('\n');
             for (var i = 0; i < lines.Length; i++)
             {
                 if (i > 0) target.Inlines.Add(new LineBreak());

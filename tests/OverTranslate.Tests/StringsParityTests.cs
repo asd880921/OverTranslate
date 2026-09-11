@@ -315,12 +315,17 @@ public class StringsParityTests
     ///
     /// The keys are still named Prompt, and that is not a mistake: identifiers are English
     /// everywhere in this project, and it is the displayed word that has to agree with itself.
+    ///
+    /// "System Prompt" and "User Prompt" are the exception, and are excluded by the patterns below.
+    /// Those two are drawn on screen in English in every language — they name the two halves of a
+    /// chat request the way every model's own documentation names them — so a sentence that points
+    /// at one of them has to spell it the way the label does. The common noun is still 提示詞.
     /// </remarks>
     [Theory]
-    [InlineData("Strings.zh-Hant.xaml", "(?i)prompt", "提示詞")]
-    [InlineData("Strings.zh-Hans.xaml", "(?i)prompt", "提示词")]
-    [InlineData("Strings.ja.xaml", "(?i)prompt", "プロンプト")]
-    [InlineData("Strings.ko.xaml", "(?i)prompt", "프롬프트")]
+    [InlineData("Strings.zh-Hant.xaml", "(?i)(?<!System )(?<!User )prompt", "提示詞")]
+    [InlineData("Strings.zh-Hans.xaml", "(?i)(?<!System )(?<!User )prompt", "提示词")]
+    [InlineData("Strings.ja.xaml", "(?i)(?<!System )(?<!User )prompt", "プロンプト")]
+    [InlineData("Strings.ko.xaml", "(?i)(?<!System )(?<!User )prompt", "프롬프트")]
     // English says "prompt" and not a synonym for it: "wording" and "instruction" are both what it
     // was called at one point or another in the code that produces this string.
     [InlineData("Strings.en.xaml", "(?i)wording|(?i)instruction", "prompt")]

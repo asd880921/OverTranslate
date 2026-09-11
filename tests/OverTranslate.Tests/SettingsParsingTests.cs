@@ -100,13 +100,92 @@ public class SettingsParsingTests
     {
         var settings = SettingsService.Parse("{}");
 
-        // Empty rather than the addresses and names themselves: the provider fills those in, so a
-        // settings file that never mentions them keeps following whatever the build defaults to.
+        // Empty rather than the address itself: the provider fills that in, so a settings file that
+        // never mentions it keeps following whatever the build defaults to.
         Assert.Equal("", settings.OpenAiBaseUrl);
         Assert.Equal("", settings.OpenAiApiKey);
-        Assert.Equal("", settings.OpenAiModel);
-        Assert.True(settings.OpenAiTemperatureEnabled);
-        Assert.Equal(0, settings.OpenAiTemperature);
+
+        // No profiles and nothing selected is the built-in setting, which is the one shape the panel
+        // cannot be left without: it carries the model, the temperature and both prompt pairs.
+        Assert.Empty(settings.OpenAi.Profiles);
+        Assert.Equal("", settings.OpenAi.SelectedProfileId);
+        Assert.Null(settings.OpenAi.SelectedProfile());
+    }
+
+    /// <summary>
+    /// A settings file written before the model profiles comes back on the built-in setting, with
+    /// nothing pointing at a prompt that no longer exists.
+    /// </summary>
+    /// <remarks>
+    /// The OpenAI settings were reshaped from four loose fields and two prompt lists into one list of
+    /// whole profiles, and the old keys were dropped rather than migrated — on the owner's call, since
+    /// a stored prompt has neither a name nor a model to carry into a profile.
+    ///
+    /// What is worth pinning is not that the old values are gone but that nothing survives them. The
+    /// failure to be afraid of is a half-upgrade: the prompts gone while the selection that named one
+    /// of them stays, leaving the panel showing 「我的設定 1」 with nothing behind it and the provider
+    /// sending an empty instruction. It cannot happen — the selection was called
+    /// <c>SelectedAutoPromptId</c> and is now <c>SelectedProfileId</c>, and the reader only ever looks
+    /// for names it knows — but "cannot happen" is exactly the claim that stops being true when
+    /// somebody reuses an old key name for a new purpose.
+    /// </remarks>
+    [Fact]
+    public void OpenAiSettingsWrittenBeforeTheProfiles_ComeBackOnTheBuiltInSetting()
+    {
+        var settings = SettingsService.Parse("""
+            {
+              "OpenAiBaseUrl": "http://localhost:1234/v1",
+              "OpenAiApiKey": "local-key",
+              "OpenAiModel": "translategemma:4b",
+              "OpenAiTemperatureEnabled": false,
+              "OpenAiTemperature": 0.8,
+              "OpenAi": {
+                "AutoPrompts": [
+                  { "Id": "kept", "Name": "我的設定 1", "Template": "into {target}" }
+                ],
+                "ExplicitPrompts": [
+                  { "Id": "other", "Name": "我的設定 2", "Template": "{source}->{target}" }
+                ],
+                "SelectedAutoPromptId": "kept",
+                "SelectedExplicitPromptId": "other"
+              }
+            }
+            """);
+
+        // The connection is the half that was deliberately left where it shipped: it is the server,
+        // and switching which model to ask it for is not switching servers.
+        Assert.Equal("http://localhost:1234/v1", settings.OpenAiBaseUrl);
+        Assert.Equal("local-key", settings.OpenAiApiKey);
+
+        // Everything else starts again, and nothing is left pointing at what is gone.
+        Assert.Empty(settings.OpenAi.Profiles);
+        Assert.Equal("", settings.OpenAi.SelectedProfileId);
+        Assert.Null(settings.OpenAi.SelectedProfile());
+    }
+
+    /// <summary>
+    /// A selection naming a profile that is not in the file falls back to the built-in setting.
+    /// </summary>
+    /// <remarks>
+    /// The same question one step further on: a file someone edited by hand, or one saved while a
+    /// profile was being deleted. The panel draws the built-in row as the checked one and writes the
+    /// empty id back the moment that row is realized, so the file corrects itself without anyone
+    /// being told a setting they never had has gone.
+    /// </remarks>
+    [Fact]
+    public void ASelectionNamingNoProfile_FallsBackToTheBuiltInSetting()
+    {
+        var settings = SettingsService.Parse("""
+            {
+              "OpenAi": {
+                "Profiles": [ { "Id": "a", "Name": "留著的", "Model": "model-a" } ],
+                "SelectedProfileId": "deleted"
+              }
+            }
+            """);
+
+        Assert.Equal("留著的", Assert.Single(settings.OpenAi.Profiles).Name);
+        Assert.Null(settings.OpenAi.SelectedProfile());
     }
 
     [Fact]
@@ -379,7 +458,6 @@ public class SettingsParsingTests
             ApiKey = "round-trip",
             OpenAiBaseUrl = "http://localhost:1234/v1",
             OpenAiApiKey = "local-key",
-            OpenAiModel = "local-model",
             Theme = "Light",
             AutoTranslateAfterSelection = true,
             SaveScreenshotToDisk = true,
@@ -426,7 +504,6 @@ public class SettingsParsingTests
         Assert.Equal("round-trip", settings.ApiKey);
         Assert.Equal("http://localhost:1234/v1", settings.OpenAiBaseUrl);
         Assert.Equal("local-key", settings.OpenAiApiKey);
-        Assert.Equal("local-model", settings.OpenAiModel);
         Assert.Equal("Light", settings.Theme);
         Assert.True(settings.AutoTranslateAfterSelection);
         Assert.True(settings.SaveScreenshotToDisk);
@@ -555,11 +632,11 @@ public class SettingsParsingTests
     public void TheFileIsWrittenToBeRead()
     {
         var settings = new AppSettings();
-        settings.OpenAi.AutoPrompts.Add(new OpenAiPromptPreset
+        settings.OpenAi.Profiles.Add(new OpenAiModelProfile
         {
             Id = "a",
             Name = "測試用",
-            Template = "翻成 {target_name}",
+            Auto = new OpenAiPromptPair { UserPrompt = "翻成 {target_name}" },
         });
 
         var json = SettingsService.Serialize(settings);

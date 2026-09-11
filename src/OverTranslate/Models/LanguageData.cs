@@ -308,12 +308,14 @@ public static class LanguageData
     /// The language tag to name a language by when instructing a translation model, e.g. <c>ja</c>.
     /// </summary>
     /// <remarks>
-    /// Translation-only models are trained with the language named as "Japanese (ja)" — the tag is
-    /// not decoration beside the name, it is the part the model was trained to key on. See
-    /// <see cref="Services.Providers.OpenAiCompatibleProvider.DefaultPromptTemplate"/>.
+    /// Some translation-only models are trained with the language named as "Japanese (ja)" — the tag
+    /// is not decoration beside the name there, it is the part the model was trained to key on. The
+    /// built-in prompts no longer ask for one, but <c>{source_code}</c> and <c>{target_code}</c> are
+    /// still offered to templates users write — see
+    /// <see cref="Services.Providers.OpenAiCompatibleProvider.SourceCodePlaceholder"/>.
     ///
-    /// Returns empty for 自動, which has no language to name: the prompt says "any language" there
-    /// and a tag would be inventing one.
+    /// Returns empty for 自動, which has no language to name: a template that names the source while
+    /// the source is 自動 gets "any language" there, and a tag would be inventing one.
     /// </remarks>
     public static string GetModelLanguageTag(string? code)
     {

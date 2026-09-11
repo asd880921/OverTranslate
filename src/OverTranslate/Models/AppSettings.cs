@@ -141,32 +141,16 @@ public class AppSettings
     /// <see cref="Services.Providers.OpenAiCompatibleProvider.DefaultBaseUrl"/>.
     /// </summary>
     /// <remarks>
-    /// Empty rather than a copy of the default, for the same reason the model is: stamping today's
-    /// value into the settings file would freeze the user on it if it ever changed.
+    /// Empty rather than a copy of the default: stamping today's value into the settings file would
+    /// freeze the user on it if it ever changed.
+    ///
+    /// The server, not the model — which model to ask it for lives on a profile, so that switching
+    /// model does not ask the user to retype an address that has not moved. See
+    /// <see cref="OpenAiModelProfile"/>.
     /// </remarks>
     public string OpenAiBaseUrl { get; set; } = "";
     public string OpenAiApiKey { get; set; } = "";
-    public string OpenAiModel { get; set; } = "";
 
-    /// <summary>
-    /// Whether the request carries a temperature at all.
-    /// </summary>
-    /// <remarks>
-    /// Separate from the value because "no temperature" is not a number: the reasoning models on the
-    /// hosted APIs reject the field outright rather than clamping it, so a request to them has to
-    /// leave it out. On by default, which is what every local server expects.
-    /// </remarks>
-    public bool OpenAiTemperatureEnabled { get; set; } = true;
-
-    /// <summary>
-    /// How much randomness the model is asked for, when <see cref="OpenAiTemperatureEnabled"/>.
-    /// </summary>
-    /// <remarks>
-    /// Zero because this is translation: the same line on screen should come back the same way twice.
-    /// Editable because the value that means "as literal as possible" is the model's to define — some
-    /// small local ones loop on repeated output at 0 and need a little slack to come out of it.
-    /// </remarks>
-    public double OpenAiTemperature { get; set; }
     public string Theme { get; set; } = "Dark";
     /// <summary>
     /// The interface language — one of the codes in
@@ -227,7 +211,7 @@ public class AppSettings
     /// <remarks>
     /// Last, and the only group not named after one of the three features: this belongs to a
     /// translation service rather than to a page. See <see cref="OpenAiSettings"/> for why the
-    /// endpoint and the model above it stayed flat.
+    /// endpoint and the model above it stayed flat.SelectedProfileId
     /// </remarks>
     public OpenAiSettings OpenAi { get; set; } = new();
 }

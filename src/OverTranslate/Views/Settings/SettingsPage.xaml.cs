@@ -422,7 +422,7 @@ public partial class SettingsPage : UserControl
         var openAiTouched =
             s.OpenAiBaseUrl.Trim().Length > 0 ||
             s.OpenAiApiKey.Trim().Length > 0 ||
-            s.OpenAiModel.Trim().Length > 0;
+            s.OpenAi.Profiles.Count > 0;
         WriteServiceBadge(OpenAiBadge, OpenAiBadgeText, configured: openAiTouched, required: false);
     }
 

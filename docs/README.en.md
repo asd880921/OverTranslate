@@ -181,9 +181,19 @@ when a translation service is unavailable or responds too slowly, the app automa
 | Setting | Description |
 |---------|-------------|
 | API URL | Empty uses `http://localhost:11434/v1` (Ollama's local default) |
-| Model | Empty uses `translategemma:4b` |
-| Prompt | Empty uses the built-in prompt; the parameters below are replaced with the languages actually in use |
-| Temperature | Under **Advanced**; controls how random the output is, from 0.0 to 2.0 (default 0) |
+| API Key | Can be left empty for a local server |
+| Model settings | One setting = a model name, the advanced parameters, and a System / User prompt pair for each of **automatic** and **a chosen source language**. Switching settings switches all of it |
+| Built-in | The read-only one, on the model the [Ollama guide](guides/OLLAMA_GUIDE.en.md) recommends, with wording that follows the interface language |
+| Add | Up to five; the model name is required, and at least one of the System / User prompts has to be filled in |
+| Advanced parameters | Under **Advanced** in the editor; each can be switched off on its own, and a parameter that is off is left out of the request |
+
+Advanced parameters:
+
+| Parameter | What it does | Range | Default |
+|-----------|--------------|-------|---------|
+| Temperature | How strongly the model favours the likeliest phrasing; the higher it is, the more chance other ways of saying something have | 0.0 ~ 2.0 | 0.7 |
+| Top P | How many candidates the model may choose between; the lower it is, the fewer of the likeliest are kept | 0.0 ~ 1.0 | 0.6 |
+| Seed | Makes a result easier to reproduce: with the same model, prompts and settings, the same seed usually gives the same output | Whole number | 42 |
 
 Prompt parameters (the **Available parameters** block on the settings page lists them with descriptions and examples too):
 
@@ -194,9 +204,7 @@ Prompt parameters (the **Available parameters** block on the settings page lists
 | `{target_name}` | Target language name | Japanese |
 | `{target_code}` | Target language code | ja |
 
-> The built-in prompt uses the language names only; the code parameters can be combined as your model needs, for example `{target_name} (target_code)` -> `Japanese (ja)`.
-> 
-> Turning temperature off **leaves the parameter out of the request**. Models and APIs differ in whether they accept it and in what they recommend; if the model's documentation says not to send it, turn it off. If the output misbehaves at 0, raise it as the model suggests — start at 0.1 and work up.
+> Language names follow the interface language (an English interface fills in "Japanese", a 繁體中文 one fills in "日文"); the codes are always the tag the model uses.
 
 ### Multi-language OCR
 
