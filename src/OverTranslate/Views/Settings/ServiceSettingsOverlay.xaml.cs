@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -425,6 +426,79 @@ public partial class ServiceSettingsOverlay : UserControl
     }
 
     /// <summary>
+    /// Copies this version's built-in setting into the list as a profile of the user's own.
+    /// </summary>
+    /// <remarks>
+    /// Straight into the same list the Add button writes to, counting against the same cap: the
+    /// built-in row is not a slot of its own, and a copy of it is an ordinary setting once it is
+    /// made — editable, renameable, deletable. Anything else would mean a second kind of row whose
+    /// only difference is where it came from.
+    ///
+    /// It copies <see cref="OpenAiCompatibleProvider.BuiltInProfile"/> rather than whatever row is
+    /// checked. The card beside it is about one thing — the built-in wording being rewritten by
+    /// updates — and a copy of an already-saved profile would be a duplicate nobody asked for, under
+    /// a name that claims to be the shipped default.
+    ///
+    /// The selection is deliberately left alone. The new row is byte for byte what is already in use,
+    /// so switching to it changes nothing today, and moving someone off the row they picked is not
+    /// what a button called 複製 says it will do. It matters after the next update, and by then the
+    /// row is in the list to pick.
+    /// </remarks>
+    private void ProfileSnapshotButton_Click(object sender, RoutedEventArgs e)
+    {
+        var openAi = SettingsService.Instance.Current.OpenAi;
+        if (openAi.Profiles.Count >= OpenAiSettings.MaxProfiles) return;
+
+        // A fresh object every call, so naming it here cannot write through to anything shared.
+        var snapshot = OpenAiCompatibleProvider.BuiltInProfile();
+        snapshot.Id = OpenAiSettings.NewId();
+        snapshot.Name = SnapshotName(openAi.Profiles);
+
+        openAi.Profiles.Add(snapshot);
+        SettingsService.Instance.Save();
+
+        LoadPromptLibrary(SettingsService.Instance.Current);
+    }
+
+    /// <summary>
+    /// What a copy of the built-in setting is called: the shipped name with this version behind it.
+    /// </summary>
+    /// <remarks>
+    /// The version rather than a number, because that is the thing the copy is preserving — two rows
+    /// called 系統預設 v2.2.0 and 系統預設 v2.3.0 say which wording each one holds, which is the
+    /// whole question the card raises.
+    ///
+    /// Pressing twice on one version is allowed rather than blocked, so the suffix exists: someone
+    /// who wants a second copy to edit down should not have to rename the first one to get it. The
+    /// brackets are half-width in every language — they are punctuation around a number here, not
+    /// prose, and the full-width pair the CJK locales would otherwise want sets a visible gap either
+    /// side of a name that is already mostly Latin.
+    ///
+    /// Three digits, so a build number never reaches the name: the file is stamped 2.2.0 and what
+    /// distinguishes one built-in wording from the next is the release, not the build it came from.
+    /// </remarks>
+    private static string SnapshotName(List<OpenAiModelProfile> profiles)
+    {
+        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
+        var baseName = LocalizationService.Format("S.Settings.ProfileSnapshotName", version);
+
+        if (!Taken(baseName)) return baseName;
+
+        // Bounded by the cap: this runs only with a free slot, so at most MaxProfiles names can be
+        // in the way and one of the numbers tried here is always free.
+        for (var n = 1; n <= OpenAiSettings.MaxProfiles; n++)
+        {
+            var name = $"{baseName} ({n})";
+            if (!Taken(name)) return name;
+        }
+
+        return baseName;
+
+        bool Taken(string name) => profiles.Any(
+            p => string.Equals(p.Name, name, StringComparison.CurrentCultureIgnoreCase));
+    }
+
+    /// <summary>
     /// A name for a new prompt that nothing in the list is already called.
     /// </summary>
     /// <remarks>
@@ -461,6 +535,11 @@ public partial class ServiceSettingsOverlay : UserControl
         PromptAddButton.IsEnabled = count < OpenAiSettings.MaxProfiles;
         PromptAddText.Text = LocalizationService.Format(
             "S.Settings.ProfileAdd", count, OpenAiSettings.MaxProfiles);
+
+        // The copy writes into the same list, so it stops offering on the same cap the Add row does.
+        // Greyed rather than hidden: the card's sentence still applies at five settings, and a button
+        // that vanishes reads as a feature that went away rather than as a list that is full.
+        ProfileSnapshotButton.IsEnabled = count < OpenAiSettings.MaxProfiles;
 
         // One profile answers every question this pane asks, including which model and which
         // temperature: that is what makes it a 模型設定 rather than a prompt. The built-in one stands

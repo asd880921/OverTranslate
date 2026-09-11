@@ -323,6 +323,7 @@
                                                 <Grid Grid.Column="0" Margin="14,12,14,12">
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="*"/>
                                                     </Grid.RowDefinitions>
 
@@ -331,7 +332,69 @@
                                                                Style="{StaticResource SectionHeader}"
                                                                Margin="2,0,0,8"/>
 
+                                                    <!-- The built-in row is the one thing in this
+                                                         list nobody owns: it is rewritten by every
+                                                         update, model and prompts together, which is
+                                                         the point of it. That also means a setup
+                                                         somebody is happy with disappears the next
+                                                         time they update, without their having
+                                                         touched anything. The card says so, and the
+                                                         button turns this version's wording into a
+                                                         row of their own before that happens. -->
                                                     <Border Grid.Row="1"
+                                                            Style="{StaticResource InfoCardBorder}"
+                                                            Margin="0,0,0,10">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="&#xE946;"
+                                                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                                       FontSize="15"
+                                                                       Foreground="{DynamicResource AppTextSecondary}"
+                                                                       VerticalAlignment="Top"
+                                                                       Margin="0,1,10,0"/>
+
+                                                            <StackPanel Grid.Column="1">
+                                                                <TextBlock Text="{DynamicResource S.Settings.ProfileSnapshotTitle}"
+                                                                           FontFamily="{DynamicResource AppFont}"
+                                                                           FontSize="{StaticResource AppFontSize}"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="{DynamicResource AppTextPrimary}"
+                                                                           TextWrapping="Wrap"/>
+
+                                                                <TextBlock Text="{DynamicResource S.Settings.ProfileSnapshotBody}"
+                                                                           FontFamily="{DynamicResource AppFont}"
+                                                                           FontSize="12"
+                                                                           Foreground="{DynamicResource AppTextSecondary}"
+                                                                           TextWrapping="Wrap"
+                                                                           LineHeight="17"
+                                                                           Margin="0,3,0,0"/>
+
+                                                                <Button x:Name="ProfileSnapshotButton"
+                                                                        Style="{StaticResource FlatButton}"
+                                                                        Height="28"
+                                                                        HorizontalAlignment="Left"
+                                                                        Margin="0,9,0,0"
+                                                                        Click="ProfileSnapshotButton_Click">
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <TextBlock Text="&#xE8C8;"
+                                                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                                                   FontSize="12"
+                                                                                   VerticalAlignment="Center"
+                                                                                   Margin="0,0,8,0"/>
+                                                                        <TextBlock Text="{DynamicResource S.Settings.ProfileSnapshotAction}"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                </Button>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+
+                                                    <Border Grid.Row="2"
                                                             BorderBrush="{DynamicResource AppBorder}"
                                                             BorderThickness="1"
                                                             CornerRadius="6">
