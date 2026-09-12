@@ -72,7 +72,7 @@ When you need a translation, press the hotkey (default Ctrl + Alt + A) and selec
 Once the selection is done, the toolbar offers:
 
 * **Copy text**: copies the recognized text straight to the clipboard, no translation needed
-* **Annotate**: a pen, a highlighter and an eraser for marking up the capture
+* **Annotate**: mark up the capture directly with the pen tools (use Screenshot to copy or save what you have drawn)
 * **Screenshot**: copies the selected area to the clipboard, and can save it as an image file at the same time
 
 ![截圖翻譯-標記.png](images/截圖翻譯-標記.png)
