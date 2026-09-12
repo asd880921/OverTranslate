@@ -158,7 +158,7 @@ built-in text to speech (TTS) reads both the original text and the translation a
 
 > As well as key combinations, a shortcut can be a single key (F1 ~ F24, Pause, Scroll Lock), the middle or side mouse buttons, or a gamepad button.
 
-> Logs and diagnostics stay on your machine and are never uploaded automatically. To report a problem, press **Export diagnostics** and then **Upload**; the file is deleted automatically after 30 days.
+> Logs are stored on your machine only and are never uploaded automatically; what **Record detailed information** adds also stays on your machine. To report a problem, press **Export diagnostics** and **Upload** on the settings page.
 
 ---
 
