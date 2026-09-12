@@ -1,13 +1,19 @@
 <div align="center">
   <p>
     🌐
+    <strong><a href="docs/README.en.md">English</a></strong>
+    &nbsp;｜&nbsp;
     <strong>繁體中文 ✓</strong>
     &nbsp;｜&nbsp;
-    <strong><a href="README.en.md">English</a></strong>
+    <strong><a href="docs/README.zh-Hans.md">简体中文</a></strong>
+    &nbsp;｜&nbsp;
+    <strong><a href="docs/README.ja.md">日本語</a></strong>
+    &nbsp;｜&nbsp;
+    <strong><a href="docs/README.ko.md">한국어</a></strong>
   </p>
 
   <h1>
-    <img src="src/OverTranslate/icons/app.svg" width="180" alt="OverTranslate Icon"/>
+    <img src="docs/images/icon.svg" width="180" alt="OverTranslate Icon"/>
     <br/>
     OverTranslate
   </h1>
@@ -33,6 +39,7 @@
 ---
 
 ## 翻譯功能
+> 🌐 **OverTranslate 支援多國語言介面。README 中的應用程式圖片統一以繁體中文顯示，實際介面可切換不同語言。**
 
 OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速選擇：
 
@@ -130,7 +137,7 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 
 | 設定項目 | 說明 |
 |----------|------|
-| 介面語言 | 繁體中文 / English，切換後立即生效（首次啟動時依 Windows 顯示語言決定） |
+| 介面語言 | 繁體中文 / 简体中文 / English / 日本語 / 한국어，切換後立即生效（首次啟動時依 Windows 顯示語言決定） |
 | 截圖翻譯 (快捷鍵) | 用於 **截圖翻譯** 功能的快捷鍵 (可自訂修改，預設 `Ctrl + Alt + A`) |
 | 開啟翻譯視窗 (快捷鍵) | 呼叫主視窗的快捷鍵 (預設 `Ctrl + Alt + W`)，會回到上次開啟的頁面；即時翻譯進行中時，改為將浮動視窗列移至最上層 |
 | 暫停 / 繼續 (快捷鍵) | 暫停或繼續 **即時翻譯** (預設 `Ctrl + Alt + S`)；僅在即時翻譯進行中可用，也可用於查看原文 |
@@ -162,7 +169,7 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 | Bing 翻譯 | 翻譯品質佳 |
 | Microsoft 翻譯 | **(預設)** 穩定性佳、回應速度快 |
 | DeepL | 需至 DeepL 官方註冊並取得 API Key |
-| OpenAI | 支援 OpenAI API 格式，建議使用本地 LLM，可透過 [Ollama](OLLAMA_GUIDE.md) 快速安裝與使用；提示詞與 Temperature 可自訂 |
+| OpenAI | 支援 OpenAI API 格式，建議使用本地 LLM，可透過 [Ollama](docs/guides/OLLAMA_GUIDE.md) 快速安裝與使用；提示詞與 Temperature 可自訂 |
   
 提供「自動備援」機制（備援機制適用於 **截圖翻譯** 與 **即時翻譯**）：  
 當某個翻譯無法使用或回應過慢時，會自動切換到其他可用的翻譯 API，實際使用的引擎顯示於工具列。
@@ -177,9 +184,19 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 | 項目 | 說明 |
 |------|------|
 | API 位址 | 留空時使用 `http://localhost:11434/v1`（Ollama 的本機預設位址） |
-| 模型名稱 | 留空時使用 `translategemma:4b` |
-| 提示詞 | 留空時使用內建提示詞；可用下方參數代入實際使用的語言 |
-| Temperature | 位於 **進階** 區，影響輸出的隨機程度，範圍 0.0 ~ 2.0（預設 0） |
+| API Key | 本機執行可留空 |
+| 模型設定 | 一份設定 = 模型名稱 + 進階參數 + **自動** 與 **指定語言** 各一組 System / User 提示詞，切換設定會整組一起換 |
+| 系統預設 | 唯讀的那一份，使用 [Ollama 安裝教學](docs/guides/OLLAMA_GUIDE.md) 推薦的模型，提示詞會依介面語言切換 |
+| 新增設定 | 最多 5 份；模型名稱為必填，System / User 提示詞至少要填寫一項 |
+| 進階參數 | 位於編輯頁的 **進階** 區，三項都可個別關閉；關閉的參數不會傳送 |
+
+進階參數：
+
+| 參數 | 說明 | 範圍 | 預設 |
+|------|------|------|------|
+| Temperature | 模型對高機率結果的偏好程度，數值越高，其他可能的表達越有機會被選中 | 0.0 ~ 2.0 | 0.7 |
+| Top P | 模型可選擇的候選範圍，數值越低，只保留機率較高的少數候選 | 0.0 ~ 1.0 | 0.6 |
+| Seed | 讓生成結果更容易重現；模型、提示詞與其他設定相同時，相同 Seed 通常得到相同結果 | 整數 | 42 |
 
 提示詞可用參數（設定頁的 **可用參數** 區塊也會列出說明與範例）：
 
@@ -190,9 +207,7 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 | `{target_name}` | 目標語言名稱 | 日文 |
 | `{target_code}` | 目標語言代碼 | ja |
 
-> 內建提示詞僅使用語言名稱；語言代碼參數可依模型需求自行搭配使用，例如 `{target_name} (target_code)` -> `Japanese (ja)`。
-> 
-> Temperature 取消勾選時 **不會傳送此參數**。不同模型或 API 對 Temperature 的支援與建議值可能不同；若模型文件建議不要傳送此參數，請取消勾選。若在 0 時輸出表現異常，可依模型建議嘗試調高，建議從 0.1 開始逐步調整。
+> 語言名稱會跟著介面語言（繁體中文介面代入「日文」，English 介面代入「Japanese」）；語言代碼則固定是模型使用的代碼。
 
 ### 多語言 OCR 辨識
 
@@ -216,15 +231,13 @@ OCR 全程於本機 CPU 執行，不會將圖片上傳至外部服務。
 使用以下翻譯服務時，需另外準備：
 
 - **DeepL**：需至 [DeepL 官網](https://www.deepl.com/pro-api) 申請 API Key
-- **OpenAI**：需自備 OpenAI API 相容服務，本地 LLM 架設使用方式可參考 [Ollama 安裝教學](OLLAMA_GUIDE.md)
+- **OpenAI**：需自備 OpenAI API 相容服務，本地 LLM 架設使用方式可參考 [Ollama 安裝教學](docs/guides/OLLAMA_GUIDE.md)
 
 ---
 
-## ☕ 支持專案
+## 支持
 
-OverTranslate 是免費提供的 Windows 翻譯工具。
-
-如果這個專案對你有幫助，歡迎透過 [Buy Me a Coffee](https://buymeacoffee.com/hon.lu) 請我喝杯咖啡，支持後續開發與維護。
+本軟體若對你日常或工作使用上有幫助，歡迎透過 [Ko-fi](https://ko-fi.com/honlu) 請我喝杯咖啡 ~ ☕
 
 ---
 

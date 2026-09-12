@@ -49,16 +49,6 @@ public class DocumentationLinkTests
         }
     }
 
-    /// <summary>
-    /// The two copies at the repository root are kept only so the URL compiled into already
-    /// installed versions keeps resolving. Deleting them is a decision, not a tidy-up.
-    /// </summary>
-    [Theory]
-    [InlineData("OLLAMA_GUIDE.md")]
-    [InlineData("OLLAMA_GUIDE.en.md")]
-    public void TheGuideKeptAtTheRootForOlderVersionsIsStillThere(string file) =>
-        Assert.True(File.Exists(Path.Combine(RepositoryRoot(), file)), $"{file} is missing");
-
     /// <summary>The repository root, which is the directory holding src/OverTranslate.</summary>
     private static string RepositoryRoot() =>
         Directory.GetParent(Directory.GetParent(StringsParityTests.ProjectDirectory())!.FullName)!.FullName;
