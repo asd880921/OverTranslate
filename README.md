@@ -17,7 +17,7 @@
     <br/>
     OverTranslate
   </h1>
-  <p>一款 Windows 螢幕翻譯工具，支援截圖、即時、取詞與快速翻譯，翻譯結果直接顯示在原畫面上。</p>
+  <p>一款適合日常使用、漫畫、影音與遊戲的 Windows 螢幕翻譯工具，支援截圖翻譯、即時翻譯等多種翻譯功能，翻譯結果可直接顯示在原畫面上。</p>
 
   <p>
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
@@ -66,6 +66,16 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 | ![截圖翻譯3-前.png](docs/images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](docs/images/截圖翻譯3-後.png) |
 
 > 比對圖中的四格漫畫原作出自 [@kiyo_mariari](https://x.com/kiyo_mariari/status/1980247239948988588/photo/1)。
+
+### 截圖翻譯 - 其他功能
+
+框選畫面後，工具列還提供以下功能：
+
+* **複製文字 / 複製譯文**：直接將辨識出的原文或翻譯結果複製到剪貼簿
+* **標記**：提供畫筆、螢光筆與橡皮擦，可直接在截圖上進行標記
+* **截圖**：將框選範圍複製到剪貼簿，也可同時儲存為圖片檔案
+
+![截圖翻譯-標記.png](docs/images/截圖翻譯-標記.png)
 
 ---
 

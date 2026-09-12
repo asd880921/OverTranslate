@@ -17,7 +17,7 @@
     <br/>
     OverTranslate
   </h1>
-  <p>A Windows screen translator with screenshot, real-time, quick lookup and quick translate, showing the results right on the original screen.</p>
+  <p>A Windows screen translator for everyday use, comics, video and games, with screenshot translation, real-time translation and more, showing the results right on the original screen.</p>
 
   <p>
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
@@ -66,6 +66,16 @@ When you need a translation, press the hotkey (default Ctrl + Alt + A) and selec
 | ![截圖翻譯3-前.png](images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](images/截圖翻譯3-後.png) |
 
 > The four-panel comic in the comparison images is by [@kiyo_mariari](https://x.com/kiyo_mariari/status/1980247239948988588/photo/1).
+
+### Screenshot Translation - Other Features
+
+Once an area is selected, the toolbar also offers:
+
+* **Copy text / Copy translation**: copies the recognized source text or the translation straight to the clipboard
+* **Annotate**: a pen, a highlighter and an eraser for marking up the capture
+* **Screenshot**: copies the selected area to the clipboard, and can save it as an image file at the same time
+
+![截圖翻譯-標記.png](images/截圖翻譯-標記.png)
 
 ---
 

@@ -17,7 +17,7 @@
     <br/>
     OverTranslate
   </h1>
-  <p>캡처·실시간·빠른 조회·빠른 번역을 지원하는 Windows 화면 번역 도구. 번역 결과를 원래 화면 위에 그대로 보여 줍니다.</p>
+  <p>일상적인 사용부터 만화·영상·게임까지 쓸 수 있는 Windows 화면 번역 도구. 캡처 번역, 실시간 번역 등 여러 번역 기능을 지원하며 번역 결과를 원래 화면 위에 그대로 보여 줍니다.</p>
 
   <p>
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
@@ -66,6 +66,16 @@ OverTranslate은 다섯 가지 번역 기능을 제공하며, 상황에 맞는 �
 | ![캡처 번역3-전](images/截圖翻譯3-前.png) | ![캡처 번역3-후](images/截圖翻譯3-後.png) |
 
 > 비교 이미지의 4컷 만화는 [@kiyo_mariari](https://x.com/kiyo_mariari/status/1980247239948988588/photo/1) 님의 작품입니다.
+
+### 캡처 번역 - 그 외 기능
+
+영역을 지정한 뒤에는 툴바에서 다음 기능도 쓸 수 있습니다.
+
+* **텍스트 복사 / 번역문 복사**: 인식한 원문이나 번역 결과를 곧바로 클립보드에 복사합니다
+* **마크업**: 펜, 형광펜, 지우개로 캡처 위에 바로 표시할 수 있습니다
+* **스크린샷**: 지정한 영역을 클립보드에 복사하고, 동시에 이미지 파일로 저장할 수도 있습니다
+
+![截圖翻譯-標記.png](images/截圖翻譯-標記.png)
 
 ---
 
