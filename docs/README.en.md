@@ -102,7 +102,7 @@ Translation blocks come in two modes:
 | ![Real-time translation1 - dialogue game selection](images/即時翻譯1-對話遊戲框.png) | ![Real-time translation1 - dialogue game result](images/即時翻譯1-對話遊戲翻譯.png) |
 | ![Real-time translation2 - dialogue game selection](images/即時翻譯2-對話遊戲框.png) | ![Real-time translation2 - dialogue game result](images/即時翻譯2-對話遊戲翻譯.png) |
 
-**Game / UI**: for game interfaces and menus, where the text is spread out or moves around (1 – 2 blocks recommended)
+**Game / UI**: for game screens, menus and interface text; if it is not a subtitle or story dialogue, this is the mode to use (1 – 2 blocks recommended)
 
 | Selection | Translation result |
 |-----------|--------------------|
