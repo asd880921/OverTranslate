@@ -67,9 +67,9 @@ When you need a translation, press the hotkey (default Ctrl + Alt + A) and selec
 
 > The four-panel comic in the comparison images is by [@kiyo_mariari](https://x.com/kiyo_mariari/status/1980247239948988588/photo/1).
 
-### Screenshot Translation - Other Features
+### Toolbar - Other Features
 
-Once an area is selected, the toolbar also offers:
+Once the selection is done, the toolbar offers:
 
 * **Copy text / Copy translation**: copies the recognized source text or the translation straight to the clipboard
 * **Annotate**: a pen, a highlighter and an eraser for marking up the capture
