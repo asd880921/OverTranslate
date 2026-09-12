@@ -93,8 +93,8 @@ screen capture needs Windows 11 24H2 or later, window capture needs Windows 10 1
 > While real-time translation is running, use the hotkey (default Ctrl + Alt + S) to pause / resume translation,  
 > When a screen doesn't need translating, or when you want to read the original text, pause first and resume later — there's no need to shut down real-time translation.
 
-Translation blocks come in two modes, **Subtitles / Dialogue** and **Game / UI**:
-**Subtitles / Dialogue**: for scenes where the text stays in one place, such as video subtitles and game dialogue (1 block recommended).
+Translation blocks come in two modes:
+**Subtitles / Dialogue**: for video subtitles, game story dialogue and similar scenes (1 block recommended)
 
 | Selection | Translation result |
 |-----------|--------------------|
@@ -102,7 +102,7 @@ Translation blocks come in two modes, **Subtitles / Dialogue** and **Game / UI**
 | ![Real-time translation1 - dialogue game selection](images/即時翻譯1-對話遊戲框.png) | ![Real-time translation1 - dialogue game result](images/即時翻譯1-對話遊戲翻譯.png) |
 | ![Real-time translation2 - dialogue game selection](images/即時翻譯2-對話遊戲框.png) | ![Real-time translation2 - dialogue game result](images/即時翻譯2-對話遊戲翻譯.png) |
 
-**Game / UI**: for game menus and prompts, or scenes where the text is spread out and moves around (1 – 2 blocks recommended).
+**Game / UI**: for game interfaces and menus, where the text is spread out or moves around (1 – 2 blocks recommended)
 
 | Selection | Translation result |
 |-----------|--------------------|
