@@ -3,7 +3,7 @@
     🌐
     <strong>English ✓</strong>
     &nbsp;｜&nbsp;
-    <strong><a href="README.zh-Hant.md">繁體中文</a></strong>
+    <strong><a href="../README.md">繁體中文</a></strong>
     &nbsp;｜&nbsp;
     <strong><a href="README.zh-Hans.md">简体中文</a></strong>
     &nbsp;｜&nbsp;
@@ -17,7 +17,7 @@
     <br/>
     OverTranslate
   </h1>
-  <p>A Windows screen translator with screenshot, real-time, quick lookup and quick translate, showing the results right on the original screen.</p>
+  <p>A Windows screen translator for everyday use, comics, video and games, with screenshot translation, real-time translation and more, showing the results right on the original screen.</p>
 
   <p>
     <img src="https://img.shields.io/github/v/release/asd880921/OverTranslate?style=for-the-badge&label=latest%20release" alt="Latest release" />
@@ -55,7 +55,7 @@ OverTranslate currently offers five translation features, so you can pick the on
 
 **The main window can be closed so the app just sits in the system tray**, there's no need to keep the window open all the time.  
 When you need a translation, press the hotkey (default Ctrl + Alt + A) and select the area you want to translate.
-> Works on web pages, PDFs, images, videos, game interfaces, and any other screen where text can't be selected directly.
+> Works on web pages, PDFs, images, comics, videos, game interfaces, and any other screen where text can't be selected directly.
 
 ![Translation comparison](images/翻譯比對圖.png)
 
@@ -65,6 +65,18 @@ When you need a translation, press the hotkey (default Ctrl + Alt + A) and selec
 | ![截圖翻譯2-前.png](images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](images/截圖翻譯2-後.png) |
 | ![截圖翻譯3-前.png](images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](images/截圖翻譯3-後.png) |
 
+> The four-panel comic in the comparison images is by [@kiyo_mariari](https://x.com/kiyo_mariari/status/1980247239948988588/photo/1).
+
+### Screenshot Translation - Other Features
+
+Once an area is selected, the toolbar also offers:
+
+* **Copy text / Copy translation**: copies the recognized source text or the translation straight to the clipboard
+* **Annotate**: a pen, a highlighter and an eraser for marking up the capture
+* **Screenshot**: copies the selected area to the clipboard, and can save it as an image file at the same time
+
+![截圖翻譯-標記.png](images/截圖翻譯-標記.png)
+
 ---
 
 ## Real-time Translation
@@ -73,10 +85,6 @@ Ideal for **video subtitles, game screens**, and other situations that need cont
 
 There are two capture modes, **screen capture** and **window capture**:  
 screen capture needs Windows 11 24H2 or later, window capture needs Windows 10 1903 or later.
-
-> Currently only Microsoft, DeepL, and OpenAI are recommended for this mode (lower latency).  
-
-> The text color, background color, and background opacity of the translation are all yours to adjust, and turning on **Match the original background** and **Keep the original text color** brings the translation closer to the colors and look already on screen.
 
 ![Real-time translation window preview](images/即時翻譯視窗預覽_en.png)
 
@@ -135,23 +143,22 @@ built-in text to speech (TTS) reads both the original text and the translation a
 | Setting | Description |
 |---------|-------------|
 | Interface language | Traditional Chinese / Simplified Chinese / English / Japanese / Korean, applied immediately (on first launch it follows your Windows display language) |
-| Screenshot translation (hotkey) | Hotkey for the **screenshot translation** feature (customizable, default `Ctrl + Alt + A`) |
-| Open translation window (hotkey) | Hotkey to bring up the main window on the page you left it on (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
-| Pause / resume (hotkey) | Pauses or resumes **real-time translation** (default `Ctrl + Alt + S`); available only while real-time translation is running, and handy for reading the original text |
-| Quick lookup (hotkey) | Opens the **quick lookup** window (default `Ctrl + Alt + Q`); any text you have selected is picked up and translated automatically |
-| Quick translate (hotkey) | Replaces the selected text with its translation (default `Ctrl + Alt + E`); nothing happens when nothing is selected |
-| Auto translate | **Screenshot translation** translates **immediately** once the area is selected, with nothing left to click (off by default) |
+| Screenshot translation (hotkey) | Starts a selection and translates it (default `Ctrl + Alt + A`) |
+| Open translation window (hotkey) | Brings up the main window on the page you left it on (default `Ctrl + Alt + W`); while real-time translation is running, it brings the floating bar to the front |
+| Pause / resume (hotkey) | Pauses or resumes **real-time translation** (default `Ctrl + Alt + S`); while paused you can read the original text |
+| Quick lookup (hotkey) | Opens the **quick lookup** window (default `Ctrl + Alt + Q`); any text you have selected is picked up automatically |
+| Quick translate (hotkey) | Replaces the selected text with its translation (default `Ctrl + Alt + E`), and can use its own source and target language |
+| Auto translate | Translates immediately once the screenshot area is selected, with nothing left to click (off by default) |
 | Run at startup | Launch automatically when Windows starts |
-| Save screenshots | Save captures to your machine automatically, with a customizable folder (off by default) |
-| Source language | The original language for **screenshot translation** and **text translation** (default Auto); real-time translation has its own source language |
-| Service setup | Set up the services that need a key or an endpoint; when using OpenAI you can set the API endpoint, model name, translation prompt, and temperature |
+| Save screenshots | Save captures automatically, to a folder of your choice (off by default) |
+| Service setup | Set the key, endpoint, and model for DeepL and OpenAI; the other services need no setup |
 | Theme | Light / Dark |
-| Application logs | Records more complete application information; recommended only while troubleshooting (off by default) |
+| Logging | Records more detailed information about what the app is doing; recommended only while troubleshooting (off by default) |
+| Debug tools | Draws the OCR boxes and text group boxes on top of the **screenshot translation** result (off by default) |
 
-> As well as key combinations, a shortcut can be a single key: F1 – F12, the middle or side mouse buttons, or a gamepad button.
+> As well as key combinations, a shortcut can be a single key (F1 ~ F24, Pause, Scroll Lock), the middle or side mouse buttons, or a gamepad button.
 
-> Logs are stored on your machine only and are never uploaded automatically; the detailed information recorded with **Application logs** enabled also stays on your machine.  
-> To report a problem, press **Export and upload diagnostics** on the settings page — the diagnostics are uploaded for you, and you get a report code back (give it to the developer to identify your report quickly).
+> Logs and diagnostics stay on your machine and are never uploaded automatically. To report a problem, press **Export diagnostics** and then **Upload**; the file is deleted automatically after 30 days.
 
 ---
 
@@ -166,7 +173,7 @@ built-in text to speech (TTS) reads both the original text and the translation a
 | Bing Translator | Good translation quality |
 | Microsoft Translator | **(default)** Stable and fast |
 | DeepL | Requires registering on DeepL's site and obtaining an API key |
-| OpenAI | Supports the OpenAI API format; a local LLM is recommended, which you can set up quickly with [Ollama](guides/OLLAMA_GUIDE.en.md); the prompt and temperature are customizable |
+| OpenAI | Supports the OpenAI API format; a local LLM is recommended, which you can set up quickly with [Ollama](guides/OLLAMA_GUIDE.en.md) |
   
 An "automatic fallback" mechanism is provided (it applies to both **screenshot translation** and **real-time translation**):
 when a translation service is unavailable or responds too slowly, the app automatically switches to another available translation API, and the engine actually in use is shown in the toolbar.
@@ -232,9 +239,10 @@ The following translation services require some extra setup:
 
 ---
 
-## Support
+## ☕ Support the Project
 
-If this software helps you in your daily life or work, feel free to buy me a coffee on [Ko-fi](https://ko-fi.com/honlu) ~ ☕
+OverTranslate is a free Windows translation tool.  
+If this project helps you, feel free to buy me a coffee on [Buy Me a Coffee](https://buymeacoffee.com/hon.lu) and support its continued development and maintenance.
 
 ---
 

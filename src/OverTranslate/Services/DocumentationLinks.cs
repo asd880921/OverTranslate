@@ -16,11 +16,6 @@ public static class DocumentationLinks
     /// <summary>
     /// Paths under the repository root, one per interface language.
     /// </summary>
-    /// <remarks>
-    /// The two copies still at the repository root are deliberately not used here. They exist only
-    /// because versions already installed have that URL compiled into them, and they are to be
-    /// removed once those versions are old enough; docs/guides is where the guide actually lives.
-    /// </remarks>
     private static readonly Dictionary<string, string> OllamaGuidePaths = new(StringComparer.OrdinalIgnoreCase)
     {
         [LocalizationService.TraditionalChinese] = "docs/guides/OLLAMA_GUIDE.md",
