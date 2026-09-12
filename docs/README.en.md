@@ -71,7 +71,7 @@ When you need a translation, press the hotkey (default Ctrl + Alt + A) and selec
 
 Once the selection is done, the toolbar offers:
 
-* **Copy text / Copy translation**: copies the recognized source text or the translation straight to the clipboard
+* **Copy text**: copies the recognized text straight to the clipboard, no translation needed
 * **Annotate**: a pen, a highlighter and an eraser for marking up the capture
 * **Screenshot**: copies the selected area to the clipboard, and can save it as an image file at the same time
 
