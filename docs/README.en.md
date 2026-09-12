@@ -234,9 +234,10 @@ The following translation services require some extra setup:
 
 ---
 
-## Support
+## ☕ Support the Project
 
-If this software helps you in your daily life or work, feel free to buy me a coffee on [Ko-fi](https://ko-fi.com/honlu) ~ ☕
+OverTranslate is a free Windows translation tool.  
+If this project helps you, feel free to buy me a coffee on [Buy Me a Coffee](https://buymeacoffee.com/hon.lu) and support its continued development and maintenance.
 
 ---
 

@@ -237,9 +237,10 @@ OCR 全程于本机 CPU 执行，不会将图片上传至外部服务。
 
 ---
 
-## 支持
+## ☕ 支持项目
 
-本软件若对你日常或工作使用上有帮助，欢迎通过 [Ko-fi](https://ko-fi.com/honlu) 请我喝杯咖啡 ~ ☕
+OverTranslate 是免费提供的 Windows 翻译工具。  
+如果这个项目对你有帮助，欢迎通过 [Buy Me a Coffee](https://buymeacoffee.com/hon.lu) 请我喝杯咖啡，支持后续开发与维护。
 
 ---
 

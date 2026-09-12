@@ -237,9 +237,10 @@ OCR은 처음부터 끝까지 내 PC의 CPU에서 실행되며, 이미지를 외
 
 ---
 
-## 후원
+## ☕ 프로젝트 후원
 
-이 소프트웨어가 일상이나 업무에 도움이 되었다면 [Ko-fi](https://ko-fi.com/honlu)에서 커피 한 잔 사 주셔도 좋습니다 ~ ☕
+OverTranslate는 무료로 제공되는 Windows 번역 도구입니다.  
+이 프로젝트가 도움이 되었다면 [Buy Me a Coffee](https://buymeacoffee.com/hon.lu)에서 커피 한 잔 사 주시면 이후 개발과 유지 보수에 큰 힘이 됩니다.
 
 ---
 
