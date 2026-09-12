@@ -65,6 +65,8 @@ OverTranslate 目前提供了五種翻譯功能，可依不同使用情境快速
 | ![截圖翻譯2-前.png](docs/images/截圖翻譯2-前.png) | ![截圖翻譯2-後.png](docs/images/截圖翻譯2-後.png) |
 | ![截圖翻譯3-前.png](docs/images/截圖翻譯3-前.png) | ![截圖翻譯3-後.png](docs/images/截圖翻譯3-後.png) |
 
+> 比對圖中的四格漫畫原作出自 [@kiyo_mariari](https://x.com/kiyo_mariari/status/1980247239948988588/photo/1)。
+
 ---
 
 ## 即時翻譯
