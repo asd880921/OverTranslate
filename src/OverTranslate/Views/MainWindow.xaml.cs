@@ -938,7 +938,7 @@ public partial class MainWindow : Window
             var coloredTranslated = placed
                 .Select((b, i) =>
                 {
-                    if (SampledColorReuse.CanReuse(
+                    if (b.SourceLineBounds is not { Count: > 1 } && SampledColorReuse.CanReuse(
                             _lastColoredBlocks, i, b, req.IsVerticalText, previousVerticalText))
                     {
                         return b with
@@ -948,7 +948,8 @@ public partial class MainWindow : Window
                         };
                     }
 
-                    var (bg, fg) = SourceTextColorSampler.ForCaptureOverlay(workBitmap, b.Bounds);
+                    var paragraphBackground = CaptureBackgroundColor.Sample(workBitmap, b, req.IsVerticalText);
+                    var (bg, fg) = SourceTextColorSampler.ForCaptureOverlay(workBitmap, b.Bounds, paragraphBackground);
                     return b with { BackgroundColor = bg, TextColor = fg };
                 })
                 .ToList();

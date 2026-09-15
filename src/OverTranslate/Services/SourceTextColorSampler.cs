@@ -25,7 +25,7 @@ internal static class SourceTextColorSampler
     /// Samples the background around <paramref name="bounds"/> and the dominant glyph colour inside it.
     /// Null when the box has no pixels in the frame.
     /// </summary>
-    public static SourceTextColor? Sample(Bitmap frame, WpfRect bounds)
+    public static SourceTextColor? Sample(Bitmap frame, WpfRect bounds, MediaColor? backgroundOverride = null)
     {
         if (frame.Width <= 0 || frame.Height <= 0 || bounds.Width <= 0 || bounds.Height <= 0)
             return null;
@@ -55,7 +55,7 @@ internal static class SourceTextColorSampler
         if (PixelWindow.Read(frame, outer) is not { } window)
             return null;
 
-        var background = DominantBackground(window, outer, inner);
+        var background = backgroundOverride ?? DominantBackground(window, outer, inner);
         return new SourceTextColor(background, DominantGlyphColor(window, inner, background));
     }
 
@@ -63,12 +63,12 @@ internal static class SourceTextColorSampler
     /// The colours the capture overlay draws a block in: the sampled background, and a text colour
     /// that is tuned toward the source and guaranteed legible on it.
     /// </summary>
-    public static (MediaColor Background, MediaColor Text) ForCaptureOverlay(Bitmap frame, WpfRect bounds)
+    public static (MediaColor Background, MediaColor Text) ForCaptureOverlay(Bitmap frame, WpfRect bounds, MediaColor? backgroundOverride = null)
     {
         var black = MediaColor.FromRgb(0, 0, 0);
         var white = MediaColor.FromRgb(255, 255, 255);
 
-        if (Sample(frame, bounds) is not { } sample)
+        if (Sample(frame, bounds, backgroundOverride) is not { } sample)
             return (white, black);
 
         var background = sample.Background;
