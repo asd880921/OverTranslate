@@ -572,7 +572,7 @@ public partial class OverlayWindow : Window
 
             var backgroundBorder = new Border
             {
-                Background = new SolidColorBrush(bg),
+                Background = (System.Windows.Media.Brush?)block.BackgroundSurface?.CreateBrush() ?? new SolidColorBrush(bg),
                 Padding = new Thickness(3, 2, 3, 2),
                 Width  = targetBorderW,
                 Height = actualBorderH,
@@ -700,7 +700,7 @@ public partial class OverlayWindow : Window
 
             var backgroundBorder = new Border
             {
-                Background = new SolidColorBrush(background),
+                Background = (System.Windows.Media.Brush?)block.BackgroundSurface?.CreateBrush() ?? new SolidColorBrush(background),
                 Width = borderW,
                 Height = borderH,
                 ClipToBounds = true,

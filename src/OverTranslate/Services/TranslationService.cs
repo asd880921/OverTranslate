@@ -17,7 +17,11 @@ public record TranslatedBlock(
 
     // Set by placement, read by the overlay. Default until something decides otherwise, so the
     // realtime path and the translation providers carry it without knowing it is there.
-    OverlayLayoutIntent LayoutIntent = OverlayLayoutIntent.Default);
+    OverlayLayoutIntent LayoutIntent = OverlayLayoutIntent.Default)
+{
+    // Frozen, screenshot-only repaired/blurred background; realtime continues to use its own frame repair.
+    internal CaptureBackgroundSurface? BackgroundSurface { get; init; }
+}
 
 public class TranslationService
 {

@@ -935,6 +935,7 @@ public partial class MainWindow : Window
             // to say the picture underneath was never looked at. Re-sampling costs a pass over the
             // crop, next to nothing beside the OCR and the translation that just ran.
             var previousVerticalText = _lastVerticalText;
+            var backgroundExclusions = placed.SelectMany(b => b.SourceLineBounds is { Count: > 0 } lines ? lines : [b.Bounds]).ToArray();
             var coloredTranslated = placed
                 .Select((b, i) =>
                 {
@@ -944,13 +945,16 @@ public partial class MainWindow : Window
                         return b with
                         {
                             BackgroundColor = _lastColoredBlocks[i].BackgroundColor,
-                            TextColor       = _lastColoredBlocks[i].TextColor
+                            TextColor       = _lastColoredBlocks[i].TextColor,
+                            BackgroundSurface = _lastColoredBlocks[i].BackgroundSurface
                         };
                     }
 
                     var paragraphBackground = CaptureBackgroundColor.Sample(workBitmap, b, req.IsVerticalText);
                     var (bg, fg) = SourceTextColorSampler.ForCaptureOverlay(workBitmap, b.Bounds, paragraphBackground);
-                    return b with { BackgroundColor = bg, TextColor = fg };
+                    var sourceText = SourceTextColorSampler.Sample(workBitmap, b.Bounds, paragraphBackground)?.Text ?? fg;
+                    var surface = CaptureBackgroundSurface.Create(workBitmap, b with { BackgroundColor = bg }, backgroundExclusions, sourceText);
+                    return b with { BackgroundColor = bg, TextColor = surface?.TextColor ?? fg, BackgroundSurface = surface };
                 })
                 .ToList();
 
